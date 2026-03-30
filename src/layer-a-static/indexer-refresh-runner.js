@@ -16,7 +16,7 @@ function buildAtomsByFile(atoms) {
 
 export function buildRefreshPatternsRunner({ absoluteRootPath, verbose, logger }) {
   const repo = getRepository(absoluteRootPath);
-  const runner = new PipelineRunner({ absoluteRootPath, verbose });
+  const runner = new PipelineRunner({ absoluteRootPath, verbose, runKind: 'refresh_patterns' });
 
   runner
     .addPhase('1. Load State', async () => {

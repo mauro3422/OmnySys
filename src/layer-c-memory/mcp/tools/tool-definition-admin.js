@@ -70,6 +70,35 @@ export const adminToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_get_folderization_snapshot',
+    description: 'Returns a lightweight DB-backed snapshot for folderization guidance, naming debt and sync drift without running the full compiler health pipeline.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scopePath: { type: 'string', description: 'Scope contextual para elegir la familia o dominio mas cercano' },
+        focusPath: { type: 'string', description: 'Focus contextual para afinar la guia y la comparacion' },
+        filePaths: {
+          type: 'array',
+          items: { type: 'string' },
+          default: [],
+          description: 'Opcional: paths concretos que deben influir en la guia de folderizacion'
+        },
+        snapshotKind: {
+          type: 'string',
+          enum: ['manual', 'dashboard', 'debt', 'folderization'],
+          default: 'folderization',
+          description: 'Tipo de snapshot a capturar'
+        },
+        includeDatabaseHealth: {
+          type: 'boolean',
+          default: true,
+          description: 'Incluir la salud de DB y el estado de live-row sync'
+        }
+      },
+      required: []
+    }
+  },
+  {
     name: 'mcp_omnysystem_get_tool_inventory_report',
     description: 'Returns a categorized report of the MCP tool catalog with consolidation recommendations.',
     inputSchema: {

@@ -12,7 +12,7 @@ import { generateAnalysisReport } from './analyzer.js';
 import { PipelineRunner } from './pipeline/runner.js';
 
 export function buildIndexProjectRunner({ absoluteRootPath, verbose, options, logger, skipLLM }) {
-  const runner = new PipelineRunner({ absoluteRootPath, verbose, options });
+  const runner = new PipelineRunner({ absoluteRootPath, verbose, options, runKind: 'index_project' });
 
   runner
     .addPhase('1. Initialization', async (ctx) => {

@@ -500,7 +500,7 @@ export const TABLE_DEFINITIONS = {
     columns: [
       { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
       { name: 'project_path', type: 'TEXT', nullable: false, description: 'Proyecto al que pertenece el snapshot' },
-      { name: 'snapshot_kind', type: 'TEXT', nullable: false, description: 'Tipo de snapshot: status, manual, dashboard, debt' },
+      { name: 'snapshot_kind', type: 'TEXT', nullable: false, description: 'Tipo de snapshot: status, manual, dashboard, debt, folderization' },
       { name: 'scope_path', type: 'TEXT', nullable: true, description: 'Scope consultado para la guía contextual' },
       { name: 'focus_path', type: 'TEXT', nullable: true, description: 'Focus consultado para la guía contextual' },
       { name: 'capture_source', type: 'TEXT', nullable: true, description: 'Origen del snapshot: status.runtime, mcp.tool, dashboard' },
@@ -520,6 +520,7 @@ export const TABLE_DEFINITIONS = {
       { name: 'naming_families', type: 'INTEGER', default: 0, description: 'Familias con deuda de nombres' },
       { name: 'naming_targets', type: 'INTEGER', default: 0, description: 'Targets de rename' },
       { name: 'naming_debt', type: 'INTEGER', default: 0, description: 'Deuda de nombres' },
+      { name: 'active_atoms', type: 'INTEGER', default: 0, description: 'Atoms activos al momento del snapshot' },
       { name: 'live_coverage_ratio', type: 'REAL', default: 0, description: 'Cobertura live del universo de archivos' },
       { name: 'zero_atom_file_count', type: 'INTEGER', default: 0, description: 'Archivos sin átomos' },
       { name: 'call_links', type: 'INTEGER', default: 0, description: 'Links del call graph' },

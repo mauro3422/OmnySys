@@ -41,7 +41,8 @@ export async function attachDeepVitals(status, projectPath, server) {
     const fileUniverseSummary = compilerDiagnostics.fileUniverseGranularity;
     const conceptualSummary = getConceptualDuplicateSummary(repo, { limit: 50 });
     const sessionSummary = getMcpSessionSummary(sessionManager, {
-      runtimeSessionCount: server.sessions?.size || 0
+      runtimeSessionCount: server.sessions?.size || 0,
+      sessionDb: repo?.db || null
     });
 
     status.background = {
@@ -80,6 +81,10 @@ export async function attachDeepVitals(status, projectPath, server) {
       clientsWithDuplicates: sessionSummary.clientsWithDuplicates,
       actionableDuplicateClients: sessionSummary.actionableDuplicateClients,
       toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients,
+      clientSyncState: sessionSummary.clientSyncState || null,
+      clientSyncSeverity: sessionSummary.clientSyncSeverity || null,
+      clientSyncReason: sessionSummary.clientSyncReason || null,
+      clientSyncRecommendation: sessionSummary.clientSyncRecommendation || null,
       health: sessionSummary.multiClientChurn
         ? 'MULTI_CLIENT_CHURN'
         : sessionSummary.runtimeSessions > 20
@@ -95,7 +100,9 @@ export async function attachDeepVitals(status, projectPath, server) {
       clientsWithDuplicates: sessionSummary.clientsWithDuplicates,
       actionableDuplicateClients: sessionSummary.actionableDuplicateClients,
       toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients,
-      sessionCountDrift: sessionSummary.sessionCountDrift
+      sessionCountDrift: sessionSummary.sessionCountDrift,
+      clientSyncState: sessionSummary.clientSyncState,
+      clientSyncReason: sessionSummary.clientSyncReason
     });
   } catch (error) {
     status.deepVitalsError = error.message;

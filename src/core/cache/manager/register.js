@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { SemanticChangeType as ChangeType } from '#config/change-types.js';
+import { isBugModeEnabled } from '#shared/runtime-debug-flags.js';
 import { hashContent, detectChangeType } from './utils.js';
 import { CacheEntry } from './entry.js';
 
@@ -69,7 +70,7 @@ export async function registerFile(filePath, content, metadata = null) {
   existingEntry.timestamp = Date.now();
   
   // Log metadata-only changes in debug mode
-  if (metadataChanged && !contentChanged && process.env.DEBUG) {
+  if (metadataChanged && !contentChanged && (process.env.DEBUG || isBugModeEnabled())) {
     process.stderr.write(`[Cache] Metadata changed for ${filePath} (content unchanged)\n`);
   }
 

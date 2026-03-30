@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const transportInstances = [];
+  const serverInstances = [];
 
   function createMockTransport(config) {
     const transport = {
@@ -22,20 +23,29 @@ const mocks = vi.hoisted(() => {
 
   class MockServer {
     constructor() {
+      this.handlers = new Map();
+      serverInstances.push(this);
       this.connect = vi.fn(async (transport) => {
         await transport.connect();
       });
+    }
+
+    setRequestHandler(schema, handler) {
+      this.handlers.set(schema, handler);
     }
   }
 
   return {
     transportInstances,
+    serverInstances,
     expressJson: vi.fn(() => (req, res, next) => next()),
     isInitializeRequest: vi.fn(() => false),
     applyPagination: vi.fn((value) => value),
     compactRecentNotifications: vi.fn((value) => value),
     StreamableHTTPServerTransport: createMockTransport,
     Server: MockServer,
+    ListResourcesRequestSchema: {},
+    ReadResourceRequestSchema: {},
     ErrorCode: { MethodNotFound: 'MethodNotFound' },
     McpError: function MockMcpError(message) {
       const error = new Error(message);
@@ -63,8 +73,9 @@ vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
   CallToolRequestSchema: {},
   ListToolsRequestSchema: {},
-  ListResourcesRequestSchema: {},
+  ListResourcesRequestSchema: mocks.ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema: {},
+  ReadResourceRequestSchema: mocks.ReadResourceRequestSchema,
   ErrorCode: mocks.ErrorCode,
   McpError: mocks.McpError,
   isInitializeRequest: mocks.isInitializeRequest
@@ -80,6 +91,7 @@ vi.mock('../../../src/layer-c-memory/mcp/core/recent-notifications.js', () => ({
 
 import {
   buildJsonRpcErrorResponse,
+  buildServerForSession,
   handleMcpRequest
 } from '../../../src/layer-c-memory/mcp-http-session-routing.js';
 import {
@@ -91,6 +103,7 @@ import {
 
 beforeEach(() => {
   mocks.transportInstances.length = 0;
+  mocks.serverInstances.length = 0;
   mocks.expressJson.mockReset();
   mocks.expressJson.mockReturnValue((req, res, next) => next());
   mocks.isInitializeRequest.mockReset();
@@ -275,5 +288,126 @@ describe('handleMcpRequest', () => {
 
     expect(sessionManager.deleteSession).toHaveBeenCalledWith('deduped-session');
     expect(sessions.has('deduped-session')).toBe(false);
+  });
+
+  it('shares a single event store across Streamable HTTP transports', async () => {
+    const logger = createLogger();
+    const sessions = new Map();
+    const sessionManager = createSessionManager({
+      reserveSession: vi.fn()
+        .mockReturnValueOnce({
+          sessionId: 'transport-session-a',
+          reused: false,
+          source: 'new'
+        })
+        .mockReturnValueOnce({
+          sessionId: 'transport-session-b',
+          reused: false,
+          source: 'new'
+        }),
+      saveSession: vi.fn((sessionId) => sessionId)
+    });
+    const buildSessionServer = createBuildSessionServer();
+    const reqA = {
+      headers: {},
+      method: 'POST',
+      body: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Claude'
+          }
+        },
+        id: 41
+      }
+    };
+    const reqB = {
+      headers: {},
+      method: 'POST',
+      body: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Codex'
+          }
+        },
+        id: 42
+      }
+    };
+    const resA = createResponse();
+    const resB = createResponse();
+
+    mocks.isInitializeRequest.mockReturnValue(true);
+
+    await handleMcpRequest(reqA, resA, {
+      logger,
+      sessions,
+      buildSessionServer,
+      getSessionManager: vi.fn(async () => sessionManager)
+    });
+
+    await handleMcpRequest(reqB, resB, {
+      logger,
+      sessions,
+      buildSessionServer,
+      getSessionManager: vi.fn(async () => sessionManager)
+    });
+
+    expect(mocks.transportInstances).toHaveLength(2);
+    expect(mocks.transportInstances[0].config.eventStore).toBeDefined();
+    expect(mocks.transportInstances[0].config.eventStore).toBe(mocks.transportInstances[1].config.eventStore);
+    expect(typeof mocks.transportInstances[0].config.eventStore.storeEvent).toBe('function');
+  });
+});
+
+describe('buildServerForSession', () => {
+  it('exposes a read-only MCP resource catalog for discovery', async () => {
+    const logger = createLogger();
+    const getLiveToolDefinitions = vi.fn(async () => ([
+      { name: 'mcp_omnysystem_get_server_status', description: 'Status', inputSchema: { type: 'object', properties: {} } }
+    ]));
+    const getRuntimeResourceSnapshot = vi.fn(async () => ({
+      status: { ready: true },
+      health: { status: 'healthy' },
+      sessions: { runtimeSessions: 1 },
+      tools: { snapshot: { summary: { totalTools: 1, categories: [] } } },
+      schema: { protocol: '2025-11-25' }
+    }));
+
+    const server = buildServerForSession({
+      logger,
+      getLiveToolDefinitions,
+      executeMcpToolCall: vi.fn(),
+      getRuntimeResourceSnapshot
+    });
+
+    const listResources = server.handlers.get(mocks.ListResourcesRequestSchema);
+    const readResource = server.handlers.get(mocks.ReadResourceRequestSchema);
+
+    expect(listResources).toBeTypeOf('function');
+    expect(readResource).toBeTypeOf('function');
+
+    const listed = await listResources();
+    expect(listed.resources.map((entry) => entry.uri)).toEqual(expect.arrayContaining([
+      'omnysys://status',
+      'omnysys://health',
+      'omnysys://sessions',
+      'omnysys://tools',
+      'omnysys://schema'
+    ]));
+
+    const schemaResult = await readResource({ params: { uri: 'omnysys://schema' } });
+    expect(schemaResult.contents).toHaveLength(1);
+    expect(schemaResult.contents[0]).toMatchObject({
+      uri: 'omnysys://schema',
+      mimeType: 'application/json',
+      text: expect.stringContaining('"protocol": "2025-11-25"')
+    });
+    expect(schemaResult.contents[0]).not.toHaveProperty('name');
+    expect(schemaResult.contents[0]).not.toHaveProperty('title');
+    expect(schemaResult.contents[0]).not.toHaveProperty('description');
+    expect(getRuntimeResourceSnapshot).toHaveBeenCalledTimes(1);
   });
 });

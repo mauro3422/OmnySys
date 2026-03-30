@@ -217,6 +217,29 @@ describe('compiler-metrics-snapshot', () => {
           errors: 0
         }
       },
+      mcpSessionSummary: {
+        runtimeSessions: 1,
+        totalPersistent: 1,
+        totalPersistentActive: 1,
+        uniqueClients: 1,
+        clientsWithDuplicates: 0,
+        actionableDuplicateClients: 0,
+        toleratedDuplicateClients: 0,
+        sessionCountDrift: false,
+        multiClientChurn: false,
+        persistenceState: {
+          available: true
+        },
+        clientSyncState: 'blocked',
+        clientSyncSeverity: 'high',
+        clientSyncHealthy: false,
+        clientSyncTrustworthy: false,
+        clientSyncReason: 'client cache drift detected',
+        clientSyncRecommendation: 'Refresh the client UI and verify the MCP catalog.',
+        clientSyncEvidence: {},
+        clientSyncSummary: 'client sync blocked: client cache drift detected',
+        summary: '1 runtime session(s), session persistence available | client sync=blocked'
+      },
       compareDays: 3,
       historyLimit: 5
     });
@@ -224,10 +247,13 @@ describe('compiler-metrics-snapshot', () => {
     expect(snapshot.current.healthScore).toBe(97);
     expect(snapshot.current.structuralGroups).toBe(4);
     expect(snapshot.current.conceptualGroups).toBe(2);
+    expect(snapshot.current.activeAtomsDriftState).toBe('fresh');
     expect(snapshot.trend.status).toBe('improving');
     expect(snapshot.trend.progressScore).toBeGreaterThan(0);
     expect(snapshot.trend.summary).toContain('health');
     expect(snapshot.summary).toContain('Health 97/A+');
+    expect(snapshot.summary).toContain('dbsync=fresh');
+    expect(snapshot.summary).toContain('clientsync=blocked');
     expect(snapshot.summary).toContain('progress=');
     expect(snapshot.history.latest.capturedAt).toBeTruthy();
     expect(snapshot.history.previous.capturedAt).toBe('2026-03-30T00:00:00.000Z');
@@ -236,6 +262,7 @@ describe('compiler-metrics-snapshot', () => {
 
     const compact = summarizeCompilerMetricsSnapshot(snapshot);
     expect(compact.current.healthGrade).toBe('A+');
+    expect(compact.current.clientSyncState).toBe('blocked');
     expect(compact.trend.status).toBe('improving');
     expect(compact.history.total).toBeGreaterThanOrEqual(3);
   });

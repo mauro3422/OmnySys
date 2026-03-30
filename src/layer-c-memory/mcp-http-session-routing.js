@@ -1,11 +1,13 @@
 import { randomUUID } from 'crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
+  ReadResourceRequestSchema,
   ErrorCode,
   McpError,
   isInitializeRequest
@@ -16,6 +18,24 @@ import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl 
 
 const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
 const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DELAY_MS || 250);
+const sharedEventStore = new InMemoryEventStore();
+
+const RESOURCE_URIS = {
+  status: 'omnysys://status',
+  health: 'omnysys://health',
+  sessions: 'omnysys://sessions',
+  tools: 'omnysys://tools',
+  schema: 'omnysys://schema'
+};
+
+function asJsonResource(uri, payload, meta = {}) {
+  return {
+    uri,
+    mimeType: 'application/json',
+    text: JSON.stringify(payload, null, 2),
+    _meta: meta
+  };
+}
 
 export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {}) {
   const response = {
@@ -38,7 +58,12 @@ export function createConditionalJsonMiddleware(logger) {
   return createConditionalJsonMiddlewareImpl(logger, buildJsonRpcErrorResponse);
 }
 
-export function buildServerForSession({ logger, getLiveToolDefinitions, executeMcpToolCall }) {
+export function buildServerForSession({
+  logger,
+  getLiveToolDefinitions,
+  executeMcpToolCall,
+  getRuntimeResourceSnapshot
+}) {
   const sessionServer = new Server(
     { name: 'omnysys', version: '3.0.0' },
     { capabilities: { tools: {}, resources: {} } }
@@ -49,12 +74,129 @@ export function buildServerForSession({ logger, getLiveToolDefinitions, executeM
   }));
 
   sessionServer.setRequestHandler(ListResourcesRequestSchema, async () => ({
-    resources: []
+    resources: [
+      {
+        uri: RESOURCE_URIS.status,
+        name: 'status',
+        title: 'OmnySys Status',
+        description: 'Live runtime status, health, and readiness snapshot.',
+        mimeType: 'application/json'
+      },
+      {
+        uri: RESOURCE_URIS.health,
+        name: 'health',
+        title: 'OmnySys Health',
+        description: 'Health and boot summary for the MCP daemon.',
+        mimeType: 'application/json'
+      },
+      {
+        uri: RESOURCE_URIS.sessions,
+        name: 'sessions',
+        title: 'MCP Sessions',
+        description: 'Current session persistence and deduplication summary.',
+        mimeType: 'application/json'
+      },
+      {
+        uri: RESOURCE_URIS.tools,
+        name: 'tools',
+        title: 'MCP Tools',
+        description: 'Current tool registry snapshot.',
+        mimeType: 'application/json'
+      },
+      {
+        uri: RESOURCE_URIS.schema,
+        name: 'schema',
+        title: 'OmnySys MCP Schema',
+        description: 'Runtime MCP capability and resource schema summary.',
+        mimeType: 'application/json'
+      }
+    ]
   }));
 
   sessionServer.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
     resourceTemplates: []
   }));
+
+  sessionServer.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    if (!getRuntimeResourceSnapshot) {
+      throw new McpError(ErrorCode.InvalidParams, 'Resource snapshot provider not configured');
+    }
+
+    const snapshot = await getRuntimeResourceSnapshot();
+    const uri = request.params.uri;
+
+    if (uri === RESOURCE_URIS.status) {
+      return {
+        contents: [asJsonResource(
+          uri,
+          snapshot.status,
+          {
+            name: 'status',
+            title: 'OmnySys Status',
+            description: 'Live runtime status, health, and readiness snapshot.'
+          }
+        )]
+      };
+    }
+
+    if (uri === RESOURCE_URIS.health) {
+      return {
+        contents: [asJsonResource(
+          uri,
+          snapshot.health,
+          {
+            name: 'health',
+            title: 'OmnySys Health',
+            description: 'Health and boot summary for the MCP daemon.'
+          }
+        )]
+      };
+    }
+
+    if (uri === RESOURCE_URIS.sessions) {
+      return {
+        contents: [asJsonResource(
+          uri,
+          snapshot.sessions,
+          {
+            name: 'sessions',
+            title: 'MCP Sessions',
+            description: 'Current session persistence and deduplication summary.'
+          }
+        )]
+      };
+    }
+
+    if (uri === RESOURCE_URIS.tools) {
+      return {
+        contents: [asJsonResource(
+          uri,
+          snapshot.tools,
+          {
+            name: 'tools',
+            title: 'MCP Tools',
+            description: 'Current tool registry snapshot.'
+          }
+        )]
+      };
+    }
+
+    if (uri === RESOURCE_URIS.schema) {
+      return {
+        contents: [asJsonResource(
+          uri,
+          snapshot.schema,
+          {
+            name: 'schema',
+            title: 'OmnySys MCP Schema',
+            description: 'Runtime MCP capability and resource schema summary.'
+          }
+        )]
+      };
+    }
+
+    throw new McpError(ErrorCode.InvalidParams, `Unknown resource: ${uri}`);
+  });
 
   sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => (
     executeMcpToolCall(request)
@@ -174,6 +316,7 @@ export async function handleMcpRequest(req, res, dependencies) {
         let resolvedSessionId = sessionId;
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => sessionId,
+          eventStore: sharedEventStore,
           onsessioninitialized: (recoveredId) => {
             resolvedSessionId = recoveredId;
             sessions.set(recoveredId, { transport, server: sessionServer });
@@ -221,6 +364,7 @@ export async function handleMcpRequest(req, res, dependencies) {
 
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => sessionIdToUse,
+        eventStore: sharedEventStore,
         onsessioninitialized: (newSessionId) => {
           resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {});
           sessions.set(resolvedSessionId, { transport, server: sessionServer });

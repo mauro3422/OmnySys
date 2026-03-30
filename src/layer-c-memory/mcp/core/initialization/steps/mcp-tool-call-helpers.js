@@ -4,6 +4,11 @@
  */
 
 import { buildTelemetryProvenance } from '../../../../../shared/compiler/index.js';
+import {
+  isBugModeEnabled,
+  isGuardTraceEnabled,
+  isToolTraceEnabled
+} from '../../../../../shared/runtime-debug-flags.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { compactRecentNotifications, collectRecentNotifications, normalizeRecentNotifications } from '../../recent-notifications.js';
 import { buildRecentErrorsResponse } from '../../../tools/status-notifications.js';
@@ -16,6 +21,12 @@ export function buildToolExecutionContext(server) {
     orchestrator: server.orchestrator,
     cache: server.cache,
     projectPath: server.projectPath,
+    sessionDb: server.projectPath ? getRepository(server.projectPath)?.db || null : null,
+    debugFlags: {
+      bugMode: isBugModeEnabled(),
+      toolTrace: isToolTraceEnabled(),
+      guardTrace: isGuardTraceEnabled()
+    },
     server
   };
 }

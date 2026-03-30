@@ -111,6 +111,8 @@ function buildRecommendations(snapshot = {}, compilerExplainability = {}) {
   push(compilerExplainability?.metadataExtractionCoverage?.summary?.nextAction, 'metadataExtractionCoverage');
   push(compilerExplainability?.dataGatewayContract?.summary?.nextAction, 'dataGatewayContract');
   push(compilerExplainability?.folderization?.creationGuidance?.guidance, 'folderization');
+  push(snapshot?.current?.clientSyncRecommendation, 'clientSync');
+  push(snapshot?.current?.pipelineTimingTelemetry?.summary, 'pipelineTiming');
   push(snapshot?.trend?.summary, 'trend');
   push(snapshot?.current?.readinessReason, 'readiness');
 
@@ -141,6 +143,27 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
     lastSuccessfulRunAt: current.toolTelemetry.lastSuccessfulRunAt || null,
     topTools: takeSample(current.toolTelemetry.topTools || [], 5)
   } : null;
+  const pipelineTimingTelemetry = current.pipelineTimingTelemetry ? {
+    projectPath: current.pipelineTimingTelemetry.projectPath || null,
+    runKind: current.pipelineTimingTelemetry.runKind || 'pipeline',
+    status: current.pipelineTimingTelemetry.status || current.pipelineTimingTelemetry.performanceState || 'unknown',
+    performanceState: current.pipelineTimingTelemetry.performanceState || null,
+    performanceScore: asNumber(current.pipelineTimingTelemetry.performanceScore, 0),
+    capturedAt: current.pipelineTimingTelemetry.capturedAt || null,
+    current: current.pipelineTimingTelemetry.current ? {
+      totalDurationMs: asNumber(current.pipelineTimingTelemetry.current.totalDurationMs, 0),
+      averagePhaseMs: asNumber(current.pipelineTimingTelemetry.current.averagePhaseMs, 0),
+      phaseCount: asNumber(current.pipelineTimingTelemetry.current.phaseCount, 0),
+      slowPhaseCount: asNumber(current.pipelineTimingTelemetry.current.slowPhaseCount, 0),
+      maxPhaseName: current.pipelineTimingTelemetry.current.maxPhaseName || null,
+      maxPhaseMs: asNumber(current.pipelineTimingTelemetry.current.maxPhaseMs, 0),
+      summaryText: current.pipelineTimingTelemetry.current.summaryText || null
+    } : null,
+    trend: current.pipelineTimingTelemetry.trend || null,
+    history: current.pipelineTimingTelemetry.history || null,
+    summary: current.pipelineTimingTelemetry.summary || null,
+    oneLine: current.pipelineTimingTelemetry.oneLine || null
+  } : null;
 
   const regressors = signalRows.filter((row) => row.impact < 0).slice(0, 5);
   const improvements = signalRows.filter((row) => row.impact > 0).slice(0, 5);
@@ -163,7 +186,15 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       readinessReason: current.readinessReason || null,
       driftState: current.driftState || null,
       driftScore: asNumber(current.driftScore, 0),
-      stabilityScore: asNumber(current.stabilityScore, 0)
+      stabilityScore: asNumber(current.stabilityScore, 0),
+      activeAtomsDriftState: current.activeAtomsDriftState || null,
+      activeAtomsDriftReason: current.activeAtomsDriftReason || null,
+      clientSyncState: current.clientSyncState || null,
+      clientSyncSeverity: current.clientSyncSeverity || null,
+      clientSyncReason: current.clientSyncReason || null,
+      clientSyncRecommendation: current.clientSyncRecommendation || null,
+      activeAtomsDelta: asNumber(current.activeAtomsDelta, 0),
+      activeAtomsDeltaPct: asNumber(current.activeAtomsDeltaPct, 0)
     },
     trend: {
       status: trend.status || 'missing',
@@ -188,14 +219,23 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       namingTargets: asNumber(current.namingTargets, 0),
       namingDebt: asNumber(current.namingDebt, 0),
       liveCoverageRatio: asNumber(current.liveCoverageRatio, 0),
+      activeAtoms: asNumber(current.activeAtoms, 0),
       zeroAtomFileCount: asNumber(current.zeroAtomFileCount, 0),
       callLinks: asNumber(current.callLinks, 0),
       semanticLinks: asNumber(current.semanticLinks, 0),
       watcherAlertCount: asNumber(current.watcherAlertCount, 0),
       recentWarningCount: asNumber(current.recentWarningCount, 0),
       recentErrorCount: asNumber(current.recentErrorCount, 0),
-      phase2PendingFiles: asNumber(current.phase2PendingFiles, 0)
+      phase2PendingFiles: asNumber(current.phase2PendingFiles, 0),
+      pipelineTimingTelemetry
     },
+    sessions: current.mcpSessionSummary ? {
+      summary: current.mcpSessionSummary.summary || null,
+      clientSyncState: current.mcpSessionSummary.clientSyncState || null,
+      clientSyncReason: current.mcpSessionSummary.clientSyncReason || null,
+      clientSyncRecommendation: current.mcpSessionSummary.clientSyncRecommendation || null,
+      clientSyncSummary: current.mcpSessionSummary.clientSyncSummary || null
+    } : null,
     toolTelemetry,
     regressors,
     improvements,
@@ -240,7 +280,15 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
       readinessReason: dashboard.health.readinessReason,
       driftState: dashboard.health.driftState,
       driftScore: dashboard.health.driftScore,
-      stabilityScore: dashboard.health.stabilityScore
+      stabilityScore: dashboard.health.stabilityScore,
+      activeAtomsDriftState: dashboard.health.activeAtomsDriftState || null,
+      activeAtomsDriftReason: dashboard.health.activeAtomsDriftReason || null,
+      clientSyncState: dashboard.health.clientSyncState || null,
+      clientSyncSeverity: dashboard.health.clientSyncSeverity || null,
+      clientSyncReason: dashboard.health.clientSyncReason || null,
+      clientSyncRecommendation: dashboard.health.clientSyncRecommendation || null,
+      activeAtomsDelta: dashboard.health.activeAtomsDelta || 0,
+      activeAtomsDeltaPct: dashboard.health.activeAtomsDeltaPct || 0
     } : null,
     trend: dashboard.trend ? {
       status: dashboard.trend.status,
@@ -251,6 +299,19 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
       behaviorTrend: dashboard.trend.behaviorTrend,
       daysSincePrevious: dashboard.trend.daysSincePrevious,
       daysSinceBaseline: dashboard.trend.daysSinceBaseline
+    } : null,
+    performance: dashboard.pipelineTimingTelemetry ? {
+      projectPath: dashboard.pipelineTimingTelemetry.projectPath || null,
+      runKind: dashboard.pipelineTimingTelemetry.runKind || 'pipeline',
+      status: dashboard.pipelineTimingTelemetry.status || null,
+      performanceState: dashboard.pipelineTimingTelemetry.performanceState || null,
+      performanceScore: dashboard.pipelineTimingTelemetry.performanceScore || 0,
+      capturedAt: dashboard.pipelineTimingTelemetry.capturedAt || null,
+      current: dashboard.pipelineTimingTelemetry.current || null,
+      trend: dashboard.pipelineTimingTelemetry.trend || null,
+      history: dashboard.pipelineTimingTelemetry.history || null,
+      summary: dashboard.pipelineTimingTelemetry.summary || null,
+      oneLine: dashboard.pipelineTimingTelemetry.oneLine || null
     } : null,
     metrics: dashboard.metrics ? {
       issueCount: dashboard.metrics.issueCount,
@@ -265,10 +326,18 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
       namingTargets: dashboard.metrics.namingTargets,
       namingDebt: dashboard.metrics.namingDebt,
       liveCoverageRatio: dashboard.metrics.liveCoverageRatio,
+      activeAtoms: dashboard.metrics.activeAtoms,
       watcherAlertCount: dashboard.metrics.watcherAlertCount,
       recentWarningCount: dashboard.metrics.recentWarningCount,
       recentErrorCount: dashboard.metrics.recentErrorCount,
       phase2PendingFiles: dashboard.metrics.phase2PendingFiles
+    } : null,
+    sessions: dashboard.sessions ? {
+      summary: dashboard.sessions.summary || null,
+      clientSyncState: dashboard.sessions.clientSyncState || null,
+      clientSyncReason: dashboard.sessions.clientSyncReason || null,
+      clientSyncRecommendation: dashboard.sessions.clientSyncRecommendation || null,
+      clientSyncSummary: dashboard.sessions.clientSyncSummary || null
     } : null,
     toolTelemetry: dashboard.toolTelemetry ? {
       totalRuns: dashboard.toolTelemetry.totalRuns,
@@ -284,6 +353,19 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
       lastRunAt: dashboard.toolTelemetry.lastRunAt,
       lastSuccessfulRunAt: dashboard.toolTelemetry.lastSuccessfulRunAt,
       topTools: takeSample(dashboard.toolTelemetry.topTools || [], 5)
+    } : null,
+    pipelineTimingTelemetry: dashboard.pipelineTimingTelemetry ? {
+      projectPath: dashboard.pipelineTimingTelemetry.projectPath || null,
+      runKind: dashboard.pipelineTimingTelemetry.runKind || 'pipeline',
+      status: dashboard.pipelineTimingTelemetry.status || null,
+      performanceState: dashboard.pipelineTimingTelemetry.performanceState || null,
+      performanceScore: dashboard.pipelineTimingTelemetry.performanceScore || 0,
+      capturedAt: dashboard.pipelineTimingTelemetry.capturedAt || null,
+      current: dashboard.pipelineTimingTelemetry.current || null,
+      trend: dashboard.pipelineTimingTelemetry.trend || null,
+      history: dashboard.pipelineTimingTelemetry.history || null,
+      summary: dashboard.pipelineTimingTelemetry.summary || null,
+      oneLine: dashboard.pipelineTimingTelemetry.oneLine || null
     } : null,
     regressors: takeSample(dashboard.regressors || [], 5),
     improvements: takeSample(dashboard.improvements || [], 5),
@@ -311,6 +393,7 @@ export function buildCompilerHealthPanel(dashboard = null) {
   const topRecommendations = takeSample(compact.recommendations || [], 3);
   const now = compact.health || {};
   const tools = compact.toolTelemetry || {};
+  const perf = compact.performance || {};
 
   return {
     projectPath: compact.projectPath,
@@ -331,6 +414,14 @@ export function buildCompilerHealthPanel(dashboard = null) {
       driftState: now.driftState || null,
       driftScore: now.driftScore || 0,
       stabilityScore: now.stabilityScore || 0,
+      activeAtomsDriftState: now.activeAtomsDriftState || null,
+      activeAtomsDriftReason: now.activeAtomsDriftReason || null,
+      clientSyncState: now.clientSyncState || null,
+      clientSyncSeverity: now.clientSyncSeverity || null,
+      clientSyncReason: now.clientSyncReason || null,
+      clientSyncRecommendation: now.clientSyncRecommendation || null,
+      activeAtomsDelta: asNumber(now.activeAtomsDelta, 0),
+      activeAtomsDeltaPct: asNumber(now.activeAtomsDeltaPct, 0),
       readinessReason: now.readinessReason || null
     },
     trend: compact.trend ? {
@@ -340,6 +431,15 @@ export function buildCompilerHealthPanel(dashboard = null) {
       improvingStreak: compact.trend.improvingStreak,
       behaviorTrend: compact.trend.behaviorTrend,
       summary: compact.trend.summary
+    } : null,
+    performance: perf ? {
+      status: perf.status || perf.performanceState || null,
+      performanceState: perf.performanceState || null,
+      performanceScore: perf.performanceScore || 0,
+      capturedAt: perf.capturedAt || null,
+      current: perf.current || null,
+      trend: perf.trend || null,
+      summary: perf.summary || null
     } : null,
     tools: tools ? {
       totalRuns: tools.totalRuns || 0,
@@ -353,14 +453,21 @@ export function buildCompilerHealthPanel(dashboard = null) {
     topRegressors,
     topImprovements,
     topRecommendations,
-    nextAction: topRecommendations[0]?.value || now.readinessReason || compact.summary || null,
+    nextAction: topRecommendations[0]?.value || now.clientSyncRecommendation || now.readinessReason || compact.summary || null,
     summary: compact.summary || null,
     oneLine: [
       `now=${now.healthScore || 0}/${now.healthGrade || 'F'}`,
       `trend=${compact.trend?.status || 'missing'}:${compact.trend?.velocityPerDay || 0}/day`,
+      `dbsync=${now.activeAtomsDriftState || 'missing'}`,
+      now.clientSyncState && now.clientSyncState !== 'fresh'
+        ? `clientsync=${now.clientSyncState}`
+        : null,
+      perf?.status
+        ? `perf=${perf.status}:${Math.round(perf.current?.totalDurationMs || 0)}ms`
+        : null,
       `tools=${tools?.repairYield || 0}`,
       `ready=${now.mvpReady ? 'yes' : 'no'}`
-    ].join(' | ')
+    ].filter(Boolean).join(' | ')
   };
 }
 
@@ -380,6 +487,7 @@ export function summarizeCompilerHealthPanel(panel = null) {
     headline: panel.headline || null,
     now: panel.now || null,
     trend: panel.trend || null,
+    performance: panel.performance || null,
     tools: panel.tools || null,
     topRegressors: takeSample(panel.topRegressors || [], 3),
     topImprovements: takeSample(panel.topImprovements || [], 3),

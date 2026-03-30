@@ -9,12 +9,14 @@ import {
   getCachedMetadata,
   getPhase2Status,
   getDatabaseHealthSummary,
+  getMcpSessionSummary,
   buildTelemetryProvenance,
   summarizeSurfaceAuditForStatus,
   buildCompilerMetricsSnapshot,
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel
 } from '../../../shared/compiler/index.js';
+import { sessionManager } from '../core/session-manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
 import { getRepository, getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
 import {
@@ -121,12 +123,18 @@ export async function get_server_status(args, context) {
     }
 
     const recentErrors = buildRecentErrorsResponse(compactNotifications);
+    const sessionSummary = getMcpSessionSummary(sessionManager, {
+      runtimeSessionCount: server.sessions?.size || 0,
+      recentErrors,
+      sessionDb: repo?.db || null
+    });
     const metricsSnapshot = buildCompilerMetricsSnapshot({
       projectPath,
       repo,
       compilerExplainability,
       watcherAlerts: compactNotifications.watcherAlerts || [],
       recentErrors,
+      mcpSessionSummary: sessionSummary,
       scopePath: args?.scopePath || null,
       focusPath: args?.focusPath || null,
       captureSource: 'status.runtime',

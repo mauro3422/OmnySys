@@ -14,6 +14,7 @@ import { getGraphCoverageSummary, getIssueSummary, getConceptualDuplicateSummary
 import { getPhase2PendingFiles } from './compiler-runtime-metrics-db.js';
 import { getPipelineOrphanSummary } from './pipeline-orphans.js';
 import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
+import { buildPipelineTimingTelemetrySummary } from './pipeline-timing-telemetry.js';
 import { buildToolRunTelemetrySummary } from './tool-run-telemetry.js';
 import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
 
@@ -124,6 +125,7 @@ function buildTrendSummary(delta = {}) {
   pushPart('naming targets', -delta.namingTargets);
   pushPart('flat families', -delta.flatFamilies);
   pushPart('coverage', Math.round((delta.liveCoverageRatio || 0) * 100), '%');
+  pushPart('atoms', delta.activeAtoms);
   pushPart('errors', -delta.recentErrorCount);
 
   return parts.length > 0 ? parts.join(', ') : 'No measurable change';
@@ -137,8 +139,145 @@ function normalizeRecentErrors(recentErrors = null) {
   };
 }
 
-function buildBehaviorScore(current = {}, trend = {}, driftAssessment = null) {
+function buildActiveAtomsDriftAssessment(current = null, history = null) {
+  if (!current) {
+    return {
+      state: 'missing',
+      healthy: false,
+      trustworthy: false,
+      severity: 'medium',
+      reason: 'No active atom snapshot is available.',
+      recommendation: 'Capture a compiler metrics snapshot before trusting active atom counts.',
+      evidence: null,
+      delta: 0,
+      deltaPct: 0
+    };
+  }
+
+  const liveRowSync = current.liveRowSync || null;
+  const staleRows = asNumber(liveRowSync?.summary?.staleAtomRows, 0)
+    + asNumber(liveRowSync?.summary?.staleFileRows, 0)
+    + asNumber(liveRowSync?.summary?.staleRiskRows, 0)
+    + asNumber(liveRowSync?.summary?.staleRelationRows, 0)
+    + asNumber(liveRowSync?.summary?.staleConnectionRows, 0);
+  const previous = history?.previous || null;
+  const currentActiveAtoms = asNumber(current.activeAtoms, 0);
+  const previousActiveAtoms = asNumber(previous?.activeAtoms, 0);
+  const delta = currentActiveAtoms - previousActiveAtoms;
+  const deltaPct = previousActiveAtoms > 0 ? Number(((delta / previousActiveAtoms) * 100).toFixed(2)) : 0;
+
+  if (staleRows > 0) {
+    return {
+      state: 'blocked',
+      healthy: false,
+      trustworthy: false,
+      severity: 'high',
+      reason: `Live support tables are drifting from the atom graph (${staleRows} stale row(s)).`,
+      recommendation: liveRowSync?.before?.recommendedActions?.[0] || 'Reconcile the live support tables before trusting active atom counts.',
+      evidence: liveRowSync,
+      delta,
+      deltaPct
+    };
+  }
+
+  if (!previous) {
+    return {
+      state: 'initial',
+      healthy: true,
+      trustworthy: true,
+      severity: 'low',
+      reason: 'First active atom snapshot captured.',
+      recommendation: 'Capture another snapshot to establish an active atom baseline.',
+      evidence: { activeAtoms: currentActiveAtoms },
+      delta,
+      deltaPct
+    };
+  }
+
+  const previousScale = Math.max(1, previousActiveAtoms);
+  const blockedThreshold = Math.max(250, Math.round(previousScale * 0.25));
+  const staleThreshold = Math.max(50, Math.round(previousScale * 0.1));
+  const absDelta = Math.abs(delta);
+
+  if (absDelta >= blockedThreshold) {
+    return {
+      state: 'blocked',
+      healthy: false,
+      trustworthy: false,
+      severity: 'high',
+      reason: `Active atom counts shifted by ${absDelta} since the previous snapshot (${deltaPct >= 0 ? '+' : ''}${deltaPct}%).`,
+      recommendation: 'Reconcile the database surfaces before trusting active atom counts.',
+      evidence: {
+        activeAtoms: currentActiveAtoms,
+        previousActiveAtoms,
+        delta,
+        deltaPct,
+        blockedThreshold,
+        staleThreshold
+      },
+      delta,
+      deltaPct
+    };
+  }
+
+  if (absDelta >= staleThreshold) {
+    return {
+      state: 'stale',
+      healthy: false,
+      trustworthy: false,
+      severity: 'medium',
+      reason: `Active atom counts shifted by ${absDelta} since the previous snapshot (${deltaPct >= 0 ? '+' : ''}${deltaPct}%).`,
+      recommendation: 'Watch the active atom count for desynchronization before trusting downstream metrics.',
+      evidence: {
+        activeAtoms: currentActiveAtoms,
+        previousActiveAtoms,
+        delta,
+        deltaPct,
+        blockedThreshold,
+        staleThreshold
+      },
+      delta,
+      deltaPct
+    };
+  }
+
+  return {
+    state: 'fresh',
+    healthy: true,
+    trustworthy: true,
+    severity: 'low',
+    reason: 'Active atom counts remain aligned with the previous snapshot.',
+    recommendation: 'Keep the database surfaces and live atom graph aligned.',
+    evidence: {
+      activeAtoms: currentActiveAtoms,
+      previousActiveAtoms,
+      delta,
+      deltaPct,
+      blockedThreshold,
+      staleThreshold
+    },
+    delta,
+    deltaPct
+  };
+}
+
+function buildBehaviorScore(current = {}, trend = {}, driftAssessment = null, pipelineTimingTelemetry = null) {
   const driftSummary = summarizeCompilerDriftAssessment(driftAssessment);
+  const performancePenalty = pipelineTimingTelemetry?.performanceState === 'regressing'
+    ? 6
+    : pipelineTimingTelemetry?.performanceState === 'watchful'
+      ? 2
+      : 0;
+  const dbSyncPenalty = current.activeAtomsDriftState === 'blocked'
+    ? 12
+    : current.activeAtomsDriftState === 'stale'
+      ? 4
+      : 0;
+  const clientSyncPenalty = current.clientSyncState === 'blocked'
+    ? 10
+    : current.clientSyncState === 'stale'
+      ? 3
+      : 0;
   const penalty =
     (asNumber(current.issueCount, 0) * 1.25) +
     (asNumber(current.structuralGroups, 0) * 4.5) +
@@ -149,7 +288,10 @@ function buildBehaviorScore(current = {}, trend = {}, driftAssessment = null) {
     (asNumber(current.recentErrorCount, 0) * 6) +
     (asNumber(current.phase2PendingFiles, 0) * 0.5) +
     (asNumber(current.namingDebt, 0) * 0.02) +
-    (asNumber(current.flatFamilies, 0) * 0.05);
+    (asNumber(current.flatFamilies, 0) * 0.05) +
+    performancePenalty +
+    dbSyncPenalty +
+    clientSyncPenalty;
 
   const coverageBonus = clampScore(asNumber(current.liveCoverageRatio, 0) * 100, 0, 100) * 0.12;
   const trustBonus = current.databaseTrustworthy ? 8 : 0;
@@ -175,9 +317,11 @@ function buildBehaviorScore(current = {}, trend = {}, driftAssessment = null) {
     && current.pipelineOrphans === 0
     && current.watcherAlertCount === 0
     && current.liveCoverageRatio >= 0.98
+    && current.activeAtomsDriftState !== 'blocked'
+    && current.clientSyncState !== 'blocked'
     && driftSummary.status !== 'blocked';
 
-  const behaviorState = !current.databaseTrustworthy || current.recentErrorCount > 0 || driftSummary.status === 'blocked'
+  const behaviorState = !current.databaseTrustworthy || current.recentErrorCount > 0 || current.activeAtomsDriftState === 'blocked' || current.clientSyncState === 'blocked' || driftSummary.status === 'blocked'
     ? 'blocked'
     : successScore >= successThreshold
       ? 'ready'
@@ -191,6 +335,10 @@ function buildBehaviorScore(current = {}, trend = {}, driftAssessment = null) {
       ? 'Database trust is still insufficient for MVP readiness.'
       : current.recentErrorCount > 0
         ? 'Recent errors are still active.'
+    : current.activeAtomsDriftState === 'blocked'
+      ? current.activeAtomsDriftReason || 'Active atom counts are out of sync with the live database surfaces.'
+      : current.clientSyncState === 'blocked'
+        ? current.clientSyncReason || 'MCP client session sync is blocked.'
         : driftSummary.status === 'blocked'
           ? driftSummary.nextAction || 'Drift surfaces are blocked.'
           : successScore < successThreshold
@@ -276,6 +424,19 @@ function buildCurrentMetrics({
       return 0;
     }
   })();
+  const pipelineTimingTelemetry = (() => {
+    try {
+      return db ? buildPipelineTimingTelemetrySummary(db, {
+        projectPath,
+        scopePath,
+        focusPath,
+        runKind: 'index_project',
+        compareDays: 3
+      }) : null;
+    } catch {
+      return null;
+    }
+  })();
   const behavior = buildBehaviorScore({
     healthScore: databaseHealth?.healthScore,
     issueCount: issueSummary.total,
@@ -289,10 +450,13 @@ function buildCurrentMetrics({
     namingDebt: asNumber(folderization?.namingDebt?.renameTargetCount, 0),
     flatFamilies: asNumber(folderization?.familyState?.stateCounts?.flat, 0),
     liveCoverageRatio: asNumber(fileUniverse?.liveCoverageRatio, 0),
-    databaseTrustworthy: Boolean(databaseHealth?.healthy)
+    databaseTrustworthy: Boolean(databaseHealth?.healthy),
+    clientSyncState: mcpSessionSummary?.clientSyncState || null,
+    clientSyncSeverity: mcpSessionSummary?.clientSyncSeverity || null,
+    clientSyncReason: mcpSessionSummary?.clientSyncReason || null
   }, {
     progressScore: 0
-  }, compilerDriftAssessment);
+  }, compilerDriftAssessment, pipelineTimingTelemetry);
   const toolTelemetry = (() => {
     try {
       return db ? buildToolRunTelemetrySummary(db, {
@@ -332,12 +496,19 @@ function buildCurrentMetrics({
     zeroAtomFileCount: asNumber(fileUniverse?.zeroAtomFileCount, 0),
     callLinks: asNumber(graphCoverage.callLinks, 0),
     semanticLinks: asNumber(graphCoverage.semanticLinks, 0),
+    activeAtoms: asNumber(databaseHealth?.metrics?.activeAtoms, 0),
+    liveRowSync: databaseHealth?.metrics?.liveRowSync || null,
     watcherAlertCount: Array.isArray(watcherAlerts) ? watcherAlerts.length : 0,
     recentWarningCount: notificationCounts.warnings,
     recentErrorCount: notificationCounts.errors,
     phase2PendingFiles: asNumber(pendingFiles, 0),
     mcpSessionSummary: mcpSessionSummary || null,
     databaseTrustworthy: Boolean(databaseHealth?.healthy),
+    clientSyncState: mcpSessionSummary?.clientSyncState || null,
+    clientSyncSeverity: mcpSessionSummary?.clientSyncSeverity || null,
+    clientSyncReason: mcpSessionSummary?.clientSyncReason || null,
+    clientSyncRecommendation: mcpSessionSummary?.clientSyncRecommendation || null,
+    clientSyncEvidence: mcpSessionSummary?.clientSyncEvidence || null,
     folderizationDecision: folderization?.decision || null,
     driftState: behavior.driftState,
     driftScore: behavior.driftScore,
@@ -347,6 +518,7 @@ function buildCurrentMetrics({
     mvpReady: behavior.mvpReady,
     behaviorState: behavior.behaviorState,
     readinessReason: behavior.readinessReason,
+    pipelineTimingTelemetry,
     toolTelemetry
   };
 
@@ -354,6 +526,13 @@ function buildCurrentMetrics({
     `health=${current.healthScore}/${current.healthGrade}`,
     `success=${Math.round(current.successScore)}/${current.successThreshold}${current.mvpReady ? ' ready' : ''}`,
     `behavior=${current.behaviorState}`,
+    `atoms=${current.activeAtoms}`,
+    current.clientSyncState && current.clientSyncState !== 'fresh'
+      ? `clientsync=${current.clientSyncState}`
+      : null,
+    current.pipelineTimingTelemetry?.current?.totalDurationMs
+      ? `perf=${current.pipelineTimingTelemetry.performanceState || current.pipelineTimingTelemetry.status || 'unknown'}:${Math.round(current.pipelineTimingTelemetry.current.totalDurationMs)}ms`
+      : 'perf=none',
     current.toolTelemetry?.totalRuns > 0
       ? `tools=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.totalRuns}`
       : 'tools=0',
@@ -380,6 +559,7 @@ function summarizeHistoryRow(row = null) {
     pipelineOrphans: asNumber(row.pipeline_orphans, 0),
     namingTargets: asNumber(row.naming_targets, 0),
     liveCoverageRatio: asNumber(row.live_coverage_ratio, 0),
+    activeAtoms: asNumber(row.active_atoms, 0),
     successScore: asNumber(row.success_score, 0),
     stabilityScore: asNumber(row.stability_score, 0),
     driftScore: asNumber(row.drift_score, 0),
@@ -401,6 +581,7 @@ function summarizeCurrentSnapshotRow(current = null) {
     pipelineOrphans: asNumber(current.pipelineOrphans, 0),
     namingTargets: asNumber(current.namingTargets, 0),
     liveCoverageRatio: asNumber(current.liveCoverageRatio, 0),
+    activeAtoms: asNumber(current.activeAtoms, 0),
     successScore: asNumber(current.successScore, 0),
     stabilityScore: asNumber(current.stabilityScore, 0),
     driftScore: asNumber(current.driftScore, 0),
@@ -510,6 +691,7 @@ function buildCompilerMetricsTrend(current = null, history = null, compareDays =
     namingTargets: asNumber(current.namingTargets) - asNumber(previous.namingTargets),
     namingDebt: asNumber(current.namingDebt) - asNumber(previous.namingDebt),
     liveCoverageRatio: asNumber(current.liveCoverageRatio) - asNumber(previous.liveCoverageRatio),
+    activeAtoms: asNumber(current.activeAtoms) - asNumber(previous.activeAtoms),
     zeroAtomFileCount: asNumber(current.zeroAtomFileCount) - asNumber(previous.zeroAtomFileCount),
     callLinks: asNumber(current.callLinks) - asNumber(previous.callLinks),
     semanticLinks: asNumber(current.semanticLinks) - asNumber(previous.semanticLinks),
@@ -534,6 +716,7 @@ function buildCompilerMetricsTrend(current = null, history = null, compareDays =
     namingTargets: asNumber(current.namingTargets) - asNumber(baseline.namingTargets),
     namingDebt: asNumber(current.namingDebt) - asNumber(baseline.namingDebt),
     liveCoverageRatio: asNumber(current.liveCoverageRatio) - asNumber(baseline.liveCoverageRatio),
+    activeAtoms: asNumber(current.activeAtoms) - asNumber(baseline.activeAtoms),
     zeroAtomFileCount: asNumber(current.zeroAtomFileCount) - asNumber(baseline.zeroAtomFileCount),
     callLinks: asNumber(current.callLinks) - asNumber(baseline.callLinks),
     semanticLinks: asNumber(current.semanticLinks) - asNumber(baseline.semanticLinks),
@@ -615,6 +798,7 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
       naming_targets,
       naming_debt,
       live_coverage_ratio,
+      active_atoms,
       zero_atom_file_count,
       call_links,
       semantic_links,
@@ -657,6 +841,7 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
       @naming_targets,
       @naming_debt,
       @live_coverage_ratio,
+      @active_atoms,
       @zero_atom_file_count,
       @call_links,
       @semantic_links,
@@ -713,6 +898,7 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
     naming_targets: asNumber(current.namingTargets, 0),
     naming_debt: asNumber(current.namingDebt, 0),
     live_coverage_ratio: asNumber(current.liveCoverageRatio, 0),
+    active_atoms: asNumber(current.activeAtoms, 0),
     zero_atom_file_count: asNumber(current.zeroAtomFileCount, 0),
     call_links: asNumber(current.callLinks, 0),
     semantic_links: asNumber(current.semanticLinks, 0),
@@ -798,6 +984,14 @@ export function buildCompilerMetricsSnapshot(options = {}) {
       };
 
   const trend = buildCompilerMetricsTrend(current, history, compareDays);
+  const activeAtomsDrift = buildActiveAtomsDriftAssessment(current, history);
+  Object.assign(current, {
+    activeAtomsDriftState: activeAtomsDrift.state,
+    activeAtomsDriftReason: activeAtomsDrift.reason,
+    activeAtomsDriftEvidence: activeAtomsDrift.evidence,
+    activeAtomsDelta: activeAtomsDrift.delta,
+    activeAtomsDeltaPct: activeAtomsDrift.deltaPct
+  });
   const behavior = buildBehaviorScore(current, trend, compilerExplainability?.driftAssessment || null);
   Object.assign(current, behavior);
   const summary = [
@@ -807,6 +1001,10 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     `velocity/day=${trend.velocityPerDay}`,
     `success=${Math.round(current.successScore)}/${current.successThreshold}${current.mvpReady ? ' ready' : ''}`,
     `behavior=${current.behaviorState}`,
+    `dbsync=${current.activeAtomsDriftState || 'missing'}`,
+    current.clientSyncState && current.clientSyncState !== 'fresh'
+      ? `clientsync=${current.clientSyncState}`
+      : null,
     `dups=${current.structuralGroups + current.conceptualGroups}`,
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
     `coverage=${Math.round(current.liveCoverageRatio * 100)}%`
@@ -875,6 +1073,7 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
       namingTargets: current.namingTargets || 0,
       namingDebt: current.namingDebt || 0,
       liveCoverageRatio: current.liveCoverageRatio || 0,
+      activeAtoms: current.activeAtoms || 0,
       zeroAtomFileCount: current.zeroAtomFileCount || 0,
       callLinks: current.callLinks || 0,
       semanticLinks: current.semanticLinks || 0,
@@ -884,6 +1083,10 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
       phase2PendingFiles: current.phase2PendingFiles || 0,
       mcpSessionSummary: current.mcpSessionSummary || null,
       databaseTrustworthy: current.databaseTrustworthy || false,
+      clientSyncState: current.clientSyncState || null,
+      clientSyncSeverity: current.clientSyncSeverity || null,
+      clientSyncReason: current.clientSyncReason || null,
+      clientSyncRecommendation: current.clientSyncRecommendation || null,
       folderizationDecision: current.folderizationDecision || null,
       driftState: current.driftState || null,
       driftScore: current.driftScore || 0,
@@ -893,6 +1096,23 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
       mvpReady: current.mvpReady || false,
       behaviorState: current.behaviorState || null,
       readinessReason: current.readinessReason || null,
+      activeAtomsDriftState: current.activeAtomsDriftState || null,
+      activeAtomsDriftReason: current.activeAtomsDriftReason || null,
+      activeAtomsDelta: current.activeAtomsDelta || 0,
+      activeAtomsDeltaPct: current.activeAtomsDeltaPct || 0,
+      pipelineTimingTelemetry: current.pipelineTimingTelemetry ? {
+        projectPath: current.pipelineTimingTelemetry.projectPath || null,
+        runKind: current.pipelineTimingTelemetry.runKind || 'pipeline',
+        status: current.pipelineTimingTelemetry.status || null,
+        performanceState: current.pipelineTimingTelemetry.performanceState || null,
+        performanceScore: current.pipelineTimingTelemetry.performanceScore || 0,
+        capturedAt: current.pipelineTimingTelemetry.capturedAt || null,
+        current: current.pipelineTimingTelemetry.current || null,
+        trend: current.pipelineTimingTelemetry.trend || null,
+        history: current.pipelineTimingTelemetry.history || null,
+        summary: current.pipelineTimingTelemetry.summary || null,
+        oneLine: current.pipelineTimingTelemetry.oneLine || null
+      } : null,
       toolTelemetry: current.toolTelemetry ? {
         totalRuns: current.toolTelemetry.totalRuns || 0,
         successfulRuns: current.toolTelemetry.successfulRuns || 0,

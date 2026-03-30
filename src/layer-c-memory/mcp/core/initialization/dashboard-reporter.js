@@ -55,7 +55,7 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
     const dashboard = new IntegrityDashboard();
     const integrityResults = await detector.verify();
     const report = await dashboard.generateReport(integrityResults);
-    const extendedMetrics = await fetchExtendedMetrics(projectPath, db, repo);
+    const extendedMetrics = await fetchExtendedMetrics(projectPath, db, repo, isFinal);
 
     const currentSnapshot = `${report.overallHealth}-${extendedMetrics.issueCount}-${extendedMetrics.conceptualGroups}-${extendedMetrics.conceptualRawGroups}`;
     if (!force && isFinal && lastReportType === 'final' && currentSnapshot === lastReportSnapshot) {
@@ -79,7 +79,7 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
   }
 }
 
-async function fetchExtendedMetrics(projectPath, db, repo) {
+async function fetchExtendedMetrics(projectPath, db, repo, isFinal) {
   const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
   const compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
     projectPath,
@@ -111,7 +111,9 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
     liveRowSyncSummary: liveRowSync.summary,
     compilerDiagnostics,
     metricsSnapshot: null,
-    mcpSessionSummary: getMcpSessionSummary(sessionManager)
+    mcpSessionSummary: getMcpSessionSummary(sessionManager, {
+      sessionDb: db
+    })
   };
 
   try {
@@ -124,14 +126,16 @@ async function fetchExtendedMetrics(projectPath, db, repo) {
     const fileUniverseSummary = metrics.compilerDiagnostics?.fileUniverseGranularity || {};
     metrics.zeroAtomFileCount = fileUniverseSummary.zeroAtomFileCount;
     metrics.liveCoverageRatio = fileUniverseSummary.liveCoverageRatio;
+    const sessionSummary = metrics.mcpSessionSummary;
     metrics.metricsSnapshot = buildCompilerMetricsSnapshot({
       projectPath,
       repo,
       compilerExplainability: compilerDiagnostics,
       watcherAlerts: [],
-      captureSource: 'dashboard.bootstrap',
-      snapshotKind: 'dashboard',
-      persist: false
+      captureSource: isFinal ? 'dashboard.bootstrap.final' : 'dashboard.bootstrap.preliminary',
+      snapshotKind: isFinal ? 'dashboard-final' : 'dashboard-preliminary',
+      mcpSessionSummary: sessionSummary,
+      persist: true
     });
     metrics.healthSnapshot = buildCompilerHealthDashboard(metrics.metricsSnapshot, compilerDiagnostics, {
       watcherAlerts: [],

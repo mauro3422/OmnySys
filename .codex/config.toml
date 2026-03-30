@@ -8,3 +8,33 @@ args = ["C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js"]
 cwd = "C:/Dev/OmnySystem"
 startup_timeout_sec = 120
 env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "1", OMNYSYS_PROJECT_PATH = "C:/Dev/OmnySystem", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex" }
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_execute_sql]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_recent_errors]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_health_panel]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_metrics_snapshot]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_folderization_snapshot]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_schema]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_query_graph]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_traverse_graph]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_aggregate_metrics]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_edit_context]
+approval_mode = "approve"

@@ -3,8 +3,10 @@
  * @module shared/logger-config
  */
 
+import { isBugModeEnabled } from './runtime-debug-flags.js';
+
 const ENV = process.env.NODE_ENV || 'development';
-const GLOBAL_LOG_LEVEL = process.env.LOG_LEVEL || (ENV === 'production' ? 'info' : 'debug');
+const GLOBAL_LOG_LEVEL = process.env.LOG_LEVEL || (isBugModeEnabled() ? 'debug' : (ENV === 'production' ? 'info' : 'debug'));
 
 export const LogLevel = {
   DEBUG: 0,

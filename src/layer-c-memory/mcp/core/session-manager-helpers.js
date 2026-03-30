@@ -30,6 +30,15 @@ export function isDedupFresh(updatedAt, now = Date.now()) {
   return updatedMs > now - 5 * 60 * 1000;
 }
 
+export function isFreshSessionRequest(clientInfo) {
+  if (!clientInfo || typeof clientInfo !== 'object') return false;
+
+  return clientInfo.force_fresh_session === true
+    || clientInfo.bridge_recovery === true
+    || clientInfo.recovery_mode === 'fresh'
+    || clientInfo.session_policy === 'fresh';
+}
+
 export function createSessionStatements(db) {
   return {
     upsert: db.prepare(`

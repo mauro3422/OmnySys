@@ -12,6 +12,7 @@ import {
   getMcpSessionSummary,
   summarizeSignalConfidence
 } from '../../../shared/compiler/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 
 export async function loadNotifications(projectPath, server, clearLoggerBuffer = false) {
   return normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
@@ -28,6 +29,7 @@ export function attachNotificationSignals(status, notifications) {
 
 export function attachPhase2Status(status, server, cache, cachedMetadata, cachedCounts, phase2Status, notifications, buildNodeVitals) {
   const runtimeSessionCount = server.sessions?.size || 0;
+  const sessionDb = server?.projectPath ? getRepository(server.projectPath)?.db || null : null;
   status.metadata = {
     totalFiles: cachedCounts.totalFiles,
     totalFunctions: cachedCounts.totalAtoms,
@@ -45,12 +47,16 @@ export function attachPhase2Status(status, server, cache, cachedMetadata, cached
     status: 'settling',
     message: 'Phase 2 deep scan in progress; global semantic metrics may lag.'
   };
+  const sessionSummary = getMcpSessionSummary(null, {
+    runtimeSessionCount,
+    sessionDb
+  });
   status.background = {
     phase2PendingFiles: phase2Status.pendingFiles,
     phase2CompletedFiles: phase2Status.completedFiles,
     societiesCount: null,
     phase2: phase2Status,
-    mcpSessionSummary: getMcpSessionSummary(null, { runtimeSessionCount })
+    mcpSessionSummary: sessionSummary
   };
   status.mcpSessions = {
     totalActive: runtimeSessionCount,
@@ -58,6 +64,10 @@ export function attachPhase2Status(status, server, cache, cachedMetadata, cached
     totalPersistentActive: null,
     uniqueClients: runtimeSessionCount,
     clientsWithDuplicates: null,
+    clientSyncState: sessionSummary.clientSyncState || null,
+    clientSyncSeverity: sessionSummary.clientSyncSeverity || null,
+    clientSyncReason: sessionSummary.clientSyncReason || null,
+    clientSyncRecommendation: sessionSummary.clientSyncRecommendation || null,
     health: runtimeSessionCount > 20 ? 'STRESSED' : 'HEALTHY'
   };
   status.compilerReadiness = buildCompilerReadinessStatus({
@@ -65,7 +75,9 @@ export function attachPhase2Status(status, server, cache, cachedMetadata, cached
     societiesCount: 0,
     runtimeSessions: runtimeSessionCount,
     persistentActive: 0,
-    clientsWithDuplicates: 0
+    clientsWithDuplicates: 0,
+    clientSyncState: sessionSummary.clientSyncState,
+    clientSyncReason: sessionSummary.clientSyncReason
   });
   status.compilerReadiness.ready = false;
   status.compilerReadiness.warnings = [

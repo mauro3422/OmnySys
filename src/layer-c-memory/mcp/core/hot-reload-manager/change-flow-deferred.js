@@ -1,5 +1,6 @@
 import { createLogger } from '../../../utils/logger.js';
 import { buildCompilerReadinessStatus, getMcpSessionSummary } from '../../../../shared/compiler/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import { sessionManager } from '../session-manager.js';
 import { isMutationBatchActive } from '../shared/mutation-batch.js';
 
@@ -7,8 +8,10 @@ const logger = createLogger('OmnySys:hot-reload');
 
 export function shouldDeferChange(server) {
   const runtimeSessionCount = server?.sessions?.size || 0;
+  const sessionDb = server?.projectPath ? getRepository(server.projectPath)?.db || null : null;
   const sessionSummary = getMcpSessionSummary(sessionManager, {
-    runtimeSessionCount
+    runtimeSessionCount,
+    sessionDb
   });
   const readiness = buildCompilerReadinessStatus({
     phase2PendingFiles: server?.metadata?.phase2PendingFiles ?? server?.orchestrator?.phase2Status?.pendingFiles ?? 0,
@@ -18,7 +21,9 @@ export function shouldDeferChange(server) {
     clientsWithDuplicates: sessionSummary.clientsWithDuplicates ?? 0,
     actionableDuplicateClients: sessionSummary.actionableDuplicateClients ?? 0,
     toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients ?? 0,
-    sessionCountDrift: sessionSummary.sessionCountDrift
+    sessionCountDrift: sessionSummary.sessionCountDrift,
+    clientSyncState: sessionSummary.clientSyncState,
+    clientSyncReason: sessionSummary.clientSyncReason
   });
   return !readiness.ready || isServerIndexing(server) || isMutationBatchActive(server) || !!server?.orchestrator?.phase2Status?.inProgress;
 }

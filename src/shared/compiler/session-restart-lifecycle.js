@@ -10,7 +10,9 @@ export function buildCompilerReadinessStatus({
   runtimeSessions = 0,
   persistentActive = 0,
   clientsWithDuplicates = 0,
-  sessionCountDrift = null
+  sessionCountDrift = null,
+  clientSyncState = null,
+  clientSyncReason = null
 } = {}) {
   const input = arguments[0] || {};
   const actionableDuplicateClients = input.actionableDuplicateClients ?? clientsWithDuplicates;
@@ -18,11 +20,14 @@ export function buildCompilerReadinessStatus({
   const hasSessionCountDrift = typeof input.sessionCountDrift === 'boolean'
     ? input.sessionCountDrift
     : (sessionCountDrift ?? (persistentActive === 0 ? runtimeSessions > 0 : runtimeSessions > persistentActive));
+  const hasClientSyncDrift = input.clientSyncState === 'blocked'
+    || clientSyncState === 'blocked';
   const checks = {
     phase2Complete: phase2PendingFiles === 0,
     societiesReady: societiesCount > 0,
     dedupHealthy: actionableDuplicateClients === 0,
-    sessionCountsAligned: !hasSessionCountDrift
+    sessionCountsAligned: !hasSessionCountDrift,
+    clientSyncHealthy: !hasClientSyncDrift
   };
 
   const warnings = [];
@@ -37,9 +42,12 @@ export function buildCompilerReadinessStatus({
   if (toleratedDuplicateClients > 0) {
     warnings.push(`${toleratedDuplicateClients} duplicate client buckets are tolerated for known IDE bridges`);
   }
+  if (hasClientSyncDrift) {
+    warnings.push(clientSyncReason || 'Client session sync is blocked');
+  }
 
   return {
-    ready: checks.phase2Complete && checks.societiesReady && checks.dedupHealthy,
+    ready: checks.phase2Complete && checks.societiesReady && checks.dedupHealthy && checks.clientSyncHealthy,
     checks,
     warnings
   };

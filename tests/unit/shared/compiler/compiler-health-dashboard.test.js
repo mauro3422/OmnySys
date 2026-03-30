@@ -157,6 +157,9 @@ describe('compiler-health-dashboard', () => {
         driftState: 'stable',
         driftScore: 90,
         stabilityScore: 86,
+        clientSyncState: 'blocked',
+        clientSyncReason: 'client cache drift detected',
+        clientSyncRecommendation: 'Refresh the client UI and verify the MCP catalog.',
         readinessReason: 'Success score 84 is below the 85 threshold.',
         toolTelemetry: {
           totalRuns: 4,
@@ -182,6 +185,7 @@ describe('compiler-health-dashboard', () => {
 
     expect(panel.headline).toContain('A 88/85');
     expect(panel.oneLine).toContain('now=88/A');
+    expect(panel.oneLine).toContain('clientsync=blocked');
     expect(panel.topRegressors).toEqual([]);
     expect(panel.topImprovements).toEqual([]);
 

@@ -7,6 +7,8 @@
  * @module utils/logger
  */
 
+import { isBugModeEnabled } from '../shared/runtime-debug-flags.js';
+
 let notificationBridge = null;
 const recentLogs = [];
 const MAX_RECENT = 50;
@@ -52,7 +54,7 @@ export function clearRecentLogs() {
 export class Logger {
   constructor(name, options = {}) {
     this.name = name;
-    this.level = options.level || process.env.LOG_LEVEL || 'info';
+    this.level = options.level || (isBugModeEnabled() ? 'debug' : process.env.LOG_LEVEL || 'info');
     this.prefix = `[${name}]`;
     // User-friendly mode: no mostrar prefijos técnicos
     this.userFriendly = process.env.NODE_ENV === 'production' || true;
@@ -118,7 +120,7 @@ export class Logger {
       if (notificationBridge?.notifyError) {
         notificationBridge.notifyError(fullMessage, this.name);
       }
-      if (error instanceof Error && error.stack && process.env.LOG_LEVEL === 'debug') {
+      if (error instanceof Error && error.stack && (process.env.LOG_LEVEL === 'debug' || isBugModeEnabled())) {
         process.stderr.write(sanitizeLogText(error.stack) + '\n');
       }
     }

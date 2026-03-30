@@ -2,6 +2,7 @@ import { createLogger } from '#utils/logger.js';
 import { connectionManager } from '../../storage/database/connection.js';
 import {
   isDedupFresh,
+  isFreshSessionRequest,
   extractClientId,
   hydrateSessionRow,
   createActiveSessionRecord,
@@ -93,15 +94,22 @@ export function getSessionPersistenceState() {
 export function reserveSession(clientInfo = {}, proposedSessionId) {
   const clientId = extractClientId(clientInfo);
   const now = Date.now();
+  const forceFreshSession = isFreshSessionRequest(clientInfo);
 
-  const existingSession = this.findSessionByClientId(clientId);
-  if (existingSession) {
-    return { sessionId: existingSession.id, reused: true, source: 'active' };
+  if (forceFreshSession) {
+    logger.debug(`[DEDUP] Fresh session requested for ${clientId}; bypassing active and pending reuse.`);
   }
 
-  const pending = this.pendingSessions.get(clientId);
-  if (pending && isDedupFresh(pending.updatedAt, now)) {
-    return { sessionId: pending.id, reused: true, source: 'pending' };
+  if (!forceFreshSession) {
+    const existingSession = this.findSessionByClientId(clientId);
+    if (existingSession) {
+      return { sessionId: existingSession.id, reused: true, source: 'active' };
+    }
+
+    const pending = this.pendingSessions.get(clientId);
+    if (pending && isDedupFresh(pending.updatedAt, now)) {
+      return { sessionId: pending.id, reused: true, source: 'pending' };
+    }
   }
 
   const sessionId = proposedSessionId;
@@ -130,39 +138,111 @@ export function releasePendingSession(sessionId, clientInfo = {}) {
   }
 }
 
-export function findSessionByClientId(clientId) {
+export function findLatestSessionByClientId(clientId) {
   if (!clientId) return null;
 
   try {
-    const cached = this.activeSessions.get(clientId);
-    if (cached && isDedupFresh(cached.updated_at)) {
-      logger.debug(`[DEDUP] Reusing in-memory session for ${clientId}: ${cached.id}`);
-      return cached;
-    }
-
     if (!canUseSessionDb(this)) {
-      return null;
+      return this.activeSessions.get(clientId) || null;
     }
 
     const row = runWithBusyRetry(
       () => this.statements.getByClientId.get(clientId),
-      `findSessionByClientId(${clientId})`
+      `findLatestSessionByClientId(${clientId})`
     );
     if (!row) return null;
 
-    const session = hydrateSessionRow(row);
-    if (isDedupFresh(session.updated_at)) {
-      this.activeSessions.set(clientId, session);
-      logger.debug(`[DEDUP] Reusing existing session for ${clientId}: ${session.id}`);
-      return session;
+    return hydrateSessionRow(row);
+  } catch (err) {
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to find latest session by client_id ${clientId}: ${err.message}`);
+    }
+    return null;
+  }
+}
+
+export function findSessionByClientId(clientId) {
+  if (!clientId) return null;
+
+  try {
+    const latest = this.findLatestSessionByClientId(clientId);
+    if (!latest) return null;
+
+    if (!canUseSessionDb(this)) {
+      logger.debug(`[DEDUP] Reusing in-memory session for ${clientId}: ${latest.id}`);
+      this.activeSessions.set(clientId, latest);
+      return latest;
     }
 
-    return null;
+    const freshness = isDedupFresh(latest.updated_at) ? 'fresh' : 'stale';
+    logger.debug(`[DEDUP] Reusing ${freshness} session for ${clientId}: ${latest.id}`);
+    this.activeSessions.set(clientId, latest);
+    return latest;
+
   } catch (err) {
     if (!isTransientSqliteAvailabilityError(err)) {
       logger.error(`Failed to find session by client_id ${clientId}: ${err.message}`);
     }
     return null;
+  }
+}
+
+export function reconcileActiveSessions(options = {}) {
+  if (!canUseSessionDb(this)) return { repairedClients: 0, removedSessions: 0, clients: [] };
+
+  try {
+    const activeSessions = this.getAllSessions(true);
+    if (!Array.isArray(activeSessions) || activeSessions.length <= 1) {
+      return { repairedClients: 0, removedSessions: 0, clients: [] };
+    }
+
+    const buckets = new Map();
+    for (const session of activeSessions) {
+      const clientId = session?.client_id || 'unknown';
+      if (!buckets.has(clientId)) buckets.set(clientId, []);
+      buckets.get(clientId).push(session);
+    }
+
+    const repairedClients = [];
+    let removedSessions = 0;
+
+    for (const [clientId, sessions] of buckets.entries()) {
+      if (sessions.length <= 1) continue;
+
+      sessions.sort((a, b) => {
+        const aUpdated = new Date(a?.updated_at || a?.created_at || 0).getTime();
+        const bUpdated = new Date(b?.updated_at || b?.created_at || 0).getTime();
+        return bUpdated - aUpdated;
+      });
+
+      const keep = sessions[0];
+      const removed = this.deduplicateSessions(clientId, keep.id);
+      removedSessions += removed;
+      this.activeSessions.set(clientId, keep);
+      repairedClients.push({
+        clientId,
+        keepSessionId: keep.id,
+        removedSessions: removed,
+        totalSessions: sessions.length,
+        reason: options.reason || 'auto-heal'
+      });
+    }
+
+    if (removedSessions > 0) {
+      const reasonSuffix = options.reason ? ` (${options.reason})` : '';
+      logger.info(`[DEDUP] Reconciled ${repairedClients.length} client bucket(s) and removed ${removedSessions} duplicate session row(s)${reasonSuffix}`);
+    }
+
+    return {
+      repairedClients: repairedClients.length,
+      removedSessions,
+      clients: repairedClients
+    };
+  } catch (err) {
+    if (!isTransientSqliteAvailabilityError(err)) {
+      logger.error(`Failed to reconcile active sessions: ${err.message}`);
+    }
+    return { repairedClients: 0, removedSessions: 0, clients: [], error: err.message };
   }
 }
 
@@ -189,17 +269,20 @@ export function deduplicateSessions(clientId, keepSessionId) {
 export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
   try {
     const clientId = extractClientId(clientInfo);
+    const forceFreshSession = isFreshSessionRequest(clientInfo);
     this.releasePendingSession(sessionId, clientInfo);
 
-    const existingSession = this.findSessionByClientId(clientId);
-    if (existingSession && existingSession.id !== sessionId) {
-      logger.debug(`[DEDUP] Client ${clientId} already has session ${existingSession.id}, reusing instead of ${sessionId}`);
+    if (!forceFreshSession) {
+      const existingSession = this.findLatestSessionByClientId(clientId);
+      if (existingSession && existingSession.id !== sessionId) {
+        logger.debug(`[DEDUP] Client ${clientId} already has session ${existingSession.id}, reusing instead of ${sessionId}`);
 
-      this.updateActivity(existingSession.id);
-      this.deleteSession(sessionId);
-      this.deduplicateSessions(clientId, existingSession.id);
+        this.updateActivity(existingSession.id);
+        this.deleteSession(sessionId);
+        this.deduplicateSessions(clientId, existingSession.id);
 
-      return existingSession.id;
+        return existingSession.id;
+      }
     }
 
     const now = new Date().toISOString();
@@ -225,6 +308,18 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
       this.activeSessions,
       createActiveSessionRecord(sessionId, clientId, clientInfo, metadata, createdAt, now)
     );
+
+    if (forceFreshSession && clientId !== 'unknown') {
+      this.deduplicateSessions(clientId, sessionId);
+      logger.debug(`[DEDUP] Fresh recovery session ${sessionId} registered for ${clientId}`);
+    }
+
+    const autoHealReport = this.reconcileActiveSessions({
+      reason: forceFreshSession ? 'fresh-session' : 'save-session'
+    });
+    if (autoHealReport.removedSessions > 0) {
+      logger.debug(`[DEDUP] Auto-heal reconciled ${autoHealReport.repairedClients} client bucket(s) after saving ${sessionId}`);
+    }
 
     if (!canUseSessionDb(this)) {
       logger.debug(`[DEDUP] Saved in-memory session ${sessionId} for ${clientId} (DB unavailable)`);

@@ -2,7 +2,7 @@
 
 **Status**: Draft temporal  
 **Scope**: startup, client bootstrap, reconnect, restart boundary  
-**Last verified**: 2026-03-29
+**Last verified**: 2026-03-30
 
 This note collects what we learned while tracing OmnySys startup and client
 connection paths. It is intentionally temporary. The runtime is still moving,
@@ -41,6 +41,9 @@ touch lifecycle:
   It spawns `mcp-http-server.js` as a worker and keeps port `9999` alive.
 - `src/layer-c-memory/mcp-http-server.js` serves the actual MCP HTTP
   endpoint, health endpoint, restart endpoint, and tool registry.
+- `src/layer-c-memory/mcp-http-session-routing.js` now exposes read-only MCP
+  resources for discovery so the client can inspect live status without going
+  through a tool call first.
 - `src/layer-c-memory/mcp-stdio-bridge.js` bridges stdio clients to the HTTP
   daemon and can auto-start the daemon if it is not available.
 - `src/layer-c-memory/mcp/core/session-manager.js` deduplicates sessions by
@@ -159,6 +162,23 @@ This is the right place to keep future lifecycle automation.
   `Reconnecting...`, the likely fault is the client/app-server bridge, not the
   daemon.
 
+## MCP Resources For Discovery
+
+The daemon now exposes a small read-only resource surface in addition to the
+tool catalog:
+
+- `omnysys://status` - live runtime status and readiness snapshot.
+- `omnysys://health` - boot/health summary equivalent to the `/health` view.
+- `omnysys://sessions` - session persistence and deduplication summary.
+- `omnysys://tools` - current tool registry snapshot and inventory report.
+- `omnysys://schema` - MCP capability and runtime resource schema summary.
+
+These resources are intentionally lightweight JSON snapshots. They give the
+client something useful to list and read even before it starts invoking tools.
+That reduces the chance of "empty catalog" discovery failures while keeping the
+transport aligned with the official MCP `resources/list` and `resources/read`
+shape.
+
 ## Incident Note - Reconnecting Loop After Hot-Reload Split
 
 **Observed**: 2026-03-29
@@ -203,6 +223,231 @@ This is the right place to keep future lifecycle automation.
   outage, unless `/health` or direct MCP `initialize`/`tools/list` fail.
 - If the symptom returns, inspect hot-reload event emission first before
   chasing session recovery or daemon restart code.
+
+## Incident Note - Tool Call Reconnect Loop on Streamable HTTP
+
+**Observed**: 2026-03-30
+**Symptoms**:
+
+- The chat surface could enter repeated `Reconnecting...` loops when a real MCP
+  tool was invoked, even while the daemon stayed healthy.
+- Direct shell checks still showed `/health` as healthy and the proxy/worker
+  pair as alive.
+- The reconnect symptom was worse during client reuse, stale workspace state,
+  or when the transport resumed a broken stream instead of opening a fresh one.
+- The symptom was reproduced again after a clean restart: a real tool call from
+  the chat surface emitted `Reconnecting...` and then failed with
+  `stream disconnected before completion`, even though the daemon boot finished
+  in `A+`.
+
+**Important distinction**:
+
+- This is not the same bug as the earlier hot-reload crash trace.
+- The older `Cannot read properties of undefined (reading 'emit')` issue was a
+  lifecycle emission bug in the hot-reload path.
+- The reconnect loop we saw today was a transport resumability problem on the
+  Streamable HTTP path, not a dead daemon.
+
+**Root cause**:
+
+- `StreamableHTTPServerTransport` was being created without a shared event
+  store, so the server could not resume streams cleanly after transient
+  disconnects.
+- The client/bridge could then retry the same session path and keep surfacing
+  `Reconnecting...` even though the backend was still alive.
+- The recovery replay also needed an explicit fresh-session hint so the
+  SessionManager would not re-adopt the old `client_id` bucket and recreate the
+  stale session loop.
+- The session deduplication path originally reused only "fresh" client buckets,
+  which meant older active sessions could survive long enough to accumulate into
+  duplicate buckets. The save path now deduplicates against the latest active
+  session for that client, even if the session is older than the reuse window.
+- Stale client storage in the IDE could keep the old workspace/session shape in
+  memory and make the reconnect symptom look worse than the backend actually
+  was.
+
+**Fix applied**:
+
+- Added a shared `InMemoryEventStore` to
+  `src/layer-c-memory/mcp-http-session-routing.js`.
+- Passed that shared event store into every `StreamableHTTPServerTransport`
+  instance so session streams can resume instead of looping on reconnect.
+- Kept the bridge recovery logic conservative: when transport/session state is
+  stale, prefer a fresh session over reusing a broken one.
+- Propagated `force_fresh_session` through the recovery replay so the bridge and
+  SessionManager both skip client-id reuse on a recovered transport.
+- Tightened session deduplication so the latest active client session wins even
+  when the previous one is older than the reuse window. This keeps old active
+  rows from accumulating as duplicate buckets.
+- Cleared stale VS Code/Codex state keys that were holding an outdated
+  `gitRoot` and panel state.
+- Added the bootstrap and Phase 2 telemetry snapshots so we can tell apart:
+  - transport/session drift
+  - database drift
+  - deep scan slowness
+  - stale snapshots that never reached SQLite
+
+**Pattern of repair**:
+
+1. Verify the daemon with `/health` and a direct MCP tool call.
+2. If the daemon is healthy but the chat loops on `Reconnecting...`, treat it
+   as a transport/session problem first.
+3. Use a resumable transport with a shared event store for Streamable HTTP.
+4. Force a fresh session after transport close, invalid session, or session
+   expiry.
+5. Ensure the recovery replay carries `force_fresh_session` through to the
+   SessionManager so stale client-id buckets are not re-adopted.
+6. Keep the session deduplication path strict enough to prune older active
+   buckets, even when the reuse window would otherwise consider them stale.
+7. Clear stale client cache/state if the IDE still points at the wrong
+   workspace or keeps a faded/grey server toggle.
+8. If a real tool call still drops the stream after a clean restart, treat it as
+   client/session drift first and compare it against the latest bootstrap and
+   Phase 2 telemetry before blaming the daemon.
+
+**Self-healing session policy**:
+
+- The SessionManager now reuses the latest active session for a client even if
+  it is older than the dedup freshness window, so a returning client does not
+  keep spawning duplicate buckets just because time passed.
+- Every successful `saveSession()` pass now performs a global reconciliation of
+  active buckets and prunes extra rows for any client that still has duplicates.
+- This means the server can heal session drift opportunistically on the next
+  real session write, instead of waiting for the IDE connector to recover first.
+
+**Verification**:
+
+- Direct MCP tool calls succeeded again after the transport change.
+- The backend stayed healthy during reconnect reproduction attempts.
+- The server now records the reconnect path as a session/transport issue, not
+  as a daemon outage, when `/health` remains healthy.
+
+**Files involved**:
+
+- `src/layer-c-memory/mcp-http-session-routing.js`
+- `src/layer-c-memory/mcp/stdio-bridge-recovery.js`
+- `src/layer-c-memory/mcp/core/hot-reload-manager/restart-coordinator.js`
+- `src/layer-c-memory/mcp/core/hot-reload-manager/handlers/reload-handler.js`
+- `src/layer-c-memory/mcp/core/session-manager.js`
+- `tests/unit/layer-c-memory/mcp-http-session-routing.session.test.js`
+
+**Follow-up**:
+
+- Keep the reconnect surface documented as a transport symptom unless `/health`
+  or direct MCP `initialize`/`tools/list` fail.
+- If the symptom returns, inspect the client cache and the Streamable HTTP
+  transport before chasing daemon restart code.
+
+## Diagnosis Matrix
+
+Use this matrix when the daemon looks healthy but the chat surface still loops
+on `Reconnecting...` or loses tool access.
+
+| Symptom | Likely layer | How to confirm | Practical fix or workaround |
+| --- | --- | --- | --- |
+| `/health` is healthy, tools are registered, but a real tool call loops on `Reconnecting...` | Client/transport | Compare shell health with a direct MCP tool call and the chat surface. If shell is fine and the chat still loops, the backend is probably not the fault. | Force a fresh session, clear stale Codex/VS Code state, and keep the bridge on resumable Streamable HTTP with a shared event store. |
+| The MCP catalog is gray, missing, or empty in the IDE while CLI access still works | IDE cache / workspace state | Check whether the Codex/VS Code UI points at the correct workspace and whether the client logs mention stale session state. | Reload the IDE window, clear persisted connector state, and verify the workspace root/config before blaming the daemon. |
+| `stream disconnected before completion` appears after a reconnect or session expiry | Session reuse | Look for `SESSION_EXPIRED`, `Invalid session`, or repeated reconnect attempts after transport close. | Start a fresh session instead of reusing the old `client_id` bucket; preserve `MCP-Session-Id` semantics and resumable transport. |
+| Phase 2 takes too long or stalls near deep scan | Analysis pipeline | Compare `phase2TotalMs`, `phase2ThroughputItemsPerSec`, and parse-failure logs such as `extractDataFlow`. | Add parse-failure telemetry, keep the scan resumable, and treat unsupported snippets as a performance debt rather than a daemon outage. |
+
+## Public Signals
+
+Public reports that match this pattern usually split into two clusters:
+
+- Codex IDE/connector issues where the daemon is alive but the UI does not
+  refresh the tool catalog correctly.
+- Streamable HTTP/session issues where reconnect works only if the session is
+  resumed with the right transport state.
+
+Relevant references:
+
+- [openai/codex #6465](https://github.com/openai/codex/issues/6465)
+- [openai/codex #4222](https://github.com/openai/codex/issues/4222)
+- [openai/codex #6398](https://github.com/openai/codex/issues/6398)
+- [openai/codex #4983](https://github.com/openai/codex/issues/4983)
+- [openai/codex #4302](https://github.com/openai/codex/issues/4302)
+- [MCP transports spec](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)
+- [typescript-sdk reconnect issue #731](https://github.com/modelcontextprotocol/typescript-sdk/issues/731)
+
+## Bug-Mode Tracing
+
+When the connector starts looping again or the tool path looks opaque, start the
+daemon with bug-mode tracing instead of guessing from the chat surface:
+
+- `node src/layer-c-memory/mcp-http-proxy.js --bug-mode`
+- or `OMNYSYS_BUG_MODE=1`
+- or `OMNYSYS_TRACE_TOOLS=1`
+- or `OMNYSYS_TRACE_GUARDS=1`
+
+Bug mode enables compact tool and guard traces in the server logs so you can
+see:
+
+- tool entry and exit summaries
+- routed action context
+- guard registration / validation summaries
+- whether a session was recreated or deduplicated during recovery
+
+Use this mode when:
+
+- the IDE says `Reconnecting...` but `/health` still looks healthy
+- the tool catalog is gray or partial in the chat UI
+- `thread-stream-state-changed` appears without a matching handler in the
+  client logs
+- `plugins/list` or `plugins/featured` fails with `403` in the Codex/VS Code
+  connector logs
+
+The goal is not to replace the transport fix. It is to make the next failure
+mode observable without depending on the chat connector to render the tool
+response correctly.
+
+## Client-Side Evidence
+
+The Codex VS Code extension can fail even while the OmnySys daemon stays
+healthy. The strongest signals we observed on the client side were:
+
+- repeated `[IpcClient] Received broadcast but no handler is configured
+  method=thread-stream-state-changed`
+- remote plugin sync requests to `https://chatgpt.com/backend-api/plugins/list`
+  and `.../featured` returning `403 Forbidden`
+- the chat surface falling back to reconnect/search behavior even after the
+  server booted `A+` and registered all `37` tools
+
+This is a regression, not a normal performance characteristic. Earlier runs
+were stable and fast enough that the tool path felt immediate; the new retry
+loop and stall pattern is the bug we are tracking here.
+
+Interpretation:
+
+- `thread-stream-state-changed` is a connector-side broadcast mismatch, not a
+  daemon crash.
+- `plugins/list` and `plugins/featured` 403s indicate the extension is hitting
+  a remote plugin sync path that can fail independently of OmnySys.
+- When these appear together, the server can still be healthy and the chat
+  surface can still look broken.
+
+Practical consequence:
+
+- Use shell health checks and direct server logs to confirm daemon health.
+- Use bug-mode traces to see tool/guard flow when the connector is opaque.
+- Treat connector drift separately from the OmnySys runtime until direct tool
+  calls fail in shell as well.
+
+## Retry Discipline
+
+Do not treat the first successful tool call as proof that the reconnect loop is
+gone.
+
+If the chat or connector spent time cycling through `Reconnecting...`, keep the
+earlier retries in scope until you see a stable sequence of tool calls or a
+clean restart with no connector retry noise. A later success can coexist with
+an earlier stale-session problem, especially when the connector is still
+replaying old session state or falling back to remote plugin sync.
+
+Use this rule when triaging:
+
+- one successful tool call is evidence that the daemon path works
+- repeated reconnect retries are still evidence of connector/session drift
+- both signals can be true in the same session
 
 ## Preferred Direction
 

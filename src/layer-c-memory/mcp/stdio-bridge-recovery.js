@@ -17,6 +17,14 @@ function waitMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function shouldForceFreshSession(trigger, options = {}) {
+  if (options.forceFreshSession === true) {
+    return true;
+  }
+
+  return /transport closed|server rejected request after daemon restart|SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(trigger);
+}
+
 async function runBridgeRecovery(state, trigger, connectBridgeTransport, options = {}) {
   log(`Starting bridge recovery (${trigger})...`);
 
@@ -34,18 +42,23 @@ async function runBridgeRecovery(state, trigger, connectBridgeTransport, options
 
   log('Daemon recovered. Reconnecting HTTP transport...');
   try {
-    const forceFreshSession = /SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(trigger)
-      || options.forceFreshSession === true;
+    const forceFreshSession = shouldForceFreshSession(trigger, options);
     const previousSessionId = forceFreshSession ? null : state.lastSessionId;
     await connectBridgeTransport(state, { sessionId: previousSessionId });
     try {
-      await replayBridgeSession(state);
+      await replayBridgeSession(state, {
+        forceFreshSession,
+        trigger
+      });
       log(`Bridge reconnected successfully${state.lastSessionId ? ` (session ${state.lastSessionId})` : ''}.`);
     } catch (error) {
       log(`Session replay failed with previous session ${previousSessionId || 'n/a'}: ${error.message}`);
       state.lastSessionId = null;
       await connectBridgeTransport(state, { sessionId: null });
-      await replayBridgeSession(state);
+      await replayBridgeSession(state, {
+        forceFreshSession: true,
+        trigger: `${trigger}: replay fallback`
+      });
       log(`Bridge reconnected successfully${state.lastSessionId ? ` (session ${state.lastSessionId})` : ''}.`);
     }
   } catch (error) {
@@ -81,15 +94,31 @@ export async function sendBridgeInternalRequest(state, message, timeoutMs = 1000
   });
 }
 
-export async function replayBridgeSession(state) {
+export async function replayBridgeSession(state, options = {}) {
   if (!state.cachedInitializeRequest?.params) {
     log('No cached initialize request available. Bridge cannot auto-reinitialize this client session.');
     return;
   }
 
   const internalId = `bridge-reinit-${Date.now()}`;
+  const forceFreshSession = options.forceFreshSession === true;
+  const trigger = options.trigger || 'bridge recovery';
+  const clientInfo = state.cachedInitializeRequest.params.clientInfo && typeof state.cachedInitializeRequest.params.clientInfo === 'object'
+    ? { ...state.cachedInitializeRequest.params.clientInfo }
+    : {};
+
+  if (forceFreshSession) {
+    clientInfo.force_fresh_session = true;
+    clientInfo.bridge_recovery = true;
+    clientInfo.bridge_recovery_trigger = trigger;
+  }
+
   const initMessage = {
     ...state.cachedInitializeRequest,
+    params: {
+      ...state.cachedInitializeRequest.params,
+      clientInfo
+    },
     id: internalId
   };
 
@@ -105,7 +134,7 @@ export async function replayBridgeSession(state) {
   }
 }
 
-export async function startBridgeRecovery(state, trigger, connectBridgeTransport) {
+export async function startBridgeRecovery(state, trigger, connectBridgeTransport, options = {}) {
   if (state.isReconnecting) {
     return state.reconnectPromise;
   }
@@ -116,7 +145,7 @@ export async function startBridgeRecovery(state, trigger, connectBridgeTransport
     'DAEMON_RESTARTING: in-flight request was interrupted. Retry after bridge recovery.'
   );
 
-  state.reconnectPromise = runBridgeRecovery(state, trigger, connectBridgeTransport, {});
+  state.reconnectPromise = runBridgeRecovery(state, trigger, connectBridgeTransport, options);
 
   try {
     await state.reconnectPromise;
@@ -131,6 +160,10 @@ export async function scheduleBridgeRecovery(state, trigger, connectBridgeTransp
     ? Math.max(0, Number(options.backoffMs))
     : BRIDGE_RECOVERY_BACKOFF_MS;
   const recoverFn = typeof options.recoverFn === 'function' ? options.recoverFn : runBridgeRecovery;
+  const normalizedOptions = {
+    ...options,
+    forceFreshSession: shouldForceFreshSession(trigger, options)
+  };
 
   if (state.isReconnecting) {
     return state.reconnectPromise;
@@ -147,7 +180,7 @@ export async function scheduleBridgeRecovery(state, trigger, connectBridgeTransp
       await waitMs(backoffMs);
     }
 
-    return recoverFn(state, trigger, connectBridgeTransport, options);
+    return recoverFn(state, trigger, connectBridgeTransport, normalizedOptions);
   })();
 
   try {

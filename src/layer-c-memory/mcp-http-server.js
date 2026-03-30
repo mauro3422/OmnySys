@@ -58,6 +58,7 @@ import {
   executeMcpToolCall,
   handleMcpRequest
 } from './mcp-http-session-routing.js';
+import { buildInventoryReport, buildInventorySnapshot } from './mcp/tools/list-tools.js';
 
 const logger = createLogger('OmnySys:mcp:http');
 
@@ -78,6 +79,95 @@ async function getLiveToolDefinitions() {
 async function getLiveToolHandler(name) {
   const { getLiveHandlers } = await loadToolRegistryRuntime();
   return getLiveHandlers()[name];
+}
+
+async function getRuntimeResourceSnapshot() {
+  let sessionManager = null;
+  try {
+    sessionManager = await getSessionManager();
+  } catch {
+    sessionManager = null;
+  }
+
+  const toolInventory = buildInventorySnapshot({ includeSchemas: true });
+  const toolInventoryReport = buildInventoryReport(toolInventory);
+  const runtimeSessions = sessionManager?.getAllSessions?.(true) || [];
+  const allSessions = sessionManager?.getAllSessions?.(false) || [];
+  const dedupStats = sessionManager?.getDedupStats?.() || null;
+
+  let background = null;
+  try {
+    const { getRepository } = await import('./storage/repository/index.js');
+    const repo = getRepository(projectPath);
+    const db = repo?.db || null;
+    if (db) {
+      background = {
+        phase2PendingFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0,
+        societiesCount: db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0,
+        phase2: core.orchestrator?.phase2Status || null
+      };
+    }
+  } catch {
+    background = null;
+  }
+
+  const health = buildHealthSnapshot({
+    initialized: core.initialized,
+    initError,
+    projectPath,
+    sessionCount: sessions.size,
+    background
+  });
+
+  const sessionSummary = {
+    runtimeSessions: sessions.size,
+    persistedActiveSessions: runtimeSessions.length,
+    persistedTotalSessions: allSessions.length,
+    dedupStats
+  };
+
+  return {
+    status: {
+      ...health,
+      phase2: core.orchestrator?.phase2Status || null,
+      sessionSummary,
+      toolInventory: {
+        totalTools: toolInventory.summary.totalTools,
+        categories: toolInventory.summary.categories
+      }
+    },
+    health,
+    sessions: sessionSummary,
+    tools: {
+      snapshot: toolInventory,
+      report: toolInventoryReport
+    },
+    schema: {
+      protocol: '2025-11-25',
+      server: {
+        name: 'omnysys',
+        version: '3.0.0',
+        transport: 'streamable-http'
+      },
+      capabilities: {
+        tools: true,
+        resources: true
+      },
+      resources: [
+        'omnysys://status',
+        'omnysys://health',
+        'omnysys://sessions',
+        'omnysys://tools',
+        'omnysys://schema'
+      ],
+      toolInventory: {
+        totalTools: toolInventory.summary.totalTools,
+        categories: toolInventory.summary.categories,
+        report: toolInventoryReport
+      },
+      sessionSummary
+    }
+  };
 }
 
 export function buildHealthSnapshot({
@@ -138,7 +228,8 @@ const executeLiveMcpToolCall = (request) => executeMcpToolCall(request, {
 const buildSessionServer = () => buildServerForSession({
   logger,
   getLiveToolDefinitions,
-  executeMcpToolCall: executeLiveMcpToolCall
+  executeMcpToolCall: executeLiveMcpToolCall,
+  getRuntimeResourceSnapshot
 });
 
 const getSessionManager = async () => {

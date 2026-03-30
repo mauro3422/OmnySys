@@ -101,6 +101,13 @@ export {
 } from './compiler-health-dashboard.js';
 
 export {
+  evaluatePipelineTimingTelemetry,
+  persistPipelineTimingTelemetry,
+  buildPipelineTimingTelemetrySummary,
+  summarizePipelineTimingTelemetry
+} from './pipeline-timing-telemetry.js';
+
+export {
   evaluateToolRunTelemetry,
   persistToolRunTelemetry,
   buildToolRunTelemetrySummary,

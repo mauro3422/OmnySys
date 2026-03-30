@@ -4,6 +4,13 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added read-only MCP discovery resources (`omnysys://status`, `omnysys://health`, `omnysys://sessions`, `omnysys://tools`, `omnysys://schema`) so the client can list useful runtime state before it calls a tool.
+- Hardened MCP session recovery with resumable Streamable HTTP, shared event-store replay, and duplicate-session auto-healing so reconnect loops can be repaired instead of amplified.
+- Documented the Codex connector failure mode where a later successful tool call does not erase earlier `Reconnecting...` retries, because the loop can still point to stale client/session state.
+- Recorded the reconnect/latency regression as a bug, not a normal cost: the channel can still enter retries or stall before tools arrive, and that behaviour did not exist in the previously stable path.
+- Persisted lightweight folderization snapshots as a historical series so DB-backed naming guidance and sync drift can be tracked independently of the full health snapshot.
+- Added a dedicated `mcp_omnysystem_get_folderization_snapshot` tool so folderization guidance, naming debt, DB sync drift, and role stems can be queried without loading the full compiler health pipeline.
+- Added active atom counts and historical pipeline timing telemetry to the compiler health snapshot so the system can alert on data drift and ms regressions, not just logical issues.
 - Surfaced the compact health panel one-liner in the bootstrap terminal summary so the startup log shows `health | trend | tools | ready` without dumping the full dashboard.
 - Added a one-screen `mcp_omnysystem_get_health_panel` tool and wired the compiler status surface to expose a compact panel with status now, trend, top regressions, top improvements, and next action.
 - Added a compact `mcp_omnysystem_get_health_snapshot` dashboard on top of the canonical metrics snapshot so one call can report current health, trend, repair telemetry, top regressors, and MVP readiness.
@@ -38,6 +45,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Folderized `contract-taxonomy` into its own compiler subfolder and updated the compiler barrel plus snapshot test mock to point at the new barrel path.
 - Normalized the `contract-taxonomy` folder basenames to role-only names (`classification`, `query`, `report`, `summary-helpers`) so the folderized convention stays consistent.
 - Folderized `event-leak` into its own guard subfolder and normalized the basenames to role-only names with a barrel at `event-leak/index.js`.
+- [v0.9.385 - Sprint 16: MCP Discovery Resources and Reconnect Auto-Heal](changelogs/v0.9.385.md)
 - [v0.9.384 - Sprint 16: Repository Bridge Diagnostics Split and Session-Stable Worker Settlement](changelogs/v0.9.384.md)
 - [v0.9.383 - Sprint 16: Serialized Worker Settlement and Non-Recursive Repository Flush](changelogs/v0.9.383.md)
 - [v0.9.382 - Sprint 16: Worker-Aware Repository Mutations and Deferred Hash Flush](changelogs/v0.9.382.md)

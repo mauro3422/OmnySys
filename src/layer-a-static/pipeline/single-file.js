@@ -26,7 +26,8 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
     absoluteRootPath,
     singleFile,
     targetFilePath,
-    verbose
+    verbose,
+    runKind: 'single_file'
   });
 
   runner

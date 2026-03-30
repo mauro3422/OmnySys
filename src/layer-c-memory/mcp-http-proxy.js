@@ -59,6 +59,12 @@ function log(msg) {
 const workerPath = path.join(__dirname, 'mcp-http-server.js');
 const projectPath = process.argv[2] || process.cwd();
 const port = process.argv[3] || process.env.OMNYSYS_MCP_PORT || '9999';
+const bugModeEnabled = process.argv.includes('--bug-mode') || process.env.OMNYSYS_BUG_MODE === '1';
+
+if (bugModeEnabled) {
+    process.env.OMNYSYS_BUG_MODE = '1';
+    log('Bug mode enabled: tool and guard traces are active');
+}
 
 let worker = null;
 let restartScheduled = false;

@@ -3,6 +3,8 @@ import { processPhase2Batch } from './phase2-indexer/batch-processing.js';
 import { runPhase2CompletionTasks } from './phase2-indexer/completion-tasks.js';
 import { initializePhase2Start } from './phase2-indexer/startup.js';
 import { buildPhase2Status } from './phase2-indexer/status.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
+import { evaluatePipelineTimingTelemetry, persistPipelineTimingTelemetry } from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:Phase2Indexer');
 
@@ -63,8 +65,24 @@ export class Phase2Indexer {
     }
 
     stop(complete = false) {
+        let phase2Timing = null;
         if (this.globalTimer) {
-            this.globalTimer.end(complete);
+            const timing = this.globalTimer.end(complete);
+            phase2Timing = timing?.elapsed > 0
+              ? {
+                  projectPath: this.projectPath,
+                  runKind: 'phase2_deep_scan',
+                  captureSource: 'phase2.indexer.complete',
+                  startedAt: this.startedAt ? new Date(this.startedAt).toISOString() : null,
+                  endedAt: new Date().toISOString(),
+                  success: complete === true,
+                  phaseTimings: [{
+                    name: 'Phase 2 Deep Scan',
+                    elapsedMs: timing.elapsed,
+                    memoryDeltaMb: 0
+                  }]
+                }
+              : null;
             this.globalTimer = null;
         }
 
@@ -73,6 +91,17 @@ export class Phase2Indexer {
         this._updateStatus(0, complete);
 
         if (complete) {
+            if (phase2Timing) {
+                try {
+                    const repo = getRepository(this.projectPath);
+                    if (repo?.db) {
+                        const telemetry = evaluatePipelineTimingTelemetry(phase2Timing);
+                        persistPipelineTimingTelemetry(repo.db, telemetry);
+                    }
+                } catch {
+                    // Advisory telemetry only.
+                }
+            }
             void runPhase2CompletionTasks(this.projectPath, logger);
         }
     }
