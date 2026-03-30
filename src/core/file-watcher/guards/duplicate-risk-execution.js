@@ -16,7 +16,7 @@ import {
 } from './duplicate-risk-detection.js';
 import {
     persistStructuralDuplicateFinding
-} from './duplicate-risk-remediation.js';
+} from './duplicate-risk-remediation/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;

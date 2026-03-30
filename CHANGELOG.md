@@ -13,6 +13,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Folderized `unified-duplicate-guard` into `src/core/file-watcher/guards/unified-duplicate-guard` with role-based filenames and repaired the parent-level imports that feed it.
 - Folderized `semantic-persistence` into `src/core/file-watcher/guards/semantic-persistence` and normalized the evidence/query/analysis/reporting split behind a thin barrel.
 - Folderized `circular-guard` into `src/core/file-watcher/guards/circular-guard` and moved the cycle/repository/persistence helpers behind a single barrel.
+- Folderized `duplicate-risk-remediation` into `src/core/file-watcher/guards/duplicate-risk-remediation` and moved the structural duplicate remediation helpers behind a barrel.
 - Completed the `async-safety` family cleanup by moving the remaining `collection` and `guard` bridges into the folderized family and fixing the compiler barrel export chain used by folderization analysis.
 - Folderization settlement now reindexes final move targets before validation, so newly moved families are reconciled into the canonical compiler DB instead of being left as transient `DB_MISSING` paths.
 - Reduced hot-reload/debt noise by splitting `move-orchestrator` helpers, routing mutation settlement through the public compiler surface, and clearing the remaining watcher alerts on those paths.

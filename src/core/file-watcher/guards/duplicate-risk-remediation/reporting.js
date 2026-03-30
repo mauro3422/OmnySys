@@ -1,17 +1,17 @@
-import { persistWatcherIssue, clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { createLogger } from '../../../utils/logger.js';
+import { persistWatcherIssue, clearWatcherIssue } from '../../watcher-issue-persistence.js';
+import { createLogger } from '../../../../utils/logger.js';
 import {
     IssueDomains,
     createIssueType,
-} from './guard-standards.js';
+} from '../guard-standards.js';
 import {
     buildDuplicateRemediationPlan,
     loadPreviousFindings,
     buildDuplicateDebtHistory
-} from '../../../shared/compiler/index.js';
-import { buildStructuralRemediationInput } from './duplicate-risk-remediation-input.js';
-import { resolveStructuralDuplicateSeverity } from './duplicate-risk-remediation-severity.js';
-import { buildStructuralDuplicateContext } from './duplicate-risk-remediation-context.js';
+} from '../../../../shared/compiler/index.js';
+import { buildStructuralRemediationInput } from './input.js';
+import { resolveStructuralDuplicateSeverity } from './severity.js';
+import { buildStructuralDuplicateContext } from './context.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 
