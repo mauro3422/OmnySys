@@ -11,7 +11,7 @@ export const impactGuardDefinitionsSemantic = [
   ),
   defineVersionedLazyGuard(
     'semantic-persistence',
-    () => import('./semantic-persistence-guard.js'),
+    () => import('./semantic-persistence/index.js'),
     (mod) => mod.detectSemanticPersistence,
     'sem',
     '1.0.0',

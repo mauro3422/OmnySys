@@ -1,4 +1,4 @@
-import { isValidGuardTarget } from './guard-standards.js';
+import { isValidGuardTarget } from '../guard-standards.js';
 
 export function getSemanticPersistenceTargetNames(atoms = []) {
     return atoms

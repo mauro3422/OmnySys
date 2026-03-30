@@ -2,10 +2,10 @@
  * Detects when semantic compiler metadata was extracted in-memory but not persisted correctly.
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { clearWatcherIssue } from '../watcher-issue-persistence.js';
-import { loadSemanticPersistenceEvidence } from './semantic-persistence-evidence.js';
-import { persistSemanticPersistenceFinding } from './semantic-persistence-reporting.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { clearWatcherIssue } from '../../watcher-issue-persistence.js';
+import { loadSemanticPersistenceEvidence } from './evidence.js';
+import { persistSemanticPersistenceFinding } from './reporting.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:semantic-persistence');
 const TEST_FILE_PATTERNS = /(^|\/)(tests?|__tests__|fixtures)\//i;

@@ -1,4 +1,4 @@
-import { isValidGuardTarget } from './guard-standards.js';
+import { isValidGuardTarget } from '../guard-standards.js';
 
 function hasPersistedJson(value) {
     return value !== null && value !== undefined && value !== '' && value !== 'null';

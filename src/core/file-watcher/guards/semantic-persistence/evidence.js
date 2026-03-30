@@ -1,6 +1,6 @@
-import { connectionManager } from '../../../layer-c-memory/storage/database/connection.js';
-import { getSemanticPersistenceTargetNames, loadSemanticPersistenceRows } from './semantic-persistence-evidence-query.js';
-import { evaluateSemanticPersistenceRows } from './semantic-persistence-evidence-analysis.js';
+import { connectionManager } from '../../../../layer-c-memory/storage/database/connection.js';
+import { getSemanticPersistenceTargetNames, loadSemanticPersistenceRows } from './query.js';
+import { evaluateSemanticPersistenceRows } from './analysis.js';
 
 export async function loadSemanticPersistenceEvidence(rootPath, filePath, atoms = []) {
     const targetNames = getSemanticPersistenceTargetNames(atoms);
