@@ -50,6 +50,13 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         familyState: folderizationReport.familyState,
         migrationPlans: folderizationReport.migrationPlans,
         naming: folderizationReport.naming,
+        namingDebt: {
+          familyCount: folderizationReport.naming?.familyCount || 0,
+          renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,
+          renameTargetDensity: folderizationReport.naming?.familyCount
+            ? Math.round((folderizationReport.naming?.renameTargetCount || 0) / folderizationReport.naming.familyCount * 100) / 100
+            : 0
+        },
         recommendation: folderizationReport.recommendation,
         decision: folderizationReport.decision,
         summary: folderizationReport.summary

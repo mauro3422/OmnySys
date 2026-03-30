@@ -19,7 +19,9 @@ export function calculateTechnicalDebtScore(metrics) {
         highRiskConceptual = 0,
         pipelineOrphans = 0,
         flatFamilies = 0,
-        mixedFamilies = 0
+        mixedFamilies = 0,
+        namingFamilies = 0,
+        namingTargets = 0
     } = metrics;
 
     const rawScore = (
@@ -42,7 +44,9 @@ export function calculateTechnicalDebtScore(metrics) {
             highRisk: highRiskConceptual * 5,
             orphans: pipelineOrphans * 4,
             flatFamilies: flatFamilies * 2,
-            mixedFamilies: mixedFamilies * 3
+            mixedFamilies: mixedFamilies * 3,
+            namingFamilies,
+            namingTargets
         }
     };
 }
@@ -134,6 +138,16 @@ export function buildTechnicalDebtPriorityActions(data) {
             urgencyScore: family.renameTargetCount * 2 + family.fileCount
         });
     });
+
+    if (folderizationNaming?.renameTargetCount > 0) {
+        actions.push({
+            priority: 'medium',
+            type: 'folderization_naming_debt',
+            action: `Reduce ${folderizationNaming.renameTargetCount} remaining naming target(s) across ${folderizationNaming.familyCount} folderized families`,
+            impact: `Naming debt remains concentrated in already-folderized helper surfaces`,
+            urgencyScore: folderizationNaming.renameTargetCount + folderizationNaming.familyCount
+        });
+    }
 
     return actions.sort((a, b) => b.urgencyScore - a.urgencyScore).slice(0, 10);
 }

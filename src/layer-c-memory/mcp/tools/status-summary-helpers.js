@@ -194,7 +194,13 @@ export function compactCompilerExplainabilitySummary(explainability) {
         familyCount: explainability.folderization.naming.familyCount,
         renameTargetCount: explainability.folderization.naming.renameTargetCount,
         topFamilies: takeSample(explainability.folderization.naming.topFamilies || [], 3)
-      } : null
+      } : null,
+      namingDebt: explainability.folderization.namingDebt ? {
+        familyCount: explainability.folderization.namingDebt.familyCount,
+        renameTargetCount: explainability.folderization.namingDebt.renameTargetCount,
+        renameTargetDensity: explainability.folderization.namingDebt.renameTargetDensity
+      } : null,
+      summary: explainability.folderization.summary || null
     } : null,
     databaseHealth: compactDatabaseHealth(explainability.databaseHealth)
   };

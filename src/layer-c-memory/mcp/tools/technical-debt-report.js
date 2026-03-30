@@ -109,6 +109,13 @@ export async function getTechnicalDebtReport(args, context) {
                 migrationPlans: folderizationReport.migrationPlans?.candidates || [],
                 focusPlan: folderizationReport.migrationPlans?.focusCandidate || null,
                 naming: folderizationReport.naming,
+                namingDebt: {
+                    familyCount: folderizationReport.naming?.familyCount || 0,
+                    renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,
+                    renameTargetDensity: folderizationReport.naming?.familyCount
+                        ? Math.round((folderizationReport.naming?.renameTargetCount || 0) / folderizationReport.naming.familyCount * 100) / 100
+                        : 0
+                },
                 recommendation: folderizationReport.recommendation,
                 decision: folderizationReport.decision,
                 summary: folderizationReport.summary
@@ -119,7 +126,9 @@ export async function getTechnicalDebtReport(args, context) {
                 highRiskConceptual: conceptualResult.summary?.highRisk || 0,
                 pipelineOrphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0,
                 flatFamilies: folderizationReport.familyState.stateCounts.flat || 0,
-                mixedFamilies: folderizationReport.familyState.stateCounts.mixed || 0
+                mixedFamilies: folderizationReport.familyState.stateCounts.mixed || 0,
+                namingFamilies: folderizationReport.naming?.familyCount || 0,
+                namingTargets: folderizationReport.naming?.renameTargetCount || 0
             }),
             priorityActions: buildTechnicalDebtPriorityActions({
                 structural: duplicatesResult.remediation?.items || [],
