@@ -2,15 +2,15 @@ import {
     loadConceptualLocalAtoms as loadConceptualLocalAtomsImpl,
     loadConceptualDuplicateRows as loadConceptualDuplicateRowsImpl,
     loadLocalStructuralHash as loadLocalStructuralHashImpl
-} from './duplicate-conceptual-query.js';
+} from './query.js';
 import {
     shouldSkipConceptualAtom as shouldSkipConceptualAtomImpl,
     isActionableConceptualPeer as isActionableConceptualPeerImpl,
     isTrivialCanonicalDelegate as isTrivialCanonicalDelegateImpl
-} from './duplicate-conceptual-filters.js';
-import { buildConceptualFinding as buildConceptualFindingImpl } from './duplicate-conceptual-finding.js';
-import { detectConceptualFindings as detectConceptualFindingsImpl } from './duplicate-conceptual-detect.js';
-import { clearConceptualDuplicateIssues as clearConceptualDuplicateIssuesImpl } from './duplicate-conceptual-query.js';
+} from './filters.js';
+import { buildConceptualFinding as buildConceptualFindingImpl } from './finding.js';
+import { detectConceptualFindings as detectConceptualFindingsImpl } from './detect.js';
+import { clearConceptualDuplicateIssues as clearConceptualDuplicateIssuesImpl } from './query.js';
 
 export const clearConceptualDuplicateIssues = clearConceptualDuplicateIssuesImpl;
 export const loadConceptualLocalAtoms = loadConceptualLocalAtomsImpl;

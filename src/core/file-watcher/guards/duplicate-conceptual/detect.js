@@ -1,10 +1,10 @@
 import {
     loadConceptualDuplicateRows
-} from './duplicate-conceptual-query.js';
+} from './query.js';
 import {
     shouldSkipConceptualAtom
-} from './duplicate-conceptual-filters.js';
-import { evaluateConceptualDuplicateCandidate } from './duplicate-conceptual-detect-evaluate.js';
+} from './filters.js';
+import { evaluateConceptualDuplicateCandidate } from './detect-evaluate.js';
 
 export async function detectConceptualFindings(
     repo,

@@ -1,10 +1,10 @@
-import { enrichConceptualFindingWithReuseOpportunities } from './duplicate-conceptual-finding.js';
-import { loadLocalStructuralHash } from './duplicate-conceptual-query.js';
+import { enrichConceptualFindingWithReuseOpportunities } from './finding.js';
+import { loadLocalStructuralHash } from './query.js';
 import {
     isActionableConceptualPeer,
     isTrivialCanonicalDelegate
-} from './duplicate-conceptual-filters.js';
-import { buildConceptualFinding } from './duplicate-conceptual-finding.js';
+} from './filters.js';
+import { buildConceptualFinding } from './finding.js';
 
 export async function evaluateConceptualDuplicateCandidate({
     repo,
