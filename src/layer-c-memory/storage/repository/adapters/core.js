@@ -10,7 +10,7 @@ import { statsPool } from '../../../../shared/utils/stats-pool.js';
 
 import { AtomRepository } from '../atom-repository.js';
 import { connectionManager } from '../../database/connection.js';
-import { createLogger } from '#utils/logger.js';
+import { createLogger } from '../../../../utils/logger.js';
 import { atomToRow, rowToAtom } from './helpers/converters.js';
 import {
   initializeSQLiteAdapterCore,
@@ -18,7 +18,7 @@ import {
   shutdownSQLiteAdapterCore,
   syncSQLiteAdapterSystemMap,
   loadSQLiteAdapterSystemMap
-} from './sqlite-adapter-core-helpers.js';
+} from './core-helpers.js';
 
 const logger = createLogger('OmnySys:Storage:SQLiteAdapter');
 

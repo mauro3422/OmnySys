@@ -16,14 +16,14 @@
  * @module storage/repository/adapters/sqlite-adapter
  */
 
-import { SQLiteBulkOperations } from './sqlite-bulk-operations.js';
+import { SQLiteBulkOperations } from './operations.js';
 
 // Re-exportar para compatibilidad
-export { SQLiteAdapterCore } from './sqlite-adapter-core.js';
+export { SQLiteAdapterCore } from './core.js';
 export { SQLiteCrudOperations } from './sqlite-crud-operations.js';
 export { SQLiteQueryOperations } from './sqlite-query-operations.js';
 export { SQLiteRelationOperations } from './sqlite-relation-operations.js';
-export { SQLiteBulkOperations } from './sqlite-bulk-operations.js';
+export { SQLiteBulkOperations } from './operations.js';
 
 /**
  * SQLite Adapter completo - Fachada (Facade Pattern)

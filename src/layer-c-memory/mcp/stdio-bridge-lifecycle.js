@@ -14,6 +14,11 @@ import {
     readDaemonOwnerLock,
     waitForDaemonOwner
 } from '../../shared/compiler/index.js';
+import {
+    readDaemonHealth,
+    waitForDaemonHealthy,
+    waitMs
+} from './stdio-bridge-health.js';
 
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
 const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
@@ -28,109 +33,12 @@ const START_LOCK_STALE_MS = 30000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function waitMs(ms) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 export function log(message) {
     process.stderr.write(`[mcp-stdio-bridge] ${new Date().toISOString().slice(11, 23)} ${message}\n`);
 }
 
-async function readDaemonHealth() {
-    const { default: http } = await import('http');
-    return new Promise((resolve) => {
-        const req = http.get(DAEMON_HEALTH, { timeout: 5000 }, (res) => {
-            let data = '';
-            res.on('data', (chunk) => {
-                data += chunk;
-            });
-            res.on('end', () => {
-                try {
-                    const json = JSON.parse(data);
-                    const status = String(json?.status || 'unknown');
-                    const initialized = json?.initialized === true;
-                    const healthy = (
-                        (json?.service === 'omnysys-mcp' || json?.service === 'omnysys-mcp-http') &&
-                        status === 'healthy' &&
-                        initialized
-                    );
-
-                    resolve({
-                        reachable: true,
-                        healthy,
-                        status,
-                        initialized,
-                        service: json?.service || null,
-                        error: null
-                    });
-                } catch {
-                    resolve({
-                        reachable: true,
-                        healthy: false,
-                        status: 'invalid-response',
-                        initialized: false,
-                        service: null,
-                        error: 'invalid JSON response'
-                    });
-                }
-            });
-        });
-        req.on('error', (error) => resolve({
-            reachable: false,
-            healthy: false,
-            status: 'unreachable',
-            initialized: false,
-            service: null,
-            error: error.message
-        }));
-        req.on('timeout', () => {
-            req.destroy();
-            resolve({
-                reachable: false,
-                healthy: false,
-                status: 'timeout',
-                initialized: false,
-                service: null,
-                error: 'timeout'
-            });
-        });
-    });
-}
-
 async function checkDaemon() {
-    return (await readDaemonHealth()).healthy;
-}
-
-export async function waitForDaemonHealthy({
-    timeoutMs = DAEMON_READY_TIMEOUT_MS,
-    pollMs = DAEMON_READY_POLL_MS,
-    label = 'daemon'
-} = {}) {
-    const deadline = Date.now() + timeoutMs;
-    let attempt = 0;
-    let lastStatus = null;
-
-    while (Date.now() < deadline) {
-        const health = await readDaemonHealth();
-        if (health.healthy) {
-            return health;
-        }
-
-        const statusLabel = health.reachable
-            ? `${health.status}${health.initialized ? '' : ', initialized=false'}`
-            : health.error || 'unreachable';
-
-        if (statusLabel !== lastStatus) {
-            log(`${label} not ready yet (${statusLabel}); waiting for healthy state...`);
-            lastStatus = statusLabel;
-        }
-
-        const delay = Math.min(pollMs + (attempt * 250), 5000);
-        await waitMs(delay);
-        attempt += 1;
-    }
-
-    return null;
+    return (await readDaemonHealth(DAEMON_HEALTH)).healthy;
 }
 
 async function resolveDaemonEntry() {
@@ -236,10 +144,11 @@ export async function waitForDaemonReady() {
 
     if (!initialHealth.healthy) {
         log('Waiting for daemon to reach healthy state...');
-        const health = await waitForDaemonHealthy({
+        const health = await waitForDaemonHealthy(DAEMON_HEALTH, {
             timeoutMs: DAEMON_READY_TIMEOUT_MS,
             pollMs: DAEMON_READY_POLL_MS,
-            label: 'daemon'
+            label: 'daemon',
+            log
         });
 
         if (!health?.healthy) {
@@ -313,10 +222,11 @@ export async function startDaemon() {
 
         daemonProcess.unref();
 
-        const health = await waitForDaemonHealthy({
+        const health = await waitForDaemonHealthy(DAEMON_HEALTH, {
             timeoutMs: DAEMON_READY_TIMEOUT_MS,
             pollMs: DAEMON_READY_POLL_MS,
-            label: 'daemon startup'
+            label: 'daemon startup',
+            log
         });
 
         if (health?.healthy) {
@@ -342,7 +252,9 @@ export function createBridgeState(stdioTransport) {
         pendingRequests: new Map(),
         internalRequests: new Map(),
         cachedInitializeRequest: null,
-        cachedInitializedNotification: null
+        cachedInitializedNotification: null,
+        lastRecoverySignature: null,
+        lastRecoveryAt: 0
     };
 }
 

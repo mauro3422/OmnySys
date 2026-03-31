@@ -134,10 +134,23 @@ describe('mcp-http-server bootstrap', () => {
     })).toEqual(expectedHealth);
 
     const toolsRes = createResponse();
-    await routes.get['/tools'][0]({}, toolsRes);
+    await routes.get['/tools'][0]({ query: {} }, toolsRes);
 
     expect(toolsRes.payload).toEqual({
       count: 2,
+      includeSchemas: true,
+      tools: [
+        { name: 'get_server_status', description: 'Status', inputSchema: { type: 'object', properties: {} } },
+        { name: 'restart_server', description: 'Restart', inputSchema: { type: 'object', properties: {} } }
+      ]
+    });
+
+    const compactToolsRes = createResponse();
+    await routes.get['/tools'][0]({ query: { includeSchemas: 'false' } }, compactToolsRes);
+
+    expect(compactToolsRes.payload).toEqual({
+      count: 2,
+      includeSchemas: false,
       tools: [
         { name: 'get_server_status', description: 'Status' },
         { name: 'restart_server', description: 'Restart' }

@@ -12,6 +12,7 @@ import {
 const DAEMON_RECOVERY_TIMEOUT_MS = Number(process.env.OMNYSYS_DAEMON_RECOVERY_TIMEOUT_MS || 180000);
 const DAEMON_RECOVERY_POLL_MS = Number(process.env.OMNYSYS_DAEMON_RECOVERY_POLL_MS || 1500);
 const BRIDGE_RECOVERY_BACKOFF_MS = Number(process.env.OMNYSYS_BRIDGE_RECOVERY_BACKOFF_MS || 250);
+const BRIDGE_RECOVERY_DUPLICATE_WINDOW_MS = Number(process.env.OMNYSYS_BRIDGE_RECOVERY_DUPLICATE_WINDOW_MS || 1500);
 
 function waitMs(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -23,6 +24,31 @@ function shouldForceFreshSession(trigger, options = {}) {
   }
 
   return /transport closed|server rejected request after daemon restart|SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(trigger);
+}
+
+function getRecoverySignature(trigger, options = {}) {
+  return `${String(trigger || 'unknown')}::${options.forceFreshSession === true ? 'fresh' : 'reuse'}`;
+}
+
+function shouldSkipDuplicateRecovery(state, trigger, options = {}) {
+  const signature = getRecoverySignature(trigger, options);
+  const now = Date.now();
+  if (state.lastRecoverySignature === signature && (now - (state.lastRecoveryAt || 0)) < BRIDGE_RECOVERY_DUPLICATE_WINDOW_MS) {
+    return true;
+  }
+  state.lastRecoverySignature = signature;
+  state.lastRecoveryAt = now;
+  return false;
+}
+
+function clearStaleBridgeSession(state, forceFreshSession) {
+  if (!forceFreshSession) {
+    return null;
+  }
+
+  const staleSessionId = state.lastSessionId || null;
+  state.lastSessionId = null;
+  return staleSessionId;
 }
 
 async function runBridgeRecovery(state, trigger, connectBridgeTransport, options = {}) {
@@ -43,7 +69,7 @@ async function runBridgeRecovery(state, trigger, connectBridgeTransport, options
   log('Daemon recovered. Reconnecting HTTP transport...');
   try {
     const forceFreshSession = shouldForceFreshSession(trigger, options);
-    const previousSessionId = forceFreshSession ? null : state.lastSessionId;
+    const previousSessionId = clearStaleBridgeSession(state, forceFreshSession) || state.lastSessionId;
     await connectBridgeTransport(state, { sessionId: previousSessionId });
     try {
       await replayBridgeSession(state, {
@@ -139,6 +165,10 @@ export async function startBridgeRecovery(state, trigger, connectBridgeTransport
     return state.reconnectPromise;
   }
 
+  if (shouldSkipDuplicateRecovery(state, trigger, options)) {
+    return state.reconnectPromise || Promise.resolve();
+  }
+
   state.isReconnecting = true;
   await failBridgePendingRequests(
     state,
@@ -169,12 +199,18 @@ export async function scheduleBridgeRecovery(state, trigger, connectBridgeTransp
     return state.reconnectPromise;
   }
 
+  if (shouldSkipDuplicateRecovery(state, trigger, normalizedOptions)) {
+    return state.reconnectPromise || Promise.resolve();
+  }
+
   state.isReconnecting = true;
   state.reconnectPromise = (async () => {
     await failBridgePendingRequests(
       state,
       'DAEMON_RESTARTING: in-flight request was interrupted. Retry after bridge recovery.'
     );
+
+    clearStaleBridgeSession(state, normalizedOptions.forceFreshSession);
 
     if (backoffMs > 0) {
       await waitMs(backoffMs);

@@ -72,7 +72,13 @@ describe('compiler-health-dashboard', () => {
             successfulRuns: 8,
             repairedRuns: 6,
             thrashingRuns: 1,
+            comparableRuns: 9,
+            observationRuns: 10,
+            pressureRuns: 7,
+            clearanceRuns: 6,
             repairYield: 0.6,
+            repairRateOnPressure: 0.86,
+            observationRate: 1,
             toolSuccessRate: 0.8,
             alertClearanceRate: 0.7,
             errorClearanceRate: 0.9,
@@ -158,6 +164,7 @@ describe('compiler-health-dashboard', () => {
     expect(dashboard.regressors[0].metric).toBe('recentErrorCount');
     expect(dashboard.improvements[0].metric).toBe('healthScore');
     expect(dashboard.toolTelemetry.totalRuns).toBe(10);
+    expect(dashboard.toolTelemetry.repairRateOnPressure).toBe(0.86);
     expect(dashboard.recommendations.length).toBeGreaterThan(0);
 
     const compact = summarizeCompilerHealthDashboard(dashboard);
@@ -193,7 +200,11 @@ describe('compiler-health-dashboard', () => {
         readinessReason: 'Success score 84 is below the 85 threshold.',
         toolTelemetry: {
           totalRuns: 4,
+          successfulRuns: 3,
+          repairedRuns: 1,
+          pressureRuns: 2,
           repairYield: 0.5,
+          repairRateOnPressure: 0.5,
           toolSuccessRate: 0.75,
           alertClearanceRate: 0.5,
           errorClearanceRate: 0.5,
@@ -218,6 +229,8 @@ describe('compiler-health-dashboard', () => {
     expect(panel.oneLine).toContain('db=88/A');
     expect(panel.oneLine).toContain('trust=73/C');
     expect(panel.oneLine).toContain('clientsync=blocked');
+    expect(panel.oneLine).toContain('tools=3/4 ok');
+    expect(panel.oneLine).toContain('repair=1/2');
     expect(panel.topRegressors).toEqual([]);
     expect(panel.topImprovements).toEqual([]);
 

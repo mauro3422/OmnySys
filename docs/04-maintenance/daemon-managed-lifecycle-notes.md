@@ -562,3 +562,41 @@ Important runtime note:
 - For transport compatibility changes such as `Accept` normalization or JSON
   response mode, use a true worker/process restart so the live Express/Hono
   request path picks up the new code.
+
+## 2026-03-30 Stale Session Reconnect Fix
+
+The reconnect loop we chased in Mantice 04 was not Phase 2 work or a missing
+daemon boot step. The daemon had already finished initialization. The bug was
+in the recovery path: the bridge could carry a stale `mcp-session-id` forward
+too aggressively after a transport close or session-expiration event.
+
+What changed in the runtime:
+
+- `src/layer-c-memory/mcp-http-session-routing.js`
+  - `initialize` requests that arrive with a stale session id now recover by
+    creating a fresh session instead of forcing a hard `SESSION_EXPIRED`
+    failure.
+- `src/layer-c-memory/mcp/stdio-bridge-recovery.js`
+  - forced-fresh recovery now clears the cached session id before reconnecting
+    so the replay cannot accidentally reuse a dead session bucket.
+- `src/layer-c-memory/mcp/stdio-bridge-helpers.js`
+  - initialize replay stays canonicalized so client identity metadata remains
+    stable across reconnects.
+
+Why this matters:
+
+- It removes a reconnect loop that could look like a transport outage even
+  when the daemon was already healthy.
+- It keeps stale client state from re-adopting the old session bucket during
+  replay.
+- It makes the reconnect policy deterministic: stale session means fresh
+  session, not retry storm.
+
+Operational rule:
+
+- If `/health` is healthy and `list_tools` works, treat repeated
+  `Reconnecting...` messages as a session-recovery bug first.
+- If the bridge sees `SESSION_EXPIRED`, replay the cached initialize request
+  as a fresh session instead of preserving the old id.
+- Use the cached initialize request as replay input only, never as a reason to
+  keep a dead session alive.

@@ -28,7 +28,6 @@
 
 import path from 'path';
 import fs from 'fs';
-import http from 'http';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import {
@@ -37,7 +36,10 @@ import {
     writeDaemonOwnerLockSync
 } from '../shared/compiler/index.js';
 import { sanitizeLogText } from '../utils/logger.js';
-import { isPortAcceptingConnections } from '../shared/utils/port-probe.js';
+import {
+    detectHealthyDaemon,
+    waitForPortRelease
+} from './mcp-http-proxy-health.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -68,6 +70,7 @@ if (bugModeEnabled) {
 
 let worker = null;
 let restartScheduled = false;
+let restartInFlight = false;
 let restartCount = 0;
 let respawnTimer = null;
 let shutdownInProgress = false;
@@ -113,43 +116,6 @@ function scheduleRespawn(delayMs, extraArgs = []) {
     }, delayMs);
 }
 
-async function detectHealthyDaemon() {
-    return await new Promise((resolve) => {
-        try {
-            const req = http.get(`http://127.0.0.1:${port}/health`, { timeout: 1500 }, (res) => {
-                let body = '';
-                res.on('data', (chunk) => { body += chunk; });
-                res.on('end', () => {
-                    try {
-                        const json = JSON.parse(body);
-                        resolve(json?.status === 'healthy' && json?.service === 'omnysys-mcp-http');
-                    } catch {
-                        resolve(false);
-                    }
-                });
-            });
-
-            req.on('error', () => resolve(false));
-            req.on('timeout', () => {
-                req.destroy();
-                resolve(false);
-            });
-        } catch {
-            resolve(false);
-        }
-    });
-}
-
-async function waitForPortRelease(portToCheck, attempts = 10, delayMs = 750) {
-    for (let attempt = 0; attempt < attempts; attempt++) {
-        if (!(await isPortAcceptingConnections(portToCheck))) {
-            return true;
-        }
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-    return false;
-}
-
 // ── Spawn Worker ─────────────────────────────────────────────────────────────
 function spawnWorker(extraArgs = []) {
     clearRespawnTimer();
@@ -187,7 +153,8 @@ function spawnWorker(extraArgs = []) {
     // ── IPC: handle restart signal from restart_server tool ───────────────────
     worker.on('message', (msg) => {
         if (msg?.type === 'restart') {
-            if (restartScheduled) return;
+            if (restartScheduled || restartInFlight) return;
+            restartInFlight = true;
             restartScheduled = true;
             clearRespawnTimer();
 
@@ -248,6 +215,7 @@ function spawnWorker(extraArgs = []) {
             // Small delay to allow OS to release port 9999 (Windows needs ~2-3s sometimes)
             const delay = process.platform === 'win32' ? 3000 : 1000;
             scheduleRespawn(delay, nextArgs);
+            restartInFlight = false;
         } else if (code !== 0) {
             if (await detectHealthyDaemon()) {
                 log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
@@ -267,6 +235,7 @@ function spawnWorker(extraArgs = []) {
 
     worker.on('error', (err) => {
         log(`Worker error: ${err.message}`);
+        restartInFlight = false;
     });
 }
 

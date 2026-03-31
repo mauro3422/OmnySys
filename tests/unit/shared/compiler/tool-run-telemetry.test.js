@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   buildToolRunTelemetrySummary,
-  evaluateToolRunTelemetry
+  evaluateToolRunTelemetry,
+  persistToolRunTelemetry
 } from '../../../../src/shared/compiler/tool-run-telemetry.js';
 
 function createDbMock() {
@@ -17,8 +18,11 @@ function createDbMock() {
             thrashing_runs: 1,
             stable_runs: 2,
             comparable_runs: 6,
+            pressure_runs: 6,
+            observation_runs: 8,
             alert_clearance_runs: 4,
             error_clearance_runs: 3,
+            clearance_runs: 5,
             avg_duration_ms: 412.5,
             avg_repair_score: 9.75,
             last_run_at: '2026-03-30T10:00:00.000Z',
@@ -108,9 +112,78 @@ describe('tool-run-telemetry', () => {
 
     expect(summary.totalRuns).toBe(8);
     expect(summary.repairYield).toBe(0.63);
+    expect(summary.repairRateOnPressure).toBe(0.83);
+    expect(summary.observationRate).toBe(1);
     expect(summary.toolSuccessRate).toBe(0.88);
     expect(summary.alertClearanceRate).toBe(0.67);
     expect(summary.topTools).toHaveLength(2);
     expect(summary.topTools[0].toolName).toBe('mcp_omnysystem_get_metrics_snapshot');
+  });
+
+  it('persists telemetry with compact safe JSON payloads', () => {
+    let capturedParams = null;
+    const circularArgs = { action: 'debug' };
+    circularArgs.self = circularArgs;
+    const db = {
+      prepare: vi.fn(() => ({
+        run: vi.fn((params) => {
+          capturedParams = params;
+          return { changes: 1, lastInsertRowid: 1 };
+        })
+      }))
+    };
+
+    persistToolRunTelemetry(db, {
+      projectPath: 'C:/Dev/OmnySystem',
+      toolName: 'mcp_omnysystem_get_metrics_snapshot',
+      captureSource: 'mcp.tool',
+      startedAt: '2026-03-30T09:59:00.000Z',
+      endedAt: '2026-03-30T10:00:00.000Z',
+      durationMs: 60000,
+      success: true,
+      beforeSnapshot: {
+        current: {
+          globalHealthScore: 92,
+          watcherAlertCount: 5,
+          recentErrorCount: 2,
+          successScore: 61
+        },
+        trend: { status: 'watchful' }
+      },
+      afterSnapshot: {
+        current: {
+          globalHealthScore: 96,
+          watcherAlertCount: 1,
+          recentErrorCount: 0,
+          successScore: 88
+        },
+        trend: { status: 'improving' }
+      },
+      beforeNotifications: {
+        count: 3,
+        warnings: 1,
+        errors: 2,
+        watcherSummary: { totalAlerts: 5 }
+      },
+      afterNotifications: {
+        count: 1,
+        warnings: 1,
+        errors: 0,
+        watcherSummary: { totalAlerts: 1 }
+      },
+      deltas: {
+        alertClearance: 4,
+        bigintValue: BigInt(3)
+      },
+      args: circularArgs,
+      repairStatus: 'repaired',
+      repairScore: 14
+    });
+
+    expect(capturedParams).toBeTruthy();
+    expect(JSON.parse(capturedParams.before_snapshot_json).current.watcherAlertCount).toBe(5);
+    expect(JSON.parse(capturedParams.after_notifications_json).watcherSummary.totalAlerts).toBe(1);
+    expect(JSON.parse(capturedParams.delta_json).bigintValue).toBe(3);
+    expect(JSON.parse(capturedParams.args_json).self).toBe('[Circular]');
   });
 });

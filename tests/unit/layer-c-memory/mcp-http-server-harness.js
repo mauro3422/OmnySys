@@ -17,8 +17,8 @@ export const h = {
   },
   refreshToolRegistry: vi.fn(async () => undefined),
   getLiveDefinitions: vi.fn(async () => ([
-    { name: 'get_server_status', description: 'Status' },
-    { name: 'restart_server', description: 'Restart' }
+    { name: 'get_server_status', description: 'Status', inputSchema: { type: 'object', properties: {} } },
+    { name: 'restart_server', description: 'Restart', inputSchema: { type: 'object', properties: {} } }
   ])),
   getLiveHandlers: vi.fn(() => ({
     get_server_status: vi.fn()

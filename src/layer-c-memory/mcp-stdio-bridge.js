@@ -167,6 +167,12 @@ async function handleBridgeStdioMessage(state, message) {
         }
 
         if (shouldTriggerRecovery(err)) {
+            state.lastSessionId = null;
+            const currentTransport = state.httpTransport;
+            state.httpTransport = null;
+            if (currentTransport) {
+                currentTransport.close().catch(() => {});
+            }
             void scheduleBridgeRecovery(
                 state,
                 'server rejected request after daemon restart',

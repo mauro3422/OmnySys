@@ -1,4 +1,4 @@
-import { normalizePath } from '#shared/utils/path-utils.js';
+import { normalizePath } from '../../../../shared/utils/path-utils.js';
 import { buildAtomInsertSql } from './helpers/atom-schema.js';
 import { persistSystemMapToDb, retrieveSystemMapFromDb } from './helpers/system-map.js';
 

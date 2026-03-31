@@ -169,6 +169,46 @@ describe('handleMcpRequest', () => {
     }));
   });
 
+  it('re-initializes when initialize arrives with a stale session id', async () => {
+    const logger = createLogger();
+    const sessions = new Map();
+    const sessionManager = createSessionManager({
+      getSession: vi.fn(() => null),
+      saveSession: vi.fn(() => 'fresh-session')
+    });
+    const buildSessionServer = createBuildSessionServer();
+    const req = {
+      headers: { 'mcp-session-id': 'stale-session' },
+      method: 'POST',
+      body: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Claude'
+          }
+        },
+        id: 13
+      }
+    };
+    const res = createResponse();
+
+    mocks.isInitializeRequest.mockReturnValueOnce(true);
+
+    await handleMcpRequest(req, res, {
+      logger,
+      sessions,
+      buildSessionServer,
+      getSessionManager: vi.fn(async () => sessionManager)
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(buildSessionServer).toHaveBeenCalledTimes(1);
+    expect(sessionManager.saveSession).toHaveBeenCalled();
+    expect(sessions.size).toBe(1);
+    expect([...sessions.keys()]).toContain('fresh-session');
+  });
+
   it('waits briefly for a persisted session before declaring expiration', async () => {
     const logger = createLogger();
     const sessions = new Map();

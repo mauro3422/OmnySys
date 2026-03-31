@@ -39,88 +39,77 @@ export class SyntaxValidator {
     try {
       const { spawnSync } = await import('child_process');
       const tmpFile = path.join(this.projectPath, '.tmp-validation.js');
+      const normalizedContent = this._prepareContent(content);
 
-      // PASO 1: Normalizar contenido para soporte Unicode completo
-      // Agregar BOM UTF-8 para forzar codificación correcta en Windows
-      const BOM = '\uFEFF';
-      const normalizedContent = BOM + this._normalizeUnicode(content);
-
-      // PASO 2: Write to temporary file with explicit UTF-8 encoding
       await fs.writeFile(tmpFile, normalizedContent, { encoding: 'utf8' });
 
       try {
-        // PASO 3: Validate with node --check
-        // Use spawnSync with direct node path (NO shell string) so Windows
-        // does NOT open a cmd.exe intermediary window in VSCode terminal.
-        const result = spawnSync(process.execPath, ['--check', tmpFile], {
-          encoding: 'utf-8',
-          timeout: 5000,
-          windowsHide: true,   // hide the Node.js console window
-          env: { ...process.env, CHCP: '65001' }  // UTF-8 without chcp cmd
-        });
-
-        // Clean up temp file
+        const result = this._runNodeCheck(tmpFile);
         await fs.unlink(tmpFile).catch(() => { });
-
-        if (result.status !== 0) {
-          const stderr = result.stderr || result.error?.message || '';
-          const errorMatch = stderr.match(/(\d+):(\d+)\s*-\s*(.+)/);
-          return {
-            valid: false,
-            error: stderr.split('\n')[0] || 'Syntax error',
-            line: errorMatch ? parseInt(errorMatch[1]) : null,
-            column: errorMatch ? parseInt(errorMatch[2]) : null,
-            details: stderr
-          };
-        }
-
-        return { valid: true };
-
+        return this._parseValidationResult(result);
       } catch (error) {
-        // Clean up temp file
         await fs.unlink(tmpFile).catch(() => { });
-
-        return {
-          valid: false,
-          error: `Validation error: ${error.message}`
-        };
+        return { valid: false, error: `Validation error: ${error.message}` };
       }
-
     } catch (error) {
-      return {
-        valid: false,
-        error: `Validation system error: ${error.message}`
-      };
+      return { valid: false, error: `Validation system error: ${error.message}` };
     }
   }
 
   /**
-   * Normaliza caracteres Unicode problemáticos
-   * Reemplaza emojis y caracteres especiales que pueden causar problemas en Windows
+   * Prepares content with BOM and normalized Unicode
+   */
+  _prepareContent(content) {
+    const BOM = '\uFEFF';
+    const normalizedLineEndings = content.replace(/\r\n/g, '\n');
+    return BOM + this._normalizeUnicode(normalizedLineEndings);
+  }
+
+  /**
+   * Runs node --check via spawnSync
+   */
+  _runNodeCheck(tmpFile) {
+    const { spawnSync } = require('child_process');
+    return spawnSync(process.execPath, ['--check', tmpFile], {
+      encoding: 'utf-8',
+      timeout: 5000,
+      windowsHide: true,
+      env: { ...process.env, CHCP: '65001' }
+    });
+  }
+
+  /**
+   * Parses spawnSync result into ValidationResult
+   */
+  _parseValidationResult(result) {
+    if (result.status !== 0) {
+      const stderr = result.stderr || result.error?.message || '';
+      const errorMatch = stderr.match(/(\d+):(\d+)\s*-\s*(.+)/);
+      return {
+        valid: false,
+        error: stderr.split('\n')[0] || 'Syntax error',
+        line: errorMatch ? parseInt(errorMatch[1]) : null,
+        column: errorMatch ? parseInt(errorMatch[2]) : null,
+        details: stderr
+      };
+    }
+    return { valid: true };
+  }
+
+  /**
+   * Normalizes Unicode for Windows compatibility
    */
   _normalizeUnicode(content) {
-    // En Windows, algunos emojis pueden causar problemas con node --check
-    // Esta función preserva el contenido pero asegura codificación correcta
-    if (process.platform !== 'win32') {
-      return content; // En Unix/Mac no hay problema
-    }
-
-    // Para Windows, aseguramos que el contenido sea string válido UTF-16
-    // que se convertirá correctamente a UTF-8
+    if (process.platform !== 'win32') return content;
     try {
-      // Verificar que podemos codificar/decodificar sin pérdida
-      const buffer = Buffer.from(content, 'utf8');
-      const decoded = buffer.toString('utf8');
-      return decoded;
+      return Buffer.from(content, 'utf8').toString('utf8');
     } catch (e) {
-      // Si hay error, retornar contenido original (el BOM ayudará)
       return content;
     }
   }
 
   /**
    * Quick check if validation can be performed
-   * @returns {boolean}
    */
   isAvailable() {
     return true;

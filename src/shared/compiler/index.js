@@ -415,6 +415,19 @@ export {
 } from './path-normalization.js';
 
 export {
+  groupAtomsByResponsibility,
+  groupByClass,
+  groupByExports,
+  groupByDNA,
+  groupByImports,
+  buildGroupsFromArray,
+  extractImports,
+  buildSplitPlan,
+  buildFileContent,
+  buildBarrelContent
+} from './split-large-file-helpers.js';
+
+export {
   generateAlternativeNames,
   isCanonicalDuplicateSignalPolicyFile,
   isLowSignalGeneratedAtom,
@@ -489,6 +502,10 @@ export {
   getMcpSessionSummary,
   summarizeWatcherNoise
 } from './compiler-runtime-metrics/index.js';
+
+export {
+  performAction
+} from './actions/ActionEngine.js';
 
 export {
   PIPELINE_ORPHAN_NAME_PATTERNS,

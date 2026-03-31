@@ -13,7 +13,7 @@ import {
   isInitializeRequest
 } from '@modelcontextprotocol/sdk/types.js';
 import { applyPagination } from './mcp/core/pagination.js';
-import { compactRecentNotifications } from './mcp/core/recent-notifications.js';
+import { executeToolCall } from './mcp/core/initialization/steps/mcp-tool-call-helpers.js';
 import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl } from './mcp/http-session-routing-helpers.js';
 
 const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
@@ -21,6 +21,7 @@ const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DE
 const MCP_POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'];
 const MCP_GET_ACCEPT_TYPES = ['text/event-stream'];
 const sharedEventStore = new InMemoryEventStore();
+const staleInitRecoveryInFlight = new Set();
 
 const RESOURCE_URIS = {
   status: 'omnysys://status',
@@ -104,6 +105,20 @@ function applyNodeHeaderOverride(req, headerName, headerValue) {
   if (!replaced) {
     req.rawHeaders.push(headerName, headerValue);
   }
+}
+
+function shouldSkipStaleInitRecovery(sessionId) {
+  const key = String(sessionId || 'unknown');
+  if (staleInitRecoveryInFlight.has(key)) {
+    return true;
+  }
+
+  staleInitRecoveryInFlight.add(key);
+  queueMicrotask(() => {
+    staleInitRecoveryInFlight.delete(key);
+  });
+
+  return false;
 }
 
 export function normalizeMcpRequestHeaders(req, logger) {
@@ -287,7 +302,6 @@ export async function executeMcpToolCall(request, dependencies) {
   const {
     initError,
     core,
-    projectPath,
     getLiveToolHandler,
     refreshToolRegistry
   } = dependencies;
@@ -312,37 +326,9 @@ export async function executeMcpToolCall(request, dependencies) {
     throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
   }
 
-  const context = {
-    orchestrator: core.orchestrator,
-    cache: core.cache,
-    projectPath: core.projectPath,
-    server: core,
-    refreshToolRegistry
-  };
-
-  const rawResult = await handler(args, context);
-
-  let recentErrors = { count: 0, warnings: 0, errors: 0, logs: [], watcherAlerts: [] };
-  try {
-    const { collectRecentNotifications, normalizeRecentNotifications } = await import('./mcp/core/recent-notifications.js');
-    const collectedRecentErrors = normalizeRecentNotifications(await collectRecentNotifications(projectPath, {
-      clearLoggerBuffer: true,
-      watcherLimit: 10,
-      server: core
-    }));
-    recentErrors = compactRecentNotifications(collectedRecentErrors, {
-      maxLogs: 3,
-      maxWatcherAlerts: 3
-    });
-  } catch {
-    // Optional logger extensions not available in all environments.
-  }
-
-  const resultWithErrors = recentErrors.count > 0
-    ? { _recentErrors: recentErrors, ...rawResult }
-    : rawResult;
-
-  const paginatedResult = applyPagination(resultWithErrors, args || {});
+  core.refreshToolRegistry = refreshToolRegistry;
+  const resultWithTelemetry = await executeToolCall(handler, name, core, args || {});
+  const paginatedResult = applyPagination(resultWithTelemetry, args || {});
 
   return {
     content: [{ type: 'text', text: JSON.stringify(paginatedResult, null, 2) }]
@@ -380,6 +366,7 @@ export async function handleMcpRequest(req, res, dependencies) {
     if (sessionId && sessions.has(sessionId)) {
       transport = sessions.get(sessionId).transport;
     } else if (sessionId && !sessions.has(sessionId)) {
+      const isInitRequest = req.method === 'POST' && isInitializeRequest(req.body);
       const sessionManager = await getSessionManager();
       const persistedSession = await waitForPersistedSession(sessionManager, sessionId);
 
@@ -408,6 +395,48 @@ export async function handleMcpRequest(req, res, dependencies) {
 
         sessionServer = buildSessionServer();
         await sessionServer.connect(transport);
+      } else if (isInitRequest) {
+        if (shouldSkipStaleInitRecovery(sessionId)) {
+          logger.debug(`[SESSION_RECOVERY] Skipping duplicate stale initialize recovery for sessionId "${sessionId}".`);
+          res.status(404)
+            .set('Mcp-Session-Expired', 'true')
+            .json(buildJsonRpcErrorResponse({
+              code: -32001,
+              message: 'SESSION_EXPIRED: Re-initialize by sending a new POST /mcp without mcp-session-id.',
+              id: req.body?.id ?? null,
+              data: { reason: 'duplicate_stale_initialize' }
+            }));
+          return;
+        }
+
+        logger.debug(`[SESSION_RECOVERY] Re-initializing from stale sessionId "${sessionId}" via initialize request.`);
+
+        let sessionServer = null;
+        let resolvedSessionId = null;
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => sessionId,
+          enableJsonResponse: true,
+          eventStore: sharedEventStore,
+          onsessioninitialized: (newSessionId) => {
+            resolvedSessionId = sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {});
+            sessions.set(resolvedSessionId, { transport, server: sessionServer });
+          }
+        });
+
+        transport.onclose = async () => {
+          const sid = resolvedSessionId || transport.sessionId;
+          if (!sid) return;
+          sessions.delete(sid);
+          sessionManager.deleteSession(sid);
+        };
+
+        sessionServer = buildSessionServer();
+        try {
+          await sessionServer.connect(transport);
+        } catch (error) {
+          sessionManager.releasePendingSession(sessionId, req.body.params?.clientInfo);
+          throw error;
+        }
       } else {
         logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found. Client must re-initialize.`);
         res.status(404)

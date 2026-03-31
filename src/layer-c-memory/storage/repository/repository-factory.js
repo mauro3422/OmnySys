@@ -6,7 +6,7 @@
  * @module storage/repository/repository-factory
  */
 
-import { SQLiteAdapter } from './adapters/sqlite-adapter.js';
+import { SQLiteAdapter } from './adapters/adapter.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:Storage:RepositoryFactory');

@@ -9,6 +9,38 @@ export function collectCandidateDnas(localAtoms, normalizedFilePath, isLowSignal
         .filter(Boolean);
 }
 
+/**
+ * Verifica si dos átomos son realmente duplicados comparando metadatos adicionales.
+ * Extensible: agregar más verificaciones aquí cuando tengamos más datos.
+ */
+function areAtomsReallyDuplicate(localAtom, remoteAtom) {
+    const checks = [
+        { field: 'inputCount', threshold: null },
+        { field: 'hasReturnValue', threshold: null },
+        { field: 'isPure', threshold: null },
+        { field: 'complexityScore', threshold: 0.5, mode: 'ratio' },
+        { field: 'lines_of_code', threshold: 3, mode: 'ratio' }
+    ];
+
+    for (const { field, threshold, mode } of checks) {
+        const local = localAtom[field];
+        const remote = remoteAtom[field];
+        
+        if (local === undefined || remote === undefined) continue;
+        
+        if (mode === 'ratio') {
+            const max = Math.max(local, remote);
+            const min = Math.min(local, remote);
+            if (min > 0 && max / min > threshold) return false;
+        } else if (local !== remote) {
+            return false;
+        }
+    }
+
+    // TODO: Agregar más verificaciones aquí cuando tengamos más metadatos
+    return true;
+}
+
 export function buildStructuralFindings(localAtoms, duplicateRows, normalizedFilePath, maxFindings) {
     const byDna = new Map();
     for (const row of duplicateRows) {
@@ -18,22 +50,32 @@ export function buildStructuralFindings(localAtoms, duplicateRows, normalizedFil
         byDna.get(row.duplicate_key).push(row);
     }
 
-    const localDnaToName = new Map(localAtoms.map((atom) => [atom.duplicate_key, atom.name]));
-    const localDnaToId = new Map(localAtoms.map((atom) => [atom.duplicate_key, atom.id]));
+    const localDnaToAtom = new Map(localAtoms.map((atom) => [atom.duplicate_key, atom]));
     const findings = [];
 
     for (const [dna, remoteAtoms] of byDna) {
-        const symbolName = localDnaToName.get(dna) || remoteAtoms[0]?.name || '?';
+        const localAtom = localDnaToAtom.get(dna);
+        const symbolName = localAtom?.name || remoteAtoms[0]?.name || '?';
+        
         if (shouldIgnoreStructuralDuplicateFinding(normalizedFilePath, symbolName)) {
             continue;
         }
 
-        const uniqueFiles = [...new Set(remoteAtoms.map((atom) => atom.file_path))];
+        // Filtrar remote atoms que no son realmente duplicados
+        const trulyDuplicateAtoms = remoteAtoms.filter((remoteAtom) => 
+            areAtomsReallyDuplicate(localAtom || {}, remoteAtom)
+        );
+
+        if (trulyDuplicateAtoms.length === 0) {
+            continue;
+        }
+
+        const uniqueFiles = [...new Set(trulyDuplicateAtoms.map((atom) => atom.file_path))];
         findings.push({
             symbol: symbolName,
-            atomId: localDnaToId.get(dna),
+            atomId: localAtom?.id,
             duplicateType: 'LOGIC_DUPLICATE',
-            totalInstances: remoteAtoms.length + 1,
+            totalInstances: trulyDuplicateAtoms.length + 1,
             duplicateFiles: uniqueFiles,
             sample: uniqueFiles.slice(0, 3),
             dnaSimilarity: 'structural',

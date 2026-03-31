@@ -388,6 +388,30 @@ export function buildCompilerMetricDictionary({ current = {}, compilerExplainabi
         sourceTables: ['atoms', 'files', 'system_files'],
         summary: 'Coverage percentage across metadata fields.'
       }),
+      toolRuns: buildMetricEntry('toolRuns', asNumber(current.toolTelemetry?.totalRuns, 0), {
+        layer: 'runtime',
+        kind: 'tool telemetry',
+        sourceOfTruth: ['mcp tool run telemetry', 'get_metrics_snapshot'],
+        sourceTables: ['mcp_tool_runs'],
+        summary: 'Total MCP tool executions captured in the current telemetry window.',
+        caveat: 'A zero here means the capture path is empty, not necessarily that no human used tools.'
+      }),
+      toolObservationRate: buildMetricEntry('toolObservationRate', asNumber(current.toolTelemetry?.observationRate, 0), {
+        layer: 'runtime',
+        kind: 'tool telemetry',
+        sourceOfTruth: ['mcp tool run telemetry'],
+        sourceTables: ['mcp_tool_runs'],
+        summary: 'Share of tool runs that captured before/after observation state.',
+        caveat: 'This measures observability coverage, not repair effectiveness.'
+      }),
+      toolRepairRateOnPressure: buildMetricEntry('toolRepairRateOnPressure', asNumber(current.toolTelemetry?.repairRateOnPressure, 0), {
+        layer: 'runtime',
+        kind: 'tool telemetry',
+        sourceOfTruth: ['mcp tool run telemetry'],
+        sourceTables: ['mcp_tool_runs'],
+        summary: 'Share of pressured runs that ended in a real repair outcome.',
+        caveat: 'This is stricter than repairYield because it only scores runs that started with active pressure.'
+      }),
       dataGatewayTrustworthy: buildMetricEntry('dataGatewayTrustworthy', dataGatewaySummary.trustworthy === true, {
         layer: 'governance',
         kind: 'contract state',

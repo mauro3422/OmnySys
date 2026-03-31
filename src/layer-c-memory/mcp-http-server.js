@@ -277,10 +277,15 @@ app.get('/health', async (req, res) => {
 
 app.get('/tools', async (req, res) => {
   try {
+    const includeSchemas = String(req.query?.includeSchemas ?? 'true').toLowerCase() !== 'false';
     const definitions = await getLiveToolDefinitions();
+    const tools = definitions.map((tool) => includeSchemas
+      ? tool
+      : { name: tool.name, description: tool.description });
     res.json({
-      count: definitions.length,
-      tools: definitions.map((tool) => ({ name: tool.name, description: tool.description }))
+      count: tools.length,
+      includeSchemas,
+      tools
     });
   } catch (error) {
     logger.error(`Error loading tool definitions: ${error.message}`);

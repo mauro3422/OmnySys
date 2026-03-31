@@ -279,12 +279,17 @@ export function findBestFolderizedFamilyForPaths(rows = [], filePaths = [], opti
   }
 
   const candidateDirectories = Array.from(new Set(normalizedPaths.map(getFilePathDirectory).filter(Boolean)));
+  // FIX: when candidatePath is a directory (no .js extension), also include it as a candidate directory
+  const directoryCandidates = normalizedPaths
+    .filter((p) => !p.endsWith('.js'))
+    .map((p) => normalizeFolderizationPath(p));
+  const allCandidateDirectories = Array.from(new Set([...candidateDirectories, ...directoryCandidates]));
   const normalizedPathSet = new Set(normalizedPaths);
   const hasBarrelCandidate = normalizedPaths.some((filePath) => normalizeStem(filePath) === 'index');
 
   if (hasBarrelCandidate) {
     const families = buildFolderizedFamilyGroups(rows)
-      .filter((group) => candidateDirectories.includes(group.directory))
+      .filter((group) => allCandidateDirectories.includes(group.directory))
       .map((group) => {
         const suggestion = buildFolderizedFamilySuggestion(group);
         const score = (
@@ -305,7 +310,7 @@ export function findBestFolderizedFamilyForPaths(rows = [], filePaths = [], opti
   }
 
   const fallbackFamily = buildFolderizedFamilyGroups(rows)
-    .filter((group) => candidateDirectories.includes(group.directory))
+    .filter((group) => allCandidateDirectories.includes(group.directory))
     .map((group) => {
       const barrelMatchesCandidate = Boolean(group.barrelRow?.path) && normalizedPathSet.has(group.barrelRow.path);
       const memberMatchesCandidate = group.rows.some((member) => normalizedPathSet.has(member.path));

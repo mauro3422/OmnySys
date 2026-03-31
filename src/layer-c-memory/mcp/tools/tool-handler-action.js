@@ -9,7 +9,9 @@ import { suggest_architecture } from './suggest-architecture.js';
 import { consolidate_conceptual_cluster } from './consolidate-conceptual-cluster.js';
 import { suggest_canonical_api } from './suggest-canonical-api.js';
 import { validate_exports } from './validate-exports-tool.js';
-import { performAction } from '../../../shared/compiler/actions/ActionEngine.js';
+import { split_large_file } from './split-large-file.js';
+import { detect_folderization_opportunities } from './detect-folderization-opportunities.js';
+import { performAction } from '../../../shared/compiler/index.js';
 
 export const actionToolHandlers = {
   mcp_omnysystem_atomic_edit: (args, ctx) => performAction('atomic_edit', args, ctx),
@@ -29,5 +31,7 @@ export const actionToolHandlers = {
   mcp_omnysystem_safe_edit: (args, ctx) => performAction('safe_edit', args, ctx),
   mcp_omnysystem_get_edit_context: (args, ctx) => performAction('get_edit_context', args, ctx),
   mcp_omnysystem_suggest_canonical_api: suggest_canonical_api,
-  mcp_omnysystem_validate_exports: validate_exports
+  mcp_omnysystem_validate_exports: validate_exports,
+  mcp_omnysystem_split_large_file: (args, ctx) => performAction('split_large_file', args, ctx),
+  mcp_omnysystem_detect_folderization_opportunities: (args, ctx) => performAction('detect_folderization_opportunities', args, ctx)
 };

@@ -7,7 +7,7 @@
  * @module storage/repository/adapters/sqlite-crud-operations
  */
 
-import { SQLiteAdapterCore } from './sqlite-adapter-core.js';
+import { SQLiteAdapterCore } from './core.js';
 import { getAllFileHashes } from './helpers/file-hash-lookup.js';
 import { deleteAtomRecord, saveAtomRecord, softDeleteRelatedCallRelations } from './helpers/sqlite-crud-persistence.js';
 import { rowToAtom } from './helpers/converters.js';

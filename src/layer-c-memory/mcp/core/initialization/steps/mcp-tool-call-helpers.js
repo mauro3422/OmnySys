@@ -10,11 +10,14 @@ import {
   isToolTraceEnabled
 } from '../../../../../shared/runtime-debug-flags.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { createLogger } from '../../../../../utils/logger.js';
 import { compactRecentNotifications, collectRecentNotifications, normalizeRecentNotifications } from '../../recent-notifications.js';
 import { buildRecentErrorsResponse } from '../../../tools/status-notifications.js';
 import { loadCompilerExplainability } from '../../../tools/status-compiler-explainability.js';
 import { buildCompilerMetricsSnapshot, summarizeCompilerMetricsSnapshot } from '../../../../../shared/compiler/index.js';
 import { evaluateToolRunTelemetry, persistToolRunTelemetry } from '../../../../../shared/compiler/tool-run-telemetry.js';
+
+const logger = createLogger('OmnySys:mcp:tool-telemetry');
 
 export function buildToolExecutionContext(server) {
   return {
@@ -177,14 +180,20 @@ export async function executeToolCall(handler, name, server, args = {}) {
     beforeNotifications,
     afterNotifications
   });
+  let telemetryPersistence = {
+    persisted: false,
+    error: null
+  };
 
   try {
     const repo = getRepository(server.projectPath);
     if (repo?.db) {
       persistToolRunTelemetry(repo.db, telemetry);
+      telemetryPersistence.persisted = true;
     }
-  } catch {
-    // Telemetry persistence is advisory.
+  } catch (error) {
+    telemetryPersistence.error = error.message;
+    logger.warn(`[tool-telemetry] Failed to persist run for ${name}: ${error.message}`);
   }
 
   if (toolError) {
@@ -197,6 +206,8 @@ export async function executeToolCall(handler, name, server, args = {}) {
   return {
     ...resultWithTelemetry,
     _toolTelemetry: {
+      persisted: telemetryPersistence.persisted,
+      persistenceError: telemetryPersistence.error,
       repairStatus: telemetry.repairStatus,
       repairScore: telemetry.repairScore,
       successThresholdMet: telemetry.successThresholdMet,

@@ -133,6 +133,155 @@ function createRepo() {
           };
         }
 
+        if (sql.includes('COUNT(*) as total_runs') && sql.includes('FROM mcp_tool_runs')) {
+          return {
+            get: vi.fn(() => ({
+              total_runs: 6,
+              successful_runs: 5,
+              failed_runs: 1,
+              repaired_runs: 2,
+              thrashing_runs: 1,
+              stable_runs: 3,
+              comparable_runs: 6,
+              pressure_runs: 3,
+              observation_runs: 6,
+              alert_clearance_runs: 2,
+              error_clearance_runs: 1,
+              clearance_runs: 2,
+              avg_duration_ms: 250,
+              avg_repair_score: 4.5,
+              last_run_at: '2026-03-30T00:01:00.000Z',
+              last_successful_run_at: '2026-03-30T00:01:00.000Z'
+            }))
+          };
+        }
+
+        if (sql.includes('FROM mcp_tool_runs') && sql.includes('GROUP BY tool_name')) {
+          return {
+            all: vi.fn(() => ([
+              {
+                tool_name: 'mcp_omnysystem_get_metrics_snapshot',
+                run_count: 4,
+                success_count: 4,
+                avg_repair_score: 6.5,
+                last_run_at: '2026-03-30T00:01:00.000Z'
+              }
+            ]))
+          };
+        }
+
+        return {
+          get: vi.fn(() => ({ n: 0 })),
+          all: vi.fn(() => []),
+          run: vi.fn(() => ({ changes: 0 }))
+        };
+      })
+    }
+  };
+}
+
+function createBootstrapRepo() {
+  return {
+    db: {
+      prepare: vi.fn((sql) => {
+        if (sql.includes('GROUP BY dna_json') && sql.includes('HAVING COUNT(*) > 1')) {
+          return {
+            get: vi.fn(() => ({ n: 0 }))
+          };
+        }
+
+        if (sql.includes('FROM compiler_metrics_snapshots') && sql.includes('LIMIT ?') && sql.includes('ORDER BY captured_at DESC')) {
+          return {
+            all: vi.fn(() => ([
+              {
+                captured_at: '2026-03-30T09:24:41.268Z',
+                health_score: 100,
+                issue_count: 7,
+                structural_groups: 0,
+                conceptual_groups: 0,
+                conceptual_raw_groups: 0,
+                pipeline_orphans: 0,
+                folderization_candidate_count: 0,
+                flat_families: 1386,
+                mixed_families: 0,
+                already_folderized_families: 0,
+                naming_families: 1462,
+                naming_targets: 1501,
+                naming_debt: 1501,
+                live_coverage_ratio: 1,
+                zero_atom_file_count: 0,
+                call_links: 32731,
+                semantic_links: 39,
+                watcher_alert_count: 7,
+                recent_warning_count: 4,
+                recent_error_count: 1,
+                phase2_pending_files: 0,
+                summary_text: 'latest previous'
+              },
+              {
+                captured_at: '2026-03-30T09:23:33.740Z',
+                health_score: 100,
+                issue_count: 7,
+                structural_groups: 0,
+                conceptual_groups: 2,
+                conceptual_raw_groups: 2,
+                pipeline_orphans: 0,
+                folderization_candidate_count: 0,
+                flat_families: 1385,
+                mixed_families: 0,
+                already_folderized_families: 0,
+                naming_families: 1462,
+                naming_targets: 1500,
+                naming_debt: 1500,
+                live_coverage_ratio: 1,
+                zero_atom_file_count: 0,
+                call_links: 32725,
+                semantic_links: 39,
+                watcher_alert_count: 7,
+                recent_warning_count: 4,
+                recent_error_count: 1,
+                phase2_pending_files: 0,
+                summary_text: 'previous'
+              }
+            ]))
+          };
+        }
+
+        if (sql.includes('captured_at <= ?') && sql.includes('FROM compiler_metrics_snapshots')) {
+          return {
+            get: vi.fn(() => null)
+          };
+        }
+
+        if (sql.includes('COUNT(*) as total_runs') && sql.includes('FROM mcp_tool_runs')) {
+          return {
+            get: vi.fn(() => ({
+              total_runs: 1,
+              successful_runs: 1,
+              failed_runs: 0,
+              repaired_runs: 0,
+              thrashing_runs: 1,
+              stable_runs: 0,
+              comparable_runs: 1,
+              pressure_runs: 1,
+              observation_runs: 1,
+              alert_clearance_runs: 0,
+              error_clearance_runs: 0,
+              clearance_runs: 0,
+              avg_duration_ms: 100,
+              avg_repair_score: 0,
+              last_run_at: '2026-03-30T09:30:00.000Z',
+              last_successful_run_at: '2026-03-30T09:30:00.000Z'
+            }))
+          };
+        }
+
+        if (sql.includes('FROM mcp_tool_runs') && sql.includes('GROUP BY tool_name')) {
+          return {
+            all: vi.fn(() => [])
+          };
+        }
+
         return {
           get: vi.fn(() => ({ n: 0 })),
           all: vi.fn(() => []),
@@ -289,6 +438,8 @@ describe('compiler-metrics-snapshot', () => {
     expect(snapshot.summary).toContain('trust=');
     expect(snapshot.summary).toContain('dbsync=fresh');
     expect(snapshot.summary).toContain('clientsync=blocked');
+    expect(snapshot.summary).toContain('tools=5/6 ok');
+    expect(snapshot.summary).toContain('repair=2/3');
     expect(snapshot.summary).toContain('progress=');
     expect(snapshot.metricDictionary.global.score).toBe(snapshot.current.reliabilityScore);
     expect(snapshot.metricDictionary.metrics.activeAtoms.sourceTables).toContain('atoms');
@@ -303,8 +454,141 @@ describe('compiler-metrics-snapshot', () => {
     expect(compact.current.reliabilityScore).toBe(snapshot.current.reliabilityScore);
     expect(compact.current.healthGrade).toBe('A+');
     expect(compact.current.clientSyncState).toBe('blocked');
+    expect(compact.current.toolTelemetry.totalRuns).toBe(6);
+    expect(compact.current.toolTelemetry.repairRateOnPressure).toBeCloseTo(0.67, 2);
     expect(compact.metricDictionary.metrics.metadataCoveragePct.value).toBe(79);
+    expect(compact.metricDictionary.metrics.toolRuns.value).toBe(6);
     expect(compact.trend.status).toBe('improving');
     expect(compact.history.total).toBeGreaterThanOrEqual(3);
+  });
+
+  it('mutes trend velocity while bootstrap history is still settling', () => {
+    const snapshot = buildCompilerMetricsSnapshot({
+      projectPath: 'C:/Dev/OmnySystem',
+      captureSource: 'test',
+      snapshotKind: 'manual',
+      repo: createBootstrapRepo(),
+      compilerExplainability: {
+        databaseHealth: {
+          healthScore: 100,
+          grade: 'A+',
+          healthy: true
+        },
+        fileUniverseGranularity: {
+          liveCoverageRatio: 1,
+          zeroAtomFileCount: 0
+        },
+        metadataExtractionCoverage: {
+          healthy: true,
+          trustworthy: true,
+          summary: {
+            coveragePct: 79,
+            fieldCoveragePct: 94
+          }
+        },
+        dataGatewayContract: {
+          summary: {
+            trustworthy: true
+          }
+        },
+        compilerContractLayer: {
+          summary: {
+            healthy: true
+          }
+        },
+        surfaceAudit: {
+          summary: {
+            trustworthy: true
+          }
+        },
+        folderization: {
+          candidateReport: { candidateCount: 0 },
+          familyState: { stateCounts: { flat: 1387, mixed: 0, already_folderized: 0 } },
+          naming: { familyCount: 1463, renameTargetCount: 1502 },
+          namingDebt: { renameTargetCount: 1502 },
+          decision: 'reject'
+        }
+      },
+      watcherAlerts: [],
+      recentErrors: {
+        summary: {
+          total: 0,
+          warnings: 0,
+          errors: 0
+        }
+      },
+      historyLimit: 3
+    });
+
+    expect(snapshot.trend.status).toBe('settling');
+    expect(snapshot.trend.progressScore).toBe(0);
+    expect(snapshot.trend.velocityPerDay).toBe(0);
+    expect(snapshot.summary).toContain('tools=1/1 ok');
+  });
+
+  it('keeps manual same-day history in settling mode without synthetic velocity', () => {
+    const snapshot = buildCompilerMetricsSnapshot({
+      projectPath: 'C:/Dev/OmnySystem',
+      captureSource: 'test',
+      snapshotKind: 'manual',
+      repo: createBootstrapRepo(),
+      compilerExplainability: {
+        databaseHealth: {
+          healthScore: 100,
+          grade: 'A+',
+          healthy: true
+        },
+        fileUniverseGranularity: {
+          liveCoverageRatio: 1,
+          zeroAtomFileCount: 0
+        },
+        metadataExtractionCoverage: {
+          healthy: true,
+          trustworthy: true,
+          summary: {
+            coveragePct: 79,
+            fieldCoveragePct: 94
+          }
+        },
+        dataGatewayContract: {
+          summary: {
+            trustworthy: true
+          }
+        },
+        compilerContractLayer: {
+          summary: {
+            healthy: true
+          }
+        },
+        surfaceAudit: {
+          summary: {
+            trustworthy: true
+          }
+        },
+        folderization: {
+          candidateReport: { candidateCount: 0 },
+          familyState: { stateCounts: { flat: 1387, mixed: 0, already_folderized: 0 } },
+          naming: { familyCount: 1463, renameTargetCount: 1502 },
+          namingDebt: { renameTargetCount: 1502 },
+          decision: 'reject'
+        }
+      },
+      watcherAlerts: [
+        { severity: 'high' }
+      ],
+      recentErrors: {
+        summary: {
+          total: 4,
+          warnings: 3,
+          errors: 1
+        }
+      },
+      historyLimit: 6
+    });
+
+    expect(snapshot.trend.status).toBe('settling');
+    expect(snapshot.trend.progressScore).toBe(0);
+    expect(snapshot.trend.velocityPerDay).toBe(0);
+    expect(snapshot.summary).toContain('Bootstrap trend settling');
   });
 });

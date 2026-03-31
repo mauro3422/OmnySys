@@ -4,6 +4,17 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added `mcp_omnysystem_detect_folderization_opportunities` pipeline: DETECTION-ONLY tool that scans for monoliths (>300L), semantic-dna duplication, folderization candidates, and naming debt without making changes.
+- Extracted `split-large-file-helpers.js` into `shared/compiler/` so the split-large-file barrel stays under 200 lines and the grouping strategies are reusable from the compiler surface.
+- Exported split grouping helpers (`groupAtomsByResponsibility`, `buildSplitPlan`, `buildBarrelContent`, etc.) through the compiler barrel.
+- Extracted `schema-registry-definitions.js` (TABLE_DEFINITIONS) and `schema-registry-helpers.js` (getColumnDefinitionSQL) so the schema registry barrel drops from 766 to ~170 lines.
+- Consolidated repository adapters into a barrel (`adapters/adapter.js`) re-exporting SQLiteAdapter from consolidated modules.
+- Fixed `directory-structure-folderization-naming-helpers.js` path resolution for directory candidates without .js extension.
+- Fixed broken imports in `repository/index.js` and `adapters/adapter.js` after adapter consolidation.
+- Fixed `repository/index.js` corruption (`self/**` prefix removal).
+- Registered `split_large_file` in ActionEngine and tool-handler-action.
+- Refactored `SyntaxValidator` class to extract helpers (`_prepareContent`, `_runNodeCheck`, `_parseValidationResult`), reducing from 108 to <100 lines.
+- Fixed arch_policy_drift in `tool-handler-action.js` by routing through canonical `performAction` from `shared/compiler/index.js`.
 - Added a canonical metric dictionary so health and status surfaces can explain
   visible metrics in terms of source-of-truth surfaces, SQLite tables, graph
   layers, and caveats.

@@ -11,7 +11,7 @@
 export { AtomRepository } from './atom-repository.js';
 
 // Adaptadores
-export { SQLiteAdapter } from './adapters/sqlite-adapter.js';
+export { SQLiteAdapter } from './adapters/adapter.js';
 
 // Factory
 export { RepositoryFactory, getRepository } from './repository-factory.js';

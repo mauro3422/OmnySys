@@ -244,5 +244,35 @@ export const actionToolDefinitions = [
       },
       required: ['filePath']
     }
+  },
+  {
+    name: 'mcp_omnysystem_split_large_file',
+    description: 'Divide archivos grandes (>300 líneas) en múltiples archivos usando patrón coordinador/barrel. Agrupa funciones por responsabilidad usando DNA y crea un barrel que re-exporta. Inspirado en folderize_family pero para dividir contenido interno.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path del archivo a dividir' },
+        execute: { type: 'boolean', description: 'Si es true, aplica los cambios. Si es false (default), solo devuelve el plan de división.', default: false },
+        groupBy: { type: 'string', enum: ['responsibility', 'alphabetical', 'export-type'], default: 'responsibility', description: 'Criterio de agrupación de funciones' },
+        maxLinesPerFile: { type: 'number', default: 250, description: 'Máximo de líneas por archivo destino' },
+        barrelStyle: { type: 'string', enum: ['re-export', 'index'], default: 're-export', description: 'Estilo del barrel: re-export (export { ... } from) o index (export * from)' }
+      },
+      required: ['filePath']
+    }
+  },
+  {
+    name: 'mcp_omnysystem_detect_folderization_opportunities',
+    description: 'DETECCIÓN ONLY - Analiza el proyecto y genera alertas sobre oportunidades de folderización, monolitos (>300 líneas), duplicación por ADN y naming debt. NO HACE CAMBIOS, solo detecta y avisa. Ideal para pipeline continua de monitoreo.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        monolithThreshold: { type: 'number', default: 300, description: 'Umbral de líneas para detectar monolíticos' },
+        includeDuplicates: { type: 'boolean', default: true, description: 'Incluir detección de duplicación por ADN' },
+        includeMonoliths: { type: 'boolean', default: true, description: 'Incluir detección de archivos monolíticos' },
+        includeFolderization: { type: 'boolean', default: true, description: 'Incluir detección de candidatos de folderización' },
+        includeNaming: { type: 'boolean', default: true, description: 'Incluir detección de naming debt' },
+        limit: { type: 'number', default: 20, description: 'Máximo de alertas a retornar' }
+      }
+    }
   }
 ];

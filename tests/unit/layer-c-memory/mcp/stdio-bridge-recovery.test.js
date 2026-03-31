@@ -153,5 +153,29 @@ describe('scheduleBridgeRecovery', () => {
     })).resolves.toBe('recovered');
 
     expect(recoverFn).toHaveBeenCalledTimes(1);
+    expect(state.lastSessionId).toBe(null);
+  });
+
+  it('skips duplicate recovery attempts for the same trigger window', async () => {
+    const state = {
+      isReconnecting: false,
+      reconnectPromise: null,
+      pendingRequests: new Map(),
+      stdioTransport: { send: vi.fn() },
+      lastSessionId: 'session-old',
+      lastRecoverySignature: 'transport closed::fresh',
+      lastRecoveryAt: Date.now()
+    };
+    const recoverFn = vi.fn(async () => 'recovered');
+    const connectBridgeTransport = vi.fn();
+
+    await expect(scheduleBridgeRecovery(state, 'transport closed', connectBridgeTransport, {
+      backoffMs: 0,
+      recoverFn,
+      forceFreshSession: true
+    })).resolves.toBeUndefined();
+
+    expect(recoverFn).not.toHaveBeenCalled();
+    expect(connectBridgeTransport).not.toHaveBeenCalled();
   });
 });
