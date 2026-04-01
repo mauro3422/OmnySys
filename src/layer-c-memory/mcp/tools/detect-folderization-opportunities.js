@@ -15,6 +15,7 @@
 
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
+import { analyzeCoupling } from '../../../shared/compiler/split-large-file-helpers.js';
 
 const logger = createLogger('OmnySys:mcp:detect_folderization_opportunities');
 
@@ -197,6 +198,96 @@ function detectNamingDebt(repo) {
   });
 }
 
+/**
+ * Detecta acoplamiento alto en archivos
+ * 
+ * Usa analyzeCoupling para calcular métricas de acoplamiento
+ * y generar sugerencias de refactorización.
+ */
+function detectHighCoupling(repo) {
+  // Obtener archivos monolíticos (>300 líneas) que son candidatos a split
+  const files = repo.db.prepare(`
+    SELECT path, total_lines, atom_count
+    FROM files
+    WHERE path LIKE 'src/%'
+      AND path LIKE '%.js'
+      AND total_lines >= 300
+      AND (is_removed IS NULL OR is_removed = 0)
+    ORDER BY total_lines DESC
+    LIMIT 10
+  `).all();
+
+  const couplingAlerts = [];
+
+  for (const file of files) {
+    try {
+      // Obtener átomos del archivo
+      const atoms = repo.db.prepare(`
+        SELECT id, name, atom_type, line_start, line_end, is_exported
+        FROM atoms
+        WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
+      `).all(file.path);
+
+      if (atoms.length < 5) continue;
+
+      // Obtener call_graph del archivo
+      const callGraph = repo.db.prepare(`
+        SELECT caller_name, callee_name
+        FROM call_graph
+        WHERE caller_file = ? AND callee_file = ?
+      `).all(file.path, file.path);
+
+      // Enriquecer átomos con calls
+      const callsByCaller = new Map();
+      for (const rel of callGraph) {
+        if (!callsByCaller.has(rel.caller_name)) {
+          callsByCaller.set(rel.caller_name, []);
+        }
+        callsByCaller.get(rel.caller_name).push(rel.callee_name);
+      }
+
+      for (const atom of atoms) {
+        atom.calls = callsByCaller.get(atom.name) || [];
+      }
+
+      // Analizar acoplamiento
+      const coupling = analyzeCoupling(atoms);
+
+      // Solo reportar si hay problemas
+      if (!coupling.canSplit || coupling.couplingPercentage > 70) {
+        const severity = coupling.couplingPercentage > 85 ? 'high' : coupling.couplingPercentage > 70 ? 'medium' : 'low';
+
+        couplingAlerts.push({
+          type: 'high_coupling',
+          severity,
+          file: file.path,
+          lines: file.total_lines,
+          atoms: file.atom_count,
+          couplingPercentage: coupling.couplingPercentage,
+          connectedAtoms: coupling.connectedAtoms,
+          totalAtoms: coupling.totalAtoms,
+          leafNodes: coupling.leafNodes,
+          centralNodes: coupling.centralNodes,
+          message: `Acoplamiento ${severity}: ${file.path} (${coupling.couplingPercentage}%, ${coupling.connectedAtoms}/${coupling.totalAtoms} átomos conectados)`,
+          suggestion: coupling.canSplit
+            ? 'split_large_file con extracción bottom-up'
+            : 'Primero extraer hojas, luego re-evaluar',
+          details: {
+            leafNodesCount: coupling.leafNodes.length,
+            centralNodesCount: coupling.centralNodes.length,
+            topCentralNodes: coupling.centralNodes.slice(0, 3)
+          }
+        });
+      }
+    } catch (error) {
+      // Ignorar errores de archivos individuales
+      logger.warn(`[Detect] Could not analyze coupling for ${file.path}: ${error.message}`);
+    }
+  }
+
+  return couplingAlerts;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,6 +299,7 @@ export async function detect_folderization_opportunities(args, context) {
     includeMonoliths = true,
     includeFolderization = true,
     includeNaming = true,
+    includeCoupling = true,
     limit = 20
   } = args;
 
@@ -241,13 +333,19 @@ export async function detect_folderization_opportunities(args, context) {
       alerts.push(...detectNamingDebt(repo));
     }
 
+    if (includeCoupling) {
+      logger.info('[Detect] Scanning for high coupling...');
+      alerts.push(...detectHighCoupling(repo));
+    }
+
     const summary = {
       total: alerts.length,
       byType: {
         monolith: alerts.filter(a => a.type === 'monolith').length,
         duplication: alerts.filter(a => a.type === 'duplication').length,
         folderization_candidate: alerts.filter(a => a.type === 'folderization_candidate').length,
-        naming_debt: alerts.filter(a => a.type === 'naming_debt').length
+        naming_debt: alerts.filter(a => a.type === 'naming_debt').length,
+        high_coupling: alerts.filter(a => a.type === 'high_coupling').length
       },
       bySeverity: {
         high: alerts.filter(a => a.severity === 'high').length,

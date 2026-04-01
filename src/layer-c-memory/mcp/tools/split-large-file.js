@@ -34,6 +34,27 @@ async function analyzeFileForSplit(filePath, projectPath) {
     ORDER BY line_start
   `).all(filePath);
 
+  // Enriquecer átomos con calls desde call_graph
+  const callGraph = repo.db.prepare(`
+    SELECT caller_name, callee_name 
+    FROM call_graph 
+    WHERE caller_file = ? AND callee_file = ?
+  `).all(filePath, filePath);
+
+  // Indexar calls por caller_name
+  const callsByCaller = new Map();
+  for (const rel of callGraph) {
+    if (!callsByCaller.has(rel.caller_name)) {
+      callsByCaller.set(rel.caller_name, []);
+    }
+    callsByCaller.get(rel.caller_name).push(rel.callee_name);
+  }
+
+  // Agregar campo calls a cada átomo
+  for (const atom of atoms) {
+    atom.calls = callsByCaller.get(atom.name) || [];
+  }
+
   if (atoms.length === 0) {
     throw new Error(`No atoms found in ${filePath}`);
   }
@@ -189,7 +210,9 @@ export async function split_large_file(args, context) {
     if (!plan.shouldSplit) {
       return {
         success: false,
-        error: plan.reason || 'File cannot be split meaningfully'
+        error: plan.reason || 'File cannot be split meaningfully',
+        coupling: plan.coupling,
+        suggestions: plan.suggestions
       };
     }
 
