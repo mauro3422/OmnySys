@@ -1,69 +1,154 @@
 /**
- * @fileoverview Report helpers for folderization analysis.
+ * @fileoverview Helpers for directory-structure-folderization-analysis
+ * 
+ * Contains supporting functions for folderization analysis:
+ * - buildFamilyStateReport: Reports on family state evolution
+ * - buildFolderizationCandidateReport: Reports on folderization candidates  
+ * - summarizeFamilyEvolution: Summarizes family evolution metrics
  */
 
-function summarizeFamilyEvolution(state = {}) {
-  return {
-    rootFileCount: state.rootRows?.length || 0,
-    folderFileCount: state.folderRows?.length || 0,
-    versionCountTotal: state.versionCountTotal || 0,
-    latestUpdatedAt: state.latestUpdatedAt?.value || null,
-    earliestUpdatedAt: state.earliestUpdatedAt?.value || null,
-    migrationState: state.folderRows?.length > 0
-      ? (state.rootRows?.length > state.folderRows.length ? 'mixed' : 'already_folderized')
-      : 'flat'
-  };
-}
+/**
+ * Builds a report on family state evolution
+ * @param {Map} familyStateByRoot - Family state indexed by root
+ * @returns {Object} Report with family state information
+ */
+export function buildFamilyStateReport(familyStateByRoot) {
+  if (!familyStateByRoot || familyStateByRoot.size === 0) {
+    return {
+      totalFamilies: 0,
+      flatCount: 0,
+      mixedCount: 0,
+      folderizedCount: 0,
+      topFamilies: []
+    };
+  }
 
-function buildFamilyStateReport(familyStates = new Map()) {
-  const topFamilies = Array.from(familyStates.values())
-    .map((state) => ({
+  let flatCount = 0;
+  let mixedCount = 0;
+  let folderizedCount = 0;
+  const topFamilies = [];
+
+  for (const [root, state] of familyStateByRoot) {
+    const rootCount = state.rootRows?.length || 0;
+    const folderCount = state.folderRows?.length || 0;
+    
+    if (folderCount === 0) {
+      flatCount++;
+    } else if (rootCount === 0) {
+      folderizedCount++;
+    } else {
+      mixedCount++;
+    }
+
+    topFamilies.push({
+      familyRoot: root,
       directory: state.directory,
-      familyRoot: state.familyRoot,
-      rootFileCount: state.evolution?.rootFileCount || 0,
-      folderFileCount: state.evolution?.folderFileCount || 0,
-      versionCountTotal: state.evolution?.versionCountTotal || 0,
-      latestUpdatedAt: state.evolution?.latestUpdatedAt || null,
-      earliestUpdatedAt: state.evolution?.earliestUpdatedAt || null,
-      migrationState: state.evolution?.migrationState || 'flat'
-    }))
-    .sort((a, b) => (b.folderFileCount + b.rootFileCount) - (a.folderFileCount + a.rootFileCount) || a.familyRoot.localeCompare(b.familyRoot));
+      rootFileCount: rootCount,
+      folderFileCount: folderCount,
+      totalFiles: rootCount + folderCount
+    });
+  }
 
-  const stateCounts = topFamilies.reduce((counts, family) => {
-    const key = family.migrationState || 'flat';
-    counts[key] = (counts[key] || 0) + 1;
-    return counts;
-  }, {
-    flat: 0,
-    mixed: 0,
-    already_folderized: 0
-  });
+  topFamilies.sort((a, b) => b.totalFiles - a.totalFiles);
 
   return {
-    totalFamilies: topFamilies.length,
-    stateCounts,
+    totalFamilies: familyStateByRoot.size,
+    flatCount,
+    mixedCount,
+    folderizedCount,
     topFamilies: topFamilies.slice(0, 10)
   };
 }
 
-function buildFolderizationCandidateReport(candidates = []) {
+/**
+ * Builds a report on folderization candidates
+ * @param {Array} candidates - List of folderization candidates
+ * @returns {Object} Report with candidate information
+ */
+export function buildFolderizationCandidateReport(candidates = []) {
+  if (!candidates || candidates.length === 0) {
+    return {
+      totalCandidates: 0,
+      highConfidence: 0,
+      mediumConfidence: 0,
+      lowConfidence: 0,
+      topCandidates: []
+    };
+  }
+
+  let highConfidence = 0;
+  let mediumConfidence = 0;
+  let lowConfidence = 0;
+
+  for (const candidate of candidates) {
+    if (candidate.confidence >= 70) {
+      highConfidence++;
+    } else if (candidate.confidence >= 40) {
+      mediumConfidence++;
+    } else {
+      lowConfidence++;
+    }
+  }
+
+  const topCandidates = candidates
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 5)
+    .map(c => ({
+      familyRoot: c.familyRoot,
+      directory: c.directory,
+      fileCount: c.fileCount,
+      confidence: c.confidence,
+      recommendedFolder: c.recommendedFolder
+    }));
+
   return {
-    candidateCount: candidates.length,
-    topCandidates: candidates.slice(0, 10).map((candidate) => ({
-      directory: candidate.directory,
-      familyRoot: candidate.familyRoot,
-      recommendedFolder: candidate.recommendedFolder || `${candidate.directory}/${candidate.familyRoot}`,
-      fileCount: candidate.fileCount,
-      confidence: candidate.confidence || 0,
-      barrelFile: candidate.barrelFile?.path || null,
-      migrationState: candidate.migrationState || candidate.familyEvolution?.migrationState || 'flat',
-      familyEvolution: candidate.familyEvolution || null,
-      members: candidate.files || candidate.members?.map((member) => member.path) || []
-    }))
+    totalCandidates: candidates.length,
+    highConfidence,
+    mediumConfidence,
+    lowConfidence,
+    topCandidates
   };
 }
 
-export {
+/**
+ * Summarizes family evolution metrics
+ * @param {Object} state - Family state object
+ * @returns {Object} Evolution summary
+ */
+export function summarizeFamilyEvolution(state) {
+  if (!state) {
+    return {
+      rootFileCount: 0,
+      folderFileCount: 0,
+      versionCountTotal: 0,
+      latestUpdatedAt: null,
+      earliestUpdatedAt: null,
+      migrationState: 'flat'
+    };
+  }
+
+  const rootFileCount = state.rootRows?.length || 0;
+  const folderFileCount = state.folderRows?.length || 0;
+  const versionCountTotal = state.versionCountTotal || 0;
+
+  let migrationState = 'flat';
+  if (folderFileCount > 0 && rootFileCount === 0) {
+    migrationState = 'folderized';
+  } else if (folderFileCount > 0 && rootFileCount > 0) {
+    migrationState = 'mixed';
+  }
+
+  return {
+    rootFileCount,
+    folderFileCount,
+    versionCountTotal,
+    latestUpdatedAt: state.latestUpdatedAt || null,
+    earliestUpdatedAt: state.earliestUpdatedAt || null,
+    migrationState
+  };
+}
+
+export default {
   buildFamilyStateReport,
   buildFolderizationCandidateReport,
   summarizeFamilyEvolution

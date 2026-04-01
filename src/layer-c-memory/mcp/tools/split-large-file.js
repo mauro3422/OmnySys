@@ -62,7 +62,15 @@ async function analyzeFileForSplit(filePath, projectPath) {
 }
 
 /**
- * Ejecuta el plan de división
+ * Ejecuta el plan de división con folderización automática
+ * 
+ * Crea estructura folderizada:
+ *   file/
+ *     ├── index.js (barrel)
+ *     ├── public.js
+ *     └── helpers.js
+ * 
+ * Y elimina el archivo original.
  */
 async function executeSplitPlan(plan, context) {
   const { projectPath } = context;
@@ -73,7 +81,8 @@ async function executeSplitPlan(plan, context) {
     rewrittenImports: []
   };
 
-  // 1. Crear archivos nuevos
+  // 1. Crear archivos de cada grupo PRIMERO (antes del barrel)
+  // Esto es necesario porque el barrel referencia estos archivos
   for (const group of plan.groups) {
     logger.info(`[Split] Creating file: ${group.newFilePath}`);
 
@@ -96,30 +105,52 @@ async function executeSplitPlan(plan, context) {
     });
   }
 
-  // 2. Convertir archivo original en barrel
-  logger.info(`[Split] Converting original to barrel: ${plan.originalFile}`);
-
-  const editResult = await atomic_edit({
-    filePath: plan.originalFile,
-    oldString: plan.originalContent,
-    newString: plan.barrel.content
+  // 2. Crear barrel index.js DESPUÉS de los archivos split
+  // Ahora el barrel puede referenciar los archivos que ya existen
+  logger.info(`[Split] Creating barrel: ${plan.barrel.filePath}`);
+  
+  const barrelWriteResult = await atomic_write({
+    filePath: plan.barrel.filePath,
+    content: plan.barrel.content
   }, context);
 
-  if (!editResult.success) {
+  if (!barrelWriteResult.success) {
     return {
       success: false,
-      error: `Failed to convert to barrel: ${editResult.error}`,
+      error: `Failed to create barrel ${plan.barrel.filePath}: ${barrelWriteResult.error}`,
       results
     };
   }
 
-  results.modifiedFiles.push(plan.originalFile);
+  results.createdFiles.push({
+    path: plan.barrel.filePath,
+    exports: []
+  });
+
+  // 3. Eliminar archivo original (ya no es necesario, está folderizado)
+  logger.info(`[Split] Removing original file: ${plan.originalFile}`);
+  
+  const fs = await import('fs/promises');
+  try {
+    await fs.unlink(plan.originalFile);
+    logger.info(`[Split] Original file removed: ${plan.originalFile}`);
+  } catch (unlinkError) {
+    // Si no se puede eliminar, registrar warning pero no fallar
+    logger.warn(`[Split] Could not remove original file: ${unlinkError.message}`);
+  }
 
   return {
     success: true,
-    mode: 'applied',
+    mode: 'applied_folderized',
     plan,
-    results
+    results,
+    folderPath: plan.folderPath,
+    summary: {
+      originalFile: plan.originalFile,
+      folderCreated: plan.folderPath,
+      filesCreated: results.createdFiles.length,
+      barrelFile: plan.barrel.filePath
+    }
   };
 }
 

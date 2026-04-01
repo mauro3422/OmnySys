@@ -98,34 +98,59 @@ function detectDuplication(repo) {
 }
 
 /**
+ * Helper: Extrae directorio de un path (sin REVERSE)
+ */
+function extractDirectory(path) {
+  const lastSlash = path.lastIndexOf('/');
+  return lastSlash > 0 ? path.substring(0, lastSlash) : path;
+}
+
+/**
+ * Helper: Extrae filename de un path (sin REVERSE)
+ */
+function extractFilename(path) {
+  const lastSlash = path.lastIndexOf('/');
+  return lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+}
+
+/**
  * Detecta familias candidatas a folderización
  */
 function detectFolderizationCandidates(repo) {
-  const candidates = repo.db.prepare(`
-    SELECT
-      SUBSTR(path, 1, LENGTH(path) - LENGTH(SUBSTR(path, INSTR(REVERSE(path), '/')))) as directory,
-      COUNT(*) as file_count,
-      SUM(total_lines) as total_lines
+  const allFiles = repo.db.prepare(`
+    SELECT path, total_lines
     FROM files
     WHERE path LIKE 'src/%'
       AND path LIKE '%.js'
       AND (is_removed IS NULL OR is_removed = 0)
       AND path NOT LIKE '%/index.js'
-    GROUP BY directory
-    HAVING file_count >= 3 AND total_lines > 200
-    ORDER BY file_count DESC, total_lines DESC
-    LIMIT 15
   `).all();
 
+  // Agrupar por directorio en JavaScript (evita REVERSE de SQLite)
+  const dirMap = new Map();
+  for (const file of allFiles) {
+    const dir = extractDirectory(file.path);
+    if (!dirMap.has(dir)) dirMap.set(dir, { directory: dir, fileCount: 0, totalLines: 0 });
+    const entry = dirMap.get(dir);
+    entry.fileCount++;
+    entry.totalLines += file.total_lines || 0;
+  }
+
+  // Filtrar y ordenar
+  const candidates = Array.from(dirMap.values())
+    .filter(c => c.fileCount >= 3 && c.totalLines > 200)
+    .sort((a, b) => b.fileCount - a.fileCount || b.totalLines - a.totalLines)
+    .slice(0, 15);
+
   return candidates.map(c => {
-    const severity = c.file_count >= 5 ? 'high' : c.file_count >= 4 ? 'medium' : 'low';
+    const severity = c.fileCount >= 5 ? 'high' : c.fileCount >= 4 ? 'medium' : 'low';
     return {
       type: 'folderization_candidate',
       severity,
       directory: c.directory,
-      fileCount: c.file_count,
-      totalLines: c.total_lines,
-      message: `Candidato ${severity}: ${c.directory} (${c.file_count} archivos, ${c.total_lines}L)`,
+      fileCount: c.fileCount,
+      totalLines: c.totalLines,
+      message: `Candidato ${severity}: ${c.directory} (${c.fileCount} archivos, ${c.totalLines}L)`,
       suggestion: 'folderize_family'
     };
   });
@@ -135,27 +160,26 @@ function detectFolderizationCandidates(repo) {
  * Detecta deuda de naming (archivos con prefijos repetidos en mismo directorio)
  */
 function detectNamingDebt(repo) {
-  const namingIssues = repo.db.prepare(`
-    SELECT
-      path,
-      SUBSTR(path, INSTR(REVERSE(path), '/') * -1 + LENGTH(path)) as filename,
-      SUBSTR(path, 1, LENGTH(path) - LENGTH(SUBSTR(path, INSTR(REVERSE(path), '/')))) as directory,
-      total_lines
+  const allFiles = repo.db.prepare(`
+    SELECT path, total_lines
     FROM files
     WHERE path LIKE 'src/%'
       AND path LIKE '%.js'
       AND (is_removed IS NULL OR is_removed = 0)
-      AND (
-        filename LIKE '%-helpers.js'
-        OR filename LIKE '%-core.js'
-        OR filename LIKE '%-models.js'
-        OR filename LIKE '%-analysis.js'
-        OR filename LIKE '%-utils.js'
-        OR filename LIKE '%-validation.js'
-      )
-    ORDER BY total_lines DESC
-    LIMIT 20
   `).all();
+
+  // Filtrar archivos con sufijos largos en JavaScript (evita REVERSE de SQLite)
+  const namingPatterns = ['-helpers.js', '-core.js', '-models.js', '-analysis.js', '-utils.js', '-validation.js'];
+  const namingIssues = allFiles
+    .filter(f => namingPatterns.some(p => f.path.endsWith(p)))
+    .map(f => ({
+      path: f.path,
+      filename: extractFilename(f.path),
+      directory: extractDirectory(f.path),
+      total_lines: f.total_lines
+    }))
+    .sort((a, b) => (b.total_lines || 0) - (a.total_lines || 0))
+    .slice(0, 20);
 
   return namingIssues.map(n => {
     const basePrefix = n.filename.split('-')[0] || '';

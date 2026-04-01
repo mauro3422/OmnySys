@@ -44,7 +44,7 @@ export class SyntaxValidator {
       await fs.writeFile(tmpFile, normalizedContent, { encoding: 'utf8' });
 
       try {
-        const result = this._runNodeCheck(tmpFile);
+        const result = this._runNodeCheck(tmpFile, spawnSync);
         await fs.unlink(tmpFile).catch(() => { });
         return this._parseValidationResult(result);
       } catch (error) {
@@ -68,8 +68,7 @@ export class SyntaxValidator {
   /**
    * Runs node --check via spawnSync
    */
-  _runNodeCheck(tmpFile) {
-    const { spawnSync } = require('child_process');
+  _runNodeCheck(tmpFile, spawnSync) {
     return spawnSync(process.execPath, ['--check', tmpFile], {
       encoding: 'utf-8',
       timeout: 5000,
