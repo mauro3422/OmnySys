@@ -148,6 +148,7 @@ function scheduleRestart(clearCache = false, reanalyze = false) {
         const dataDir = path.join(projectPath, '.omnysysdata');
         const toDelete = ['files', 'atoms', 'molecules'];
         const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
+        const preservedFiles = new Set(['health-history.db']);
 
         try {
           // Borrar carpetas
@@ -159,6 +160,7 @@ function scheduleRestart(clearCache = false, reanalyze = false) {
           }
           // Borrar archivos de DB
           for (const file of dbFiles) {
+            if (preservedFiles.has(file)) continue;
             const fullPath = path.join(dataDir, file);
             if (fs.existsSync(fullPath)) {
               fs.unlinkSync(fullPath);

@@ -120,7 +120,7 @@ export async function applyCodexConfig(url, projectPath = repoRoot) {
     };
 }
 
-export async function applyClineConfig(filePath, url, clientName) {
+export async function applyClineConfig(filePath, url, clientName, projectPath = repoRoot) {
     if (!filePath) {
         return { client: clientName, path: '', applied: true, skipped: true };
     }
@@ -128,14 +128,28 @@ export async function applyClineConfig(filePath, url, clientName) {
     const config = await readJsonSafe(filePath, { mcpServers: {} });
     const mcpServers = ensureMcpServersContainer(config);
     const existing = getPrimaryWithLegacyFallback(mcpServers);
+    const bridgePath = buildBridgePath();
+    const nodeCommand = getNodeCommand();
+    const normalizedProjectPath = normalizeSlashes(path.resolve(projectPath));
 
     mcpServers[SERVER_KEY] = {
         ...(existing || {}),
-        type: 'streamableHttp',
-        url,
+        type: 'stdio',
+        command: nodeCommand,
+        args: [bridgePath],
+        cwd: normalizedProjectPath,
+        env: {
+            OMNYSYS_DAEMON_URL: url,
+            OMNYSYS_HEALTH_URL: getHealthUrl(),
+            OMNYSYS_AUTO_START: '1',
+            OMNYSYS_PROJECT_PATH: normalizedProjectPath
+        },
         disabled: false,
         autoApprove: Array.isArray(existing?.autoApprove) ? existing.autoApprove : []
     };
+
+    delete mcpServers[SERVER_KEY].url;
+    delete mcpServers[SERVER_KEY].timeout;
 
     clearLegacyAliases(mcpServers);
     await writeJsonNoBom(filePath, config);

@@ -144,6 +144,7 @@ async function executeSplitPlan(plan, context) {
     }, context);
 
     if (!writeResult.success) {
+      logger.error(`[Split] Failed creating ${group.newFilePath}: ${writeResult.error}`);
       return {
         success: false,
         error: `Failed to create ${group.newFilePath}: ${writeResult.error}`,
@@ -167,6 +168,7 @@ async function executeSplitPlan(plan, context) {
   }, context);
 
   if (!barrelWriteResult.success) {
+    logger.error(`[Split] Failed creating barrel ${plan.barrel.filePath}: ${barrelWriteResult.error}`);
     return {
       success: false,
       error: `Failed to create barrel ${plan.barrel.filePath}: ${barrelWriteResult.error}`,

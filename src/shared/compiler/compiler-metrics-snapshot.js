@@ -23,6 +23,10 @@ import {
   summarizeCompilerMetricDictionary,
   summarizeCurrentSnapshotRow
 } from './compiler-metrics-snapshot-helpers.js';
+import {
+  loadCompilerHealthArchiveSummary,
+  persistCompilerHealthArchiveSnapshot
+} from './compiler-health-archive.js';
 import { summarizeCompilerMetricsSnapshot } from './compiler-metrics-snapshot-summary.js';
 
 export { summarizeCompilerMetricsSnapshot };
@@ -163,6 +167,27 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     } catch {
       // Persistence is advisory. The snapshot still returns even if SQLite is transiently busy.
     }
+  }
+
+  if (persist && projectPath) {
+    try {
+      persistCompilerHealthArchiveSnapshot(projectPath, snapshot);
+    } catch {
+      // The archive is advisory too. Reindex/reanalyze must never depend on it.
+    }
+  }
+
+  const healthArchive = projectPath
+    ? loadCompilerHealthArchiveSummary(projectPath, {
+        snapshotKind,
+        scopePath: snapshot.scopePath,
+        focusPath: snapshot.focusPath
+      })
+    : null;
+
+  if (healthArchive) {
+    snapshot.healthArchive = healthArchive;
+    snapshot.current.healthArchive = healthArchive;
   }
 
   return snapshot;

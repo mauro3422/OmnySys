@@ -1,7 +1,8 @@
 import {
   loadCompilerDiagnosticsSnapshot,
   summarizeCompilerPolicyDrift,
-  buildFolderizationReportFromRepo
+  buildFolderizationReportFromRepo,
+  getDatabaseHealthSummary
 } from '../../../shared/compiler/index.js';
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
@@ -11,18 +12,20 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
     const policySummary = summarizeCompilerPolicyDrift(findings);
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(projectPath);
+    const databaseHealth = repo?.db ? getDatabaseHealthSummary(repo.db) : null;
+    const tableCounts = databaseHealth?.metrics ? {
+      atoms: databaseHealth.metrics.activeAtoms || 0,
+      files: databaseHealth.metrics.activeFiles || 0,
+      atom_relations: databaseHealth.metrics.activeCallRelations || 0,
+      risk_assessments: databaseHealth.metrics.activeRiskRows || 0
+    } : {};
     const snapshot = await loadCompilerDiagnosticsSnapshot({
       projectPath,
       db: repo?.db,
       policySummary,
       watcherAlerts,
       sharedState,
-      tableCounts: {
-        atoms: repo?.db.prepare('SELECT COUNT(*) as n FROM atoms WHERE is_removed IS NULL OR is_removed = 0').get()?.n || 0,
-        files: repo?.db.prepare('SELECT COUNT(*) as n FROM files WHERE is_removed IS NULL OR is_removed = 0').get()?.n || 0,
-        atom_relations: repo?.db.prepare('SELECT COUNT(*) as n FROM atom_relations WHERE is_removed IS NULL OR is_removed = 0').get()?.n || 0,
-        risk_assessments: repo?.db.prepare('SELECT COUNT(*) as n FROM risk_assessments').get()?.n || 0
-      }
+      tableCounts
     });
 
     const folderizationReport = buildFolderizationReportFromRepo(repo, folderizationOptions);

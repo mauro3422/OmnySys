@@ -29,6 +29,38 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
   const signalRows = buildSignalRows(trend.deltaSinceBaseline || {});
   const toolTelemetry = mapToolTelemetry(current.toolTelemetry);
   const pipelineTimingTelemetry = mapPipelineTimingTelemetry(current.pipelineTimingTelemetry);
+  const healthArchive = normalized.healthArchive || null;
+  const archiveDaily = healthArchive ? {
+    capturedAt: normalized.capturedAt || current.capturedAt || null,
+    globalHealthScore: asNumber(current.globalHealthScore, asNumber(current.healthScore, 0)),
+    globalHealthGrade: current.globalHealthGrade || current.healthGrade || 'F',
+    healthScore: asNumber(current.healthScore, 0),
+    healthGrade: current.healthGrade || 'F',
+    behaviorState: current.behaviorState || null,
+    driftState: current.driftState || null,
+    successScore: asNumber(current.successScore, 0),
+    issueCount: asNumber(current.issueCount, 0),
+    summary: current.summaryText || trend.summary || null
+  } : null;
+  const archiveLifetime = healthArchive ? {
+    daysObserved: healthArchive.daysObserved || 0,
+    snapshotsRecorded: healthArchive.snapshotsRecorded || 0,
+    firstCapturedAt: healthArchive.firstCapturedAt || null,
+    lastCapturedAt: healthArchive.lastCapturedAt || null,
+    averageHealthScore: healthArchive.averageHealthScore || 0,
+    averageDriftScore: healthArchive.averageDriftScore || 0,
+    averageStabilityScore: healthArchive.averageStabilityScore || 0,
+    averageSuccessScore: healthArchive.averageSuccessScore || 0,
+    totalIssueCount: healthArchive.totalIssueCount || 0,
+    totalWarningCount: healthArchive.totalWarningCount || 0,
+    totalErrorCount: healthArchive.totalErrorCount || 0,
+    totalWatcherAlertCount: healthArchive.totalWatcherAlertCount || 0,
+    latestHealthScore: healthArchive.latestHealthScore || 0,
+    latestHealthGrade: healthArchive.latestHealthGrade || null,
+    latestBehaviorState: healthArchive.latestBehaviorState || null,
+    latestClientSyncState: healthArchive.latestClientSyncState || null,
+    summary: healthArchive.summary || null
+  } : null;
 
   const regressors = signalRows.filter((row) => row.impact < 0).slice(0, 5);
   const improvements = signalRows.filter((row) => row.impact > 0).slice(0, 5);
@@ -40,6 +72,58 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
     snapshotKind: normalized.snapshotKind || 'status',
     captureSource: normalized.captureSource || null,
     capturedAt: normalized.capturedAt || current.capturedAt || null,
+    daily: {
+      capturedAt: current.capturedAt || normalized.capturedAt || null,
+      healthScore: asNumber(current.healthScore, 0),
+      healthGrade: current.healthGrade || 'F',
+      driftState: current.driftState || null,
+      driftScore: asNumber(current.driftScore, 0),
+      stabilityScore: asNumber(current.stabilityScore, 0),
+      successScore: asNumber(current.successScore, 0),
+      behaviorState: current.behaviorState || null,
+      clientSyncState: current.clientSyncState || null,
+      summary: current.summaryText || trend.summary || null
+    },
+    lifetime: normalized.healthArchive ? {
+      daysObserved: normalized.healthArchive.daysObserved || 0,
+      snapshotsRecorded: normalized.healthArchive.snapshotsRecorded || 0,
+      firstCapturedAt: normalized.healthArchive.firstCapturedAt || null,
+      lastCapturedAt: normalized.healthArchive.lastCapturedAt || null,
+      averageHealthScore: normalized.healthArchive.averageHealthScore || 0,
+      averageDriftScore: normalized.healthArchive.averageDriftScore || 0,
+      averageStabilityScore: normalized.healthArchive.averageStabilityScore || 0,
+      averageSuccessScore: normalized.healthArchive.averageSuccessScore || 0,
+      totalIssueCount: normalized.healthArchive.totalIssueCount || 0,
+      totalWarningCount: normalized.healthArchive.totalWarningCount || 0,
+      totalErrorCount: normalized.healthArchive.totalErrorCount || 0,
+      totalWatcherAlertCount: normalized.healthArchive.totalWatcherAlertCount || 0,
+      latestHealthScore: normalized.healthArchive.latestHealthScore || 0,
+      latestHealthGrade: normalized.healthArchive.latestHealthGrade || null,
+      latestBehaviorState: normalized.healthArchive.latestBehaviorState || null,
+      latestClientSyncState: normalized.healthArchive.latestClientSyncState || null,
+      summary: normalized.healthArchive.summary || null
+    } : null,
+    archive: healthArchive ? {
+      daysObserved: healthArchive.daysObserved || 0,
+      snapshotsRecorded: healthArchive.snapshotsRecorded || 0,
+      firstCapturedAt: healthArchive.firstCapturedAt || null,
+      lastCapturedAt: healthArchive.lastCapturedAt || null,
+      averageHealthScore: healthArchive.averageHealthScore || 0,
+      averageDriftScore: healthArchive.averageDriftScore || 0,
+      averageStabilityScore: healthArchive.averageStabilityScore || 0,
+      averageSuccessScore: healthArchive.averageSuccessScore || 0,
+      totalIssueCount: healthArchive.totalIssueCount || 0,
+      totalWarningCount: healthArchive.totalWarningCount || 0,
+      totalErrorCount: healthArchive.totalErrorCount || 0,
+      totalWatcherAlertCount: healthArchive.totalWatcherAlertCount || 0,
+      latestHealthScore: healthArchive.latestHealthScore || 0,
+      latestHealthGrade: healthArchive.latestHealthGrade || null,
+      latestBehaviorState: healthArchive.latestBehaviorState || null,
+      latestClientSyncState: healthArchive.latestClientSyncState || null,
+      summary: healthArchive.summary || null,
+      daily: archiveDaily,
+      lifetime: archiveLifetime
+    } : null,
     status: current.mvpReady ? 'ready' : current.behaviorState || trend.status || 'unknown',
     health: {
       globalHealthScore: asNumber(current.globalHealthScore, asNumber(current.healthScore, 0)),
@@ -131,17 +215,9 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
   };
 }
 
-export function summarizeCompilerHealthDashboard(dashboard = null) {
-  return summarizeCompilerHealthDashboardDetails(dashboard);
-}
-
-export function buildCompilerHealthPanel(dashboard = null) {
-  return buildCompilerHealthPanelDetails(dashboard);
-}
-
-export function summarizeCompilerHealthPanel(panel = null) {
-  return summarizeCompilerHealthPanelDetails(panel);
-}
+export const summarizeCompilerHealthDashboard = summarizeCompilerHealthDashboardDetails;
+export const buildCompilerHealthPanel = buildCompilerHealthPanelDetails;
+export const summarizeCompilerHealthPanel = summarizeCompilerHealthPanelDetails;
 
 export default {
   buildCompilerHealthDashboard,

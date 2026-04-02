@@ -29,6 +29,25 @@ describe('compiler-health-dashboard', () => {
             globalHealthScore: { value: 93, sourceTables: ['atoms'] }
           }
         },
+        healthArchive: {
+          daysObserved: 12,
+          snapshotsRecorded: 12,
+          firstCapturedAt: '2026-03-01T00:00:00.000Z',
+          lastCapturedAt: '2026-03-30T01:38:18.819Z',
+          averageHealthScore: 92.5,
+          averageDriftScore: 94,
+          averageStabilityScore: 93,
+          averageSuccessScore: 90,
+          totalIssueCount: 42,
+          totalWarningCount: 6,
+          totalErrorCount: 1,
+          totalWatcherAlertCount: 3,
+          latestHealthScore: 97,
+          latestHealthGrade: 'A+',
+          latestBehaviorState: 'ready',
+          latestClientSyncState: 'fresh',
+          summary: 'days=12 | avgHealth=93 | avgSuccess=90 | errors=1 | warnings=6'
+        },
         current: {
           globalHealthScore: 93,
           globalHealthGrade: 'A',
@@ -166,6 +185,11 @@ describe('compiler-health-dashboard', () => {
     expect(dashboard.toolTelemetry.totalRuns).toBe(10);
     expect(dashboard.toolTelemetry.repairRateOnPressure).toBe(0.86);
     expect(dashboard.recommendations.length).toBeGreaterThan(0);
+    expect(dashboard.archive.daily.capturedAt).toBe('2026-03-30T01:38:18.819Z');
+    expect(dashboard.archive.lifetime.daysObserved).toBe(12);
+    expect(dashboard.archive.lifetime.firstCapturedAt).toBe('2026-03-01T00:00:00.000Z');
+    expect(dashboard.archive.lifetime.lastCapturedAt).toBe('2026-03-30T01:38:18.819Z');
+    expect(dashboard.archive.lifetime.averageHealthScore).toBe(92.5);
 
     const compact = summarizeCompilerHealthDashboard(dashboard);
     expect(compact.health.globalHealthScore).toBe(93);
@@ -174,6 +198,8 @@ describe('compiler-health-dashboard', () => {
     expect(compact.trend.velocityPerDay).toBe(1.5);
     expect(compact.regressors.length).toBeGreaterThan(0);
     expect(compact.recentErrors.errors).toBe(0);
+    expect(compact.archive.lifetime.daysObserved).toBe(12);
+    expect(compact.archive.daily.healthScore).toBe(97);
   });
 
   it('builds a one-line health panel from the dashboard', () => {

@@ -4,6 +4,7 @@
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
+import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
 import { loadNotifications, buildRecentErrorsResponse } from './status-notifications.js';
 import { loadCompilerExplainability } from './status-compiler-explainability.js';
 import {
@@ -25,7 +26,6 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
 
   const notifications = await loadNotifications(projectPath, context.server, false);
   const compactNotifications = compactRecentNotifications(notifications, { maxLogs: 5, maxWatcherAlerts: 10 });
-  const recentErrors = buildRecentErrorsResponse(compactNotifications);
   const compilerExplainability = await loadCompilerExplainability(
     projectPath,
     compactNotifications.watcherAlerts || [],
@@ -36,12 +36,18 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
       focusPath: args?.focusPath || null
     }
   );
+  const governanceAlerts = buildGovernanceAlerts({
+    compilerExplainability,
+    source: 'snapshot'
+  });
+  const mergedNotifications = mergeRecentNotificationsWithGovernanceAlerts(compactNotifications, governanceAlerts);
+  const recentErrors = buildRecentErrorsResponse(mergedNotifications);
 
   const snapshot = buildCompilerMetricsSnapshot({
     projectPath,
     repo,
     compilerExplainability,
-    watcherAlerts: compactNotifications.watcherAlerts || [],
+    watcherAlerts: mergedNotifications.watcherAlerts || [],
     recentErrors,
     scopePath: args?.scopePath || null,
     focusPath: args?.focusPath || null,
@@ -55,7 +61,7 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
 
   const compactSnapshot = summarizeCompilerMetricsSnapshot(snapshot);
   const healthDashboard = buildCompilerHealthDashboard(snapshot, compilerExplainability, {
-    watcherAlerts: compactNotifications.watcherAlerts || [],
+    watcherAlerts: mergedNotifications.watcherAlerts || [],
     recentErrors
   });
   const healthPanel = buildCompilerHealthPanel(healthDashboard);

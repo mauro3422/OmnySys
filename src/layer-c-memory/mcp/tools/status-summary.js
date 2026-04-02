@@ -4,14 +4,18 @@
 
 export {
   compactDatabaseHealth,
-  compactCompilerExplainabilitySummary,
   compactCompilerHealthDashboardSummary,
   compactCompilerHealthPanelSummary,
-  compactCompilerMetricsSnapshotSummary,
   compactRepositoryDiagnostics,
   summarizeNodeVitals,
   takeSample
 } from './status-summary-helpers.js';
+
+export { buildSystemTableSummary } from './status-system-table.js';
+export { compactCompilerMetricsSnapshotSummary } from './status-metrics-snapshot-summary.js';
+export { compactCompilerExplainabilitySummary } from './status-explainability-summary.js';
+export { buildCachePolicySummary } from '../../../shared/compiler/index.js';
+export { buildStatusSummaryPayload } from './status-summary-payload.js';
 
 export { summarizeStatus } from './status-summary-assembly.js';
 

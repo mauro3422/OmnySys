@@ -3,9 +3,12 @@ import { getRepository } from '../../storage/repository/repository-factory.js';
 import { MoveOrchestrator } from '../core/shared/move-orchestrator.js';
 import { withMutationBatch } from '../core/shared/mutation-batch.js';
 import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
-import { buildFolderizationNamingPlanFromRows } from '../../../shared/compiler/directory-structure-folderization-naming.js';
 import { rewriteFolderizedFamilyImports } from './folderize-family-import-rewriter.js';
-import { loadFolderizationRows, normalizeFolderizationPath } from '../../../shared/compiler/index.js';
+import {
+  buildFolderizationNamingPlanFromRows,
+  loadFolderizationRows,
+  normalizeFolderizationPath
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:rename_folderized_family');
 
@@ -123,6 +126,7 @@ async function executeRenamePlan({
     });
 
     if (!moveResult?.success) {
+      logger.error(`[Tool] rename_folderized_family move failed: ${moveResult?.error || `Failed to rename ${target.from}`}`);
       return {
         success: false,
         mode: 'failed',
@@ -142,6 +146,7 @@ async function executeRenamePlan({
   });
 
   if (!rewriteResult.success) {
+    logger.error(`[Tool] rename_folderized_family import rewrite failed for ${focusPlan.familyRoot || focusPlan.directory || 'folderized family'}`);
     return {
       success: false,
       mode: 'partial',
@@ -226,31 +231,31 @@ export async function rename_folderized_family(args, context) {
       });
     });
 
-  if (!executionResult?.success || !validateAfterMove) {
-    return executionResult;
-  }
+    if (!executionResult?.success || !validateAfterMove) {
+      return executionResult;
+    }
 
-  const impactedFiles = Array.isArray(moveContext.folderizationSnapshot?.impactedFiles)
-    ? moveContext.folderizationSnapshot.impactedFiles
-    : [];
-  const validationTargets = Array.from(new Set([
-    plan.barrelFile || null,
-    ...plan.renameTargets.map((target) => target.to),
-    ...impactedFiles
-  ].filter(Boolean)));
+    const impactedFiles = Array.isArray(moveContext.folderizationSnapshot?.impactedFiles)
+      ? moveContext.folderizationSnapshot.impactedFiles
+      : [];
+    const validationTargets = Array.from(new Set([
+      plan.barrelFile || null,
+      ...plan.renameTargets.map((target) => target.to),
+      ...impactedFiles
+    ].filter(Boolean)));
 
-  const settlement = await settleMutationFiles({
-    projectPath,
-    context: moveContext,
-    reason: 'rename_folderized_family',
-    touchedFiles: validationTargets,
-    validationTargets,
-    maxValidationTargets: 10
-  });
-  const validations = settlement.validations;
+    const settlement = await settleMutationFiles({
+      projectPath,
+      context: moveContext,
+      reason: 'rename_folderized_family',
+      touchedFiles: validationTargets,
+      validationTargets,
+      maxValidationTargets: 10
+    });
+    const validations = settlement.validations;
 
-  return {
-    ...executionResult,
+    return {
+      ...executionResult,
       validations
     };
   } catch (error) {

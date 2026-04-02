@@ -1,14 +1,6 @@
 [projects.'\\?\C:\Dev\OmnySystem']
 trust_level = "trusted"
 
-[mcp_servers.omnysystem]
-type = "stdio"
-command = "C:/Program Files/nodejs/node.exe"
-args = ["C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js"]
-cwd = "C:/Dev/OmnySystem"
-startup_timeout_sec = 120
-env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "1", OMNYSYS_PROJECT_PATH = "C:/Dev/OmnySystem", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex" }
-
 [mcp_servers.omnysystem.tools.mcp_omnysystem_execute_sql]
 approval_mode = "approve"
 
@@ -38,3 +30,11 @@ approval_mode = "approve"
 
 [mcp_servers.omnysystem.tools.mcp_omnysystem_get_edit_context]
 approval_mode = "approve"
+
+[mcp_servers.omnysystem]
+type = "stdio"
+command = "C:/Program Files/nodejs/node.exe"
+args = ["C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js"]
+cwd = "C:/Dev/OmnySystem"
+startup_timeout_sec = 120
+env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "1", OMNYSYS_PROJECT_PATH = "C:/Dev/OmnySystem", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex" }

@@ -39,8 +39,8 @@ export async function applyUnifiedMcpConfig(options = {}) {
     };
 
     await apply('codex', () => applyCodexConfig(mcpUrl, projectPath));
-    await apply('cline-vscode', () => applyClineConfig(CONFIG_PATHS.clineVsCode, mcpUrl, 'cline-vscode'));
-    await apply('cline-cursor', () => applyClineConfig(CONFIG_PATHS.clineCursor, mcpUrl, 'cline-cursor'));
+    await apply('cline-vscode', () => applyClineConfig(CONFIG_PATHS.clineVsCode, mcpUrl, 'cline-vscode', projectPath));
+    await apply('cline-cursor', () => applyClineConfig(CONFIG_PATHS.clineCursor, mcpUrl, 'cline-cursor', projectPath));
     await apply('claude', () => applyClaudeConfig(mcpUrl, projectPath));
     await apply('opencode', () => applyOpenCodeConfig(mcpUrl));
     await apply('qwen', () => applyQwenConfig(mcpUrl, projectPath));

@@ -1,6 +1,6 @@
 # CHANGELOG - OmnySys
 
-All notable changes to this project are documented here as a release index. Detailed per-version notes live in `changelog/`.
+All notable changes to this project are documented here as a release index. Detailed per-version notes live in `changelogs/`.
 
 ## Unreleased
 
@@ -67,9 +67,13 @@ All notable changes to this project are documented here as a release index. Deta
 - Folderized `contract-taxonomy` into its own compiler subfolder and updated the compiler barrel plus snapshot test mock to point at the new barrel path.
 - Normalized the `contract-taxonomy` folder basenames to role-only names (`classification`, `query`, `report`, `summary-helpers`) so the folderized convention stays consistent.
 - Folderized `event-leak` into its own guard subfolder and normalized the basenames to role-only names with a barrel at `event-leak/index.js`.
-- [v0.9.385 - Sprint 16: MCP Discovery Resources and Reconnect Auto-Heal](changelogs/v0.9.385.md)
-- [v0.9.386 - Sprint 16: Reconnect Compatibility Hardening and Metrics Trust Plan](changelogs/v0.9.386.md)
-- [v0.9.387 - Sprint 16: Metrics Dictionary and Cross-Layer Reliability](changelogs/v0.9.387.md)
+- [v0.9.393 - Tool Health Trending & Automatic Alerts](changelogs/v0.9.393.md)
+- [v0.9.392 - Sistema de Diagnóstico Inteligente de Herramientas MCP](changelogs/v0.9.392.md)
+- [v0.9.391 - Error Handling & Async Safety Improvements](changelogs/v0.9.391.md)
+- [v0.9.390 - Policy Drift Fix: Canonical Compiler API](changelogs/v0.9.390.md)
+- [v0.9.389 - Globalizar análisis de acoplamiento + 3 estrategias educativas](changelogs/v0.9.389.md)
+- [v0.9.388 - Folderization Pipeline & Split-Large-File Integration](changelogs/v0.9.388.md)
+- [v0.9.387 - Metrics Dictionary and Cross-Layer Reliability](changelogs/v0.9.387.md)
 - [v0.9.384 - Sprint 16: Repository Bridge Diagnostics Split and Session-Stable Worker Settlement](changelogs/v0.9.384.md)
 - [v0.9.383 - Sprint 16: Serialized Worker Settlement and Non-Recursive Repository Flush](changelogs/v0.9.383.md)
 - [v0.9.382 - Sprint 16: Worker-Aware Repository Mutations and Deferred Hash Flush](changelogs/v0.9.382.md)

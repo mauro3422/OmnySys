@@ -94,10 +94,17 @@ export {
 } from './snapshot.js';
 
 export {
-  buildCompilerLayerReliability,
   buildCompilerMetricDictionary,
   summarizeCompilerMetricDictionary
 } from './compiler-metric-dictionary.js';
+
+export {
+  buildCompilerLayerReliability
+} from './compiler-metric-reliability.js';
+
+export {
+  buildCachePolicySummary
+} from './cache-policy-summary.js';
 
 export {
   buildCompilerHealthDashboard,

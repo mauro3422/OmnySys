@@ -5,7 +5,9 @@
 import { createHash } from 'node:crypto';
 import { normalizeCount } from './contract-helpers.js';
 import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
-import { summarizeCompilerMetricDictionary, buildCompilerLayerReliability, buildCompilerMetricDictionary } from './compiler-metric-dictionary.js';
+import { loadCompilerHealthArchiveHistory } from './compiler-health-archive.js';
+import { summarizeCompilerMetricDictionary, buildCompilerMetricDictionary } from './compiler-metric-dictionary.js';
+import { buildCompilerLayerReliability } from './compiler-metric-reliability.js';
 import { buildBehaviorScore, buildCurrentMetrics, summarizeCurrentSnapshotRow, summarizeHistoryRow } from './compiler-metrics-current.js';
 
 function normalizeSnapshotPath(value = '') {
@@ -109,6 +111,29 @@ function buildTrendSummary(delta = {}) {
 function buildSnapshotPersistencePayload(snapshot = null) {
   if (!snapshot || typeof snapshot !== 'object') return null;
   return { current: snapshot.current || {}, trend: snapshot.trend || {}, summary: snapshot.summary || null, history: { entries: snapshot.history?.entries || [], previous: snapshot.history?.previous || null, baseline: snapshot.history?.baseline || null } };
+}
+
+function getHistoryFingerprint(row = null) {
+  if (!row) return null;
+
+  return row.snapshot_fingerprint
+    || `${row.captured_at || 'unknown'}|${row.health_score || 0}|${row.issue_count || 0}|${row.summary_text || ''}`;
+}
+
+function mergeHistoryRows(primaryRows = [], secondaryRows = []) {
+  const rows = [...primaryRows, ...secondaryRows].filter(Boolean);
+  const seen = new Set();
+
+  return rows
+    .filter((row) => {
+      const fingerprint = getHistoryFingerprint(row);
+      if (!fingerprint || seen.has(fingerprint)) {
+        return false;
+      }
+      seen.add(fingerprint);
+      return true;
+    })
+    .sort((left, right) => String(right.captured_at || '').localeCompare(String(left.captured_at || '')));
 }
 
 function buildSnapshotPersistenceArgs(snapshot = null) {
@@ -252,12 +277,29 @@ function loadCompilerMetricsSnapshotHistory(db, options = {}) {
       ORDER BY captured_at DESC
       LIMIT 1
     `).get(projectPath, snapshotKind, normalizedScope, normalizedFocus, baselineCutoff) || null;
+    const archiveHistory = projectPath
+      ? loadCompilerHealthArchiveHistory(projectPath, {
+          snapshotKind,
+          scopePath: normalizedScope,
+          focusPath: normalizedFocus,
+          limit,
+          compareDays
+        })
+      : { entries: [], latest: null, previous: null, baseline: null };
+    const shouldMergeArchive = Boolean(projectPath) && rows.length === 0;
+    const mergedRows = shouldMergeArchive ? mergeHistoryRows(rows, archiveHistory.entries).slice(0, limit) : rows;
+    const archiveBaseline = shouldMergeArchive ? archiveHistory.baseline || null : null;
+    const archivePrevious = shouldMergeArchive ? archiveHistory.previous || null : null;
+    const archiveLatest = shouldMergeArchive ? archiveHistory.latest || null : null;
+    const mergedBaseline = baselineRow
+      || (shouldMergeArchive ? mergedRows.find((row) => String(row.captured_at || '') <= baselineCutoff) || archiveBaseline : null)
+      || null;
 
     return {
-      entries: rows.map(summarizeHistoryRow),
-      latest: summarizeHistoryRow(rows[0] || null),
-      previous: summarizeHistoryRow(rows[1] || null),
-      baseline: summarizeHistoryRow(baselineRow)
+      entries: mergedRows.map(summarizeHistoryRow),
+      latest: summarizeHistoryRow(mergedRows[0] || archiveLatest || rows[0] || null),
+      previous: summarizeHistoryRow(mergedRows[1] || archivePrevious || rows[1] || null),
+      baseline: summarizeHistoryRow(mergedBaseline)
     };
   } catch {
     return { entries: [], latest: null, previous: null, baseline: null };

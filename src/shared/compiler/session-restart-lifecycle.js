@@ -42,6 +42,9 @@ export function buildCompilerReadinessStatus({
   if (toleratedDuplicateClients > 0) {
     warnings.push(`${toleratedDuplicateClients} duplicate client buckets are tolerated for known IDE bridges`);
   }
+  if (clientSyncState && clientSyncState !== 'fresh') {
+    warnings.push(clientSyncReason || `Client session sync is ${clientSyncState}`);
+  }
   if (hasClientSyncDrift) {
     warnings.push(clientSyncReason || 'Client session sync is blocked');
   }

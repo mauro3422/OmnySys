@@ -104,6 +104,70 @@ describe('compiler runtime session metrics', () => {
     expect(summary.clientSyncHealthy).toBe(false);
     expect(summary.summary).toContain('client sync=blocked');
   });
+
+  it('treats fresh persisted history as reconciling while the live bridge is still attaching', () => {
+    const now = new Date().toISOString();
+    const sessionDb = {
+      prepare: (query) => {
+        if (query.includes('COUNT(*) AS count FROM mcp_sessions WHERE is_active = 1 AND updated_at >= ?')) {
+          return { get: () => ({ count: 0 }) };
+        }
+
+        if (query.includes('COUNT(*) AS count FROM mcp_sessions WHERE updated_at >= ?')) {
+          return { get: () => ({ count: 1 }) };
+        }
+
+        if (query.includes('COUNT(DISTINCT client_id) AS count FROM mcp_sessions WHERE is_active = 1')) {
+          return { get: () => ({ count: 0 }) };
+        }
+
+        if (query.includes('COUNT(*) AS count FROM mcp_sessions WHERE is_active = 1')) {
+          return { get: () => ({ count: 0 }) };
+        }
+
+        if (query.includes('COUNT(*) AS count FROM mcp_sessions')) {
+          return { get: () => ({ count: 1 }) };
+        }
+
+        if (query.includes('WHERE is_active = 1\n      ORDER BY updated_at DESC')) {
+          return { get: () => null };
+        }
+
+        if (query.includes('ORDER BY updated_at DESC\n      LIMIT 1')) {
+          return { get: () => ({ updated_at: now }) };
+        }
+
+        if (query.includes('GROUP BY client_id')) {
+          return { all: () => [] };
+        }
+
+        throw new Error(`Unexpected SQL query in stub: ${query}`);
+      }
+    };
+
+    const summary = collectMcpSessionMetrics({
+      getSessionPersistenceState: () => ({
+        available: true,
+        mode: 'sqlite',
+        source: 'sqlite',
+        reason: null
+      }),
+      getDedupStats: () => ({
+        uniqueClients: 0,
+        clientsWithDuplicates: 0,
+        duplicateDetails: []
+      }),
+      getAllSessions: () => []
+    }, {
+      runtimeSessionCount: 1,
+      sessionDb
+    });
+
+    expect(summary.sessionCountDrift).toBe(false);
+    expect(summary.clientSyncState).toBe('reconciling');
+    expect(summary.clientSyncHealthy).toBe(true);
+    expect(summary.summary).toContain('client sync=reconciling');
+  });
 });
 
 describe('compiler readiness status', () => {

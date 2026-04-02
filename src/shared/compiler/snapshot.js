@@ -14,6 +14,10 @@ import {
   buildCompilerDiagnosticsSnapshotContracts,
   getCompilerDiagnosticsDatabaseSurfaces
 } from './contracts.js';
+export {
+  buildCompilerMetricsSnapshot,
+  summarizeCompilerMetricsSnapshot
+} from './compiler-metrics-snapshot.js';
 
 async function buildCompilerDiagnosticsSnapshotPayload({
   projectPath,

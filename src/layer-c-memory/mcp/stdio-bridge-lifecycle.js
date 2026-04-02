@@ -130,7 +130,7 @@ async function acquireStartLock() {
 }
 
 export async function waitForDaemonReady() {
-    const initialHealth = await readDaemonHealth();
+    const initialHealth = await readDaemonHealth(DAEMON_HEALTH);
     if (!initialHealth.healthy && AUTO_START) {
         const started = await startDaemon();
         if (!started) {

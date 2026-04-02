@@ -93,8 +93,8 @@ export function executeLiveRowCleanup(db, options = {}) {
     };
   }
 
-  const deletedAtoms = db.prepare(plan.statements.atoms).run().changes || 0;
   const deletedFiles = db.prepare(plan.statements.files).run().changes || 0;
+  const deletedAtoms = db.prepare(plan.statements.atoms).run().changes || 0;
   const deletedRiskAssessments = db.prepare(plan.statements.riskAssessments).run().changes || 0;
   const deletedRelations = plan.statements.relations
     ? (db.prepare(plan.statements.relations).run().changes || 0)

@@ -28,6 +28,9 @@ function normalizeSnapshot(snapshot = null) {
       captureSource: null,
       capturedAt: null,
       metricDictionary: null,
+      healthArchive: null,
+      daily: null,
+      lifetime: null,
       current: {},
       trend: {},
       history: {}
@@ -43,6 +46,9 @@ function normalizeSnapshot(snapshot = null) {
       captureSource: snapshot.captureSource || snapshot.current?.captureSource || null,
       capturedAt: snapshot.capturedAt || snapshot.current?.capturedAt || null,
       metricDictionary: snapshot.metricDictionary || null,
+      healthArchive: snapshot.healthArchive || snapshot.current?.healthArchive || null,
+      daily: snapshot.daily || null,
+      lifetime: snapshot.lifetime || snapshot.archive || snapshot.healthArchive || snapshot.current?.healthArchive || null,
       current: snapshot.current || {},
       trend: snapshot.trend || {},
       history: snapshot.history || {}
@@ -57,6 +63,9 @@ function normalizeSnapshot(snapshot = null) {
     captureSource: snapshot.captureSource || null,
     capturedAt: snapshot.capturedAt || null,
     metricDictionary: snapshot.metricDictionary || null,
+    healthArchive: snapshot.healthArchive || null,
+    daily: snapshot.daily || null,
+    lifetime: snapshot.lifetime || snapshot.archive || snapshot.healthArchive || null,
     current: snapshot,
     trend: snapshot.trend || {},
     history: snapshot.history || {}
@@ -200,6 +209,7 @@ function mapHealthSummary(current = {}) {
     clientSyncSeverity: current.clientSyncSeverity || null,
     clientSyncReason: current.clientSyncReason || null,
     clientSyncRecommendation: current.clientSyncRecommendation || null,
+    healthArchive: current.healthArchive || null,
     activeAtomsDelta: asNumber(current.activeAtomsDelta, 0),
     activeAtomsDeltaPct: asNumber(current.activeAtomsDeltaPct, 0)
   };
@@ -283,6 +293,50 @@ function mapHistorySummary(history = {}) {
   };
 }
 
+function mapArchiveSummary(archive = null) {
+  if (!archive) {
+    return null;
+  }
+
+  const daily = archive.daily || null;
+  const lifetime = archive.lifetime || archive;
+
+  return {
+    daily: daily ? {
+      capturedAt: daily.capturedAt || null,
+      globalHealthScore: asNumber(daily.globalHealthScore, asNumber(daily.healthScore, 0)),
+      globalHealthGrade: daily.globalHealthGrade || daily.healthGrade || 'F',
+      healthScore: asNumber(daily.healthScore, 0),
+      healthGrade: daily.healthGrade || 'F',
+      behaviorState: daily.behaviorState || null,
+      driftState: daily.driftState || null,
+      successScore: asNumber(daily.successScore, 0),
+      issueCount: asNumber(daily.issueCount, 0),
+      summary: daily.summary || null
+    } : null,
+    lifetime: lifetime ? {
+      daysObserved: asNumber(lifetime.daysObserved, 0),
+      snapshotsRecorded: asNumber(lifetime.snapshotsRecorded, 0),
+      firstCapturedAt: lifetime.firstCapturedAt || null,
+      lastCapturedAt: lifetime.lastCapturedAt || null,
+      averageHealthScore: asNumber(lifetime.averageHealthScore, 0),
+      averageDriftScore: asNumber(lifetime.averageDriftScore, 0),
+      averageStabilityScore: asNumber(lifetime.averageStabilityScore, 0),
+      averageSuccessScore: asNumber(lifetime.averageSuccessScore, 0),
+      totalIssueCount: asNumber(lifetime.totalIssueCount, 0),
+      totalWarningCount: asNumber(lifetime.totalWarningCount, 0),
+      totalErrorCount: asNumber(lifetime.totalErrorCount, 0),
+      totalWatcherAlertCount: asNumber(lifetime.totalWatcherAlertCount, 0),
+      latestHealthScore: asNumber(lifetime.latestHealthScore, 0),
+      latestHealthGrade: lifetime.latestHealthGrade || null,
+      latestBehaviorState: lifetime.latestBehaviorState || null,
+      latestClientSyncState: lifetime.latestClientSyncState || null,
+      summary: lifetime.summary || null
+    } : null,
+    summary: archive.summary || lifetime?.summary || null
+  };
+}
+
 function summarizeCompilerHealthDashboard(dashboard = null) {
   if (!dashboard || typeof dashboard !== 'object') {
     return null;
@@ -299,6 +353,9 @@ function summarizeCompilerHealthDashboard(dashboard = null) {
     snapshotKind: dashboard.snapshotKind || 'status',
     captureSource: dashboard.captureSource || null,
     capturedAt: dashboard.capturedAt || null,
+    daily: dashboard.daily || null,
+    lifetime: dashboard.lifetime || dashboard.archive || dashboard.healthArchive || null,
+    archive: dashboard.archive || dashboard.lifetime || dashboard.healthArchive || null,
     status: dashboard.status || null,
     health: dashboard.health ? mapHealthSummary(dashboard.health) : null,
     trend: dashboard.trend ? mapTrendSummary(dashboard.trend) : null,
@@ -307,6 +364,7 @@ function summarizeCompilerHealthDashboard(dashboard = null) {
     sessions: mapSessionsSummary(dashboard),
     toolTelemetry: dashboard.toolTelemetry ? mapToolTelemetry(dashboard.toolTelemetry) : null,
     metricDictionary: dashboard.metricDictionary || null,
+    archive: mapArchiveSummary(dashboard.archive || null),
     pipelineTimingTelemetry,
     regressors: takeSample(dashboard.regressors || [], 5),
     improvements: takeSample(dashboard.improvements || [], 5),
@@ -329,7 +387,8 @@ function buildCompilerHealthPanel(dashboard = null) {
   const topRecommendations = takeSample(compact.recommendations || [], 3);
   const now = compact.health || {};
   const tools = compact.toolTelemetry || {};
-  const perf = compact.performance || {};
+    const perf = compact.performance || {};
+  const lifetime = compact.lifetime || compact.archive || null;
 
   return {
     projectPath: compact.projectPath,
@@ -338,6 +397,8 @@ function buildCompilerHealthPanel(dashboard = null) {
     snapshotKind: compact.snapshotKind,
     captureSource: compact.captureSource,
     capturedAt: compact.capturedAt,
+    daily: compact.daily || null,
+    lifetime,
     status: compact.status,
     headline: `${now.globalHealthGrade || now.healthGrade || 'F'} ${Math.round(now.globalHealthScore || now.healthScore || 0)}/${Math.round(now.successThreshold || 0)} ${now.mvpReady ? 'ready' : now.behaviorState || 'unknown'}`,
     now: {
@@ -370,6 +431,7 @@ function buildCompilerHealthPanel(dashboard = null) {
     sessions: compact.sessions || null,
     toolTelemetry: tools || null,
     metricDictionary: compact.metricDictionary || null,
+    archive: compact.archive || null,
     pipelineTimingTelemetry: compact.pipelineTimingTelemetry || null,
     regressors: topRegressors,
     improvements: topImprovements,
@@ -400,6 +462,9 @@ function buildCompilerHealthPanel(dashboard = null) {
       tools?.pressureRuns > 0
         ? `repair=${tools.repairedRuns || 0}/${tools.pressureRuns}`
         : null,
+      lifetime?.daysObserved
+        ? `life=${lifetime.daysObserved}d avg=${Math.round(lifetime.averageHealthScore || 0)}`
+        : null,
       `ready=${now.mvpReady ? 'yes' : 'no'}`
     ].filter(Boolean).join(' | ')
   };
@@ -424,6 +489,7 @@ function summarizeCompilerHealthPanel(panel = null) {
     performance: panel.performance || null,
     tools: panel.tools || null,
     metricDictionary: panel.metricDictionary || null,
+    archive: panel.archive || null,
     topRegressors: takeSample(panel.topRegressors || [], 3),
     topImprovements: takeSample(panel.topImprovements || [], 3),
     topRecommendations: takeSample(panel.topRecommendations || [], 3),
@@ -445,6 +511,7 @@ export {
   mapSessionsSummary,
   mapTrendSummary,
   mapToolTelemetry,
+  mapArchiveSummary,
   normalizeSnapshot,
   buildCompilerHealthPanel,
   summarizeCompilerHealthDashboard,

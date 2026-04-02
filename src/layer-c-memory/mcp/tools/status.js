@@ -18,6 +18,7 @@ import {
 } from '../../../shared/compiler/index.js';
 import { sessionManager } from '../core/session-manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
+import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
 import { getRepository, getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
 import {
   attachCacheStatus,
@@ -114,6 +115,12 @@ export async function get_server_status(args, context) {
         focusPath: args?.focusPath || null
       }
     );
+    const governanceAlerts = buildGovernanceAlerts({
+      compilerExplainability,
+      source: 'status'
+    });
+    const mergedNotifications = mergeRecentNotificationsWithGovernanceAlerts(compactNotifications, governanceAlerts);
+    attachNotificationSignals(status, mergedNotifications);
     status.compilerExplainability = compactCompilerExplainabilitySummary(compilerExplainability);
     status.surfaceAudit = summarizeSurfaceAuditForStatus(compilerExplainability.surfaceAudit);
     if (!status.databaseHealth) {
@@ -122,7 +129,7 @@ export async function get_server_status(args, context) {
       status.databaseHealth = compactDatabaseHealth(status.databaseHealth);
     }
 
-    const recentErrors = buildRecentErrorsResponse(compactNotifications);
+    const recentErrors = buildRecentErrorsResponse(mergedNotifications);
     const sessionSummary = getMcpSessionSummary(sessionManager, {
       runtimeSessionCount: server.sessions?.size || 0,
       recentErrors,
@@ -142,7 +149,7 @@ export async function get_server_status(args, context) {
     });
     status.metricsSnapshot = metricsSnapshot;
     status.healthSnapshot = buildCompilerHealthDashboard(metricsSnapshot, compilerExplainability, {
-      watcherAlerts: compactNotifications.watcherAlerts || [],
+      watcherAlerts: mergedNotifications.watcherAlerts || [],
       recentErrors
     });
     status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
@@ -170,7 +177,24 @@ export async function get_recent_errors(args, context) {
   logger.info('[Tool] get_recent_errors()');
   try {
     const notifications = await loadNotifications(context.projectPath, context.server, true);
-    return buildRecentErrorsResponse(notifications);
+    const compilerExplainability = context.projectPath
+      ? await loadCompilerExplainability(
+        context.projectPath,
+        notifications.watcherAlerts || [],
+        context.server?.sharedState || {},
+        context.server?.fileWatcher?.getFileWatcherStats?.() || null,
+        {
+          scopePath: args?.scopePath || null,
+          focusPath: args?.focusPath || null
+        }
+      )
+      : null;
+    const governanceAlerts = buildGovernanceAlerts({
+      compilerExplainability,
+      source: 'recent_errors'
+    });
+    const mergedNotifications = mergeRecentNotificationsWithGovernanceAlerts(notifications, governanceAlerts);
+    return buildRecentErrorsResponse(mergedNotifications);
   } catch (error) {
     logger.warn(`[Tool] get_recent_errors degraded: ${error.message}`);
     return {

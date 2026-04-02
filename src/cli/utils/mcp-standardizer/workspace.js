@@ -34,6 +34,16 @@ function buildWorkspaceBridgeServer(projectPath, includeDescription = false) {
     return server;
 }
 
+function buildVsCodeMcpPayload(projectPath, includeDescription = false) {
+    return {
+        servers: {
+            [SERVER_KEY]: {
+                ...buildWorkspaceBridgeServer(projectPath, includeDescription)
+            }
+        }
+    };
+}
+
 export function buildWorkspaceMcpPayload(projectPath, includeDescription = false) {
     return {
         mcpServers: {
@@ -85,9 +95,11 @@ export function buildDaemonTask() {
 export async function applyWorkspaceMcpConfig(options = {}) {
     const projectPath = path.resolve(options.projectPath || process.cwd());
     const files = getWorkspaceConfigPaths(projectPath);
+    const vscodeFiles = getVsCodeConfigPaths(projectPath);
 
     await writeJsonNoBom(files.dotMcp, buildWorkspaceMcpPayload(projectPath));
     await writeJsonNoBom(files.mcpServers, buildWorkspaceMcpPayload(projectPath));
+    await writeJsonNoBom(vscodeFiles.mcp, buildVsCodeMcpPayload(projectPath));
     await writeJsonNoBom(files.mcpServersSchema, {
         $schema: 'https://modelcontextprotocol.io/schemas/2024-11-05/mcp-servers-config.schema.json',
         ...buildWorkspaceMcpPayload(projectPath, true)
@@ -125,6 +137,8 @@ export async function applyVsCodeAutostartConfig(options = {}) {
         }
 
         await writeJsonNoBom(paths.tasks, tasksConfig);
+
+        await writeJsonNoBom(paths.mcp, buildVsCodeMcpPayload(projectPath, true));
 
         const settings = await readJsonSafe(paths.settings, {});
         settings['task.allowAutomaticTasks'] = 'on';

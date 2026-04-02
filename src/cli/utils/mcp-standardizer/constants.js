@@ -20,7 +20,8 @@ export const WORKSPACE_FILES = {
 
 export const VSCODE_FILES = {
     tasks: path.join('.vscode', 'tasks.json'),
-    settings: path.join('.vscode', 'settings.json')
+    settings: path.join('.vscode', 'settings.json'),
+    mcp: path.join('.vscode', 'mcp.json')
 };
 
 export const VSCODE_DAEMON_TASK_LABEL = 'OmnySys MCP Daemon';

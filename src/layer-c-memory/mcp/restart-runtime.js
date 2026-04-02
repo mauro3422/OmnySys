@@ -214,11 +214,14 @@ async function clearStandaloneCache(cache, reanalyze, server, result) {
 
     try {
       const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm'];
+      const legacyFiles = ['index.json', 'atom-versions.json'];
+      const preservedFiles = new Set(['health-history.db']);
       for (const file of dbFiles) {
+        if (preservedFiles.has(file)) continue;
         await fs.unlink(path.join(dataDir, file)).catch(() => {});
       }
-      const legacyFiles = ['index.json', 'atom-versions.json'];
       for (const file of legacyFiles) {
+        if (preservedFiles.has(file)) continue;
         await fs.unlink(path.join(dataDir, file)).catch(() => {});
       }
       logger.info('Previous analysis deleted (SQLite DB + legacy files)');

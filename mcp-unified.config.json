@@ -24,6 +24,7 @@
   },
   "vscode": {
     "tasks": "C:\\Dev\\OmnySystem\\.vscode\\tasks.json",
-    "settings": "C:\\Dev\\OmnySystem\\.vscode\\settings.json"
+    "settings": "C:\\Dev\\OmnySystem\\.vscode\\settings.json",
+    "mcp": "C:\\Dev\\OmnySystem\\.vscode\\mcp.json"
   }
 }

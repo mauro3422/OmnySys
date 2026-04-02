@@ -14,7 +14,8 @@ export function getVsCodeConfigPaths(projectPath = process.cwd()) {
     const resolved = path.resolve(projectPath);
     return {
         tasks: path.join(resolved, VSCODE_FILES.tasks),
-        settings: path.join(resolved, VSCODE_FILES.settings)
+        settings: path.join(resolved, VSCODE_FILES.settings),
+        mcp: path.join(resolved, VSCODE_FILES.mcp)
     };
 }
 

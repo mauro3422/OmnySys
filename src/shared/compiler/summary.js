@@ -2,6 +2,8 @@
  * Compact snapshot summary helpers for compiler metrics.
  */
 
+export { getDatabaseHealthSummary } from './database-health-summary.js';
+
 function summarizeCompactPipelineTimingTelemetry(telemetry = null) {
   if (!telemetry) {
     return null;

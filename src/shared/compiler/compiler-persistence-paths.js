@@ -3,10 +3,19 @@ import path from 'path';
 import { normalizeFilePath } from './path-normalization.js';
 
 const DATA_DIR = '.omnysysdata';
+const HEALTH_HISTORY_DB = 'health-history.db';
 const SCANNED_FILE_MANIFEST_TABLE = 'compiler_scanned_files';
 
 export function getCompilerDataDir(rootPath) {
   return path.join(rootPath, DATA_DIR);
+}
+
+export function getCompilerHistoryDir(rootPath) {
+  return getCompilerDataDir(rootPath);
+}
+
+export function getCompilerHistoryDbPath(rootPath) {
+  return path.join(getCompilerHistoryDir(rootPath), HEALTH_HISTORY_DB);
 }
 
 export function getMetadataJsonPath(dataPath, filePath) {

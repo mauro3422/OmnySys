@@ -5,10 +5,11 @@
 import {
   failBridgePendingRequests,
   log,
-  sendBridgeRetryableError,
-  waitForDaemonHealthy
+  sendBridgeRetryableError
 } from './stdio-bridge-lifecycle.js';
+import { waitForDaemonHealthy } from './stdio-bridge-health.js';
 
+const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
 const DAEMON_RECOVERY_TIMEOUT_MS = Number(process.env.OMNYSYS_DAEMON_RECOVERY_TIMEOUT_MS || 180000);
 const DAEMON_RECOVERY_POLL_MS = Number(process.env.OMNYSYS_DAEMON_RECOVERY_POLL_MS || 1500);
 const BRIDGE_RECOVERY_BACKOFF_MS = Number(process.env.OMNYSYS_BRIDGE_RECOVERY_BACKOFF_MS || 250);
@@ -54,7 +55,7 @@ function clearStaleBridgeSession(state, forceFreshSession) {
 async function runBridgeRecovery(state, trigger, connectBridgeTransport, options = {}) {
   log(`Starting bridge recovery (${trigger})...`);
 
-  const health = await waitForDaemonHealthy({
+  const health = await waitForDaemonHealthy(DAEMON_HEALTH, {
     timeoutMs: DAEMON_RECOVERY_TIMEOUT_MS,
     pollMs: DAEMON_RECOVERY_POLL_MS,
     label: 'daemon recovery'
