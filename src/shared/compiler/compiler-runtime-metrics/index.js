@@ -13,7 +13,7 @@ export {
 export {
   buildCompilerMetricsSnapshot,
   summarizeCompilerMetricsSnapshot
-} from '../snapshot.js';
+} from '../compiler-metrics-snapshot.js';
 
 export {
   getGraphCoverageSummary,
