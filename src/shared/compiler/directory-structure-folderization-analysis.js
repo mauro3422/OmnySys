@@ -1,4 +1,4 @@
-z<import { getRecommendation } from './recommendations/RecommendationEngine.js';
+import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import { loadFolderizationRows, normalizeFolderizationPath } from './directory-structure-folderization-data.js';
 import { buildFamilyStateReport, buildFolderizationCandidateReport, summarizeFamilyEvolution } from './directory-structure-folderization-analysis-helpers.js';
 
@@ -327,7 +327,9 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
     exportCount,
     exportingMembers,
     confidence,
-    shouldFolderize: migrationState === 'flat' && enrichedMembers.length >= minFileCount && (Boolean(barrelFile) || internalImportEdges >= enrichedMembers.length),
+    // FIX: Relajar condición - antes requería barrelFile O internalImportEdges >= members.length
+    // Esto fallaba para familias cohesivas por nombre/patrón pero que no se importan entre sí
+    shouldFolderize: migrationState === 'flat' && enrichedMembers.length >= minFileCount && (Boolean(barrelFile) || internalImportEdges >= 1 || exportingMembers >= 2),
     migrationState,
     familyEvolution: familyEvolution ? {
       rootFileCount: familyEvolution.rootFileCount || 0,
