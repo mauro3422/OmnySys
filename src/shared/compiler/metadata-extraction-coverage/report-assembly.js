@@ -5,6 +5,7 @@ import { buildMetadataCoverageSummary } from './report-summary.js';
 export function buildMetadataCoverageReport(tables) {
   const counts = collectMetadataCoverageCounts(tables);
   const fieldLists = collectMetadataCoverageFields(tables);
+  const primaryIssue = counts.healthy === true ? null : fieldLists.primaryIssue;
   const warnings = [];
   const criticalFindings = [];
 
@@ -29,7 +30,7 @@ export function buildMetadataCoverageReport(tables) {
   } else if (!counts.healthy) {
     warnings.push({
       table: null,
-      field: fieldLists.primaryIssue?.field || null,
+      field: primaryIssue?.field || null,
       message: `Metadata extraction coverage is partial (${counts.fieldCoveragePct}% fields populated, ${counts.coveragePct}% weighted row coverage).`
     });
   }
@@ -50,19 +51,19 @@ export function buildMetadataCoverageReport(tables) {
       activeCallRelations: counts.coveredFields,
       activeSemanticConnections: counts.emptyFields
     },
-    summary: buildMetadataCoverageSummary(counts, fieldLists.primaryIssue),
+    summary: buildMetadataCoverageSummary(counts, primaryIssue),
     tables,
     fields: fieldLists.flattenedFields,
     warnings,
     criticalFindings,
-    primaryIssue: fieldLists.primaryIssue ? {
-      table: fieldLists.primaryIssue.table,
-      field: fieldLists.primaryIssue.field,
-      type: fieldLists.primaryIssue.type,
-      coverageRatio: fieldLists.primaryIssue.coverageRatio,
-      coveragePct: fieldLists.primaryIssue.coveragePct,
-      state: fieldLists.primaryIssue.state,
-      reason: fieldLists.primaryIssue.reason
+    primaryIssue: primaryIssue ? {
+      table: primaryIssue.table,
+      field: primaryIssue.field,
+      type: primaryIssue.type,
+      coverageRatio: primaryIssue.coverageRatio,
+      coveragePct: primaryIssue.coveragePct,
+      state: primaryIssue.state,
+      reason: primaryIssue.reason
     } : null,
     topMissingFields: fieldLists.sortedMissingFields.slice(0, 10).map((field) => ({
       table: field.table,

@@ -2,6 +2,7 @@ import { createLogger } from '../../utils/logger.js';
 import { parseFileFromDisk } from '../../layer-a-static/parser/index.js';
 import { analyzeFileCore, calculateShadowVolume } from '../../layer-a-static/pipeline/core-analyzer.js';
 import { persistAnalysisArtifacts } from './analyze-persistence.js';
+import { saveFileResult } from '../../layer-a-static/pipeline/single-file-db.js';
 import {
   _calculateContentHash,
   buildFileResult
@@ -30,6 +31,7 @@ export async function collectAndBuildFileAnalysis(context, filePath, fullPath) {
 
     const contentHash = await _calculateContentHash(fullPath);
     const result = buildFileResult(filePath, parsed, coreAnalysis.parsed.imports || [], [], [], metadata, moleculeAtoms, contentHash);
+    await saveFileResult(context.rootPath, filePath, result, contentHash, null, false, false);
 
     result.moleculeAtoms = moleculeAtoms;
     return result;

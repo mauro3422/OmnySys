@@ -12,6 +12,7 @@
 
 import { isMainThread } from 'worker_threads';
 import { createLogger } from '#utils/logger.js';
+import { connectionManager } from '../database/connection.js';
 import { RepositoryFactory } from './repository-factory.js';
 import {
   getRepositoryRetryDelay,
@@ -101,12 +102,14 @@ function scheduleRepositoryFlush(projectPath, delayMs = 100) {
 }
 
 export function isRepositoryReady(repo) {
-  return !!(repo?.initialized && repo?.db && repo.db.open !== false);
+  const integrity = connectionManager.getIntegrityStatus?.() || repo?.integrity || null;
+  return !!(repo?.initialized && repo?.db && repo.db.open !== false && integrity?.healthy !== false);
 }
 
 export function getRepositoryStatus(projectPath) {
   const repo = RepositoryFactory.getInstance(projectPath);
   const normalizedProjectPath = normalizeProjectPath(projectPath);
+  const integrity = connectionManager.getIntegrityStatus?.() || repo?.integrity || null;
   const ready = isRepositoryReady(repo);
   const dbOpen = !!(repo?.db && repo.db.open !== false);
   const initialized = !!repo?.initialized;
@@ -118,9 +121,11 @@ export function getRepositoryStatus(projectPath) {
         ? 'database is not initialized'
         : !dbOpen
           ? 'database connection is not open'
+          : integrity?.healthy === false
+            ? integrity.summary || 'database integrity probe failed'
           : 'repository is not ready';
 
-  return { projectPath: normalizedProjectPath, ready, initialized, dbOpen, reason, repo };
+  return { projectPath: normalizedProjectPath, ready, initialized, dbOpen, reason, integrity, repo };
 }
 
 export function enqueueRepositoryMutation(projectPath, mutation) {

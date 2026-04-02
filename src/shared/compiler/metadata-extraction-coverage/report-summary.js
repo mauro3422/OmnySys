@@ -11,6 +11,8 @@ export function buildMetadataCoverageSummary(counts, primaryIssue) {
     coverageRatio: counts.coverageRatio,
     coveragePct: counts.coveragePct,
     fieldCoveragePct: counts.fieldCoveragePct,
+    healthy: counts.healthy,
+    trustworthy: counts.trustworthy,
     nextAction: primaryIssue
       ? `Review ${primaryIssue.table}.${primaryIssue.field} before trusting downstream metadata consumers.`
       : counts.healthy

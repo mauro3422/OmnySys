@@ -7,45 +7,19 @@ import { createLogger } from '../../../utils/logger.js';
 import {
   getCachedCounts,
   getCachedMetadata,
-  getPhase2Status,
-  getDatabaseHealthSummary,
-  getMcpSessionSummary,
-  buildTelemetryProvenance,
-  summarizeSurfaceAuditForStatus,
-  buildCompilerMetricsSnapshot,
-  buildCompilerHealthDashboard,
-  buildCompilerHealthPanel
+  getPhase2Status
 } from '../../../shared/compiler/index.js';
-import { sessionManager } from '../core/session-manager.js';
-import { compactRecentNotifications } from '../core/recent-notifications.js';
-import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
-import { getRepository, getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
 import {
-  attachCacheStatus,
-  attachOrchestratorStatus,
-  attachRuntimeHotReload,
-  buildNodeVitals,
   buildServerStatusEnvelope
 } from './status-runtime.js';
+import { enrichServerStatus } from './status-server-details.js';
 import {
-  attachDeepVitals,
-} from './status-compiler.js';
-import { loadCompilerExplainability } from './status-compiler-explainability.js';
-import { loadMetadataStatus } from './status-metadata.js';
-import {
-  attachNotificationSignals,
-  attachPhase2Status,
   buildRecentErrorsResponse,
   loadNotifications
 } from './status-notifications.js';
-import {
-  compactDatabaseHealth,
-  compactCompilerExplainabilitySummary,
-  compactWatcherSummary,
-  summarizeNodeVitals,
-  summarizeStatus
-} from './status-summary.js';
-import { buildInventoryReport, buildInventorySnapshot } from './list-tools.js';
+import { loadCompilerExplainability } from './status-compiler-explainability.js';
+import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
+import { summarizeStatus } from './status-summary.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -53,111 +27,21 @@ export async function get_server_status(args, context) {
   logger.info('[Tool] get_server_status()');
   try {
     const { orchestrator, cache, projectPath, server } = context;
-    const repo = projectPath ? getRepository(projectPath) : null;
     const phase2Status = getPhase2Status(orchestrator);
     const phase2InProgress = !!phase2Status?.inProgress;
     const cachedMetadata = getCachedMetadata(server, cache);
     const cachedCounts = getCachedCounts(cache, cachedMetadata);
 
     const status = buildServerStatusEnvelope(server, projectPath, phase2InProgress);
-    try {
-      const repositoryDiagnostics = getRepositoryDiagnostics(projectPath);
-      status.repository = repositoryDiagnostics;
-      status.databaseHealth = repositoryDiagnostics?.status?.repo?.db
-        ? getDatabaseHealthSummary(repositoryDiagnostics.status.repo.db)
-        : null;
-    } catch {
-      status.repository = null;
-      status.databaseHealth = null;
-    }
-    attachOrchestratorStatus(status, orchestrator);
-    attachRuntimeHotReload(status, server);
-    status.watcher = server.fileWatcher?.getFileWatcherStats?.() || null;
-
-    const notifications = await loadNotifications(projectPath, server);
-    const compactNotifications = compactRecentNotifications(notifications, { maxLogs: 5, maxWatcherAlerts: 5 });
-    attachNotificationSignals(status, compactNotifications);
-
-    if (phase2InProgress) {
-      status.watcher = compactWatcherSummary(status.watcher);
-      attachPhase2Status(
-        status,
-        server,
-        cache,
-        cachedMetadata,
-        cachedCounts,
-        phase2Status,
-        notifications,
-        buildNodeVitals
-      );
-      return status;
-    }
-
-    status.metadata = await loadMetadataStatus(projectPath);
-    attachCacheStatus(status, cache);
-    status.nodeVitals = buildNodeVitals(server);
-    await attachDeepVitals(status, projectPath, server);
-    status.telemetryProvenance = buildTelemetryProvenance({
-      source: 'status.runtime',
-      phase2PendingFiles: status.metadata?.phase2PendingFiles || 0,
-      runtimeRestartMode: status.hotReload.runtimeRestartMode,
-      pendingRuntimeRestartFiles: status.hotReload.pendingRuntimeRestart?.files || [],
-      watcherLifecycle: notifications.watcherLifecycle
-    });
-
-    const compilerExplainability = await loadCompilerExplainability(
-      projectPath,
-      notifications.watcherAlerts || [],
-      status.sharedState || {},
-      status.watcher,
-      {
-        scopePath: args?.scopePath || null,
-        focusPath: args?.focusPath || null
-      }
+    const { recentErrors } = await enrichServerStatus(
+      status,
+      args,
+      context,
+      phase2Status,
+      phase2InProgress,
+      cachedMetadata,
+      cachedCounts
     );
-    const governanceAlerts = buildGovernanceAlerts({
-      compilerExplainability,
-      source: 'status'
-    });
-    const mergedNotifications = mergeRecentNotificationsWithGovernanceAlerts(compactNotifications, governanceAlerts);
-    attachNotificationSignals(status, mergedNotifications);
-    status.compilerExplainability = compactCompilerExplainabilitySummary(compilerExplainability);
-    status.surfaceAudit = summarizeSurfaceAuditForStatus(compilerExplainability.surfaceAudit);
-    if (!status.databaseHealth) {
-      status.databaseHealth = status.compilerExplainability?.databaseHealth || null;
-    } else {
-      status.databaseHealth = compactDatabaseHealth(status.databaseHealth);
-    }
-
-    const recentErrors = buildRecentErrorsResponse(mergedNotifications);
-    const sessionSummary = getMcpSessionSummary(sessionManager, {
-      runtimeSessionCount: server.sessions?.size || 0,
-      recentErrors,
-      sessionDb: repo?.db || null
-    });
-    const metricsSnapshot = buildCompilerMetricsSnapshot({
-      projectPath,
-      repo,
-      compilerExplainability,
-      watcherAlerts: compactNotifications.watcherAlerts || [],
-      recentErrors,
-      mcpSessionSummary: sessionSummary,
-      scopePath: args?.scopePath || null,
-      focusPath: args?.focusPath || null,
-      captureSource: 'status.runtime',
-      snapshotKind: 'status'
-    });
-    status.metricsSnapshot = metricsSnapshot;
-    status.healthSnapshot = buildCompilerHealthDashboard(metricsSnapshot, compilerExplainability, {
-      watcherAlerts: mergedNotifications.watcherAlerts || [],
-      recentErrors
-    });
-    status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
-    const toolInventorySnapshot = buildInventorySnapshot({ includeSchemas: false });
-    status.toolInventory = {
-      snapshot: toolInventorySnapshot,
-      report: buildInventoryReport(toolInventorySnapshot)
-    };
     return summarizeStatus(status, recentErrors);
   } catch (error) {
     logger.warn(`[Tool] get_server_status degraded: ${error.message}`);

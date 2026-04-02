@@ -8,6 +8,9 @@
  */
 
 import { resolve } from 'path';
+import { probeDatabaseIntegrity } from './connection-integrity.js';
+
+export { probeDatabaseIntegrity };
 
 export function ensureDataDirectory(projectPath, { logger, existsSync, mkdirSync }) {
   const dataDir = resolve(projectPath, '.omnysysdata');
@@ -137,6 +140,7 @@ export function initializeConnection(manager, projectPath, deps) {
       getRegisteredTables,
       getTableDefinition
     });
+    manager.integrity = probeDatabaseIntegrity(manager.db, logger);
     manager.initialized = true;
     logger.debug('[Connection] SQLite initialized successfully');
 
@@ -205,6 +209,7 @@ export function shutdownConnection(manager, logger) {
     manager.db.close();
     manager.db = null;
     manager.initialized = false;
+    manager.integrity = null;
     logger.info('[Connection] Database connection closed');
   }
 }

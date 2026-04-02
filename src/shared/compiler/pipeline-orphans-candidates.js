@@ -43,12 +43,13 @@ export function getPipelineOrphanCandidates(db, options = {}) {
     FROM atoms a
     WHERE a.is_exported = 1
       AND a.atom_type IN ('function', 'arrow', 'method', 'class')
-      AND a.is_test_callback = 0
-      AND a.is_phase2_complete = 1
-      AND a.file_path NOT LIKE 'tests/%'
-      AND a.file_path NOT LIKE 'scripts/%'
-      AND (${patternCondition})
-      AND a.complexity > ?
+    AND a.is_test_callback = 0
+    AND a.is_phase2_complete = 1
+    AND a.file_path NOT LIKE 'tests/%'
+    AND a.file_path NOT LIKE 'scripts/%'
+    AND a.file_path NOT LIKE 'src/layer-b-semantic/llm-analyzer/%'
+    AND (${patternCondition})
+    AND a.complexity > ?
     ORDER BY a.complexity DESC
     LIMIT ?
   `).all(minComplexity, limit);

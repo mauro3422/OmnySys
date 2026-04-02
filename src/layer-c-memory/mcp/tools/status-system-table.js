@@ -2,6 +2,8 @@
  * Compact control-plane table for get_server_status.
  */
 
+import { buildUpdateSurfaceSummary } from './status-update-summary.js';
+
 function formatCount(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -20,6 +22,7 @@ export function buildSystemTableSummary(status = {}) {
   const mcpSessions = status.background?.mcpSessionSummary || status.mcpSessions || {};
   const watcher = status.watcher || {};
   const toolInventory = status.toolInventory || {};
+  const updateSurface = buildUpdateSurfaceSummary(status);
   const structuralGroups = formatCount(current.structuralGroups);
   const conceptualGroups = formatCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
@@ -87,6 +90,12 @@ export function buildSystemTableSummary(status = {}) {
         state: watcher.isRunning === false ? 'stopped' : 'running',
         detail: `pending=${formatCount(watcher.pendingChanges)} | failed=${formatCount(watcher.failedChanges)} | last=${watcher.lastChangeOrigin || 'n/a'}`,
         source: 'file watcher'
+      },
+      {
+        area: 'Update',
+        state: updateSurface?.state || 'unknown',
+        detail: updateSurface?.detail || 'update pipeline not loaded',
+        source: updateSurface?.source || 'atom/function update pipeline'
       },
       {
         area: 'Drift',

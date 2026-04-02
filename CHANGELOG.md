@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added an explicit update-surface summary to the status panel so atom/function changes now expose the live sync chain across `files`, `system_files`, dependencies, watcher state, and repository integrity.
+- Wired the file watcher and single-file save path through incremental system-map sync so every analyzed file refreshes the file mirror, dependency rows, and `used_by_json` without waiting for a full reindex.
+- Hardened repository integrity reporting so the status surface can fail closed when SQLite quick-check/integrity probes degrade.
 - Added `mcp_omnysystem_detect_folderization_opportunities` pipeline: DETECTION-ONLY tool that scans for monoliths (>300L), semantic-dna duplication, folderization candidates, and naming debt without making changes.
 - Extracted `split-large-file-helpers.js` into `shared/compiler/` so the split-large-file barrel stays under 200 lines and the grouping strategies are reusable from the compiler surface.
 - Exported split grouping helpers (`groupAtomsByResponsibility`, `buildSplitPlan`, `buildBarrelContent`, etc.) through the compiler barrel.
@@ -68,6 +71,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Normalized the `contract-taxonomy` folder basenames to role-only names (`classification`, `query`, `report`, `summary-helpers`) so the folderized convention stays consistent.
 - Folderized `event-leak` into its own guard subfolder and normalized the basenames to role-only names with a barrel at `event-leak/index.js`.
 - [v0.9.393 - Tool Health Trending & Automatic Alerts](changelogs/v0.9.393.md)
+- [v0.9.394 - Incremental Update Surface & Repository Integrity](changelogs/v0.9.394.md)
 - [v0.9.392 - Sistema de Diagnóstico Inteligente de Herramientas MCP](changelogs/v0.9.392.md)
 - [v0.9.391 - Error Handling & Async Safety Improvements](changelogs/v0.9.391.md)
 - [v0.9.390 - Policy Drift Fix: Canonical Compiler API](changelogs/v0.9.390.md)

@@ -8,6 +8,7 @@ import { compactCompilerExplainabilitySummary } from './status-explainability-su
 import { buildSystemTableSummary } from './status-system-table.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 import { compactToolInventory } from './status-tool-inventory.js';
+import { buildUpdateSurfaceSummary } from './status-update-summary.js';
 import { buildCachePolicySummary, summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
 
 export function buildStatusSummaryPayload(status, recentErrors) {
@@ -19,6 +20,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
   const healthSnapshot = compactCompilerHealthDashboardSummary(status.healthSnapshot);
   const healthPanel = compactCompilerHealthPanelSummary(status.healthPanel);
   const toolInventory = compactToolInventory(status.toolInventory);
+  const updateSurface = buildUpdateSurfaceSummary(status);
   const cachePolicy = buildCachePolicySummary({
     recentErrors,
     databaseHealth: status.databaseHealth,
@@ -116,6 +118,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     systemTable,
     cachePolicy,
     toolInventory,
+    updateSurface,
     surfaceAudit: summarizeSurfaceAuditForStatus(status.surfaceAudit || status.compilerExplainability?.surfaceAudit),
     signalConfidence: status.signalConfidence || null,
     warnings: takeSample(status.warnings || [], 3),

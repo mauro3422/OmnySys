@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   persistAnalysisArtifacts: vi.fn(),
   calculateContentHash: vi.fn(),
   buildFileResult: vi.fn(),
+  saveFileResult: vi.fn(),
   guardRegistry: {
     initializeDefaultGuards: vi.fn(),
     runSemanticGuards: vi.fn()
@@ -24,6 +25,10 @@ vi.mock('../../../../src/layer-a-static/pipeline/core-analyzer.js', () => ({
 
 vi.mock('../../../../src/core/file-watcher/analyze-persistence.js', () => ({
   persistAnalysisArtifacts: mocks.persistAnalysisArtifacts
+}));
+
+vi.mock('../../../../src/layer-a-static/pipeline/single-file-db.js', () => ({
+  saveFileResult: mocks.saveFileResult
 }));
 
 vi.mock('../../../../src/core/file-watcher/analyze-utils.js', () => ({
@@ -47,6 +52,7 @@ beforeEach(() => {
   mocks.persistAnalysisArtifacts.mockReset();
   mocks.calculateContentHash.mockReset();
   mocks.buildFileResult.mockReset();
+  mocks.saveFileResult.mockReset();
   mocks.guardRegistry.initializeDefaultGuards.mockReset();
   mocks.guardRegistry.runSemanticGuards.mockReset();
 });
@@ -81,6 +87,7 @@ describe('collectAndBuildFileAnalysis', () => {
       filePath: 'src/file.js',
       metadata: { shadowVolume: 33.33 }
     });
+    mocks.saveFileResult.mockResolvedValueOnce(undefined);
 
     const result = await collectAndBuildFileAnalysis(context, 'src/file.js', '/proj/src/file.js');
 
@@ -105,6 +112,19 @@ describe('collectAndBuildFileAnalysis', () => {
       metadata,
       moleculeAtoms,
       'hash-123'
+    );
+    expect(mocks.saveFileResult).toHaveBeenCalledWith(
+      '/proj',
+      'src/file.js',
+      {
+        filePath: 'src/file.js',
+        metadata: { shadowVolume: 33.33 },
+        moleculeAtoms
+      },
+      'hash-123',
+      null,
+      false,
+      false
     );
     expect(result).toEqual({
       filePath: 'src/file.js',

@@ -6,6 +6,7 @@ import {
 import { createLogger } from '../../utils/logger.js';
 import { saveFileSummariesBatch } from './file-summary-storage.js';
 import { deriveModuleName } from './single-file-utils.js';
+import { syncIncrementalSystemMapSurface } from '#layer-c/storage/repository/adapters/helpers/system-map-incremental.js';
 
 const logger = createLogger('OmnySys:single:file:db');
 
@@ -105,8 +106,9 @@ export async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis,
                 label: `saveFileResult:${singleFile}`,
                 durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
                 metadata: { filePath: singleFile, atomCount: fileAnalysis.totalAtoms || 0 },
-                run: (repo) => {
+                run: async (repo) => {
                     saveFileSummariesBatch(repo, [buildFileSummaryEntry(singleFile, fileAnalysis, fileHash, absoluteRootPath)]);
+                    await syncIncrementalSystemMapSurface(repo, fileAnalysis, Date.now());
                     if (verbose) logger.info(`  ✓ Saved file metadata to SQLite\n`);
                     return true;
                 }

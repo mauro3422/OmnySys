@@ -20,7 +20,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
 
   getById(id) {
     const normalizedId = this._normalizeId(id);
-    const row = this._getAtomRowById(normalizedId);
+    const row = this.getAtomRowById(normalizedId);
     if (!row) return null;
 
     const atom = rowToAtom(row);
@@ -35,11 +35,11 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   }
 
   getByFile(filePath) {
-    return this._getAtomRowsByFile(filePath).map(rowToAtom);
+    return this.getAtomRowsByFile(filePath).map(rowToAtom);
   }
 
   getFile(filePath) {
-    const row = this._getFileRow(filePath);
+    const row = this.getFileRow(filePath);
     return row || null;
   }
 
@@ -62,7 +62,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
 
   deleteByFile(filePath) {
     const normalizedPath = this._normalize(filePath);
-    const relatedAtomIds = this._getAtomIdsByFile(filePath);
+    const relatedAtomIds = this.getAtomIdsByFile(filePath);
     const result = this.statements.deleteByFile.run(normalizedPath);
     softDeleteRelatedCallRelations(this, relatedAtomIds);
     return result.changes;
@@ -75,7 +75,7 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
   }
 
   exists(id) {
-    return this._hasAtomById(id);
+    return this.hasAtomById(id);
   }
 
   /**
@@ -92,27 +92,4 @@ export class SQLiteCrudOperations extends SQLiteAdapterCore {
     return `${this._normalize(filePath)}::${name}`;
   }
 
-  _getAtomRowById(normalizedId) {
-    return this.statements.getById.get(normalizedId);
-  }
-
-  _getAtomRowsByFile(filePath) {
-    const normalizedPath = this._normalize(filePath);
-    return this.statements.getByFile.all(normalizedPath);
-  }
-
-  _getFileRow(filePath) {
-    const normalizedPath = this._normalize(filePath);
-    return this.statements.query.get(normalizedPath);
-  }
-
-  _getAtomIdsByFile(filePath) {
-    const normalizedPath = this._normalize(filePath);
-    return this.db.prepare('SELECT id FROM atoms WHERE file_path = ?').all(normalizedPath).map((row) => row.id);
-  }
-
-  _hasAtomById(id) {
-    const normalizedId = this._normalizeId(id);
-    return !!this.statements.exists.get(normalizedId);
-  }
 }

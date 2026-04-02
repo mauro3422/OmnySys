@@ -94,8 +94,15 @@ describe('metadata-extraction-coverage', () => {
         event_listeners_json, called_by_json, created_at, updated_at, is_removed, lifecycle_status
       ) VALUES
         (?, ?, 'function', 'src/a.js', 1, 10, 10, 3, 2, 1, 'function', '[{"fullReference":"process.env.DEBUG"}]', '[]', '[]', '["src/b.js::beta"]', datetime('now'), datetime('now'), 0, 'active'),
-        (?, ?, 'function', 'src/b.js', 1, 8, 8, 2, 0, 0, 'arrow', NULL, '[{"eventName":"ready"}]', '[{"eventName":"ready"}]', '[]', datetime('now'), datetime('now'), 0, 'active')
-    `).run('atom-a', 'alpha', 'atom-b', 'beta');
+        (?, ?, 'function', 'src/b.js', 1, 8, 8, 2, 0, 0, 'arrow', NULL, '[{"eventName":"ready"}]', '[{"eventName":"ready"}]', '[]', datetime('now'), datetime('now'), 0, 'active'),
+        (?, ?, 'arrow', 'tests/example.test.js', 1, 6, 6, 1, 0, 0, 'arrow', NULL, '[]', '[]', '[]', datetime('now'), datetime('now'), 0, 'active')
+    `).run('atom-a', 'alpha', 'atom-b', 'beta', 'atom-c', 'gamma');
+
+    db.prepare(`
+      UPDATE atoms
+      SET is_test_callback = 1, test_callback_type = 'describe'
+      WHERE id = ?
+    `).run('atom-b');
 
     db.prepare(`
       INSERT INTO files (
@@ -123,13 +130,16 @@ describe('metadata-extraction-coverage', () => {
     expect(summary.coveredFields).toBeGreaterThan(0);
     expect(summary.coverageRatio).toBeGreaterThan(0);
     expect(summary.coverageRatio).toBeLessThan(1);
-    expect(coverage.primaryIssue).toBeTruthy();
     expect(coverage.tables).toHaveLength(3);
     const atomsTable = coverage.tables.find((table) => table.table === 'atoms');
     const calledByField = atomsTable?.fields.find((field) => field.field === 'called_by_json');
+    const testCallbackField = atomsTable?.fields.find((field) => field.field === 'test_callback_type');
     expect(calledByField?.populatedRows).toBeGreaterThan(0);
     expect(calledByField?.coverageRatio).toBeGreaterThan(0);
-    expect(coverage.primaryIssue?.field).not.toBe('called_by_json');
+    expect(testCallbackField?.eligibleRows).toBe(1);
+    expect(testCallbackField?.populatedRows).toBe(1);
+    expect(testCallbackField?.state).toBe('covered');
+    expect(coverage.primaryIssue?.field).not.toBe('test_callback_type');
     expect(atomsTable?.fields.some((field) => field.field === 'shared_state_json')).toBe(true);
     expect(coverage.tables.find((table) => table.table === 'files')?.fields.some((field) => field.field === 'semantic_connections_json')).toBe(true);
     expect(coverage.tables.find((table) => table.table === 'system_files')?.fields.some((field) => field.field === 'semantic_analysis_json')).toBe(true);

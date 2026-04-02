@@ -8,11 +8,7 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import {
-  ensureLiveRowSync,
-  getLiveFileSetSql,
-  normalizeDerivedRiskLevel,
-} from '../../../shared/compiler/index.js';
+import { ensureLiveRowSync, getLiveFileSetSql, normalizeDerivedRiskLevel } from '../../../shared/compiler/canonical-contracts.js';
 
 function buildDerivedRiskRows(repo) {
   return repo.db.prepare(`

@@ -17,9 +17,16 @@ import {
 let _ramRepo = null;
 
 function getRamRepo(projectPath) {
-  if (_ramRepo && _ramRepo.db) return _ramRepo;
+  if (_ramRepo?.db?.open !== false) return _ramRepo;
+
   const repo = getRepository(projectPath);
-  _ramRepo = new BaseSqlRepository(repo.db, 'RamCache');
+  const db = repo?.db;
+  if (!db || db.open === false) {
+    _ramRepo = null;
+    return null;
+  }
+
+  _ramRepo = new BaseSqlRepository(db, 'RamCache');
   _ramRepo.ensureTable('cache_entries', `
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,

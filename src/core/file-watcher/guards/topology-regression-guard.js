@@ -37,7 +37,7 @@ export async function detectTopologyRegression(rootPath, filePath, EventEmitterC
             return [];
         }
 
-        if (shouldSkipTopologyRegression(filePath, matched, regressedAtoms)) {
+        if (shouldSkipTopologyRegression(filePath, matched, regressedAtoms, currentSignal)) {
             return [];
         }
 

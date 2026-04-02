@@ -1,16 +1,5 @@
-import { normalizePath } from '../../../../shared/utils/path-utils.js';
 import { buildAtomInsertSql } from './helpers/atom-schema.js';
 import { persistSystemMapToDb, retrieveSystemMapFromDb } from './helpers/system-map.js';
-
-export function initializeSQLiteAdapterCore(core, projectPath, deps) {
-  const { connectionManager, logger } = deps;
-  core.projectPath = projectPath;
-  connectionManager.initialize(projectPath);
-  core.db = connectionManager.getDatabase();
-  core.statements = buildSQLiteAdapterStatements(core.db, deps);
-  core.initialized = true;
-  logger.debug('[SQLiteAdapter] Initialized successfully');
-}
 
 export function buildSQLiteAdapterStatements(db) {
   return {
@@ -38,17 +27,6 @@ export function buildSQLiteAdapterStatements(db) {
     `),
     exists: db.prepare('SELECT 1 FROM atoms WHERE id = ? AND is_removed = 0')
   };
-}
-
-export function normalizeSQLiteAdapterPath(filePath, projectPath) {
-  return normalizePath(filePath, projectPath);
-}
-
-export function shutdownSQLiteAdapterCore(core, connectionManager) {
-  connectionManager.shutdown();
-  core.initialized = false;
-  core.db = null;
-  core.statements = {};
 }
 
 export function syncSQLiteAdapterSystemMap(core, connectionManager, systemMap, logger) {

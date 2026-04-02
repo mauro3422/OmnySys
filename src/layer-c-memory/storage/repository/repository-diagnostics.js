@@ -3,6 +3,7 @@ import { getRepositoryMutationJournalSnapshot, getRepositoryStatus } from './rep
 export function getRepositoryDiagnostics(projectPath) {
   const status = getRepositoryStatus(projectPath);
   const journalSnapshot = getRepositoryMutationJournalSnapshot(projectPath);
+  const integrity = status.integrity || null;
   const queuedDurable = journalSnapshot.entries.filter((entry) => entry.durability === 'durable').length;
   const issues = [];
   const recommendations = [];
@@ -17,6 +18,11 @@ export function getRepositoryDiagnostics(projectPath) {
     recommendations.push('Reopen or reinitialize SQLite, then flush the repository mutation journal.');
   }
 
+  if (integrity && integrity.healthy === false) {
+    issues.push('database_integrity_failed');
+    recommendations.push('Treat the SQLite file as suspect until quick_check returns ok again.');
+  }
+
   if (journalSnapshot.queued > 0) {
     issues.push('queued_mutations_pending');
     recommendations.push('Flush the repository mutation journal after SQLite is ready.');
@@ -28,6 +34,8 @@ export function getRepositoryDiagnostics(projectPath) {
 
   const health = !status.ready
     ? 'degraded'
+    : integrity && integrity.healthy === false
+      ? 'degraded'
     : journalSnapshot.queued > 0
       ? 'degraded'
       : 'healthy';
@@ -35,6 +43,7 @@ export function getRepositoryDiagnostics(projectPath) {
   return {
     health,
     status,
+    integrity,
     journal: journalSnapshot,
     queuedDurable,
     issues,

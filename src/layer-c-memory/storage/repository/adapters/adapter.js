@@ -17,6 +17,11 @@
  */
 
 import { SQLiteBulkOperations } from './operations.js';
+import { connectionManager } from '../../database/connection.js';
+import {
+  loadSQLiteAdapterSystemMap,
+  syncSQLiteAdapterSystemMap
+} from './core-helpers.js';
 
 // Re-exportar para compatibilidad
 export { SQLiteAdapterCore } from './core.js';
@@ -40,6 +45,14 @@ export { SQLiteBulkOperations } from './operations.js';
  *             → AtomRepository
  */
 export class SQLiteAdapter extends SQLiteBulkOperations {
+  async saveSystemMap(systemMap) {
+    await syncSQLiteAdapterSystemMap(this, connectionManager, systemMap, this._logger);
+  }
+
+  loadSystemMap() {
+    return loadSQLiteAdapterSystemMap(this);
+  }
+
   // No se necesita código adicional, hereda todo de SQLiteBulkOperations
   // La API pública se mantiene idéntica:
   // 
@@ -64,7 +77,7 @@ export class SQLiteAdapter extends SQLiteBulkOperations {
   //
   // Métodos System Map:
   //   - saveSystemMap(systemMap), loadSystemMap()
-  //   - getStats(), close(), checkpoint()
+  //   - getStats(), close()
 }
 
 export default SQLiteAdapter;

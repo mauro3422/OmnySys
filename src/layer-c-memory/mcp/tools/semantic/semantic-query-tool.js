@@ -1,9 +1,5 @@
-
-import { GraphQueryTool } from '../../core/shared/base-tools/graph-query-tool.js';
-import {
-    buildDuplicateRemediationPlan,
-    getSemanticSurfaceGranularity
-} from '../../../../shared/compiler/index.js';
+import { BaseMCPTool } from '../../core/shared/base-tools/base-tool.js';
+import { buildDuplicateRemediationPlan, getSemanticSurfaceGranularity } from '../../../../shared/compiler/canonical-contracts.js';
 import {
     queryDuplicates,
     queryIsomorphicDuplicates,
@@ -41,10 +37,34 @@ function requireSemanticRepo(repo) {
  * to provide insights into race conditions, event patterns, duplicates,
  * and functional societies.
  */
-export class SemanticQueryTool extends GraphQueryTool {
+export class SemanticQueryTool extends BaseMCPTool {
     constructor(toolName) {
         super(toolName);
         this._initHandlers();
+    }
+
+    async execute(args, context) {
+        try {
+            const { getRepository } = await import('../../../storage/repository/repository-factory.js');
+            this.repo = getRepository(context.projectPath);
+            this.projectPath = context.projectPath;
+        } catch (e) {
+            this.logger.error(`[SemanticQueryTool] Failed to load repository: ${e.message}`);
+            return this.formatError('REPO_UNAVAILABLE', 'Could not load Graph Repository');
+        }
+
+        return super.execute(args, context);
+    }
+
+    getAtomsByFile(filePath) {
+        if (!this.repo) return [];
+        return this.repo.query({ filePath, limit: 10000 });
+    }
+
+    getExactAtom(name, filePath) {
+        if (!this.repo) return null;
+        const atoms = this.repo.query({ name, filePath });
+        return atoms.length > 0 ? atoms[0] : null;
     }
 
     _initHandlers() {

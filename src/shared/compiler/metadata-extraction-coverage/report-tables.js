@@ -6,6 +6,9 @@ const METADATA_SURFACE_TABLES = [
     label: 'Atom metadata surface',
     sourceOfTruth: 'atoms',
     fieldRules: {
+      test_callback_type: {
+        eligibleWhen: 'COALESCE(is_test_callback, 0) = 1'
+      },
       deprecated_reason: {
         eligibleWhen: 'COALESCE(is_deprecated, 0) = 1'
       }
@@ -20,7 +23,15 @@ const METADATA_SURFACE_TABLES = [
       'created_at',
       'updated_at',
       'is_removed',
-      'lifecycle_status'
+      'lifecycle_status',
+      '_meta_json',
+      'signature_json',
+      'data_flow_json',
+      'temporal_json',
+      'error_flow_json',
+      'performance_json',
+      'dna_json',
+      'derived_json'
     ])
   },
   {

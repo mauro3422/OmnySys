@@ -14,6 +14,22 @@ describe('status system table', () => {
         grade: 'A+',
         summary: 'Database projections are aligned'
       },
+      repository: {
+        status: {
+          dbOpen: true,
+          journal: {
+            queued: 0
+          }
+        },
+        integrity: {
+          healthy: true
+        }
+      },
+      metadata: {
+        liveFileCount: 2456,
+        phase2PendingFiles: 0,
+        phase2CompletedFiles: 2456
+      },
       metricsSnapshot: {
         current: {
           behaviorState: 'blocked',
@@ -46,6 +62,10 @@ describe('status system table', () => {
         pendingChanges: 0,
         failedChanges: 1,
         lastChangeOrigin: 'src/example.js'
+      },
+      cache: {
+        files: 2456,
+        status: 'aligned'
       },
       toolInventory: {
         totalTools: 40,
@@ -106,5 +126,19 @@ describe('status system table', () => {
     expect(behaviorRow.detail).toContain('blockers=2');
     expect(behaviorRow.detail).toContain('primary=drift_assessment');
     expect(behaviorRow.detail).toContain('reason=blocked');
+
+    const updateRow = summary.rows.find((row) => row.area === 'Update');
+    expect(updateRow).toMatchObject({
+      area: 'Update',
+      state: 'syncing',
+      source: 'atom/function update pipeline'
+    });
+    expect(updateRow.detail).toContain('files=2456');
+    expect(updateRow.detail).toContain('mirror=2456');
+    expect(updateRow.detail).toContain('deps=0');
+    expect(updateRow.detail).toContain('pending=0');
+    expect(updateRow.detail).toContain('watcher=0/1');
+    expect(updateRow.detail).toContain('journal=0');
+    expect(updateRow.detail).toContain('integrity=ok');
   });
 });

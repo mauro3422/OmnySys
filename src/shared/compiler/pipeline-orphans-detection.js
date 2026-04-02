@@ -11,6 +11,10 @@ const CANONICAL_ORPHAN_RESOURCES = [
   /pipelineOrphanSummary\.(orphans|warning|normalizedOrphans)/
 ];
 
+const INTENTIONALLY_DORMANT_PIPELINE_PATHS = [
+  /^src\/layer-b-semantic\/llm-analyzer\//
+];
+
 export function detectPipelineOrphanDrift(source = '', filePath = '') {
   const findings = [];
   const hasManualLogic = MANUAL_ORPHAN_PATTERNS.every((pattern) => pattern.test(source));
@@ -36,6 +40,7 @@ export function classifyPipelineOrphans(rows = [], options = {}) {
       const effectiveCallers = Number(row?.callers_count || 0);
       if (effectiveCallers > 0) return false;
       if (typeof row?.file_path !== 'string' || row.file_path.startsWith('tests/') || row.file_path.startsWith('scripts/') || row.file_path.startsWith('src/shared/compiler/')) return false;
+      if (INTENTIONALLY_DORMANT_PIPELINE_PATHS.some((pattern) => pattern.test(row.file_path))) return false;
       if (Math.max(Number(row?.dependency_importer_count) || 0, Number(row?.file_importer_count) || 0, Number(row?.barrel_exporter_count) || 0) > 0) return false;
       if ((row?.callees_count || 0) > 0) return false;
       return true;
@@ -70,6 +75,7 @@ export function isLikelyDisconnectedPipelineAtom(atomRow = {}) {
   const effectiveCallers = getEffectiveCallerCount(atomRow);
   if (effectiveCallers > 0) return false;
   if (!isPipelineProductionFile(atomRow.file_path)) return false;
+  if (INTENTIONALLY_DORMANT_PIPELINE_PATHS.some((pattern) => pattern.test(atomRow.file_path || ''))) return false;
   if (hasFileLevelImportEvidence(atomRow)) return false;
   if ((atomRow?.callees_count || 0) > 0) return false;
   return true;

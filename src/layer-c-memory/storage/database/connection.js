@@ -51,6 +51,7 @@ class ConnectionManager {
     this.db = null;
     this.initialized = false;
     this.dbPath = null;
+    this.integrity = null;
   }
 
   initialize(projectPath) {
@@ -105,6 +106,10 @@ class ConnectionManager {
 
   getConnectionStats() {
     return statsPool.getModuleStats('connection');
+  }
+
+  getIntegrityStatus() {
+    return this.integrity;
   }
 
   checkpoint() {

@@ -1,4 +1,3 @@
-import { statsPool } from '../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview sqlite-adapter-core.js
  *
@@ -11,13 +10,11 @@ import { statsPool } from '../../../../shared/utils/stats-pool.js';
 import { AtomRepository } from '../atom-repository.js';
 import { connectionManager } from '../../database/connection.js';
 import { createLogger } from '../../../../utils/logger.js';
+import { statsPool } from '../../../../shared/utils/stats-pool.js';
+import { normalizePath } from '../../../../shared/utils/path-utils.js';
 import { atomToRow, rowToAtom } from './helpers/converters.js';
 import {
-  initializeSQLiteAdapterCore,
-  normalizeSQLiteAdapterPath,
-  shutdownSQLiteAdapterCore,
-  syncSQLiteAdapterSystemMap,
-  loadSQLiteAdapterSystemMap
+  buildSQLiteAdapterStatements
 } from './core-helpers.js';
 
 const logger = createLogger('OmnySys:Storage:SQLiteAdapter');
@@ -38,7 +35,12 @@ export class SQLiteAdapterCore extends AtomRepository {
 
   initialize(projectPath) {
     this._logger.debug('[SQLiteAdapter] Initializing...');
-    initializeSQLiteAdapterCore(this, projectPath, { connectionManager, logger: this._logger });
+    this.projectPath = projectPath;
+    connectionManager.initialize(projectPath);
+    this.db = connectionManager.getDatabase();
+    this.statements = buildSQLiteAdapterStatements(this.db);
+    this.initialized = true;
+    this._logger.debug('[SQLiteAdapter] Initialized successfully');
   }
 
   /**
@@ -46,29 +48,61 @@ export class SQLiteAdapterCore extends AtomRepository {
    * @protected
    */
   _normalize(filePath) {
-    return normalizeSQLiteAdapterPath(filePath, this.projectPath);
+    return normalizePath(filePath, this.projectPath);
+  }
+
+  close() {
+    connectionManager.shutdown();
+    this.initialized = false;
+    this.db = null;
+    this.statements = {};
+    this.projectPath = null;
+  }
+
+  getDatabase() {
+    return this.db;
+  }
+
+  getStatements() {
+    return this.statements;
+  }
+
+  getProjectPath() {
+    return this.projectPath;
+  }
+
+  isReady() {
+    return !!(this.initialized && this.db && this.db.open !== false);
+  }
+
+  getAtomRowById(normalizedId) {
+    return this.statements.getById.get(normalizedId);
+  }
+
+  getAtomRowsByFile(filePath) {
+    const normalizedPath = this._normalize(filePath);
+    return this.statements.getByFile.all(normalizedPath);
+  }
+
+  getFileRow(filePath) {
+    const normalizedPath = this._normalize(filePath);
+    return this.statements.query.get(normalizedPath);
+  }
+
+  getAtomIdsByFile(filePath) {
+    const normalizedPath = this._normalize(filePath);
+    return this.db.prepare('SELECT id FROM atoms WHERE file_path = ?').all(normalizedPath).map((row) => row.id);
+  }
+
+  hasAtomById(id) {
+    const normalizedId = this._normalizeId(id);
+    return !!this.statements.exists.get(normalizedId);
   }
 
   getSQLiteAdapterCoreStats() {
     return statsPool.getModuleStats('sqlite-adapter-core');
   }
 
-  shutdown() {
-    return shutdownSQLiteAdapterCore(this, connectionManager);
-  }
-
-  checkpoint() {
-    connectionManager.checkpoint();
-  }
-
-  // System Map
-  async saveSystemMap(systemMap) {
-    await syncSQLiteAdapterSystemMap(this, connectionManager, systemMap, this._logger);
-  }
-
-  loadSystemMap() {
-    return loadSQLiteAdapterSystemMap(this);
-  }
 }
 
 export { connectionManager, atomToRow, rowToAtom, logger };

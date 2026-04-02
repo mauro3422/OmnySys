@@ -57,8 +57,14 @@ export function summarizeTopologySignals(matched = []) {
     };
 }
 
-export function shouldSkipTopologyRegression(filePath, matched, regressedAtoms) {
+export function shouldSkipTopologyRegression(filePath, matched, regressedAtoms, currentSignal = 0) {
     const fileRole = classifyFileOperationalRole(filePath);
+    const normalizedPath = String(filePath || '').replace(/\\/g, '/').toLowerCase();
+    const isStoragePath = /(^|\/)(storage|repository|sqlite|cache)(\/|$)/.test(normalizedPath);
+    if (isStoragePath) {
+        return currentSignal >= 50 && regressedAtoms.length === 0;
+    }
+
     return (
         (
             fileRole.role === 'analyzer' ||
