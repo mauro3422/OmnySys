@@ -6,23 +6,29 @@
  */
 
 import {
-  buildActiveAtomsDriftAssessment,
+  buildCurrentMetrics,
   buildBehaviorScore,
+  normalizeSnapshotPath,
+  summarizeCurrentSnapshotRow
+} from './compiler-metrics-current.js';
+import {
   buildCompilerLayerReliability,
   buildCompilerMetricDictionary,
-  buildCompilerMetricsTrend,
-  buildCurrentMetrics,
+  summarizeCompilerMetricDictionary
+} from './compiler-metric-dictionary.js';
+import {
   buildSnapshotFingerprint,
+  buildActiveAtomsDriftAssessment,
+  buildCompilerMetricsTrend,
+  loadCompilerMetricsSnapshotHistory,
+  persistCompilerMetricsSnapshot
+} from './compiler-metrics-snapshot-helpers.js';
+import {
   clampScore,
   gradeFromScore,
-  loadCompilerMetricsSnapshotHistory,
   muteBootstrapTrend,
-  normalizeSnapshotPath,
-  persistCompilerMetricsSnapshot,
-  shouldMuteBootstrapTrend,
-  summarizeCompilerMetricDictionary,
-  summarizeCurrentSnapshotRow
-} from './helpers.js';
+  shouldMuteBootstrapTrend
+} from './pipeline-timing-telemetry-helpers.js';
 import { summarizeCompilerMetricsSnapshot } from './summary.js';
 
 export { summarizeCompilerMetricsSnapshot };
