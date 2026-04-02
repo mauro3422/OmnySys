@@ -27,75 +27,87 @@ const logger = createLogger('OmnySys:mcp:detect_folderization_opportunities');
  * Detecta archivos monolíticos (>= threshold líneas)
  */
 function detectMonoliths(repo, threshold = 300) {
-  const monoliths = repo.db.prepare(`
-    SELECT
-      f.path,
-      f.total_lines,
-      f.atom_count,
-      f.total_complexity
-    FROM files f
-    WHERE f.path LIKE 'src/%'
-      AND f.total_lines >= ?
-      AND (f.is_removed IS NULL OR f.is_removed = 0)
-    ORDER BY f.total_lines DESC
-    LIMIT 20
-  `).all(threshold);
+  if (!repo?.db) return [];
+  try {
+    const monoliths = repo.db.prepare(`
+      SELECT
+        f.path,
+        f.total_lines,
+        f.atom_count,
+        f.total_complexity
+      FROM files f
+      WHERE f.path LIKE 'src/%'
+        AND f.total_lines >= ?
+        AND (f.is_removed IS NULL OR f.is_removed = 0)
+      ORDER BY f.total_lines DESC
+      LIMIT 20
+    `).all(threshold);
 
-  return monoliths.map(m => {
-    const severity = m.total_lines >= 600 ? 'high' : m.total_lines >= 400 ? 'medium' : 'low';
-    return {
-      type: 'monolith',
-      severity,
-      file: m.path,
-      lines: m.total_lines,
-      atoms: m.atom_count,
-      complexity: m.total_complexity,
-      message: `Monolítico ${severity}: ${m.path} (${m.total_lines}L, ${m.atom_count} átomos)`,
-      suggestion: 'split_large_file o folderize_family'
-    };
-  });
+    return monoliths.map(m => {
+      const severity = m.total_lines >= 600 ? 'high' : m.total_lines >= 400 ? 'medium' : 'low';
+      return {
+        type: 'monolith',
+        severity,
+        file: m.path,
+        lines: m.total_lines,
+        atoms: m.atom_count,
+        complexity: m.total_complexity,
+        message: `Monolítico ${severity}: ${m.path} (${m.total_lines}L, ${m.atom_count} átomos)`,
+        suggestion: 'split_large_file o folderize_family'
+      };
+    });
+  } catch (error) {
+    logger.warn(`[Detect] Could not scan monoliths: ${error.message}`);
+    return [];
+  }
 }
 
 /**
  * Detecta duplicación por ADN semántico
  */
 function detectDuplication(repo) {
-  const duplicates = repo.db.prepare(`
-    SELECT
-      dna_json,
-      COUNT(*) as instance_count,
-      GROUP_CONCAT(DISTINCT file_path) as sample_files
-    FROM atoms
-    WHERE dna_json IS NOT NULL
-      AND dna_json != ''
-      AND (is_removed IS NULL OR is_removed = 0)
-      AND file_path LIKE 'src/%'
-    GROUP BY dna_json
-    HAVING instance_count > 3
-    ORDER BY instance_count DESC
-    LIMIT 10
-  `).all();
+  if (!repo?.db) return [];
+  try {
+    const duplicates = repo.db.prepare(`
+      SELECT
+        dna_json,
+        COUNT(*) as instance_count,
+        GROUP_CONCAT(DISTINCT file_path) as sample_files
+      FROM atoms
+      WHERE dna_json IS NOT NULL
+        AND dna_json != ''
+        AND (is_removed IS NULL OR is_removed = 0)
+        AND file_path LIKE 'src/%'
+      GROUP BY dna_json
+      HAVING instance_count > 3
+      ORDER BY instance_count DESC
+      LIMIT 10
+    `).all();
 
-  return duplicates.map(d => {
-    let fingerprint = 'unknown';
-    try {
-      const dna = JSON.parse(d.dna_json);
-      fingerprint = dna.semanticFingerprint || dna.fingerprint || 'unknown';
-    } catch { /* ignore */ }
+    return duplicates.map(d => {
+      let fingerprint = 'unknown';
+      try {
+        const dna = JSON.parse(d.dna_json);
+        fingerprint = dna.semanticFingerprint || dna.fingerprint || 'unknown';
+      } catch { /* ignore */ }
 
-    const files = (d.sample_files || '').split(',').slice(0, 5);
-    const severity = d.instance_count > 20 ? 'high' : d.instance_count > 10 ? 'medium' : 'low';
+      const files = (d.sample_files || '').split(',').slice(0, 5);
+      const severity = d.instance_count > 20 ? 'high' : d.instance_count > 10 ? 'medium' : 'low';
 
-    return {
-      type: 'duplication',
-      severity,
-      fingerprint,
-      instances: d.instance_count,
-      sampleFiles: files,
-      message: `Duplicación ${severity}: ${d.instance_count} instancias de "${fingerprint}"`,
-      suggestion: 'consolidate_conceptual_cluster'
-    };
-  });
+      return {
+        type: 'duplication',
+        severity,
+        fingerprint,
+        instances: d.instance_count,
+        sampleFiles: files,
+        message: `Duplicación ${severity}: ${d.instance_count} instancias de "${fingerprint}"`,
+        suggestion: 'consolidate_conceptual_cluster'
+      };
+    });
+  } catch (error) {
+    logger.warn(`[Detect] Could not scan duplication: ${error.message}`);
+    return [];
+  }
 }
 
 /**
@@ -118,84 +130,96 @@ function extractFilename(path) {
  * Detecta familias candidatas a folderización
  */
 function detectFolderizationCandidates(repo) {
-  const allFiles = repo.db.prepare(`
-    SELECT path, total_lines
-    FROM files
-    WHERE path LIKE 'src/%'
-      AND path LIKE '%.js'
-      AND (is_removed IS NULL OR is_removed = 0)
-      AND path NOT LIKE '%/index.js'
-  `).all();
+  if (!repo?.db) return [];
+  try {
+    const allFiles = repo.db.prepare(`
+      SELECT path, total_lines
+      FROM files
+      WHERE path LIKE 'src/%'
+        AND path LIKE '%.js'
+        AND (is_removed IS NULL OR is_removed = 0)
+        AND path NOT LIKE '%/index.js'
+    `).all();
 
-  // Agrupar por directorio en JavaScript (evita REVERSE de SQLite)
-  const dirMap = new Map();
-  for (const file of allFiles) {
-    const dir = extractDirectory(file.path);
-    if (!dirMap.has(dir)) dirMap.set(dir, { directory: dir, fileCount: 0, totalLines: 0 });
-    const entry = dirMap.get(dir);
-    entry.fileCount++;
-    entry.totalLines += file.total_lines || 0;
+    // Agrupar por directorio en JavaScript (evita REVERSE de SQLite)
+    const dirMap = new Map();
+    for (const file of allFiles) {
+      const dir = extractDirectory(file.path);
+      if (!dirMap.has(dir)) dirMap.set(dir, { directory: dir, fileCount: 0, totalLines: 0 });
+      const entry = dirMap.get(dir);
+      entry.fileCount++;
+      entry.totalLines += file.total_lines || 0;
+    }
+
+    // Filtrar y ordenar
+    const candidates = Array.from(dirMap.values())
+      .filter(c => c.fileCount >= 3 && c.totalLines > 200)
+      .sort((a, b) => b.fileCount - a.fileCount || b.totalLines - a.totalLines)
+      .slice(0, 15);
+
+    return candidates.map(c => {
+      const severity = c.fileCount >= 5 ? 'high' : c.fileCount >= 4 ? 'medium' : 'low';
+      return {
+        type: 'folderization_candidate',
+        severity,
+        directory: c.directory,
+        fileCount: c.fileCount,
+        totalLines: c.totalLines,
+        message: `Candidato ${severity}: ${c.directory} (${c.fileCount} archivos, ${c.totalLines}L)`,
+        suggestion: 'folderize_family'
+      };
+    });
+  } catch (error) {
+    logger.warn(`[Detect] Could not scan folderization candidates: ${error.message}`);
+    return [];
   }
-
-  // Filtrar y ordenar
-  const candidates = Array.from(dirMap.values())
-    .filter(c => c.fileCount >= 3 && c.totalLines > 200)
-    .sort((a, b) => b.fileCount - a.fileCount || b.totalLines - a.totalLines)
-    .slice(0, 15);
-
-  return candidates.map(c => {
-    const severity = c.fileCount >= 5 ? 'high' : c.fileCount >= 4 ? 'medium' : 'low';
-    return {
-      type: 'folderization_candidate',
-      severity,
-      directory: c.directory,
-      fileCount: c.fileCount,
-      totalLines: c.totalLines,
-      message: `Candidato ${severity}: ${c.directory} (${c.fileCount} archivos, ${c.totalLines}L)`,
-      suggestion: 'folderize_family'
-    };
-  });
 }
 
 /**
  * Detecta deuda de naming (archivos con prefijos repetidos en mismo directorio)
  */
 function detectNamingDebt(repo) {
-  const allFiles = repo.db.prepare(`
-    SELECT path, total_lines
-    FROM files
-    WHERE path LIKE 'src/%'
-      AND path LIKE '%.js'
-      AND (is_removed IS NULL OR is_removed = 0)
-  `).all();
+  if (!repo?.db) return [];
+  try {
+    const allFiles = repo.db.prepare(`
+      SELECT path, total_lines
+      FROM files
+      WHERE path LIKE 'src/%'
+        AND path LIKE '%.js'
+        AND (is_removed IS NULL OR is_removed = 0)
+    `).all();
 
-  // Filtrar archivos con sufijos largos en JavaScript (evita REVERSE de SQLite)
-  const namingPatterns = ['-helpers.js', '-core.js', '-models.js', '-analysis.js', '-utils.js', '-validation.js'];
-  const namingIssues = allFiles
-    .filter(f => namingPatterns.some(p => f.path.endsWith(p)))
-    .map(f => ({
-      path: f.path,
-      filename: extractFilename(f.path),
-      directory: extractDirectory(f.path),
-      total_lines: f.total_lines
-    }))
-    .sort((a, b) => (b.total_lines || 0) - (a.total_lines || 0))
-    .slice(0, 20);
+    // Filtrar archivos con sufijos largos en JavaScript (evita REVERSE de SQLite)
+    const namingPatterns = ['-helpers.js', '-core.js', '-models.js', '-analysis.js', '-utils.js', '-validation.js'];
+    const namingIssues = allFiles
+      .filter(f => namingPatterns.some(p => f.path.endsWith(p)))
+      .map(f => ({
+        path: f.path,
+        filename: extractFilename(f.path),
+        directory: extractDirectory(f.path),
+        total_lines: f.total_lines
+      }))
+      .sort((a, b) => (b.total_lines || 0) - (a.total_lines || 0))
+      .slice(0, 20);
 
-  return namingIssues.map(n => {
-    const basePrefix = n.filename.split('-')[0] || '';
-    return {
-      type: 'naming_debt',
-      severity: 'low',
-      file: n.path,
-      filename: n.filename,
-      directory: n.directory,
-      prefix: basePrefix,
-      lines: n.total_lines,
-      message: `Nombre largo: ${n.filename} (${n.total_lines}L)`,
-      suggestion: `rename_folderized_family para acortar basename`
-    };
-  });
+    return namingIssues.map(n => {
+      const basePrefix = n.filename.split('-')[0] || '';
+      return {
+        type: 'naming_debt',
+        severity: 'low',
+        file: n.path,
+        filename: n.filename,
+        directory: n.directory,
+        prefix: basePrefix,
+        lines: n.total_lines,
+        message: `Nombre largo: ${n.filename} (${n.total_lines}L)`,
+        suggestion: `rename_folderized_family para acortar basename`
+      };
+    });
+  } catch (error) {
+    logger.warn(`[Detect] Could not scan naming debt: ${error.message}`);
+    return [];
+  }
 }
 
 /**
