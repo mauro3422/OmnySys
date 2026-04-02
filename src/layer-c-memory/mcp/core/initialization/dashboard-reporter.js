@@ -28,6 +28,12 @@ import {
   buildCompilerHealthPanel
 } from '#shared/compiler/index.js';
 import { sessionManager } from '../session-manager.js';
+import {
+  buildBootstrapUpdateSurface,
+  buildDashboardDetailLines,
+  insertDashboardDetailLines,
+  resolveDashboardHeader
+} from './dashboard-reporter-helpers.js';
 
 const logger = createLogger('OmnySys:DashboardReporter');
 
@@ -111,6 +117,7 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal) {
     liveRowSyncSummary: liveRowSync.summary,
     compilerDiagnostics,
     metricsSnapshot: null,
+    updateSurface: null,
     mcpSessionSummary: getMcpSessionSummary(sessionManager, {
       sessionDb: db
     })
@@ -142,6 +149,15 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal) {
       recentErrors: null
     });
     metrics.healthPanel = buildCompilerHealthPanel(metrics.healthSnapshot);
+    metrics.updateSurface = buildBootstrapUpdateSurface({
+      projectPath,
+      db,
+      repo,
+      liveRowSyncSummary: liveRowSync.summary,
+      fileUniverseSummary: metrics.compilerDiagnostics?.fileUniverseGranularity || {},
+      phase2PendingFiles: metrics.phase2PendingFiles,
+      mcpSessionSummary: sessionSummary
+    });
     loadPhysicsMetrics(metrics, db);
   } catch (error) {
     logger.debug('Extended metrics fetch partially failed:', error.message);
@@ -250,64 +266,4 @@ function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal
 
   insertDashboardDetailLines(lines, detailLines);
   return lines.join('\n');
-}
-
-function resolveDashboardHeader(isFinal, isSettling) {
-  if (isFinal) return 'FINAL SYSTEM SUMMARY (bootstrap snapshot)';
-  return isSettling ? 'PRELIMINARY SYSTEM SUMMARY' : 'SYSTEM SUMMARY';
-}
-
-function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, isSettling, fileUniverseSettling }) {
-  const detailLines = [];
-
-  if (isPreliminary && isSettling) {
-    detailLines.push('  Preliminary snapshot: Phase 2 telemetry is still settling; final debt counts may change.', '');
-  }
-
-  detailLines.push(
-    `  Project: ${extendedMetrics.totalAtoms} atoms (${extendedMetrics.typeSummary})`,
-    `  Callable Atoms: ${extendedMetrics.callableSummary}`,
-    fileUniverseSettling
-      ? '  File Universe: settling during bootstrap; live coverage will appear after manifest/live index converge'
-      : `  File Universe: ${Math.round(extendedMetrics.liveCoverageRatio * 100)}% live coverage (${extendedMetrics.zeroAtomFileCount} zero-atom files expected)`,
-    `  MCP Sessions: ${extendedMetrics.mcpSessionSummary.summary}`,
-    `  Graph Coverage: call graph=${extendedMetrics.callLinks} links, semantic layer=${extendedMetrics.semanticLinks} high-level links`,
-    `  Duplicates: ${extendedMetrics.structuralGroups} structural groups, ${extendedMetrics.conceptualGroups} conceptual actionable groups (${extendedMetrics.conceptualRawGroups} raw groups)` +
-      (extendedMetrics.conceptualImplementations > 0
-        ? ` | implementations=${extendedMetrics.conceptualImplementations} actionable (${extendedMetrics.conceptualRawImplementations} raw)`
-        : extendedMetrics.conceptualCandidates > 0
-          ? ` | candidates=${extendedMetrics.conceptualCandidates}`
-          : ''),
-    extendedMetrics.conceptualRawGroups > 0
-      ? `  Conceptual Signal: actionable/raw ratio=${Math.round(extendedMetrics.conceptualActionableRatio * 100)}%`
-      : null,
-    ((extendedMetrics.conceptualNoiseByClass.expected_repeat || 0) + (extendedMetrics.conceptualNoiseByClass.low_signal || 0)) > 0
-      ? `  Conceptual noise filtered: expected_repeat=${extendedMetrics.conceptualNoiseByClass.expected_repeat || 0}, low_signal=${extendedMetrics.conceptualNoiseByClass.low_signal || 0}`
-      : null,
-    `  Technical Debt: ${extendedMetrics.issueSummary}${extendedMetrics.orphans > 0 ? ` (+${extendedMetrics.orphans} orphans)` : ''}`,
-    extendedMetrics.metricsSnapshot
-      ? `  Metrics Snapshot: ${extendedMetrics.metricsSnapshot.summary}`
-      : null,
-    extendedMetrics.healthPanel?.oneLine
-      ? `  Health Panel: ${extendedMetrics.healthPanel.oneLine}`
-      : null,
-    `  Physics Coverage: ${extendedMetrics.physicsCoverage}% signals (${extendedMetrics.hotspots} hotspots)`,
-    ...(isFinal
-      ? ['  Final snapshot advisory: this is a bootstrap snapshot; use get_server_status() for the live runtime view.']
-      : []),
-    ...(isSettling
-      ? ['  Snapshot Advisory: startup/bootstrap metrics may still be reconciling; prefer get_server_status() for the final live view']
-      : []),
-    ''
-  );
-
-  return detailLines.filter(Boolean);
-}
-
-function insertDashboardDetailLines(lines, detailLines) {
-  let insertIdx = lines.findIndex((line) => line.includes('CRITICAL ISSUES'));
-  if (insertIdx === -1) insertIdx = lines.findIndex((line) => line.includes('TOP RECOMMENDATIONS'));
-  if (insertIdx === -1) insertIdx = lines.length - 2;
-
-  lines.splice(insertIdx, 0, ...detailLines);
 }

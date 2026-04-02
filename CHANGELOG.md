@@ -5,6 +5,7 @@ All notable changes to this project are documented here as a release index. Deta
 ## Unreleased
 
 - Added an explicit update-surface summary to the status panel so atom/function changes now expose the live sync chain across `files`, `system_files`, dependencies, watcher state, and repository integrity.
+- Mirrored that same update-surface summary into the bootstrap dashboard so startup output now reflects the same sync signal the runtime status panel shows.
 - Wired the file watcher and single-file save path through incremental system-map sync so every analyzed file refreshes the file mirror, dependency rows, and `used_by_json` without waiting for a full reindex.
 - Hardened repository integrity reporting so the status surface can fail closed when SQLite quick-check/integrity probes degrade.
 - Added `mcp_omnysystem_detect_folderization_opportunities` pipeline: DETECTION-ONLY tool that scans for monoliths (>300L), semantic-dna duplication, folderization candidates, and naming debt without making changes.
