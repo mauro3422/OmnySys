@@ -577,3 +577,11 @@ export {
   findOrphanedWatcherAlertIds,
   findOutdatedWatcherAlertIds
 } from './watcher-issue-storage.js';
+
+export {
+  ALERT_THRESHOLDS,
+  calculateToolTrend,
+  generateAutomaticAlerts,
+  getDailyToolMetrics,
+  formatToolHealthDashboard
+} from './tool-health-trending.js';
