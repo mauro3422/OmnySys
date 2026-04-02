@@ -11,6 +11,7 @@ import { suggest_canonical_api } from './suggest-canonical-api.js';
 import { validate_exports } from './validate-exports-tool.js';
 import { split_large_file } from './split-large-file.js';
 import { detect_folderization_opportunities } from './detect-folderization-opportunities.js';
+import { diagnose_tool_health } from './diagnose-tool-health.js';
 import { performAction } from '../../../shared/compiler/index.js';
 
 export const actionToolHandlers = {
@@ -33,5 +34,6 @@ export const actionToolHandlers = {
   mcp_omnysystem_suggest_canonical_api: suggest_canonical_api,
   mcp_omnysystem_validate_exports: validate_exports,
   mcp_omnysystem_split_large_file: (args, ctx) => performAction('split_large_file', args, ctx),
-  mcp_omnysystem_detect_folderization_opportunities: (args, ctx) => performAction('detect_folderization_opportunities', args, ctx)
+  mcp_omnysystem_detect_folderization_opportunities: (args, ctx) => performAction('detect_folderization_opportunities', args, ctx),
+  mcp_omnysystem_diagnose_tool_health: diagnose_tool_health
 };

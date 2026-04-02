@@ -211,5 +211,18 @@ export const adminToolDefinitions = [
       },
       required: []
     }
+  },
+  {
+    name: 'mcp_omnysystem_diagnose_tool_health',
+    description: 'Analiza la salud de las herramientas MCP ejecutadas. Identifica herramientas con alta tasa de fallo, errores frecuentes y problemas de rendimiento. Retorna un diagnóstico priorizado con recomendaciones de mejora.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', default: 100, description: 'Número máximo de ejecuciones a analizar' },
+        toolName: { type: 'string', description: 'Filtrar por nombre de herramienta específica (opcional)' },
+        includeDetails: { type: 'boolean', default: true, description: 'Incluir detalles de errores individuales' }
+      },
+      required: []
+    }
   }
 ];
