@@ -206,36 +206,54 @@ function detectNamingDebt(repo) {
  */
 function detectHighCoupling(repo) {
   // Obtener archivos monolíticos (>300 líneas) que son candidatos a split
-  const files = repo.db.prepare(`
-    SELECT path, total_lines, atom_count
-    FROM files
-    WHERE path LIKE 'src/%'
-      AND path LIKE '%.js'
-      AND total_lines >= 300
-      AND (is_removed IS NULL OR is_removed = 0)
-    ORDER BY total_lines DESC
-    LIMIT 10
-  `).all();
+  let files;
+  try {
+    files = repo.db.prepare(`
+      SELECT path, total_lines, atom_count
+      FROM files
+      WHERE path LIKE 'src/%'
+        AND path LIKE '%.js'
+        AND total_lines >= 300
+        AND (is_removed IS NULL OR is_removed = 0)
+      ORDER BY total_lines DESC
+      LIMIT 10
+    `).all();
+  } catch (dbError) {
+    logger.error(`[Detect] DB error querying files: ${dbError.message}`);
+    return [];
+  }
 
   const couplingAlerts = [];
 
   for (const file of files) {
     try {
       // Obtener átomos del archivo
-      const atoms = repo.db.prepare(`
-        SELECT id, name, atom_type, line_start, line_end, is_exported
-        FROM atoms
-        WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
-      `).all(file.path);
+      let atoms;
+      try {
+        atoms = repo.db.prepare(`
+          SELECT id, name, atom_type, line_start, line_end, is_exported
+          FROM atoms
+          WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
+        `).all(file.path);
+      } catch (atomError) {
+        logger.warn(`[Detect] Could not read atoms for ${file.path}: ${atomError.message}`);
+        continue;
+      }
 
       if (atoms.length < 5) continue;
 
       // Obtener call_graph del archivo
-      const callGraph = repo.db.prepare(`
-        SELECT caller_name, callee_name
-        FROM call_graph
-        WHERE caller_file = ? AND callee_file = ?
-      `).all(file.path, file.path);
+      let callGraph;
+      try {
+        callGraph = repo.db.prepare(`
+          SELECT caller_name, callee_name
+          FROM call_graph
+          WHERE caller_file = ? AND callee_file = ?
+        `).all(file.path, file.path);
+      } catch (callGraphError) {
+        logger.warn(`[Detect] Could not read call_graph for ${file.path}: ${callGraphError.message}`);
+        continue;
+      }
 
       // Enriquecer átomos con calls
       const callsByCaller = new Map();
@@ -251,7 +269,13 @@ function detectHighCoupling(repo) {
       }
 
       // Analizar acoplamiento
-      const coupling = analyzeCoupling(atoms);
+      let coupling;
+      try {
+        coupling = analyzeCoupling(atoms);
+      } catch (couplingError) {
+        logger.warn(`[Detect] Could not analyze coupling for ${file.path}: ${couplingError.message}`);
+        continue;
+      }
 
       // Solo reportar si hay problemas
       if (!coupling.canSplit || coupling.couplingPercentage > 70) {

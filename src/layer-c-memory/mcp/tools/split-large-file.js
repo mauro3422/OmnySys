@@ -26,20 +26,32 @@ async function analyzeFileForSplit(filePath, projectPath) {
   }
 
   // Obtener átomos del archivo
-  const atoms = repo.db.prepare(`
-    SELECT id, name, file_path, atom_type, line_start, line_end,
-           lines_of_code, is_exported, complexity, dna_json
-    FROM atoms
-    WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
-    ORDER BY line_start
-  `).all(filePath);
+  let atoms;
+  try {
+    atoms = repo.db.prepare(`
+      SELECT id, name, file_path, atom_type, line_start, line_end,
+             lines_of_code, is_exported, complexity, dna_json
+      FROM atoms
+      WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
+      ORDER BY line_start
+    `).all(filePath);
+  } catch (dbError) {
+    logger.error(`[Split] DB error reading atoms for ${filePath}: ${dbError.message}`);
+    throw new Error(`Failed to read atoms from database: ${dbError.message}`);
+  }
 
   // Enriquecer átomos con calls desde call_graph
-  const callGraph = repo.db.prepare(`
-    SELECT caller_name, callee_name 
-    FROM call_graph 
-    WHERE caller_file = ? AND callee_file = ?
-  `).all(filePath, filePath);
+  let callGraph;
+  try {
+    callGraph = repo.db.prepare(`
+      SELECT caller_name, callee_name 
+      FROM call_graph 
+      WHERE caller_file = ? AND callee_file = ?
+    `).all(filePath, filePath);
+  } catch (callGraphError) {
+    logger.error(`[Split] DB error reading call_graph for ${filePath}: ${callGraphError.message}`);
+    throw new Error(`Failed to read call_graph from database: ${callGraphError.message}`);
+  }
 
   // Indexar calls por caller_name
   const callsByCaller = new Map();
@@ -60,15 +72,34 @@ async function analyzeFileForSplit(filePath, projectPath) {
   }
 
   // Leer contenido del archivo
-  const fs = await import('fs/promises');
-  const content = await fs.readFile(filePath, 'utf-8');
-  const lines = content.split('\n');
+  let content;
+  let lines;
+  try {
+    const fs = await import('fs/promises');
+    content = await fs.readFile(filePath, 'utf-8');
+    lines = content.split('\n');
+  } catch (fsError) {
+    logger.error(`[Split] File system error reading ${filePath}: ${fsError.message}`);
+    throw new Error(`Failed to read file content: ${fsError.message}`);
+  }
 
   // Extraer imports del archivo
-  const imports = extractImports(content);
+  let imports;
+  try {
+    imports = extractImports(content);
+  } catch (importError) {
+    logger.warn(`[Split] Could not extract imports from ${filePath}: ${importError.message}`);
+    imports = [];
+  }
 
   // Agrupar átomos por responsabilidad (usando helpers del compiler)
-  const groups = groupAtomsByResponsibility(atoms, content, lines);
+  let groups;
+  try {
+    groups = groupAtomsByResponsibility(atoms, content, lines);
+  } catch (groupError) {
+    logger.error(`[Split] Could not group atoms for ${filePath}: ${groupError.message}`);
+    throw new Error(`Failed to group atoms: ${groupError.message}`);
+  }
 
   return {
     filePath,
