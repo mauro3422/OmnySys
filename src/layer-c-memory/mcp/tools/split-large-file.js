@@ -12,7 +12,7 @@ import {
   groupAtomsByResponsibility,
   extractImports,
   buildSplitPlan
-} from '../../../shared/compiler/split-large-file-helpers.js';
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:split_large_file');
 

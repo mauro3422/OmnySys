@@ -424,7 +424,9 @@ export {
   extractImports,
   buildSplitPlan,
   buildFileContent,
-  buildBarrelContent
+  buildBarrelContent,
+  analyzeCoupling,
+  generateSuggestions
 } from './split-large-file-helpers.js';
 
 export {

@@ -15,7 +15,7 @@
 
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
-import { analyzeCoupling } from '../../../shared/compiler/split-large-file-helpers.js';
+import { analyzeCoupling } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:detect_folderization_opportunities');
 
