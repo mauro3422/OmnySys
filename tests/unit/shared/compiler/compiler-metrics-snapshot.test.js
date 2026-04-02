@@ -22,7 +22,7 @@ vi.mock('../../../../src/shared/compiler/compiler-runtime-metrics-db.js', () => 
   getPhase2PendingFiles: mocks.getPhase2PendingFiles
 }));
 
-import { buildCompilerMetricsSnapshot, summarizeCompilerMetricsSnapshot } from '../../../../src/shared/compiler/compiler-metrics-snapshot.js';
+import { buildCompilerMetricsSnapshot, summarizeCompilerMetricsSnapshot } from '../../../../src/shared/compiler/snapshot.js';
 
 function createRepo() {
   const insertCalls = [];

@@ -91,7 +91,7 @@ export {
 export {
   buildCompilerMetricsSnapshot,
   summarizeCompilerMetricsSnapshot
-} from './compiler-metrics-snapshot.js';
+} from './snapshot.js';
 
 export {
   buildCompilerLayerReliability,

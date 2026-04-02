@@ -109,7 +109,14 @@ export function buildFolderizationMigrationPlanFromRows(candidate, rows = []) {
   }
 
   const familyEvolution = candidate.familyEvolution || null;
-  if (candidate.alreadyFolderized || familyEvolution?.migrationState === 'already_folderized' || (familyEvolution?.folderFileCount || 0) > 0) {
+  // BUG FIX: No rechazar solo por migrationState='already_folderized'.
+  // Ese estado solo indica que los archivos comparten prefijo de familia, pero NO verifica
+  // si la subcarpeta física existe. Si no hay folderFileCount en la evolución (carpetas reales
+  // dentro de la subcarpeta), permitir el plan.
+  const hasRealFolderRows = (familyEvolution?.folderFileCount || 0) > 0;
+  if (!candidate.alreadyFolderized && familyEvolution?.migrationState === 'already_folderized' && !hasRealFolderRows) {
+    // Permitir continue - es una familia plana que necesita ser movida
+  } else if (candidate.alreadyFolderized || familyEvolution?.migrationState === 'already_folderized' || hasRealFolderRows) {
     return {
       decision: 'reject',
       reason: 'Family is already folderized according to metadata evolution',

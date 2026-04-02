@@ -1,61 +1,174 @@
 /**
- * @fileoverview Canonical compiler diagnostics snapshot.
+ * @fileoverview Canonical compiler metrics snapshot entrypoint.
  *
- * Reuses the current canonical compiler helpers to build the shared
- * diagnostics payload consumed by MCP status/reporting surfaces.
- *
- * @module shared/compiler/compiler-diagnostics-snapshot
+ * This module stays intentionally thin. The heavy lifting lives in
+ * compiler-metrics-current.js and compiler-metrics-snapshot-helpers.js.
  */
 
-import { discoverProjectSourceFiles } from './file-discovery.js';
-import { syncPersistedScannedFileManifest, summarizePersistedScannedFileCoverage } from './compiler-persistence.js';
-import { collectCanonicalAdoptionEvidence } from './evidence.js';
 import {
-  buildCompilerDiagnosticsSnapshotContracts,
-  getCompilerDiagnosticsDatabaseSurfaces
-} from './contracts.js';
+  buildActiveAtomsDriftAssessment,
+  buildBehaviorScore,
+  buildCompilerLayerReliability,
+  buildCompilerMetricDictionary,
+  buildCompilerMetricsTrend,
+  buildCurrentMetrics,
+  buildSnapshotFingerprint,
+  clampScore,
+  gradeFromScore,
+  loadCompilerMetricsSnapshotHistory,
+  muteBootstrapTrend,
+  normalizeSnapshotPath,
+  persistCompilerMetricsSnapshot,
+  shouldMuteBootstrapTrend,
+  summarizeCompilerMetricDictionary,
+  summarizeCurrentSnapshotRow
+} from './helpers.js';
+import { summarizeCompilerMetricsSnapshot } from './summary.js';
 
-async function buildCompilerDiagnosticsSnapshotPayload({
-  projectPath,
-  db,
-  policySummary = { total: 0, high: 0, medium: 0, byPolicyArea: {}, byRule: {} },
-  watcherAlerts = [],
-  sharedState = {},
-  compilerRemediation = null,
-  canonicalAdoptions = null,
-  tableCounts = {}
-} = {}) {
-  const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
-  const canonicalAdoptionEvidence = await collectCanonicalAdoptionEvidence(projectPath);
-  const dbSurfaces = getCompilerDiagnosticsDatabaseSurfaces(db);
+export { summarizeCompilerMetricsSnapshot };
 
-  if (dbSurfaces.phase2PendingFiles === 0) {
-    await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
-  }
+export function buildCompilerMetricsSnapshot(options = {}) {
+  const {
+    projectPath = null,
+    scopePath = null,
+    focusPath = null,
+    captureSource = 'status.runtime',
+    snapshotKind = 'status',
+    repo = null,
+    compilerExplainability = null,
+    watcherAlerts = [],
+    recentErrors = null,
+    mcpSessionSummary = null,
+    phase2PendingFiles = null,
+    compareDays = 3,
+    toolRunTelemetryWindowDays = 7,
+    historyLimit = 12,
+    persist = true
+  } = options;
 
-  const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);
-  const contracts = buildCompilerDiagnosticsSnapshotContracts({
+  const current = buildCurrentMetrics({
     projectPath,
-    persistedFileCoverage,
-    canonicalAdoptionEvidence,
-    dbSurfaces,
-    db,
-    policySummary,
+    scopePath,
+    focusPath,
+    captureSource,
+    snapshotKind,
+    compilerExplainability,
+    repo,
     watcherAlerts,
-    sharedState,
-    compilerRemediation,
-    canonicalAdoptions,
-    tableCounts
+    recentErrors,
+    driftAssessment: compilerExplainability?.driftAssessment || null,
+    toolRunTelemetryWindowDays,
+    phase2PendingFiles,
+    mcpSessionSummary
   });
 
-  return {
-    ...dbSurfaces,
-    ...contracts,
-    canonicalAdoptionEvidence,
-    canonicalAdoptions: contracts.resolvedCanonicalAdoptions
+  current.snapshotFingerprint = buildSnapshotFingerprint({
+    projectPath: current.projectPath,
+    snapshotKind,
+    scopePath: current.scopePath,
+    focusPath: current.focusPath,
+    current
+  });
+
+  const db = repo?.db || null;
+  const history = db
+    ? loadCompilerMetricsSnapshotHistory(db, {
+        projectPath,
+        snapshotKind,
+        scopePath,
+        focusPath,
+        limit: historyLimit,
+        compareDays
+      })
+    : { entries: [], latest: null, previous: null, baseline: null };
+
+  const trend = buildCompilerMetricsTrend(current, history, compareDays);
+  const normalizedTrend = shouldMuteBootstrapTrend(trend) ? muteBootstrapTrend(trend) : trend;
+
+  const activeAtomsDrift = buildActiveAtomsDriftAssessment(current, history);
+  Object.assign(current, {
+    activeAtomsDriftState: activeAtomsDrift.state,
+    activeAtomsDriftReason: activeAtomsDrift.reason,
+    activeAtomsDriftEvidence: activeAtomsDrift.evidence,
+    activeAtomsDelta: activeAtomsDrift.delta,
+    activeAtomsDeltaPct: activeAtomsDrift.deltaPct
+  });
+
+  const behavior = buildBehaviorScore(current, normalizedTrend, compilerExplainability?.driftAssessment || null);
+  Object.assign(current, behavior);
+
+  const layerReliability = buildCompilerLayerReliability({ current, compilerExplainability });
+  const globalHealthScore = clampScore(
+    (Number(current.healthScore || 0) * 0.55) + (Number(layerReliability.global?.score || 0) * 0.45)
+  );
+
+  Object.assign(current, {
+    reliabilityScore: Number(layerReliability.global?.score || 0),
+    reliabilityGrade: layerReliability.global?.grade || gradeFromScore(layerReliability.global?.score),
+    reliabilityState: layerReliability.global?.state || null,
+    globalHealthScore: Number(globalHealthScore.toFixed(2)),
+    globalHealthGrade: gradeFromScore(globalHealthScore),
+    layerReliability
+  });
+
+  const summary = [
+    `Health ${Math.round(current.globalHealthScore)}/${current.globalHealthGrade}`,
+    `db=${current.healthScore}/${current.healthGrade}`,
+    `trust=${Math.round(current.reliabilityScore)}/${current.reliabilityGrade}`,
+    normalizedTrend.summary,
+    `progress=${normalizedTrend.progressScore}`,
+    `velocity/day=${normalizedTrend.velocityPerDay}`,
+    `success=${Math.round(current.successScore)}/${current.successThreshold}${current.mvpReady ? ' ready' : ''}`,
+    `behavior=${current.behaviorState}`,
+    `dbsync=${current.activeAtomsDriftState || 'missing'}`,
+    current.clientSyncState && current.clientSyncState !== 'fresh' ? `clientsync=${current.clientSyncState}` : null,
+    current.toolTelemetry?.totalRuns > 0 ? `tools=${current.toolTelemetry.successfulRuns}/${current.toolTelemetry.totalRuns} ok` : 'tools=0',
+    current.toolTelemetry?.pressureRuns > 0 ? `repair=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.pressureRuns}` : null,
+    `dups=${current.structuralGroups + current.conceptualGroups}`,
+    `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
+    `coverage=${Math.round(current.liveCoverageRatio * 100)}%`
+  ].filter(Boolean).join(' | ');
+  current.summaryText = summary;
+
+  const currentHistoryEntry = summarizeCurrentSnapshotRow(current);
+  const returnedHistory = {
+    entries: currentHistoryEntry ? [currentHistoryEntry, ...history.entries] : history.entries,
+    latest: currentHistoryEntry || history.latest,
+    previous: history.latest,
+    baseline: history.baseline
   };
+
+  const snapshot = {
+    projectPath,
+    scopePath: normalizeSnapshotPath(scopePath),
+    focusPath: normalizeSnapshotPath(focusPath),
+    snapshotKind,
+    captureSource,
+    current,
+    trend: normalizedTrend,
+    history: returnedHistory,
+    metricDictionary: summarizeCompilerMetricDictionary(
+      buildCompilerMetricDictionary({
+        current,
+        compilerExplainability,
+        reliability: layerReliability
+      })
+    ),
+    summary
+  };
+
+  if (persist && db) {
+    try {
+      persistCompilerMetricsSnapshot(db, snapshot);
+    } catch {
+      // Persistence is advisory. The snapshot still returns even if SQLite is transiently busy.
+    }
+  }
+
+  return snapshot;
 }
 
-export async function loadCompilerDiagnosticsSnapshot(options = {}) {
-  return buildCompilerDiagnosticsSnapshotPayload(options);
-}
+export default {
+  buildCompilerMetricsSnapshot,
+  summarizeCompilerMetricsSnapshot
+};

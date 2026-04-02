@@ -1,4 +1,4 @@
-import { getRecommendation } from './recommendations/RecommendationEngine.js';
+z<import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import { loadFolderizationRows, normalizeFolderizationPath } from './directory-structure-folderization-data.js';
 import { buildFamilyStateReport, buildFolderizationCandidateReport, summarizeFamilyEvolution } from './directory-structure-folderization-analysis-helpers.js';
 
@@ -268,7 +268,7 @@ export function findFolderizationCandidateForPaths(candidates = [], filePaths = 
 
 function scoreCandidateGroup(group, importerIndex, options = {}) {
   const {
-    minFileCount = 4,
+    minFileCount = 2, // FIX: reducido de 4 a 2 para detectar familias pequeñas (dead-code tiene 3 archivos)
     familyEvolution = null,
     migrationState = 'flat'
   } = options;
@@ -358,7 +358,7 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
 }
 
 export function findFolderizationCandidatesFromRows(rows = [], options = {}) {
-  const { minFileCount = 4 } = options;
+  const { minFileCount = 2 } = options; // FIX: de 4 a 2 para detectar familias pequeñas
   const pathIndex = indexFolderizationRows(rows);
   const importerIndex = new Map();
   const groups = new Map();
