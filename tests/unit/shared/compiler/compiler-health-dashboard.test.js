@@ -219,8 +219,16 @@ describe('compiler-health-dashboard', () => {
       cacheKey: 'folderization:abc123',
       decision: 'approve'
     });
+    expect(dashboard.toolTelemetry.folderizationPropagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve'
+    });
     expect(dashboard.health.propagationExpansionState).toBe('stale');
     expect(dashboard.archive.daily.capturedAt).toBe('2026-03-30T01:38:18.819Z');
+    expect(dashboard.archive.daily.folderizationPropagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve'
+    });
     expect(dashboard.archive.lifetime.daysObserved).toBe(12);
     expect(dashboard.archive.lifetime.firstCapturedAt).toBe('2026-03-01T00:00:00.000Z');
     expect(dashboard.archive.lifetime.lastCapturedAt).toBe('2026-03-30T01:38:18.819Z');
@@ -231,6 +239,14 @@ describe('compiler-health-dashboard', () => {
     expect(compact.health.reliabilityGrade).toBe('B+');
     expect(compact.health.successScore).toBe(91);
     expect(compact.health.folderizationPropagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve'
+    });
+    expect(compact.toolTelemetry.folderizationPropagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve'
+    });
+    expect(compact.archive.daily.folderizationPropagation).toMatchObject({
       cacheKey: 'folderization:abc123',
       decision: 'approve'
     });

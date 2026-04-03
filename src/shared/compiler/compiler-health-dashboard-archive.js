@@ -17,6 +17,7 @@ function mapArchiveDailySummary(daily = null) {
     healthGrade: daily.healthGrade || 'F',
     behaviorState: daily.behaviorState || null,
     driftState: daily.driftState || null,
+    folderizationPropagation: daily.folderizationPropagation || null,
     successScore: asNumber(daily.successScore, 0),
     issueCount: asNumber(daily.issueCount, 0),
     summary: daily.summary || null

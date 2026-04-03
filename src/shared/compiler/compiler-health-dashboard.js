@@ -30,7 +30,10 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
     || (compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? compilerExplainability.driftAssessment.primaryIssue : null);
   const folderizationPropagation = normalized.current?.folderizationPropagation || null;
   const signalRows = buildSignalRows(trend.deltaSinceBaseline || {});
-  const toolTelemetry = mapToolTelemetry(current.toolTelemetry);
+  const toolTelemetry = {
+    ...mapToolTelemetry(current.toolTelemetry),
+    folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null
+  };
   const pipelineTimingTelemetry = mapPipelineTimingTelemetry(current.pipelineTimingTelemetry);
   const healthArchive = normalized.healthArchive || null;
   const archiveDaily = healthArchive ? {

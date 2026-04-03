@@ -3,6 +3,11 @@
  */
 
 import { takeSample } from './sample-helpers.js';
+import {
+  buildMetricsSnapshotDaily,
+  buildMetricsSnapshotIdentity,
+  buildMetricsSnapshotLifetime
+} from './compiler-metrics-snapshot-summary-helpers.js';
 
 function summarizeCompactPipelineTimingTelemetry(telemetry = null) {
   if (!telemetry) {
@@ -56,6 +61,7 @@ export function summarizeCompactToolTelemetry(toolTelemetry = null) {
     ...compact,
     lastRunAt: toolTelemetry.lastRunAt || null,
     lastSuccessfulRunAt: toolTelemetry.lastSuccessfulRunAt || null,
+    folderizationPropagation: toolTelemetry.folderizationPropagation || null,
     topTools: Array.isArray(toolTelemetry.topTools) ? toolTelemetry.topTools.slice(0, 5) : [],
     noiseSummary: toolTelemetry.noiseSummary ? {
       totalRuns: toolTelemetry.noiseSummary.totalRuns || 0,
@@ -69,11 +75,7 @@ export function summarizeCompactToolTelemetry(toolTelemetry = null) {
   };
 }
 
-export function summarizeCompactCurrentSnapshot(current = null) {
-  if (!current) {
-    return null;
-  }
-
+function summarizeCompactCurrentScores(current = {}) {
   return {
     globalHealthScore: current.globalHealthScore || 0,
     globalHealthGrade: current.globalHealthGrade || current.healthGrade || 'F',
@@ -82,6 +84,16 @@ export function summarizeCompactCurrentSnapshot(current = null) {
     reliabilityScore: current.reliabilityScore || 0,
     reliabilityGrade: current.reliabilityGrade || 'F',
     reliabilityState: current.reliabilityState || null,
+    successScore: current.successScore || 0,
+    successThreshold: current.successThreshold || 0,
+    mvpReady: current.mvpReady || false,
+    behaviorState: current.behaviorState || null,
+    readinessReason: current.readinessReason || null
+  };
+}
+
+function summarizeCompactCurrentStructure(current = {}) {
+  return {
     issueCount: current.issueCount || 0,
     structuralGroups: current.structuralGroups || 0,
     conceptualGroups: current.conceptualGroups || 0,
@@ -94,7 +106,12 @@ export function summarizeCompactCurrentSnapshot(current = null) {
     namingFamilies: current.namingFamilies || 0,
     namingTargets: current.namingTargets || 0,
     namingDebt: current.namingDebt || 0,
-    folderizationPropagation: current.folderizationPropagation || null,
+    folderizationPropagation: current.folderizationPropagation || null
+  };
+}
+
+function summarizeCompactCurrentCoverage(current = {}) {
+  return {
     liveCoverageRatio: current.liveCoverageRatio || 0,
     metadataCoveragePct: current.metadataCoveragePct || 0,
     metadataFieldCoveragePct: current.metadataFieldCoveragePct || 0,
@@ -107,29 +124,48 @@ export function summarizeCompactCurrentSnapshot(current = null) {
     watcherAlertCount: current.watcherAlertCount || 0,
     recentWarningCount: current.recentWarningCount || 0,
     recentErrorCount: current.recentErrorCount || 0,
-    phase2PendingFiles: current.phase2PendingFiles || 0,
+    phase2PendingFiles: current.phase2PendingFiles || 0
+  };
+}
+
+function summarizeCompactCurrentConnections(current = {}) {
+  return {
     mcpSessionSummary: current.mcpSessionSummary || null,
     databaseTrustworthy: current.databaseTrustworthy || false,
     clientSyncState: current.clientSyncState || null,
     clientSyncSeverity: current.clientSyncSeverity || null,
     clientSyncReason: current.clientSyncReason || null,
     clientSyncRecommendation: current.clientSyncRecommendation || null,
-    healthArchive: current.healthArchive || null,
+    healthArchive: current.healthArchive || null
+  };
+}
+
+function summarizeCompactCurrentTelemetry(current = {}) {
+  return {
+    pipelineTimingTelemetry: summarizeCompactPipelineTimingTelemetry(current.pipelineTimingTelemetry),
+    toolTelemetry: summarizeCompactToolTelemetry(current.toolTelemetry)
+  };
+}
+
+export function summarizeCompactCurrentSnapshot(current = null) {
+  if (!current) {
+    return null;
+  }
+
+  return {
+    ...summarizeCompactCurrentScores(current),
+    ...summarizeCompactCurrentStructure(current),
+    ...summarizeCompactCurrentCoverage(current),
+    ...summarizeCompactCurrentConnections(current),
     folderizationDecision: current.folderizationDecision || null,
     driftState: current.driftState || null,
     driftScore: current.driftScore || 0,
     stabilityScore: current.stabilityScore || 0,
-    successScore: current.successScore || 0,
-    successThreshold: current.successThreshold || 0,
-    mvpReady: current.mvpReady || false,
-    behaviorState: current.behaviorState || null,
-    readinessReason: current.readinessReason || null,
     activeAtomsDriftState: current.activeAtomsDriftState || null,
     activeAtomsDriftReason: current.activeAtomsDriftReason || null,
     activeAtomsDelta: current.activeAtomsDelta || 0,
     activeAtomsDeltaPct: current.activeAtomsDeltaPct || 0,
-    pipelineTimingTelemetry: summarizeCompactPipelineTimingTelemetry(current.pipelineTimingTelemetry),
-    toolTelemetry: summarizeCompactToolTelemetry(current.toolTelemetry)
+    ...summarizeCompactCurrentTelemetry(current)
   };
 }
 
@@ -185,50 +221,12 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
 
   const archiveSource = snapshot.healthArchive || snapshot.current?.healthArchive || null;
   const current = snapshot.current || null;
-  const daily = current ? {
-    capturedAt: current.capturedAt || null,
-    globalHealthScore: current.globalHealthScore || current.healthScore || 0,
-    globalHealthGrade: current.globalHealthGrade || current.healthGrade || 'F',
-    healthScore: current.healthScore || 0,
-    healthGrade: current.healthGrade || 'F',
-    driftState: current.driftState || null,
-    driftScore: current.driftScore || 0,
-    stabilityScore: current.stabilityScore || 0,
-    successScore: current.successScore || 0,
-    behaviorState: current.behaviorState || null,
-    clientSyncState: current.clientSyncState || null,
-    propagation: current.folderizationPropagation || null,
-    issueCount: current.issueCount || 0,
-    summary: snapshot.summary || current.summaryText || null
-  } : null;
-  const lifetime = archiveSource ? {
-    daysObserved: archiveSource.daysObserved || 0,
-    snapshotsRecorded: archiveSource.snapshotsRecorded || 0,
-    firstCapturedAt: archiveSource.firstCapturedAt || null,
-    lastCapturedAt: archiveSource.lastCapturedAt || null,
-    averageHealthScore: archiveSource.averageHealthScore || 0,
-    averageDriftScore: archiveSource.averageDriftScore || 0,
-    averageStabilityScore: archiveSource.averageStabilityScore || 0,
-    averageSuccessScore: archiveSource.averageSuccessScore || 0,
-    totalIssueCount: archiveSource.totalIssueCount || 0,
-    totalWarningCount: archiveSource.totalWarningCount || 0,
-    totalErrorCount: archiveSource.totalErrorCount || 0,
-    totalWatcherAlertCount: archiveSource.totalWatcherAlertCount || 0,
-    latestHealthScore: archiveSource.latestHealthScore || 0,
-    latestHealthGrade: archiveSource.latestHealthGrade || null,
-    latestBehaviorState: archiveSource.latestBehaviorState || null,
-    latestClientSyncState: archiveSource.latestClientSyncState || null,
-    summary: archiveSource.summary || null
-  } : null;
+  const daily = buildMetricsSnapshotDaily(snapshot, current);
+  const lifetime = buildMetricsSnapshotLifetime(archiveSource);
   const archive = archiveSource ? { daily, lifetime } : null;
 
   return {
-    projectPath: snapshot.projectPath || null,
-    scopePath: snapshot.scopePath || null,
-    focusPath: snapshot.focusPath || null,
-    snapshotKind: snapshot.snapshotKind || 'status',
-    captureSource: snapshot.captureSource || null,
-    capturedAt: current?.capturedAt || null,
+    ...buildMetricsSnapshotIdentity(snapshot, current),
     daily,
     lifetime,
     archive,

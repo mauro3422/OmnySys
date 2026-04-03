@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Surfaced folderization propagation in the compiler health dashboard tool telemetry so the derived plan is visible in the same collection that reports tool noise and cache policy.
+- Preserved folderization propagation in the daily archive summary so historical health snapshots can replay the same propagation plan without recomputing it.
+- Split the compiler metrics snapshot summary builders into a dedicated helper module so the compact snapshot path stays under the watcher complexity and file-size thresholds.
 - Surfaced folderization propagation in the compiler health dashboard so the compact health view can read the derived plan directly.
 - Added folderization propagation to the one-line health panel summary so the runtime panel can show the decision without drilling into folderization internals.
 - Split the health dashboard panel test into a dedicated file to keep the watcher-aware test surface under the file-size threshold.
