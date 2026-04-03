@@ -15,6 +15,7 @@ import {
 } from './compiler-metrics-current-helpers.js';
 import { buildCurrentSummaries } from './compiler-metrics-current-summaries.js';
 import { asNumber } from './core-utils.js';
+import { buildStartupRegressionSummary } from './startup-regression-summary.js';
 
 function normalizeSnapshotPath(value = '') {
   const normalized = normalizeFolderizationPath(value);
@@ -57,6 +58,7 @@ export function buildCurrentMetrics({
   compilerExplainability = null,
   systemInventory = null,
   canonicalPromotion = null,
+  startupTelemetry = null,
   repo = null,
   watcherAlerts = [],
   recentErrors = null,
@@ -143,6 +145,7 @@ export function buildCurrentMetrics({
     clientSyncEvidence: mcpSessionSummary?.clientSyncEvidence || null,
     systemInventory: systemInventory || null,
     canonicalPromotion: canonicalPromotion || null,
+    startupTelemetry: buildStartupRegressionSummary(startupTelemetry),
     folderizationDecision: folderization?.decision || null,
     folderizationPropagation: compactFolderizationPropagation(folderization?.propagation || null),
     driftState: behavior.driftState,
@@ -175,6 +178,9 @@ export function buildCurrentMetrics({
     current.toolTelemetry?.totalRuns > 0
       ? `tools=${current.toolTelemetry.successfulRuns}/${current.toolTelemetry.totalRuns} ok`
       : 'tools=0',
+    current.startupTelemetry?.state
+      ? `startup=${current.startupTelemetry.state}:${Math.round(current.startupTelemetry.totalDurationMs || 0)}ms`
+      : null,
     current.toolTelemetry?.pressureRuns > 0
       ? `repair=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.pressureRuns}`
       : null,

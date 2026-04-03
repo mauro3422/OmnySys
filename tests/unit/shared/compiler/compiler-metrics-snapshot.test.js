@@ -98,6 +98,14 @@ describe('compiler-metrics-snapshot', () => {
             }
           ]
         },
+        startupTelemetry: {
+          state: 'expected-slow',
+          totalDurationMs: 1321150,
+          layerAStrategy: 'full_reindex',
+          layerADurationMs: 865346,
+          budgetState: 'over-budget',
+          summary: 'expected-slow | startup=1321150ms | layerA=full_reindex:865346ms | budget=over-budget'
+        },
         summaryText: 'snapshot summary'
       },
       trend: null,
@@ -127,6 +135,10 @@ describe('compiler-metrics-snapshot', () => {
     expect(compact.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       inventoryState: 'ready'
+    });
+    expect(compact.current.startupTelemetry).toMatchObject({
+      state: 'expected-slow',
+      layerAStrategy: 'full_reindex'
     });
   });
 

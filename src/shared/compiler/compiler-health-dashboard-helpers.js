@@ -91,6 +91,7 @@ function buildRecommendations(snapshot = {}, compilerExplainability = {}) {
       || compilerExplainability?.canonicalPromotion?.nextAction,
     'canonicalPromotion'
   );
+  push(snapshot?.current?.startupTelemetry?.recommendation, 'startupTelemetry');
   push(compilerExplainability?.folderization?.creationGuidance?.guidance, 'folderization');
   push(snapshot?.current?.clientSyncRecommendation, 'clientSync');
   push(snapshot?.current?.pipelineTimingTelemetry?.summary, 'pipelineTiming');

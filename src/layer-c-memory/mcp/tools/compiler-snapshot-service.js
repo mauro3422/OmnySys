@@ -71,6 +71,7 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     compilerExplainability,
     systemInventory,
     canonicalPromotion,
+    startupTelemetry: context.server?.startupTelemetry || null,
     watcherAlerts: mergedNotifications.watcherAlerts || [],
     recentErrors,
     scopePath: args?.scopePath || null,
@@ -86,8 +87,10 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
   snapshot.systemInventory = systemInventory;
   snapshot.canonicalPromotionDetail = canonicalPromotionDetail;
   snapshot.canonicalPromotion = canonicalPromotion;
+  snapshot.startupTelemetry = context.server?.startupTelemetry || null;
   snapshot.current.systemInventory = systemInventory;
   snapshot.current.canonicalPromotion = canonicalPromotion;
+  snapshot.current.startupTelemetry = context.server?.startupTelemetry || null;
 
   const compactSnapshot = summarizeCompilerMetricsSnapshot(snapshot);
   const healthDashboard = buildCompilerHealthDashboard(snapshot, compilerExplainability, {

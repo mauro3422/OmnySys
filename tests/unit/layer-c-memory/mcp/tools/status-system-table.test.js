@@ -42,6 +42,14 @@ describe('status system table', () => {
           driftScore: 70,
           readinessReason: 'blocked',
           snapshotFingerprint: 'abc123',
+          startupTelemetry: {
+            state: 'expected-slow',
+            totalDurationMs: 1321150,
+            layerAStrategy: 'full_reindex',
+            budgetState: 'over-budget',
+            reason: 'Layer A ran as full_reindex, so the long startup is expected.',
+            recommendation: 'Treat this startup as a reindex bootstrap and compare it against full-reindex baselines.'
+          },
           behaviorGateSummary: {
             blockerCount: 2,
             primaryBlocker: {
@@ -185,12 +193,23 @@ describe('status system table', () => {
     expect(updateRow.detail).toContain('journal=0');
     expect(updateRow.detail).toContain('integrity=ok');
 
+    const startupRow = summary.rows.find((row) => row.area === 'Startup');
+    expect(startupRow).toMatchObject({
+      area: 'Startup',
+      state: 'expected-slow',
+      source: 'bootstrap startup telemetry'
+    });
+    expect(startupRow.detail).toContain('mode=full_reindex');
+    expect(startupRow.detail).toContain('total=1321150ms');
+    expect(startupRow.detail).toContain('budget=over-budget');
+
     const areas = summary.rows.map((row) => row.area);
     expect(areas).toEqual([
       'Daemon',
       'Database',
       'Snapshots',
       'Update',
+      'Startup',
       'Behavior',
       'Drift',
       'Propagation',

@@ -36,6 +36,15 @@ export class LayerAAnalysisStep extends InitializationStep {
       reloadMetadataFn: () => server.reloadMetadata?.() || Promise.resolve()
     });
 
+    server.startupLayerAResult = {
+      ran: result.ran === true,
+      strategy: result.strategy || null,
+      filesAnalyzed: result.filesAnalyzed || 0,
+      filesChanged: result.filesChanged || 0,
+      durationMs: Math.round((result.duration || 0) * 1000),
+      incremental: result.incremental === true
+    };
+
     // Loguear resultado según la estrategia usada
     if (result.ran) {
       const strategyIcon = result.incremental ? '🔄' : '🚀';

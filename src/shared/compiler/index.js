@@ -488,6 +488,10 @@ export {
 } from './session-restart-lifecycle.js';
 
 export {
+  buildStartupRegressionSummary
+} from './startup-regression-summary.js';
+
+export {
   getDeadCodeSqlPredicate,
   isSuspiciousDeadCodeAtom,
   normalizeDeadCodeAtom,

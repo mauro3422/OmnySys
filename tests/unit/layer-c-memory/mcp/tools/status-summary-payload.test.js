@@ -165,6 +165,7 @@ describe('status summary payload', () => {
       'Database',
       'Snapshots',
       'Update',
+      'Startup',
       'Behavior',
       'Drift',
       'Propagation',

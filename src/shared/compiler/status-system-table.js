@@ -68,6 +68,14 @@ export function buildSystemTableSummary(status = {}) {
         source: updateSurface?.source || 'atom/function update pipeline'
       },
       {
+        area: 'Startup',
+        state: current.startupTelemetry?.state || 'unknown',
+        detail: current.startupTelemetry
+          ? `mode=${current.startupTelemetry.layerAStrategy || 'n/a'} | total=${normalizeCount(current.startupTelemetry.totalDurationMs || 0)}ms | budget=${current.startupTelemetry.budgetState || 'n/a'} | reason=${current.startupTelemetry.reason || 'n/a'}`
+          : 'startup telemetry not available',
+        source: 'bootstrap startup telemetry'
+      },
+      {
         area: 'Behavior',
         state: current.behaviorState || 'unknown',
         detail: `blockers=${normalizeCount(current.behaviorGateSummary?.blockerCount || current.behaviorBlockers?.length || 0)} | primary=${current.primaryBehaviorBlocker?.gate || current.behaviorGateSummary?.primaryBlocker?.gate || 'n/a'} | reason=${current.readinessReason || 'n/a'}`,

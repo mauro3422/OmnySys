@@ -88,7 +88,8 @@ function summarizeCompactCurrentScores(current = {}) {
     successThreshold: current.successThreshold || 0,
     mvpReady: current.mvpReady || false,
     behaviorState: current.behaviorState || null,
-    readinessReason: current.readinessReason || null
+    readinessReason: current.readinessReason || null,
+    summaryText: current.summaryText || null
   };
 }
 
@@ -144,6 +145,7 @@ function summarizeCompactCurrentTelemetry(current = {}) {
   return {
     pipelineTimingTelemetry: summarizeCompactPipelineTimingTelemetry(current.pipelineTimingTelemetry),
     toolTelemetry: summarizeCompactToolTelemetry(current.toolTelemetry),
+    startupTelemetry: current.startupTelemetry || null,
     systemInventory: current.systemInventory || null,
     canonicalPromotion: current.canonicalPromotion || null
   };

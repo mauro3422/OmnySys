@@ -25,6 +25,7 @@ function buildHealthSnapshotResponse(result) {
     systemInventory: result.systemInventory || null,
     canonicalPromotionDetail: result.canonicalPromotionDetail || null,
     canonicalPromotion: result.canonicalPromotion || null,
+    startupTelemetry: result.snapshot?.current?.startupTelemetry || null,
     compilerExplainability: result.compilerExplainability ? {
       policySummary: result.compilerExplainability.policySummary || null,
       standardization: result.compilerExplainability.standardization || null,

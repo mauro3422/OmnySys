@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added canonical startup regression telemetry so bootstrap summaries can distinguish expected full reindex startup from a real regression and surface the result in status, health, and dashboard consumers.
 - Simplified the health and system inventory snapshot tools into thin wrappers so their exported MCP contracts stay below the watcher complexity threshold.
 - Moved canonical promotion compacting into the shared explainability helpers and reused the canonical score clamp helper to remove duplicate scoring logic.
 - Surfaced canonical promotion in the raw compiler health dashboard daily payload so the live dashboard keeps the promotion signal aligned with the archive and snapshot consumers.

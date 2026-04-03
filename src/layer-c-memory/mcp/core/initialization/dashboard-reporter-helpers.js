@@ -78,6 +78,9 @@ export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPrelimin
       ? '  File Universe: settling during bootstrap; live coverage will appear after manifest/live index converge'
       : `  File Universe: ${Math.round(extendedMetrics.liveCoverageRatio * 100)}% live coverage (${extendedMetrics.zeroAtomFileCount} zero-atom files expected)`,
     `  MCP Sessions: ${extendedMetrics.mcpSessionSummary.summary}`,
+    extendedMetrics.startupTelemetry
+      ? `  Startup: ${extendedMetrics.startupTelemetry.state} | ${extendedMetrics.startupTelemetry.summary} | layerA=${extendedMetrics.startupTelemetry.layerAStrategy || 'n/a'}`
+      : null,
     `  Graph Coverage: call graph=${extendedMetrics.callLinks} links, semantic layer=${extendedMetrics.semanticLinks} high-level links`,
     `  Duplicates: ${extendedMetrics.structuralGroups} structural groups, ${extendedMetrics.conceptualGroups} conceptual actionable groups (${extendedMetrics.conceptualRawGroups} raw groups)` +
       (extendedMetrics.conceptualImplementations > 0

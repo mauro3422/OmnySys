@@ -33,6 +33,8 @@ export class InitializationPipeline {
   async execute(server) {
     const totalSteps = this.steps.filter(s => s.canExecute(server)).length;
     let currentStep = 0;
+    const pipelineStartedAt = Date.now();
+    server.initializationTimings = [];
 
     for (const step of this.steps) {
       // Check if should execute
@@ -42,9 +44,17 @@ export class InitializationPipeline {
 
       currentStep++;
       logger.info(`\n[${currentStep}/${totalSteps}] ${step.name}...`);
+      const stepStartedAt = Date.now();
 
       try {
         const shouldContinue = await step.execute(server);
+        const stepEndedAt = Date.now();
+        server.initializationTimings.push({
+          name: step.name,
+          startedAt: new Date(stepStartedAt).toISOString(),
+          endedAt: new Date(stepEndedAt).toISOString(),
+          elapsedMs: stepEndedAt - stepStartedAt
+        });
         this.completedSteps.push(step);
 
         if (!shouldContinue) {
@@ -72,6 +82,15 @@ export class InitializationPipeline {
         };
       }
     }
+
+    server.initializationSummary = {
+      startedAt: new Date(pipelineStartedAt).toISOString(),
+      endedAt: new Date().toISOString(),
+      elapsedMs: Date.now() - pipelineStartedAt,
+      totalSteps,
+      completedSteps: this.completedSteps.length,
+      stepTimings: server.initializationTimings
+    };
 
     return { 
       success: true, 

@@ -184,6 +184,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     mcpSessionSummary: sessionSummary,
     systemInventory,
     canonicalPromotion,
+    startupTelemetry: server?.startupTelemetry || null,
     scopePath: args?.scopePath || null,
     focusPath: args?.focusPath || null,
     captureSource: 'status.runtime',
@@ -194,9 +195,11 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.metricsSnapshot.systemInventoryDetail = systemInventoryDetail;
   status.metricsSnapshot.canonicalPromotion = canonicalPromotion;
   status.metricsSnapshot.canonicalPromotionDetail = canonicalPromotionDetail;
+  status.metricsSnapshot.startupTelemetry = server?.startupTelemetry || null;
   if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
     status.metricsSnapshot.current.systemInventory = systemInventory;
     status.metricsSnapshot.current.canonicalPromotion = canonicalPromotion;
+    status.metricsSnapshot.current.startupTelemetry = server?.startupTelemetry || null;
   }
   status.healthSnapshot = buildCompilerHealthDashboard(metricsSnapshot, compilerExplainability, {
     watcherAlerts: mergedNotifications.watcherAlerts || [],
@@ -216,6 +219,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.systemInventoryDetail = systemInventoryDetail;
   status.canonicalPromotion = canonicalPromotion;
   status.canonicalPromotionDetail = canonicalPromotionDetail;
+  status.startupTelemetry = server?.startupTelemetry || null;
   return {
     repo,
     recentErrors

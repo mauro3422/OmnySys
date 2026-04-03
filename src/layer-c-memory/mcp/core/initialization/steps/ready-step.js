@@ -8,6 +8,7 @@
 
 import { InitializationStep } from './base-step.js';
 import { createLogger } from '../../../../../utils/logger.js';
+import { buildStartupRegressionSummary } from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:ready:step');
 
@@ -24,7 +25,20 @@ export class ReadyStep extends InitializationStep {
   async execute(server) {
     // Display stats
     const uptime = ((Date.now() - server.startTime) / 1000).toFixed(2);
+    const startupTelemetry = buildStartupRegressionSummary({
+      totalDurationMs: Date.now() - server.startTime,
+      runtimeRestartMode: server.runtimeRestartMode || 'manual',
+      proxyManaged: server.proxyManaged === true,
+      initializationTimings: server.initializationTimings || [],
+      layerA: server.startupLayerAResult || null,
+      startupMode: server.runtimeRestartMode === 'auto' ? 'proxy-managed' : 'standalone',
+      readyDurationMs: 0
+    });
+    server.startupTelemetry = startupTelemetry;
     logger.info(`   ✓ Server ready in ${uptime}s`);
+    if (startupTelemetry?.state) {
+      logger.info(`   ↳ Startup ${startupTelemetry.state}: ${startupTelemetry.summary}`);
+    }
 
     // Categorize and display tools
     await this.displayTools();
@@ -32,7 +46,10 @@ export class ReadyStep extends InitializationStep {
     // 📊 Print Diagnostics Dashboard (FINAL initialization output)
     try {
       const { printDiagnosticsDashboard } = await import('../dashboard-reporter.js');
-      await printDiagnosticsDashboard(server.projectPath);
+      await printDiagnosticsDashboard(server.projectPath, {
+        isFinal: true,
+        startupTelemetry: server.startupTelemetry || null
+      });
     } catch (err) {
       logger.warn('   ⚠️ Failed to display Diagnostics Dashboard:', err.message);
     }

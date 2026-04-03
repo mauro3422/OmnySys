@@ -48,7 +48,7 @@ function isTransientDatabaseAvailabilityError(error) {
 }
 
 export async function printDiagnosticsDashboard(projectPath, options = {}) {
-  const { isFinal = false, force = false } = options;
+  const { isFinal = false, force = false, startupTelemetry = null } = options;
 
   if (!isFinal && lastReportType === 'final' && !force) return;
 
@@ -61,7 +61,7 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
     const dashboard = new IntegrityDashboard();
     const integrityResults = await detector.verify();
     const report = await dashboard.generateReport(integrityResults);
-    const extendedMetrics = await fetchExtendedMetrics(projectPath, db, repo, isFinal);
+    const extendedMetrics = await fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelemetry);
 
     const currentSnapshot = `${report.overallHealth}-${extendedMetrics.issueCount}-${extendedMetrics.conceptualGroups}-${extendedMetrics.conceptualRawGroups}`;
     if (!force && isFinal && lastReportType === 'final' && currentSnapshot === lastReportSnapshot) {
@@ -85,7 +85,7 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
   }
 }
 
-async function fetchExtendedMetrics(projectPath, db, repo, isFinal) {
+async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelemetry = null) {
   const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
   const compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
     projectPath,
@@ -118,6 +118,7 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal) {
     compilerDiagnostics,
     metricsSnapshot: null,
     updateSurface: null,
+    startupTelemetry,
     mcpSessionSummary: getMcpSessionSummary(sessionManager, {
       sessionDb: db
     })
@@ -142,6 +143,7 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal) {
       captureSource: isFinal ? 'dashboard.bootstrap.final' : 'dashboard.bootstrap.preliminary',
       snapshotKind: isFinal ? 'dashboard-final' : 'dashboard-preliminary',
       mcpSessionSummary: sessionSummary,
+      startupTelemetry,
       persist: true
     });
     metrics.healthSnapshot = buildCompilerHealthDashboard(metrics.metricsSnapshot, compilerDiagnostics, {
