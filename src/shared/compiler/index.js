@@ -370,6 +370,11 @@ export {
 } from './directory-structure-folderization.js';
 
 export {
+  buildPropagationPlan,
+  summarizePropagationPlan
+} from './propagation-engine.js';
+
+export {
   buildFolderizedFamilyGroups,
   buildFolderizedFamilySuggestion,
   findBestFolderizedFamilyForPaths,

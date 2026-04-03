@@ -101,6 +101,7 @@ export function compactCreationGuidance(creationGuidance = null) {
 export function compactPropagation(propagation = null) {
   if (!propagation) return null;
   return {
+    changeType: propagation.changeType || 'folderization',
     decision: propagation.decision || null,
     mode: propagation.mode || null,
     moveTargetCount: propagation.moveTargetCount || 0,
@@ -116,7 +117,8 @@ export function compactPropagation(propagation = null) {
     mixedFamilies: propagation.mixedFamilies || 0,
     alreadyFolderizedFamilies: propagation.alreadyFolderizedFamilies || 0,
     guidance: propagation.guidance || null,
-    recommendationStrategy: propagation.recommendationStrategy || null
+    recommendationStrategy: propagation.recommendationStrategy || null,
+    connectedSystems: takeSample(propagation.connectedSystems || [], 8)
   };
 }
 

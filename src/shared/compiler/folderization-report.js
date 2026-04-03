@@ -17,6 +17,9 @@ import {
   buildFolderizationNamingReportFromRows,
   findBestFolderizedFamilyForPaths
 } from './directory-structure-folderization-naming.js';
+import {
+  buildPropagationPlan
+} from './propagation-engine.js';
 
 function normalizeFocusPaths(filePaths = []) {
   return filePaths
@@ -196,7 +199,8 @@ function buildFolderizationPropagationSummary({
   naming,
   creationGuidance,
   recommendation,
-  decision
+  decision,
+  drift
 }) {
   const focusPlan = migrationPlans?.focusCandidate || null;
   const importImpact = focusPlan?.importImpact || null;
@@ -223,8 +227,8 @@ function buildFolderizationPropagationSummary({
   const rewriteCount = Number(importImpact?.rewriteCount || 0);
   const renameTargetCount = Number(naming?.renameTargetCount || 0);
   const validationTargetCount = moveTargetCount + impactedFileCount + (focusPlan?.candidate?.barrelFile ? 1 : 0);
-
-  return {
+  return buildPropagationPlan({
+    changeType: 'folderization',
     decision: decision || focusPlan?.decision || 'reject',
     mode: focusPlan?.decision === 'approve'
       ? 'move_and_rewrite'
@@ -246,8 +250,9 @@ function buildFolderizationPropagationSummary({
     mixedFamilies: Number(familyState?.stateCounts?.mixed || 0),
     alreadyFolderizedFamilies: Number(familyState?.stateCounts?.already_folderized || 0),
     guidance: creationGuidance?.guidance || null,
-    recommendationStrategy: recommendation?.strategy || null
-  };
+    recommendationStrategy: recommendation?.strategy || null,
+    drift
+  });
 }
 
 function buildFolderizationSummary({
@@ -274,11 +279,13 @@ function buildFolderizationSummary({
     guidanceFocusPath: creationGuidance?.focusPath || null,
     focusDecision: migrationPlans?.focusCandidate?.decision || decision || 'reject',
     recommendationStrategy: recommendation?.strategy || null,
+    propagationChangeType: propagation?.changeType || 'folderization',
     propagationMoveTargets: propagation?.moveTargetCount || 0,
     propagationImpactedFiles: propagation?.impactedFileCount || 0,
     propagationRewriteCount: propagation?.rewriteCount || 0,
     propagationValidationTargets: propagation?.validationTargetCount || 0,
     propagationMode: propagation?.mode || 'blocked',
+    propagationConnectedSystems: Array.isArray(propagation?.connectedSystems) ? propagation.connectedSystems.length : 0,
     driftState: drift?.state || 'fresh',
     driftScore: drift?.score || 0,
     driftReason: drift?.reason || null,
@@ -463,7 +470,8 @@ function buildFolderizationReport({
     naming,
     creationGuidance,
     recommendation,
-    decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject'
+    decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
+    drift
   });
   const summary = buildFolderizationSummary({
     candidateReport,

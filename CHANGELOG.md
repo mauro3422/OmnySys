@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a shared propagation engine so folderization changes now derive a single propagation plan with connected systems, move targets, impacted files, rewrites, and validation targets from one canonical place.
+- Rewired `folderization-report` to build propagation through the shared engine instead of maintaining a local propagation shape.
+- Preserved the propagation signal in compiler explainability compactors so the live dashboard can surface connected systems and change scope consistently.
 - Added an explicit folderization propagation summary so snapshots and technical-debt reports now show move targets, impacted files, rewrites, and validation targets as first-class signals.
 - Threaded that propagation summary through the folderization snapshot service, technical-debt report, and compiler explainability compactors so the same impact shape is visible in both live status and persisted history.
 - Expanded folderization candidate actions to report dependent file impact alongside the move and rewrite counts.
