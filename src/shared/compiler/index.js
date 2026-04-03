@@ -192,6 +192,13 @@ export {
 } from './mcp-parse-context.js';
 
 export {
+  getProxyRuntimeTelemetryPath,
+  readProxyRuntimeTelemetry,
+  writeProxyRuntimeTelemetrySync,
+  summarizeProxyRuntimeTelemetry
+} from './proxy-runtime-telemetry.js';
+
+export {
   analyzeTestCoverage,
   compareWithGeneratedTests
 } from './test-coverage-analyzer.js';

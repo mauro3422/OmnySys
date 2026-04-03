@@ -68,6 +68,14 @@ describe('status system table', () => {
           propagationExpansionRecommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
         }
       },
+      proxyRuntimeTelemetry: {
+        state: 'watchful',
+        restartCount: 2,
+        crashCount: 1,
+        unexpectedExitCount: 1,
+        cleanExitCount: 0,
+        lastEventType: 'worker-crash'
+      },
       compilerExplainability: {
         driftAssessment: {
           primaryIssue: {
@@ -203,6 +211,18 @@ describe('status system table', () => {
     expect(startupRow.detail).toContain('total=1321150ms');
     expect(startupRow.detail).toContain('budget=over-budget');
 
+    const proxyRow = summary.rows.find((row) => row.area === 'Proxy');
+    expect(proxyRow).toMatchObject({
+      area: 'Proxy',
+      state: 'watchful',
+      source: '.omnysysdata/proxy-runtime-telemetry.json'
+    });
+    expect(proxyRow.detail).toContain('restarts=2');
+    expect(proxyRow.detail).toContain('crashes=1');
+    expect(proxyRow.detail).toContain('exits=1');
+    expect(proxyRow.detail).toContain('clean=0');
+    expect(proxyRow.detail).toContain('last=worker-crash');
+
     const areas = summary.rows.map((row) => row.area);
     expect(areas).toEqual([
       'Daemon',
@@ -210,6 +230,7 @@ describe('status system table', () => {
       'Snapshots',
       'Update',
       'Startup',
+      'Proxy',
       'Behavior',
       'Drift',
       'Propagation',

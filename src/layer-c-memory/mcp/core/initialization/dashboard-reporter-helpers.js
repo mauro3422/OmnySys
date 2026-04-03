@@ -59,12 +59,16 @@ export function buildBootstrapUpdateSurface({
   return buildUpdateSurfaceSummary(bootstrapStatus);
 }
 
-export function resolveDashboardHeader(isFinal, isSettling) {
-  if (isFinal) return 'FINAL SYSTEM SUMMARY (bootstrap snapshot)';
+export function resolveDashboardHeader(isFinal, isSettling, snapshotKind = 'bootstrap') {
+  if (isFinal) {
+    return snapshotKind === 'phase2-completion'
+      ? 'FINAL SYSTEM SUMMARY (phase2 completion snapshot)'
+      : 'FINAL SYSTEM SUMMARY (bootstrap snapshot)';
+  }
   return isSettling ? 'PRELIMINARY SYSTEM SUMMARY' : 'SYSTEM SUMMARY';
 }
 
-export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, isSettling, fileUniverseSettling }) {
+export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, isSettling, fileUniverseSettling, snapshotKind = 'bootstrap' }) {
   const detailLines = [];
 
   if (isPreliminary && isSettling) {
@@ -106,7 +110,9 @@ export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPrelimin
       : null,
     `  Physics Coverage: ${extendedMetrics.physicsCoverage}% signals (${extendedMetrics.hotspots} hotspots)`,
     ...(isFinal
-      ? ['  Final snapshot advisory: this is a bootstrap snapshot; use get_server_status() for the live runtime view.']
+      ? [snapshotKind === 'phase2-completion'
+          ? '  Final snapshot advisory: this is a post-Phase 2 reconciliation snapshot; use get_server_status() for the live runtime view.'
+          : '  Final snapshot advisory: this is a bootstrap snapshot; use get_server_status() for the live runtime view.']
       : []),
     ...(isSettling
       ? ['  Snapshot Advisory: startup/bootstrap metrics may still be reconciling; prefer get_server_status() for the final live view']

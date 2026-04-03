@@ -33,7 +33,8 @@ import { spawn } from 'child_process';
 import {
     ensureCompilerRuntimeDirSync,
     removeDaemonOwnerLockSync,
-    writeDaemonOwnerLockSync
+    writeDaemonOwnerLockSync,
+    writeProxyRuntimeTelemetrySync
 } from '../shared/compiler/index.js';
 import { sanitizeLogText } from '../utils/logger.js';
 import {
@@ -74,6 +75,46 @@ let restartInFlight = false;
 let restartCount = 0;
 let respawnTimer = null;
 let shutdownInProgress = false;
+let proxyTelemetry = null;
+
+function nowIso() {
+    return new Date().toISOString();
+}
+
+function persistProxyTelemetry(patch = {}) {
+    proxyTelemetry = {
+        ...(proxyTelemetry || {}),
+        projectPath,
+        port: String(port),
+        pid: process.pid,
+        updatedAt: nowIso(),
+        ...patch
+    };
+
+    try {
+        writeProxyRuntimeTelemetrySync(projectRoot, proxyTelemetry);
+    } catch (error) {
+        log(`⚠️  Failed to persist proxy telemetry: ${error.message}`);
+    }
+
+    return proxyTelemetry;
+}
+
+function recordProxyEvent(type, details = {}) {
+    const current = proxyTelemetry || { events: [] };
+    const events = Array.isArray(current.events) ? current.events.slice(-19) : [];
+    events.push({
+        type,
+        at: nowIso(),
+        ...details
+    });
+    return persistProxyTelemetry({
+        events,
+        lastEventType: type,
+        lastEventAt: events[events.length - 1]?.at || nowIso(),
+        ...details
+    });
+}
 
 function writeOwnerLock(state) {
     writeDaemonOwnerLockSync(projectRoot, {
@@ -148,7 +189,21 @@ function spawnWorker(extraArgs = []) {
     });
 
     log(`Worker PID: ${worker.pid}`);
-    restartCount++;
+    const spawnCount = restartCount + 1;
+    persistProxyTelemetry({
+      state: 'starting',
+      workerPid: worker.pid,
+      workerStartedAt: nowIso(),
+      workerExitAt: null,
+      workerExitCode: null,
+      workerExitSignal: null,
+      restartCount: spawnCount,
+      crashCount: proxyTelemetry?.crashCount || 0,
+      unexpectedExitCount: proxyTelemetry?.unexpectedExitCount || 0,
+      cleanExitCount: proxyTelemetry?.cleanExitCount || 0
+    });
+    restartCount = spawnCount;
+    recordProxyEvent(restartCount === 1 ? 'spawn-initial' : 'spawn-restart', { workerPid: worker.pid, restartCount });
 
     // ── IPC: handle restart signal from restart_server tool ───────────────────
     worker.on('message', (msg) => {
@@ -160,6 +215,13 @@ function spawnWorker(extraArgs = []) {
 
             log(`🔄 Restart requested (clearCache=${msg.clearCache}, reanalyze=${msg.reanalyze})`);
             writeOwnerLock('restarting');
+            recordProxyEvent('restart-requested', {
+                clearCache: !!msg.clearCache,
+                reanalyze: !!msg.reanalyze,
+                reindexOnly: !!msg.reindexOnly,
+                workerPid: worker?.pid || null,
+                restartCount
+            });
 
             // Capture flags to pass to the next spawn
             const nextArgs = [];
@@ -179,6 +241,11 @@ function spawnWorker(extraArgs = []) {
     // ── Worker exit handler ───────────────────────────────────────────────────
     worker.on('close', async (code, signal) => {
         log(`Worker exited (code=${code}, signal=${signal})`);
+        persistProxyTelemetry({
+            workerExitAt: nowIso(),
+            workerExitCode: code,
+            workerExitSignal: signal
+        });
 
         if (restartScheduled) {
             const nextArgs = Array.isArray(restartScheduled) ? restartScheduled : [];
@@ -214,11 +281,28 @@ function spawnWorker(extraArgs = []) {
             }
 
             log('🚀 Respawning worker with fresh ESM cache...');
+            recordProxyEvent('worker-exit-planned-restart', {
+                workerPid: worker?.pid || null,
+                workerExitCode: code,
+                workerExitSignal: signal,
+                restartCount
+            });
             // Small delay to allow OS to release port 9999 (Windows needs ~2-3s sometimes)
             const delay = process.platform === 'win32' ? 3000 : 1000;
             scheduleRespawn(delay, nextArgs);
             restartInFlight = false;
         } else if (code !== 0) {
+            persistProxyTelemetry({
+                state: 'crashed',
+                crashCount: (proxyTelemetry?.crashCount || 0) + 1,
+                unexpectedExitCount: (proxyTelemetry?.unexpectedExitCount || 0) + 1
+            });
+            recordProxyEvent('worker-crash', {
+                workerPid: worker?.pid || null,
+                workerExitCode: code,
+                workerExitSignal: signal,
+                restartCount
+            });
             if (await detectHealthyDaemon()) {
                 log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
                 removeOwnerLock();
@@ -229,6 +313,16 @@ function spawnWorker(extraArgs = []) {
             // Increased delay for crashes to avoid tight loops on port conflict
             scheduleRespawn(5000);
         } else {
+            persistProxyTelemetry({
+                state: 'clean-exit',
+                cleanExitCount: (proxyTelemetry?.cleanExitCount || 0) + 1
+            });
+            recordProxyEvent('worker-exit-clean', {
+                workerPid: worker?.pid || null,
+                workerExitCode: code,
+                workerExitSignal: signal,
+                restartCount
+            });
             log('Worker exited cleanly. Proxy shutting down.');
             removeOwnerLock();
             process.exit(0);
@@ -247,6 +341,7 @@ function beginProxyShutdown() {
     log('Proxy SIGINT/SIGTERM — shutting down worker...');
     clearRespawnTimer();
     removeOwnerLock();
+    recordProxyEvent('proxy-shutdown', { shutdownInProgress: true });
 }
 
 function finalizeProxyShutdown() {
@@ -279,4 +374,12 @@ if (await detectHealthyDaemon()) {
 
 ensureCompilerRuntimeDirSync(projectRoot);
 writeOwnerLock('starting');
+persistProxyTelemetry({
+    state: 'booting',
+    events: [],
+    restartCount: 0,
+    crashCount: 0,
+    unexpectedExitCount: 0,
+    cleanExitCount: 0
+});
 spawnWorker();

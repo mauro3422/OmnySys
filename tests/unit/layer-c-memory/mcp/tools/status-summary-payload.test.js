@@ -98,6 +98,14 @@ describe('status summary payload', () => {
         totalPersistent: 4,
         uniqueClients: 2,
         clientSyncState: 'watchful'
+      },
+      proxyRuntimeTelemetry: {
+        state: 'stable',
+        restartCount: 0,
+        crashCount: 0,
+        unexpectedExitCount: 0,
+        cleanExitCount: 1,
+        lastEventType: 'worker-exit-clean'
       }
     }, {
       summary: {
@@ -123,6 +131,11 @@ describe('status summary payload', () => {
       promotionState: 'ready',
       candidateCount: 3,
       folderizedFamilyCount: 1
+    });
+    expect(payload.proxyRuntimeTelemetry).toMatchObject({
+      state: 'stable',
+      restartCount: 0,
+      cleanExitCount: 1
     });
     expect(payload.propagation).toMatchObject({
       cacheKey: 'folderization:abc123',
@@ -166,6 +179,7 @@ describe('status summary payload', () => {
       'Snapshots',
       'Update',
       'Startup',
+      'Proxy',
       'Behavior',
       'Drift',
       'Propagation',

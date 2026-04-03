@@ -48,7 +48,7 @@ function isTransientDatabaseAvailabilityError(error) {
 }
 
 export async function printDiagnosticsDashboard(projectPath, options = {}) {
-  const { isFinal = false, force = false, startupTelemetry = null } = options;
+  const { isFinal = false, force = false, startupTelemetry = null, snapshotKind = 'bootstrap' } = options;
 
   if (!isFinal && lastReportType === 'final' && !force) return;
 
@@ -69,7 +69,7 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
     }
 
     const consoleSummary = dashboard.generateConsoleSummary(report);
-    const output = formatConsolidatedBox(consoleSummary, extendedMetrics, isFinal);
+    const output = formatConsolidatedBox(consoleSummary, extendedMetrics, isFinal, snapshotKind);
 
     lastReportType = isFinal ? 'final' : 'preliminary';
     lastReportSnapshot = currentSnapshot;
@@ -248,7 +248,7 @@ function loadPhysicsMetrics(metrics, db) {
   }
 }
 
-function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal) {
+function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal, snapshotKind = 'bootstrap') {
   const lines = integrityConsoleSummary.split('\n');
   const isPreliminary = !isFinal;
   const isSettling = extendedMetrics.phase2PendingFiles > 0 || (!isFinal && !extendedMetrics.hasPhase2DebtSnapshot);
@@ -256,14 +256,15 @@ function formatConsolidatedBox(integrityConsoleSummary, extendedMetrics, isFinal
 
   const headerIdx = lines.findIndex((line) => line.includes('OMNYSYS PIPELINE INTEGRITY REPORT'));
   if (headerIdx !== -1) {
-    lines[headerIdx] = resolveDashboardHeader(isFinal, isSettling);
+    lines[headerIdx] = resolveDashboardHeader(isFinal, isSettling, snapshotKind);
   }
 
   const detailLines = buildDashboardDetailLines(extendedMetrics, {
     isFinal,
     isPreliminary,
     isSettling,
-    fileUniverseSettling
+    fileUniverseSettling,
+    snapshotKind
   });
 
   insertDashboardDetailLines(lines, detailLines);

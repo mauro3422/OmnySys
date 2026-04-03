@@ -109,6 +109,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
       runtimeCodeFresh: status.hotReload.runtimeCodeFresh,
       restartRequired: status.hotReload.restartRequired
     } : null,
+    proxyRuntimeTelemetry: status.proxyRuntimeTelemetry || null,
     watcher,
     telemetryProvenance: status.telemetryProvenance || null,
     compilerExplainability,

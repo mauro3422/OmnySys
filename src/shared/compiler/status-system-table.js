@@ -76,6 +76,14 @@ export function buildSystemTableSummary(status = {}) {
         source: 'bootstrap startup telemetry'
       },
       {
+        area: 'Proxy',
+        state: status.proxyRuntimeTelemetry?.state || 'unknown',
+        detail: status.proxyRuntimeTelemetry
+          ? `restarts=${normalizeCount(status.proxyRuntimeTelemetry.restartCount || 0)} | crashes=${normalizeCount(status.proxyRuntimeTelemetry.crashCount || 0)} | exits=${normalizeCount(status.proxyRuntimeTelemetry.unexpectedExitCount || 0)} | clean=${normalizeCount(status.proxyRuntimeTelemetry.cleanExitCount || 0)} | last=${status.proxyRuntimeTelemetry.lastEventType || 'n/a'}`
+          : 'proxy runtime telemetry not available',
+        source: '.omnysysdata/proxy-runtime-telemetry.json'
+      },
+      {
         area: 'Behavior',
         state: current.behaviorState || 'unknown',
         detail: `blockers=${normalizeCount(current.behaviorGateSummary?.blockerCount || current.behaviorBlockers?.length || 0)} | primary=${current.primaryBehaviorBlocker?.gate || current.behaviorGateSummary?.primaryBlocker?.gate || 'n/a'} | reason=${current.readinessReason || 'n/a'}`,

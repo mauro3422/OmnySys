@@ -17,7 +17,9 @@ import {
   loadCompilerExplainability,
   compactDatabaseHealth,
   compactWatcherSummary,
-  summarizeCompilerExplainability
+  summarizeCompilerExplainability,
+  readProxyRuntimeTelemetry,
+  summarizeProxyRuntimeTelemetry
 } from '../../../shared/compiler/index.js';
 import { sessionManager } from '../core/session-manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
@@ -175,6 +177,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     recentErrors,
     sessionDb: repo?.db || null
   });
+  const proxyRuntimeTelemetry = summarizeProxyRuntimeTelemetry(readProxyRuntimeTelemetry(projectPath));
   const metricsSnapshot = buildCompilerMetricsSnapshot({
     projectPath,
     repo,
@@ -185,6 +188,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     systemInventory,
     canonicalPromotion,
     startupTelemetry: server?.startupTelemetry || null,
+    proxyRuntimeTelemetry,
     scopePath: args?.scopePath || null,
     focusPath: args?.focusPath || null,
     captureSource: 'status.runtime',
@@ -220,6 +224,14 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.canonicalPromotion = canonicalPromotion;
   status.canonicalPromotionDetail = canonicalPromotionDetail;
   status.startupTelemetry = server?.startupTelemetry || null;
+  status.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+  status.metricsSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+  if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
+    status.metricsSnapshot.current.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+  }
+  if (status.healthSnapshot && typeof status.healthSnapshot === 'object') {
+    status.healthSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+  }
   return {
     repo,
     recentErrors

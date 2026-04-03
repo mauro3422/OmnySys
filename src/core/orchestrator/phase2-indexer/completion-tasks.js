@@ -123,7 +123,7 @@ async function persistTechnicalDebtSummary(projectPath) {
 async function printFinalDiagnosticsDashboard(projectPath, logger) {
     try {
         const { printDiagnosticsDashboard } = await import('#layer-c/mcp/core/initialization/dashboard-reporter.js');
-        await printDiagnosticsDashboard(projectPath, { isFinal: true });
+        await printDiagnosticsDashboard(projectPath, { isFinal: true, snapshotKind: 'phase2-completion' });
     } catch (error) {
         logger.debug('Failed to display final Diagnostics Dashboard:', error.message);
     }
