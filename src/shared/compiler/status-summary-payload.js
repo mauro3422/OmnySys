@@ -42,6 +42,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     ...status,
     cachePolicy
   });
+  const propagation = metricsSnapshot?.propagation || metricsSnapshot?.current?.folderizationPropagation || null;
 
   return buildCompilerStatusSummaryEnvelope(status, recentErrors, {
     databaseHealth,
@@ -110,6 +111,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     telemetryProvenance: status.telemetryProvenance || null,
     compilerExplainability,
     metricsSnapshot,
+    propagation,
     healthSnapshot,
     healthPanel,
     systemTable,

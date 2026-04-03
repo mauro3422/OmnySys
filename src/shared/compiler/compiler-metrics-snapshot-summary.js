@@ -94,6 +94,7 @@ export function summarizeCompactCurrentSnapshot(current = null) {
     namingFamilies: current.namingFamilies || 0,
     namingTargets: current.namingTargets || 0,
     namingDebt: current.namingDebt || 0,
+    folderizationPropagation: current.folderizationPropagation || null,
     liveCoverageRatio: current.liveCoverageRatio || 0,
     metadataCoveragePct: current.metadataCoveragePct || 0,
     metadataFieldCoveragePct: current.metadataFieldCoveragePct || 0,
@@ -196,6 +197,7 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
     successScore: current.successScore || 0,
     behaviorState: current.behaviorState || null,
     clientSyncState: current.clientSyncState || null,
+    propagation: current.folderizationPropagation || null,
     issueCount: current.issueCount || 0,
     summary: snapshot.summary || current.summaryText || null
   } : null;
@@ -230,6 +232,7 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
     daily,
     lifetime,
     archive,
+    propagation: current?.folderizationPropagation || null,
     current: summarizeCompactCurrentSnapshot(snapshot.current),
     trend: summarizeCompactTrend(snapshot.trend),
     history: summarizeCompactHistory(snapshot.history),

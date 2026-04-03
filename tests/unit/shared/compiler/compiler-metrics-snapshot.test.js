@@ -60,6 +60,49 @@ afterEach(() => {
 });
 
 describe('compiler-metrics-snapshot', () => {
+  it('preserves folderization propagation in compact metrics snapshots', () => {
+    const snapshot = {
+      projectPath: 'C:/Dev/OmnySystem',
+      snapshotKind: 'status',
+      captureSource: 'status.runtime',
+      current: {
+        folderizationPropagation: {
+          changeType: 'folderization',
+          cacheKey: 'folderization:abc123',
+          cacheHit: true,
+          decision: 'approve',
+          mode: 'family',
+          impactedFileCount: 4,
+          rewriteCount: 3,
+          renameTargetCount: 2,
+          validationTargetCount: 5,
+          hasCrossFamilyPropagation: true,
+          connectedSystems: ['folderization', 'status']
+        },
+        summaryText: 'snapshot summary'
+      },
+      trend: null,
+      history: { entries: [] }
+    };
+
+    const compact = summarizeCompilerMetricsSnapshot(snapshot);
+
+    expect(compact.current.folderizationPropagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      cacheHit: true,
+      decision: 'approve',
+      mode: 'family'
+    });
+    expect(compact.daily.propagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve'
+    });
+    expect(compact.propagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      connectedSystems: ['folderization', 'status']
+    });
+  });
+
   it('captures a persistent snapshot with trend and velocity over historical baseline', () => {
     const snapshot = buildCompilerMetricsSnapshot({
       ...buildPersistentSnapshotCase(),

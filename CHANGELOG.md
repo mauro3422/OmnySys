@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Elevated folderization propagation into the compact compiler metrics snapshot so the derived plan is visible outside the folderization family.
+- Surfaced propagation explicitly in the structured status payload so downstream consumers can read the plan without drilling into folderization internals.
+- Kept the propagation contract reusable by preserving cache keys, decision mode, and connected systems in the compact snapshot path.
 - Added a canonical `propagation_expansion` policy area so watcher and tool surfaces can report when propagation is not being surfaced where expected.
 - Surfaced propagation-expansion drift in the compiler health dashboard, status table, and drift assessment so the live panel shows the recommendation alongside the reason.
 - Expanded the propagation-expansion detector to cover watcher and tool surfaces that emit status, health, snapshot, summary, or report payloads without attaching the shared propagation contract.

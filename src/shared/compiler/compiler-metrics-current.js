@@ -25,6 +25,29 @@ function clampScore(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
 }
 
+function compactFolderizationPropagation(propagation = null) {
+  if (!propagation) {
+    return null;
+  }
+
+  return {
+    changeType: propagation.changeType || 'folderization',
+    cacheKey: propagation.cacheKey || null,
+    cacheHit: Boolean(propagation.cacheHit),
+    decision: propagation.decision || null,
+    mode: propagation.mode || null,
+    impactedFileCount: asNumber(propagation.impactedFileCount, 0),
+    rewriteCount: asNumber(propagation.rewriteCount, 0),
+    renameTargetCount: asNumber(propagation.renameTargetCount, 0),
+    validationTargetCount: asNumber(propagation.validationTargetCount, 0),
+    hasCrossFamilyPropagation: Boolean(propagation.hasCrossFamilyPropagation),
+    connectedSystems: Array.isArray(propagation.connectedSystems) ? propagation.connectedSystems.slice(0, 8) : [],
+    recommendationStrategy: propagation.recommendationStrategy || null,
+    scopePath: propagation.scopePath || null,
+    focusPath: propagation.focusPath || null
+  };
+}
+
 export function buildCurrentMetrics({
   projectPath,
   scopePath,
@@ -117,6 +140,7 @@ export function buildCurrentMetrics({
     clientSyncRecommendation: mcpSessionSummary?.clientSyncRecommendation || null,
     clientSyncEvidence: mcpSessionSummary?.clientSyncEvidence || null,
     folderizationDecision: folderization?.decision || null,
+    folderizationPropagation: compactFolderizationPropagation(folderization?.propagation || null),
     driftState: behavior.driftState,
     driftScore: behavior.driftScore,
     stabilityScore: behavior.stabilityScore,
@@ -153,6 +177,9 @@ export function buildCurrentMetrics({
     `issues=${current.issueCount}`,
     `dups=${current.structuralGroups + current.conceptualGroups}`,
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
+    current.folderizationPropagation?.decision
+      ? `propagation=${current.folderizationPropagation.decision}`
+      : null,
     `coverage=${Math.round(current.liveCoverageRatio * 100)}%`
   ].join(' | ');
 

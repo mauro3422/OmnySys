@@ -54,6 +54,19 @@ describe('status summary payload', () => {
           namingDebt: 0,
           driftState: 'fresh',
           driftScore: 0,
+          folderizationPropagation: {
+            changeType: 'folderization',
+            cacheKey: 'folderization:abc123',
+            cacheHit: true,
+            decision: 'approve',
+            mode: 'family',
+            impactedFileCount: 4,
+            rewriteCount: 3,
+            renameTargetCount: 2,
+            validationTargetCount: 5,
+            hasCrossFamilyPropagation: true,
+            connectedSystems: ['folderization', 'status']
+          },
           readinessReason: 'ready'
         }
       },
@@ -81,6 +94,11 @@ describe('status summary payload', () => {
       state: 'synced',
       source: 'atom/function update pipeline'
     });
+    expect(payload.propagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve',
+      mode: 'family'
+    });
 
     const updateRow = payload.systemTable.rows.find((row) => row.area === 'Update');
     expect(updateRow).toMatchObject({
@@ -99,6 +117,7 @@ describe('status summary payload', () => {
       'Update',
       'Behavior',
       'Drift',
+      'Propagation',
       'Debt',
       'Sessions',
       'Tools',
