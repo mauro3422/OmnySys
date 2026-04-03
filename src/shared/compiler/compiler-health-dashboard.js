@@ -28,6 +28,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
   const recentErrors = options.recentErrors || null;
   const propagationExpansion = compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
     || (compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? compilerExplainability.driftAssessment.primaryIssue : null);
+  const folderizationPropagation = normalized.current?.folderizationPropagation || null;
   const signalRows = buildSignalRows(trend.deltaSinceBaseline || {});
   const toolTelemetry = mapToolTelemetry(current.toolTelemetry);
   const pipelineTimingTelemetry = mapPipelineTimingTelemetry(current.pipelineTimingTelemetry);
@@ -37,12 +38,13 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
     globalHealthScore: asNumber(current.globalHealthScore, asNumber(current.healthScore, 0)),
     globalHealthGrade: current.globalHealthGrade || current.healthGrade || 'F',
     healthScore: asNumber(current.healthScore, 0),
-    healthGrade: current.healthGrade || 'F',
-    behaviorState: current.behaviorState || null,
-    driftState: current.driftState || null,
-    successScore: asNumber(current.successScore, 0),
-    issueCount: asNumber(current.issueCount, 0),
-    summary: current.summaryText || trend.summary || null
+      healthGrade: current.healthGrade || 'F',
+      behaviorState: current.behaviorState || null,
+      driftState: current.driftState || null,
+      folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
+      successScore: asNumber(current.successScore, 0),
+      issueCount: asNumber(current.issueCount, 0),
+      summary: current.summaryText || trend.summary || null
   } : null;
   const archiveLifetime = healthArchive ? {
     daysObserved: healthArchive.daysObserved || 0,
@@ -146,6 +148,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       driftState: current.driftState || null,
       driftScore: asNumber(current.driftScore, 0),
       stabilityScore: asNumber(current.stabilityScore, 0),
+      folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
       activeAtomsDriftState: current.activeAtomsDriftState || null,
       activeAtomsDriftReason: current.activeAtomsDriftReason || null,
       clientSyncState: current.clientSyncState || null,

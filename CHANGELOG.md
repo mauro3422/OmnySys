@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Surfaced folderization propagation in the compiler health dashboard so the compact health view can read the derived plan directly.
+- Added folderization propagation to the one-line health panel summary so the runtime panel can show the decision without drilling into folderization internals.
+- Split the health dashboard panel test into a dedicated file to keep the watcher-aware test surface under the file-size threshold.
 - Elevated folderization propagation into the compact compiler metrics snapshot so the derived plan is visible outside the folderization family.
 - Surfaced propagation explicitly in the structured status payload so downstream consumers can read the plan without drilling into folderization internals.
 - Kept the propagation contract reusable by preserving cache keys, decision mode, and connected systems in the compact snapshot path.

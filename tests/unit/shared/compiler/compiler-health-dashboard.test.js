@@ -64,6 +64,19 @@ describe('compiler-health-dashboard', () => {
           driftState: 'stable',
           driftScore: 98,
           stabilityScore: 95,
+          folderizationPropagation: {
+            changeType: 'folderization',
+            cacheKey: 'folderization:abc123',
+            cacheHit: true,
+            decision: 'approve',
+            mode: 'family',
+            impactedFileCount: 4,
+            rewriteCount: 3,
+            renameTargetCount: 2,
+            validationTargetCount: 5,
+            hasCrossFamilyPropagation: true,
+            connectedSystems: ['folderization', 'status']
+          },
           issueCount: 2,
           structuralGroups: 1,
           conceptualGroups: 0,
@@ -202,6 +215,10 @@ describe('compiler-health-dashboard', () => {
     expect(dashboard.toolTelemetry.repairRateOnPressure).toBe(0.86);
     expect(dashboard.recommendations.length).toBeGreaterThan(0);
     expect(dashboard.recommendations.some((item) => item.source === 'propagationExpansion')).toBe(true);
+    expect(dashboard.health.folderizationPropagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve'
+    });
     expect(dashboard.health.propagationExpansionState).toBe('stale');
     expect(dashboard.archive.daily.capturedAt).toBe('2026-03-30T01:38:18.819Z');
     expect(dashboard.archive.lifetime.daysObserved).toBe(12);
@@ -213,6 +230,10 @@ describe('compiler-health-dashboard', () => {
     expect(compact.health.globalHealthScore).toBe(93);
     expect(compact.health.reliabilityGrade).toBe('B+');
     expect(compact.health.successScore).toBe(91);
+    expect(compact.health.folderizationPropagation).toMatchObject({
+      cacheKey: 'folderization:abc123',
+      decision: 'approve'
+    });
     expect(compact.health.propagationExpansionState).toBe('stale');
     expect(compact.trend.velocityPerDay).toBe(1.5);
     expect(compact.regressors.length).toBeGreaterThan(0);
@@ -221,73 +242,4 @@ describe('compiler-health-dashboard', () => {
     expect(compact.archive.daily.healthScore).toBe(97);
   });
 
-  it('builds a one-line health panel from the dashboard', () => {
-    const dashboard = buildCompilerHealthDashboard({
-      projectPath: 'C:/Dev/OmnySystem',
-      current: {
-        globalHealthScore: 81,
-        globalHealthGrade: 'B-',
-        healthScore: 88,
-        healthGrade: 'A',
-        reliabilityScore: 73,
-        reliabilityGrade: 'C',
-        reliabilityState: 'limited',
-        successScore: 84,
-        successThreshold: 85,
-        mvpReady: false,
-        behaviorState: 'watchful',
-        driftState: 'stable',
-        driftScore: 90,
-        stabilityScore: 86,
-        clientSyncState: 'blocked',
-        clientSyncReason: 'client cache drift detected',
-        clientSyncRecommendation: 'Refresh the client UI and verify the MCP catalog.',
-        readinessReason: 'Success score 84 is below the 85 threshold.',
-        toolTelemetry: {
-          totalRuns: 4,
-          successfulRuns: 3,
-          repairedRuns: 1,
-          pressureRuns: 2,
-          repairYield: 0.5,
-          repairRateOnPressure: 0.5,
-          toolSuccessRate: 0.75,
-          alertClearanceRate: 0.5,
-          errorClearanceRate: 0.5,
-          noiseSummary: {
-            noisyToolCount: 2,
-            noiseScore: 44
-          },
-          topTools: [{ toolName: 'mcp_omnysystem_get_health_snapshot', repairScore: 8 }]
-        },
-        summaryText: 'health=88/A | success=84/85'
-      },
-      trend: {
-        status: 'improving',
-        velocityPerDay: 2,
-        progressScore: 3,
-        improvingStreak: true,
-        behaviorTrend: 1,
-        summary: 'health +3'
-      }
-    }, null, {});
-
-    const panel = buildCompilerHealthPanel(dashboard);
-
-    expect(panel.headline).toContain('B- 81/85');
-    expect(panel.oneLine).toContain('now=81/B-');
-    expect(panel.oneLine).toContain('db=88/A');
-    expect(panel.oneLine).toContain('trust=73/C');
-    expect(panel.oneLine).toContain('clientsync=blocked');
-    expect(panel.oneLine).toContain('tools=3/4 ok');
-    expect(panel.oneLine).toContain('repair=1/2');
-    expect(panel.oneLine).toContain('noise=2/44');
-    expect(panel.topRegressors).toEqual([]);
-    expect(panel.topImprovements).toEqual([]);
-
-    const compact = summarizeCompilerHealthPanel(panel);
-    expect(compact.now.globalHealthScore).toBe(81);
-    expect(compact.now.healthScore).toBe(88);
-    expect(compact.trend.velocityPerDay).toBe(2);
-    expect(compact.oneLine).toContain('ready=no');
-  });
 });

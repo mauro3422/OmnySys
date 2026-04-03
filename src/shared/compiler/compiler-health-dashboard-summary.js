@@ -32,6 +32,12 @@ function mapHealthSummaryConnectionSignals(current = {}) {
   };
 }
 
+function mapHealthSummaryFolderizationSignals(current = {}) {
+  return {
+    folderizationPropagation: current.folderizationPropagation || null
+  };
+}
+
 function mapHealthSummaryPropagationSignals(current = {}) {
   return {
     propagationExpansionState: current.propagationExpansionState || null,
@@ -51,6 +57,7 @@ function mapHealthSummarySignals(current = {}) {
     activeAtomsDriftState: current.activeAtomsDriftState || null,
     activeAtomsDriftReason: current.activeAtomsDriftReason || null,
     ...mapHealthSummaryConnectionSignals(current),
+    ...mapHealthSummaryFolderizationSignals(current),
     ...mapHealthSummaryPropagationSignals(current),
     healthArchive: current.healthArchive || null
   };
@@ -163,6 +170,7 @@ export function buildHealthPanelNowSummary(now = {}) {
     clientSyncSeverity: now.clientSyncSeverity || null,
     clientSyncReason: now.clientSyncReason || null,
     clientSyncRecommendation: now.clientSyncRecommendation || null,
+    folderizationPropagation: now.folderizationPropagation || null,
     propagationExpansionState: now.propagationExpansionState || null,
     propagationExpansionReason: now.propagationExpansionReason || null,
     propagationExpansionRecommendation: now.propagationExpansionRecommendation || null,
@@ -178,6 +186,7 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     `trust=${Math.round(now.reliabilityScore || 0)}/${now.reliabilityGrade || 'F'}`,
     `trend=${compact.trend?.status || 'missing'}:${compact.trend?.velocityPerDay || 0}/day`,
     `dbsync=${now.activeAtomsDriftState || 'missing'}`,
+    now.folderizationPropagation?.decision ? `folderprop=${now.folderizationPropagation.decision}` : null,
     now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,
     perf?.status ? `perf=${perf.status}:${Math.round(perf.current?.totalDurationMs || 0)}ms` : null,
