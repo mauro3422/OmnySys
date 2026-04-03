@@ -90,6 +90,8 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       successScore: asNumber(current.successScore, 0),
       behaviorState: current.behaviorState || null,
       clientSyncState: current.clientSyncState || null,
+      folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
+      canonicalPromotion: current.canonicalPromotion ? { ...current.canonicalPromotion } : null,
       propagationExpansionState: propagationExpansion?.state || null,
       propagationExpansionReason: propagationExpansion?.reason || null,
       propagationExpansionRecommendation: propagationExpansion?.recommendation || null,

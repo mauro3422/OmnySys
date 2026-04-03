@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Surfaced canonical promotion in the raw compiler health dashboard daily payload so the live dashboard keeps the promotion signal aligned with the archive and snapshot consumers.
+- Split the compiler health dashboard test fixture into a dedicated helper file so the main dashboard test stays under the watcher file-size threshold.
 - Added a canonical promotion layer above folderization so folderized families and emergent system surfaces can be evaluated for promotion into canonical APIs without moving files inside the same tool.
 - Surfaced canonical promotion in the metrics snapshot, health dashboard, status payload, and status table so the runtime can show when a family is ready to become a canonical surface.
 - Added a dedicated `mcp_omnysystem_get_canonical_promotion_report` tool to combine system inventory with folderization evidence and produce a reusable promotion plan.
