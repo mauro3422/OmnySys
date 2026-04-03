@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { compactCompilerExplainabilitySummary } from '../../../../../src/layer-c-memory/mcp/tools/status-summary.js';
+import { summarizeCompilerExplainability as compactCompilerExplainabilitySummary } from '../../../../../src/shared/compiler/compiler-explainability-summary.js';
 
 describe('status summary explainability', () => {
   it('retains surface audit in the compact explainability payload', () => {

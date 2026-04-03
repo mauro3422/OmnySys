@@ -1,12 +1,9 @@
 import path from 'path';
 import { getRepository } from '../repository/index.js';
+import { isRepositoryReady } from '../repository/repository-bridge-utils.js';
 import { createLogger } from '#utils/logger.js';
 
 const logger = createLogger('OmnySys:Storage:Atom');
-
-function isRepositoryReady(repo) {
-  return !!(repo?.initialized && repo?.db && repo.db.open !== false);
-}
 
 function isDatabaseClosedError(error) {
   return String(error?.message || '').includes('database connection is not open');

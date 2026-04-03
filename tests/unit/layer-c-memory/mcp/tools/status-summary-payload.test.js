@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildStatusSummaryPayload } from '../../../../../src/layer-c-memory/mcp/tools/status-summary-payload.js';
+import { buildStatusSummaryPayload } from '../../../../../src/shared/compiler/status-summary-payload.js';
 
 describe('status summary payload', () => {
   it('exposes the update surface alongside the system table', () => {

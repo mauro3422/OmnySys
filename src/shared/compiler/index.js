@@ -98,6 +98,25 @@ export {
 } from './status-summary.js';
 
 export {
+  buildStatusSummaryPayload
+} from './status-summary-payload.js';
+
+export {
+  buildSystemTableSummary
+} from './status-system-table.js';
+
+export {
+  compactDatabaseHealth,
+  compactRepositoryDiagnostics,
+  compactCompilerHealthDashboardSummary,
+  compactCompilerHealthPanelSummary,
+  compactWatcherSummary,
+  compactToolInventory,
+  summarizeNodeVitals,
+  takeSample
+} from './status-summary-helpers.js';
+
+export {
   summarizeCompilerExplainability
 } from './compiler-explainability-summary.js';
 
@@ -128,6 +147,14 @@ export {
   buildCompilerHealthPanel,
   summarizeCompilerHealthPanel
 } from './compiler-health-dashboard.js';
+
+export {
+  buildUpdateSurfaceSummary
+} from './update-surface-summary.js';
+
+export {
+  loadCompilerExplainability
+} from './compiler-explainability-loader.js';
 
 export {
   evaluatePipelineTimingTelemetry,
@@ -173,6 +200,10 @@ export {
   buildTelemetryProvenance,
   buildRuntimeCodeFreshness
 } from './telemetry-provenance.js';
+
+export {
+  RecoveryStrategies
+} from './runtime-boundary-recovery.js';
 
 export {
   detectStateOwnershipConformanceFromSource

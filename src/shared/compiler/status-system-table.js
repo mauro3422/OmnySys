@@ -1,9 +1,10 @@
 /**
- * Compact control-plane table for get_server_status.
+ * Canonical control-plane table for get_server_status.
  */
 
-import { buildUpdateSurfaceSummary } from './status-update-summary.js';
-import { normalizeCount } from '../../../shared/compiler/index.js';
+import { normalizeCount } from './contract-helpers.js';
+import { buildUpdateSurfaceSummary } from './update-surface-summary.js';
+import { compactWatcherSummary, compactToolInventory } from './status-summary-helpers.js';
 
 export function buildSystemTableSummary(status = {}) {
   if (!status || typeof status !== 'object') {
@@ -16,8 +17,8 @@ export function buildSystemTableSummary(status = {}) {
   const daily = metricsSnapshot.daily || null;
   const lifetime = metricsSnapshot.lifetime || null;
   const mcpSessions = status.background?.mcpSessionSummary || status.mcpSessions || {};
-  const watcher = status.watcher || {};
-  const toolInventory = status.toolInventory || {};
+  const watcher = compactWatcherSummary(status.watcher) || {};
+  const toolInventory = compactToolInventory(status.toolInventory) || {};
   const recentErrorSummary = status.recentErrors?.summary || {};
   const updateSurface = buildUpdateSurfaceSummary(status);
   const structuralGroups = normalizeCount(current.structuralGroups);

@@ -3,20 +3,10 @@
  */
 
 import { createHash } from 'node:crypto';
-import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
-
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+import { asNumber, normalizeTelemetryPath } from './core-utils.js';
 
 function clampScore(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
-}
-
-function normalizeTelemetryPath(value = '') {
-  const normalized = normalizeFolderizationPath(value);
-  return normalized || null;
 }
 
 function buildPipelineTimingFingerprint(run = {}) {
@@ -79,32 +69,22 @@ function summarizePhaseTimings(phaseTimings = []) {
   };
 }
 
-function summarizeTimingRow(row = null) {
-  if (!row) {
+function parseTimingJson(value) {
+  if (!value) {
     return null;
   }
 
-  let payload = null;
-  let trend = null;
   try {
-    payload = row.payload_json ? JSON.parse(row.payload_json) : null;
+    return JSON.parse(value);
   } catch {
-    payload = null;
+    return null;
   }
+}
 
-  try {
-    trend = row.trend_json ? JSON.parse(row.trend_json) : null;
-  } catch {
-    trend = null;
-  }
-
+function mapTimingRowPayload(payload = {}) {
   const current = payload?.current || {};
+
   return {
-    capturedAt: row.captured_at || null,
-    projectPath: row.project_path || null,
-    runKind: payload?.runKind || row.snapshot_kind || 'pipeline-timing',
-    scopePath: row.scope_path || null,
-    focusPath: row.focus_path || null,
     totalDurationMs: asNumber(current.totalDurationMs, 0),
     averagePhaseMs: asNumber(current.averagePhaseMs, 0),
     phaseCount: asNumber(current.phaseCount, 0),
@@ -113,10 +93,30 @@ function summarizeTimingRow(row = null) {
     maxPhaseName: current.maxPhaseName || null,
     maxPhaseMs: asNumber(current.maxPhaseMs, 0),
     performanceState: current.performanceState || 'unknown',
-    summaryText: row.summary_text || current.summaryText || null,
-    trend,
+    summaryText: current.summaryText || null,
     topSlowPhases: Array.isArray(current.topSlowPhases) ? current.topSlowPhases : [],
     phaseTimings: Array.isArray(current.phaseTimings) ? current.phaseTimings : []
+  };
+}
+
+function summarizeTimingRow(row = null) {
+  if (!row) {
+    return null;
+  }
+
+  const payload = parseTimingJson(row.payload_json);
+  const trend = parseTimingJson(row.trend_json);
+  const timingPayload = mapTimingRowPayload(payload);
+
+  return {
+    capturedAt: row.captured_at || null,
+    projectPath: row.project_path || null,
+    runKind: payload?.runKind || row.snapshot_kind || 'pipeline-timing',
+    scopePath: row.scope_path || null,
+    focusPath: row.focus_path || null,
+    ...timingPayload,
+    summaryText: row.summary_text || timingPayload.summaryText || null,
+    trend,
   };
 }
 

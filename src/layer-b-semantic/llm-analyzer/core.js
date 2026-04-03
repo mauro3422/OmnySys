@@ -28,6 +28,10 @@ const logger = createLogger('OmnySys:core');
 
 
 /**
+ * @deprecated LLM analysis is currently dormant in the production pipeline.
+ * This class remains as the canonical implementation for optional semantic
+ * expansion, but it should not be counted as active pipeline debt.
+ *
  * Analizador semántico basado en LLM
  */
 export class LLMAnalyzer {

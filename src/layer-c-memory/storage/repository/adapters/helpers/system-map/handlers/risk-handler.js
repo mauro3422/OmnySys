@@ -1,5 +1,5 @@
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
-import { normalizeDerivedRiskLevel } from '../../../../../../../shared/compiler/risk-level.js';
+import { normalizeDerivedRiskLevel } from '../../../../../../../shared/compiler/index.js';
 import { safeJson, safeParseJson } from '../../converters.js';
 
 function normalizeRiskFactors(riskEntry, fallbackLevel = 'low') {

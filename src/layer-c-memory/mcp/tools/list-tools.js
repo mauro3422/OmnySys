@@ -6,17 +6,12 @@ import {
 
 const logger = createLogger('OmnySys:mcp:list_tools');
 
-function buildInventorySnapshot(args = {}) {
-  return buildCompilerToolInventorySnapshot(args);
-}
-
-function buildInventoryReport(snapshot) {
-  return buildCompilerToolInventoryReport(snapshot);
-}
+export const buildInventorySnapshot = buildCompilerToolInventorySnapshot;
+export const buildInventoryReport = buildCompilerToolInventoryReport;
 
 export async function list_tools(args = {}) {
   try {
-    const snapshot = buildInventorySnapshot(args);
+    const snapshot = buildCompilerToolInventorySnapshot(args);
     return {
       success: true,
       ...snapshot
@@ -32,11 +27,11 @@ export async function list_tools(args = {}) {
 
 export async function get_tool_inventory_report(args = {}) {
   try {
-    const snapshot = buildInventorySnapshot(args);
+    const snapshot = buildCompilerToolInventorySnapshot(args);
     return {
       success: true,
       ...snapshot,
-      report: buildInventoryReport(snapshot)
+      report: buildCompilerToolInventoryReport(snapshot)
     };
   } catch (error) {
     logger.error(`[Tool] get_tool_inventory_report failed: ${error.message}`);
@@ -46,7 +41,5 @@ export async function get_tool_inventory_report(args = {}) {
     };
   }
 }
-
-export { buildInventorySnapshot, buildInventoryReport };
 
 export default { list_tools, get_tool_inventory_report };

@@ -4,11 +4,7 @@
 
 import { summarizeCompilerDriftAssessment } from './compiler-drift-assessment.js';
 import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
-
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+import { asNumber } from './core-utils.js';
 
 function clampScore(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));

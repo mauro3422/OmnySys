@@ -191,6 +191,13 @@ function buildFolderizationSnapshotSummary({
   const creationGuidance = folderizationReport?.creationGuidance || {};
   const liveRowSync = summarizeLiveRowSync(databaseHealth?.metrics?.liveRowSync || null);
   const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: liveRowSync.state } }, history);
+  const folderizationDrift = folderizationReport?.drift || {
+    state: liveRowSync.state,
+    score: liveRowSync.state === 'blocked' ? 100 : liveRowSync.state === 'stale' ? 50 : 0,
+    reason: liveRowSync.reason || null,
+    recommendation: liveRowSync.recommendation || null,
+    evidence: liveRowSync.evidence || null
+  };
   const preferredFolder = creationGuidance.preferredFolder || creationGuidance.preferredDirectory || null;
   const preferredRoleStems = Array.isArray(creationGuidance.preferredRoleStems)
     ? creationGuidance.preferredRoleStems
@@ -209,6 +216,12 @@ function buildFolderizationSnapshotSummary({
     scopePath,
     focusPath,
     decision: folderizationReport?.decision || 'reject',
+    folderizationDrift,
+    driftState: folderizationDrift.state || 'fresh',
+    driftScore: Number(folderizationDrift.score || 0),
+    driftReason: folderizationDrift.reason || null,
+    driftRecommendation: folderizationDrift.recommendation || null,
+    driftEvidence: folderizationDrift.evidence || null,
     dbSyncState: liveRowSync.state,
     databaseHealthy: databaseHealth?.healthy === true,
     healthScore: Number(databaseHealth?.healthScore || 0),
@@ -232,6 +245,7 @@ function buildFolderizationSnapshotSummary({
       `folder=${summary.alreadyFolderizedFamilies || 0}/${(summary.flatFamilies || 0) + (summary.mixedFamilies || 0) + (summary.alreadyFolderizedFamilies || 0)}`,
       `candidates=${summary.candidateCount || 0}`,
       `naming=${summary.namingTargets || 0}`,
+      `drift=${folderizationDrift.state || 'fresh'}`,
       `dbsync=${liveRowSync.state}`,
       `health=${databaseHealth?.healthScore || 0}/${databaseHealth?.grade || 'F'}`
     ].join(' | '),
@@ -431,18 +445,21 @@ export async function buildFolderizationSnapshotContext(args = {}, context = {},
   const scopePath = args?.scopePath || null;
   const focusPath = args?.focusPath || null;
   const filePaths = normalizeFilePaths(args?.filePaths || []);
+  const databaseHealth = args?.includeDatabaseHealth === false
+    ? null
+    : getDatabaseHealthSummary(repo.db, { liveRowSyncSampleLimit: 5 });
+  const liveRowSync = summarizeLiveRowSync(databaseHealth?.metrics?.liveRowSync || null);
   const folderizationOptions = {
     scopePath,
     focusPath,
-    filePaths
+    filePaths,
+    databaseHealthy: databaseHealth?.healthy === true,
+    liveRowSyncState: liveRowSync.state
   };
 
   const folderizationReport = repo
     ? buildFolderizationReportFromRepo(repo, folderizationOptions)
     : buildEmptyFolderizationReport(folderizationOptions);
-  const databaseHealth = args?.includeDatabaseHealth === false
-    ? null
-    : getDatabaseHealthSummary(repo.db, { liveRowSyncSampleLimit: 5 });
 
   const prePersistHistory = loadFolderizationSnapshotHistory(repo.db, {
     projectPath,
@@ -475,6 +492,7 @@ export async function buildFolderizationSnapshotContext(args = {}, context = {},
       namingPatterns: folderizationReport.namingPatterns,
       creationGuidance: folderizationReport.creationGuidance,
       recommendation: folderizationReport.recommendation,
+      drift: folderizationReport.drift || null,
       decision: folderizationReport.decision,
       summary: folderizationReport.summary
     },

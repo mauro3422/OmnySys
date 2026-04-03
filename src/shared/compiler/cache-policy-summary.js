@@ -5,10 +5,7 @@
  * where freshness matters, and which snapshots should be keyed by fingerprint.
  */
 
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+import { asNumber } from './core-utils.js';
 
 function takeSample(items = [], limit = 3) {
   if (!Array.isArray(items)) return [];

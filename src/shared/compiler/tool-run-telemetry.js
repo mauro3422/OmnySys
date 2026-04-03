@@ -10,7 +10,7 @@
 
 import { createHash } from 'node:crypto';
 import { buildToolRunPersistenceArgs, classifyTelemetryRepair, computeTelemetryDeltas, normalizeTelemetryPath, summarizeSnapshotCounts } from './tool-run-telemetry-helpers.js';
-import { buildToolRunTelemetrySummary } from './tool-run-telemetry-summary.js';
+import { buildToolRunTelemetrySummary, summarizeToolRunTelemetry } from './tool-run-telemetry-summary.js';
 
 function buildToolRunFingerprint(run = {}) {
   return createHash('sha1')

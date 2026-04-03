@@ -7,11 +7,7 @@
 import { buildMcpSessionSummaryText } from './compiler-runtime-metrics-sessions-format.js';
 export { buildClientSyncDiagnostics } from './compiler-runtime-metrics-sessions-client-sync.js';
 export { collectSessionDbSnapshot } from '#layer-c/query/apis/mcp-sessions-api.js';
-
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+import { asNumber } from './core-utils.js';
 
 export function resolveSessionSyncGraceMs() {
   const raw = Number(process.env.OMNYSYS_SESSION_SYNC_GRACE_MS);

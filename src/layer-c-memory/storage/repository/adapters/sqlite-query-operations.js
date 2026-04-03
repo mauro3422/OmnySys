@@ -9,8 +9,11 @@
 
 import { SQLiteCrudOperations } from './sqlite-crud-operations.js';
 import { rowToAtom } from './helpers/converters.js';
-import { shouldIgnoreConceptualDuplicateFinding } from '../../../../shared/compiler/duplicate-signal-policy/detectors/core-policy.js';
-import { classifyConceptualNoise, parseSemanticFingerprint } from '../../../../shared/compiler/conceptual-noise-policy.js';
+import {
+  shouldIgnoreConceptualDuplicateFinding,
+  classifyConceptualNoise,
+  parseSemanticFingerprint
+} from '../../../../shared/compiler/index.js';
 import { buildSoftDeletePredicate } from './helpers/storage-predicate.js';
 import { appendAtomQueryFilters } from './helpers/query-filter-builder.js';
 import { isValidAtomVectorField, validateAtomSortField } from './helpers/query-field-policy.js';

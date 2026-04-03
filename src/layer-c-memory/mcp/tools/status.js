@@ -7,7 +7,9 @@ import { createLogger } from '../../../utils/logger.js';
 import {
   getCachedCounts,
   getCachedMetadata,
-  getPhase2Status
+  getPhase2Status,
+  loadCompilerExplainability,
+  buildCompilerStatusSummaryEnvelope
 } from '../../../shared/compiler/index.js';
 import {
   buildServerStatusEnvelope
@@ -17,9 +19,7 @@ import {
   buildRecentErrorsResponse,
   loadNotifications
 } from './status-notifications.js';
-import { loadCompilerExplainability } from './status-compiler-explainability.js';
 import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
-import { summarizeStatus } from './status-summary.js';
 
 const logger = createLogger('OmnySys:status');
 
@@ -42,7 +42,7 @@ export async function get_server_status(args, context) {
       cachedMetadata,
       cachedCounts
     );
-    return summarizeStatus(status, recentErrors);
+    return buildCompilerStatusSummaryEnvelope(status, recentErrors, {});
   } catch (error) {
     logger.warn(`[Tool] get_server_status degraded: ${error.message}`);
     return {

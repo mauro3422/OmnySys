@@ -2,7 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
 import { getRepository } from '../../../storage/repository/repository-factory.js';
-import { RecoveryStrategies } from '../../../../shared/compiler/runtime-boundary-recovery.js';
+import { isRepositoryReady } from '../../../storage/repository/repository-bridge-utils.js';
+import { RecoveryStrategies } from '../../../../shared/compiler/index.js';
 import { reindexCompilerFile, validateCompilerImports } from '../../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:mutation-settlement');
@@ -23,10 +24,6 @@ function collectUniquePaths(paths = []) {
         .filter(Boolean)
     )
   );
-}
-
-function isRepositoryReady(repo) {
-  return !!(repo?.initialized && repo?.db && repo.db.open !== false);
 }
 
 function isTransientSettlementProblem(value) {

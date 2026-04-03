@@ -1,4 +1,4 @@
-import { summarizeSemanticCoverage } from '../../../../shared/compiler/signal-coverage-aggregations-candidates.js';
+import { summarizeSemanticCoverage } from '../../../../shared/compiler/index.js';
 import { isValidGuardTarget } from '../guard-standards.js';
 
 export async function loadSemanticCoverageEvidence(rootPath, filePath, atoms = []) {

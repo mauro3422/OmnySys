@@ -1,5 +1,5 @@
 import { BaseMCPTool } from '../../core/shared/base-tools/base-tool.js';
-import { buildDuplicateRemediationPlan, getSemanticSurfaceGranularity } from '../../../../shared/compiler/canonical-contracts.js';
+import { buildDuplicateRemediationPlan, getSemanticSurfaceGranularity } from '../../../../shared/compiler/index.js';
 import {
     queryDuplicates,
     queryIsomorphicDuplicates,

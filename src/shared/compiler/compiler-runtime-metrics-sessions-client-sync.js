@@ -4,6 +4,8 @@
  * @module shared/compiler/compiler-runtime-metrics-sessions-client-sync
  */
 
+import { asNumber } from './core-utils.js';
+
 export function buildClientSyncEvidence(context) {
   return {
     persistenceState: context.persistenceState,
@@ -25,11 +27,6 @@ export function buildClientSyncResult(context, result) {
     ...result,
     evidence: buildClientSyncEvidence(context)
   };
-}
-
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function flattenRecentErrorSignals(recentErrors = null) {

@@ -69,6 +69,34 @@ function buildUsesJson(callFields, imports) {
   return uses;
 }
 
+function findClosestJSDocContract(contracts = [], line = 0, maxDistance = 12) {
+  if (!Array.isArray(contracts) || contracts.length === 0 || !Number.isFinite(line)) {
+    return null;
+  }
+
+  let best = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const contract of contracts) {
+    const candidateLine = Number(contract?.line || 0);
+    if (!candidateLine) {
+      continue;
+    }
+
+    const distance = Math.abs(candidateLine - line);
+    if (distance > maxDistance) {
+      continue;
+    }
+
+    if (distance < bestDistance || (distance === bestDistance && contract.deprecated && !best?.deprecated)) {
+      best = contract;
+      bestDistance = distance;
+    }
+  }
+
+  return best;
+}
+
 /**
  * Build atom metadata object
  * @param {Object} params - Build parameters
@@ -112,7 +140,12 @@ export function buildAtomMetadata({
 
     if (!jsdocMatch) {
       const fnLine = functionInfo.line || functionInfo.lineStart || 0;
-      jsdocMatch = jsdocContracts.functions.find(c => c.line >= fnLine - 10 && c.line < fnLine);
+      jsdocMatch = jsdocContracts.functions.find(c => c.line >= fnLine - 10 && c.line <= fnLine + 1);
+    }
+
+    if (!jsdocMatch && Array.isArray(jsdocContracts.all)) {
+      const fnLine = functionInfo.line || functionInfo.lineStart || 0;
+      jsdocMatch = findClosestJSDocContract(jsdocContracts.all, fnLine);
     }
   }
 

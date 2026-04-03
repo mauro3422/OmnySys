@@ -3,18 +3,43 @@
  */
 
 import { safeJsonStringify } from './safe-json.js';
+import { asNumber, normalizeTelemetryPath } from './core-utils.js';
 
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+function mapSnapshotCurrentForStorage(current = {}) {
+  return {
+    capturedAt: current.capturedAt || null,
+    globalHealthScore: asNumber(current.globalHealthScore, 0),
+    globalHealthGrade: current.globalHealthGrade || null,
+    healthScore: asNumber(current.healthScore, 0),
+    healthGrade: current.healthGrade || null,
+    reliabilityScore: asNumber(current.reliabilityScore, 0),
+    reliabilityGrade: current.reliabilityGrade || null,
+    issueCount: asNumber(current.issueCount, 0),
+    structuralGroups: asNumber(current.structuralGroups, 0),
+    conceptualGroups: asNumber(current.conceptualGroups, 0),
+    pipelineOrphans: asNumber(current.pipelineOrphans, 0),
+    watcherAlertCount: asNumber(current.watcherAlertCount, 0),
+    recentWarningCount: asNumber(current.recentWarningCount, 0),
+    recentErrorCount: asNumber(current.recentErrorCount, 0),
+    driftScore: asNumber(current.driftScore, 0),
+    stabilityScore: asNumber(current.stabilityScore, 0),
+    successScore: asNumber(current.successScore, 0),
+    successThreshold: asNumber(current.successThreshold, 0),
+    mvpReady: current.mvpReady === true,
+    behaviorState: current.behaviorState || null,
+    readinessReason: current.readinessReason || null,
+    clientSyncState: current.clientSyncState || null,
+    activeAtomsDriftState: current.activeAtomsDriftState || null
+  };
 }
 
-function normalizeTelemetryPath(value = '') {
-  if (!value) {
-    return null;
-  }
-
-  return String(value).replaceAll('\\', '/');
+function mapSnapshotTrendForStorage(trend = {}) {
+  return {
+    status: trend.status || null,
+    progressScore: asNumber(trend.progressScore, 0),
+    velocityPerDay: asNumber(trend.velocityPerDay, 0),
+    summary: trend.summary || null
+  };
 }
 
 function compactSnapshotForStorage(snapshot = null) {
@@ -22,42 +47,10 @@ function compactSnapshotForStorage(snapshot = null) {
     return null;
   }
 
-  const current = snapshot.current || {};
-  const trend = snapshot.trend || {};
-
   return {
     summary: snapshot.summary || null,
-    current: {
-      capturedAt: current.capturedAt || null,
-      globalHealthScore: asNumber(current.globalHealthScore, 0),
-      globalHealthGrade: current.globalHealthGrade || null,
-      healthScore: asNumber(current.healthScore, 0),
-      healthGrade: current.healthGrade || null,
-      reliabilityScore: asNumber(current.reliabilityScore, 0),
-      reliabilityGrade: current.reliabilityGrade || null,
-      issueCount: asNumber(current.issueCount, 0),
-      structuralGroups: asNumber(current.structuralGroups, 0),
-      conceptualGroups: asNumber(current.conceptualGroups, 0),
-      pipelineOrphans: asNumber(current.pipelineOrphans, 0),
-      watcherAlertCount: asNumber(current.watcherAlertCount, 0),
-      recentWarningCount: asNumber(current.recentWarningCount, 0),
-      recentErrorCount: asNumber(current.recentErrorCount, 0),
-      driftScore: asNumber(current.driftScore, 0),
-      stabilityScore: asNumber(current.stabilityScore, 0),
-      successScore: asNumber(current.successScore, 0),
-      successThreshold: asNumber(current.successThreshold, 0),
-      mvpReady: current.mvpReady === true,
-      behaviorState: current.behaviorState || null,
-      readinessReason: current.readinessReason || null,
-      clientSyncState: current.clientSyncState || null,
-      activeAtomsDriftState: current.activeAtomsDriftState || null
-    },
-    trend: {
-      status: trend.status || null,
-      progressScore: asNumber(trend.progressScore, 0),
-      velocityPerDay: asNumber(trend.velocityPerDay, 0),
-      summary: trend.summary || null
-    }
+    current: mapSnapshotCurrentForStorage(snapshot.current || {}),
+    trend: mapSnapshotTrendForStorage(snapshot.trend || {})
   };
 }
 

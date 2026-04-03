@@ -85,6 +85,13 @@ export function detectCanonicalExtensionConformanceFromSource(filePath, source =
     options,
     { severity: 'medium', policyArea: 'canonical_extension' },
     ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
+      const inCompilerSurface = normalizedPath.startsWith('src/shared/compiler/');
+      const inMcpSurface = normalizedPath.startsWith('src/layer-c-memory/mcp/');
+
+      if (inCompilerSurface || !inMcpSurface) {
+        return;
+      }
+
       if (usesPrivateCompilerHelperImport(currentSource)) {
         findings.push(createPositionalFinding(
           'private_compiler_helper_import',

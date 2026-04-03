@@ -8,16 +8,24 @@
  */
 
 import { toNumber } from './core-utils.js';
+import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
+import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
 
 function parseCount(row, key) {
   return toNumber(row?.[key]);
 }
 
-export function loadDatabaseHealthCounts(db) {
+export function loadDatabaseHealthCounts(db, options = {}) {
   if (!db) {
     return {};
   }
 
+  const {
+    systemMapCoverage = null,
+    semanticSurfaceGranularity = null
+  } = options;
+  const resolvedSystemMapCoverage = systemMapCoverage || getSystemMapPersistenceCoverage(db);
+  const resolvedSemanticSurfaceGranularity = semanticSurfaceGranularity || getSemanticSurfaceGranularity(db);
   const row = db.prepare(`
     SELECT
       (SELECT COUNT(*) FROM compiler_scanned_files) AS scanned_files,
@@ -88,6 +96,8 @@ export function loadDatabaseHealthCounts(db) {
     atomsWithSemanticSignals: parseCount(row, 'atoms_with_semantic_signals'),
     activeSystemFiles: parseCount(row, 'active_system_files'),
     systemFilesWithSemantics: parseCount(row, 'system_files_with_semantics'),
-    activeSemanticConnections: parseCount(row, 'active_semantic_connections')
+    activeSemanticConnections: parseCount(row, 'active_semantic_connections'),
+    systemMapCoverage: resolvedSystemMapCoverage,
+    semanticSurfaceGranularity: resolvedSemanticSurfaceGranularity
   };
 }

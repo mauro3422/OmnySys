@@ -9,7 +9,11 @@ import {
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
   buildCompilerToolInventorySnapshot,
-  buildCompilerToolInventoryReport
+  buildCompilerToolInventoryReport,
+  loadCompilerExplainability,
+  compactDatabaseHealth,
+  compactWatcherSummary,
+  summarizeCompilerExplainability
 } from '../../../shared/compiler/index.js';
 import { sessionManager } from '../core/session-manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
@@ -22,7 +26,6 @@ import {
   buildNodeVitals
 } from './status-runtime.js';
 import { attachDeepVitals } from './status-compiler.js';
-import { loadCompilerExplainability } from './status-compiler-explainability.js';
 import { loadMetadataStatus } from './status-metadata.js';
 import {
   attachNotificationSignals,
@@ -30,12 +33,6 @@ import {
   buildRecentErrorsResponse,
   loadNotifications
 } from './status-notifications.js';
-import {
-  compactDatabaseHealth,
-  compactCompilerExplainabilitySummary,
-  compactWatcherSummary
-} from './status-summary.js';
-
 function applyRepositoryIntegrityToDatabaseHealth(databaseHealth, repositoryIntegrity) {
   if (!databaseHealth || repositoryIntegrity?.healthy !== false) {
     return databaseHealth;
@@ -139,7 +136,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   });
   const mergedNotifications = mergeRecentNotificationsWithGovernanceAlerts(compactNotifications, governanceAlerts);
   attachNotificationSignals(status, mergedNotifications);
-  status.compilerExplainability = compactCompilerExplainabilitySummary(compilerExplainability);
+  status.compilerExplainability = summarizeCompilerExplainability(compilerExplainability);
   status.surfaceAudit = summarizeSurfaceAuditForStatus(compilerExplainability.surfaceAudit);
   if (!status.databaseHealth) {
     status.databaseHealth = status.compilerExplainability?.databaseHealth || null;

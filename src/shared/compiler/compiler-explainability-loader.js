@@ -3,11 +3,11 @@ import {
   summarizeCompilerPolicyDrift,
   buildFolderizationReportFromRepo,
   getDatabaseHealthSummary
-} from '../../../shared/compiler/index.js';
+} from './index.js';
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
   try {
-    const { scanCompilerPolicyDrift } = await import('../../../shared/compiler/index.js');
+    const { scanCompilerPolicyDrift } = await import('./index.js');
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
     const policySummary = summarizeCompilerPolicyDrift(findings);
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -45,7 +45,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       analysisGeneration: snapshot.analysisGeneration,
       watcherStats,
       dataGatewayContract: snapshot.dataGatewayContract,
-      databaseHealth: snapshot.databaseHealth,
+      databaseHealth,
       driftAssessment: snapshot.driftAssessment,
       surfaceAudit: snapshot.surfaceAudit,
       folderization: {
@@ -73,3 +73,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
     };
   }
 }
+
+export default {
+  loadCompilerExplainability
+};

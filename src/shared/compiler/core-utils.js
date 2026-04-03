@@ -96,6 +96,30 @@ export function compactArray(value) {
 /**
  * Safely converts a value to a number.
  * @param {*} value
+ * @param {number} fallback
+ * @returns {number}
+ */
+export function asNumber(value, fallback = 0) {
+    const num = Number(value);
+    return Number.isNaN(num) ? fallback : num;
+}
+
+/**
+ * Normalizes a telemetry path for cross-platform comparisons.
+ * @param {string} value
+ * @returns {string|null}
+ */
+export function normalizeTelemetryPath(value = '') {
+    if (!value) {
+        return null;
+    }
+
+    return String(value).replaceAll('\\', '/');
+}
+
+/**
+ * Safely converts a value to a number.
+ * @param {*} value
  * @returns {number}
  */
 export function toNumber(value) {

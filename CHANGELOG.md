@@ -4,6 +4,10 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Fixed the database-health summary load order so live DB health and metrics snapshots no longer collapse to zero after daemon restarts.
+- Centralized repeated `asNumber` and `isRepositoryReady` helpers into shared canonical utilities to remove the last conceptual duplicate debt group.
+- Split the tool-run and pipeline timing telemetry mappers into smaller helpers so the remaining telemetry warnings clear after reload.
+
 - Reduced live `policy_drift` by moving the status summary modules back onto canonical barrels and removing manual summary recomposition paths.
 - Restored `tool-run-telemetry` as a single canonical implementation with a shared summary helper and tightened the repair classifier so observation-only tools no longer count as repair thrash.
 - Added a short TTL cache around telemetry summaries to avoid repeated DB aggregation in tight polling loops.

@@ -14,15 +14,11 @@ import {
   summarizeHistoryRow
 } from './compiler-metrics-current-helpers.js';
 import { buildCurrentSummaries } from './compiler-metrics-current-summaries.js';
+import { asNumber } from './core-utils.js';
 
 function normalizeSnapshotPath(value = '') {
   const normalized = normalizeFolderizationPath(value);
   return normalized || null;
-}
-
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function clampScore(value, min = 0, max = 100) {

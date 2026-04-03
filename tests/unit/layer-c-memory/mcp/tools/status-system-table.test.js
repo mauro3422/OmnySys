@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSystemTableSummary } from '../../../../../src/layer-c-memory/mcp/tools/status-system-table.js';
+import { buildSystemTableSummary } from '../../../../../src/shared/compiler/status-system-table.js';
 
 describe('status system table', () => {
   it('shows cache policy counts and hot-path indicators', () => {

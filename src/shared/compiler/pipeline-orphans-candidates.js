@@ -1,3 +1,5 @@
+import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
+
 export function getPipelineNamePatternSqlCondition(columnName = 'name') {
   return ['persist', 'analyze', 'compute', 'calculate', 'build', 'generate', 'process', 'index']
     .map((pattern) => `${columnName} LIKE '%${pattern}%'`)
@@ -7,8 +9,15 @@ export function getPipelineNamePatternSqlCondition(columnName = 'name') {
 export function getPipelineOrphanCandidates(db, options = {}) {
   const {
     limit = 50,
-    minComplexity = 3
+    minComplexity = 3,
+    systemMapCoverage = null,
+    allowUntrustedSystemMap = false
   } = options;
+
+  const resolvedSystemMapCoverage = systemMapCoverage || getSystemMapPersistenceCoverage(db);
+  if (resolvedSystemMapCoverage?.healthy === false && !allowUntrustedSystemMap) {
+    return [];
+  }
 
   const patternCondition = getPipelineNamePatternSqlCondition('name');
 
@@ -18,6 +27,7 @@ export function getPipelineOrphanCandidates(db, options = {}) {
         a.name,
         a.file_path,
         a.atom_type,
+        a.deprecated_reason,
         a.callers_count,
         a.callees_count,
         a.complexity,
@@ -45,6 +55,7 @@ export function getPipelineOrphanCandidates(db, options = {}) {
       AND a.atom_type IN ('function', 'arrow', 'method', 'class')
     AND a.is_test_callback = 0
     AND a.is_phase2_complete = 1
+    AND COALESCE(a.deprecated_reason, '') = ''
     AND a.file_path NOT LIKE 'tests/%'
     AND a.file_path NOT LIKE 'scripts/%'
     AND a.file_path NOT LIKE 'src/layer-b-semantic/llm-analyzer/%'

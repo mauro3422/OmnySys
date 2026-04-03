@@ -9,11 +9,7 @@ import { getPipelineOrphanSummary } from './pipeline-orphans.js';
 import { buildPipelineTimingTelemetrySummary } from './pipeline-timing-telemetry.js';
 import { buildToolRunTelemetrySummary } from './tool-run-telemetry.js';
 import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
-
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+import { asNumber } from './core-utils.js';
 
 function normalizeSnapshotPath(value = '') {
   const normalized = normalizeFolderizationPath(value);

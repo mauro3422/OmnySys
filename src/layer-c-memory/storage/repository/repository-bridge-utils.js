@@ -21,6 +21,10 @@ function getRepositoryRetryDelay(attempts, baseDelayMs = 100, maxDelayMs = 2000)
   return Math.min(safeBaseDelayMs * safeAttempts, safeMaxDelayMs);
 }
 
+function isRepositoryReady(repo) {
+  return !!(repo?.initialized && repo?.db && repo.db.open !== false);
+}
+
 async function retryUntilAvailable({ attempts = 5, baseDelayMs = 50, maxDelayMs = 500, operation, shouldRetry }) {
   let lastError = null;
 
@@ -43,6 +47,7 @@ async function retryUntilAvailable({ attempts = 5, baseDelayMs = 50, maxDelayMs 
 
 export {
   getRepositoryRetryDelay,
+  isRepositoryReady,
   isTransientDatabaseError,
   retryUntilAvailable,
   wait

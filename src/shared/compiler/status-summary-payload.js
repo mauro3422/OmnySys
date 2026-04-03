@@ -1,5 +1,5 @@
 /**
- * Builds the structured MCP status payload.
+ * Canonical structured MCP status payload builder.
  */
 
 import {
@@ -7,19 +7,18 @@ import {
   compactCompilerHealthDashboardSummary,
   compactCompilerHealthPanelSummary,
   compactRepositoryDiagnostics,
+  compactWatcherSummary,
+  compactToolInventory,
   summarizeNodeVitals,
   takeSample
 } from './status-summary-helpers.js';
-import { compactCompilerMetricsSnapshotSummary } from './status-metrics-snapshot-summary.js';
-import { compactCompilerExplainabilitySummary } from './status-explainability-summary.js';
+import { summarizeCompilerMetricsSnapshot as compactCompilerMetricsSnapshotSummary } from './snapshot.js';
+import { summarizeCompilerExplainability as compactCompilerExplainabilitySummary } from './compiler-explainability-summary.js';
 import { buildSystemTableSummary } from './status-system-table.js';
-import { compactWatcherSummary } from './status-watcher-summary.js';
-import { compactToolInventory } from './status-tool-inventory.js';
-import { buildUpdateSurfaceSummary } from './status-update-summary.js';
-import {
-  buildCachePolicySummary,
-  summarizeSurfaceAuditForStatus
-} from '../../../shared/compiler/index.js';
+import { buildUpdateSurfaceSummary } from './update-surface-summary.js';
+import { buildCachePolicySummary } from './cache-policy-summary.js';
+import { summarizeSurfaceAuditForStatus } from './surface-audit/audit.js';
+import { buildCompilerStatusSummaryEnvelope } from './status-summary.js';
 
 export function buildStatusSummaryPayload(status, recentErrors) {
   const databaseHealth = compactDatabaseHealth(status.databaseHealth);
@@ -44,19 +43,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     cachePolicy
   });
 
-  return {
-    initialized: status.initialized,
-    initializing: status.initializing,
-    project: status.project,
-    hotReloadTest: status.hotReloadTest,
-    timestamp: status.timestamp,
-    telemetryMode: status.telemetryMode,
-    summary: {
-      total: recentErrors?.summary?.total || 0,
-      warnings: recentErrors?.summary?.warnings || 0,
-      errors: recentErrors?.summary?.errors || 0
-    },
-    recentErrors,
+  return buildCompilerStatusSummaryEnvelope(status, recentErrors, {
     databaseHealth,
     repository,
     metadata: status.metadata ? {
@@ -133,7 +120,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     signalConfidence: status.signalConfidence || null,
     warnings: takeSample(status.warnings || [], 3),
     criticalIssues: takeSample(status.criticalIssues || [], 3)
-  };
+  });
 }
 
 export default {

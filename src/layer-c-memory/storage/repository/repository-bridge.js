@@ -17,6 +17,7 @@ import { RepositoryFactory } from './repository-factory.js';
 import {
   getRepositoryRetryDelay,
   isTransientDatabaseError,
+  isRepositoryReady,
   retryUntilAvailable
 } from './repository-bridge-utils.js';
 import {
@@ -30,6 +31,7 @@ export const REPOSITORY_MUTATION_DURABILITY = Object.freeze({
   DURABLE: 'durable',
   REBUILDABLE: 'rebuildable'
 });
+export { isRepositoryReady };
 
 async function retryMutationUntilAvailable(projectPath, mutation, retryOptions = {}) {
   const attempts = Math.max(1, retryOptions.maxRetries ?? 5);
@@ -101,16 +103,11 @@ function scheduleRepositoryFlush(projectPath, delayMs = 100) {
   bridgeState.flushTimers.set(normalizedProjectPath, timer);
 }
 
-export function isRepositoryReady(repo) {
-  const integrity = connectionManager.getIntegrityStatus?.() || repo?.integrity || null;
-  return !!(repo?.initialized && repo?.db && repo.db.open !== false && integrity?.healthy !== false);
-}
-
 export function getRepositoryStatus(projectPath) {
   const repo = RepositoryFactory.getInstance(projectPath);
   const normalizedProjectPath = normalizeProjectPath(projectPath);
   const integrity = connectionManager.getIntegrityStatus?.() || repo?.integrity || null;
-  const ready = isRepositoryReady(repo);
+  const ready = isRepositoryReady(repo) && integrity?.healthy !== false;
   const dbOpen = !!(repo?.db && repo.db.open !== false);
   const initialized = !!repo?.initialized;
   const reason = ready

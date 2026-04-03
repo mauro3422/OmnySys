@@ -6,12 +6,12 @@ import { getRepository } from '#layer-c/storage/repository/index.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
 import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
 import { loadNotifications, buildRecentErrorsResponse } from './status-notifications.js';
-import { loadCompilerExplainability } from './status-compiler-explainability.js';
 import {
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
   buildCompilerMetricsSnapshot,
-  summarizeCompilerMetricsSnapshot
+  summarizeCompilerMetricsSnapshot,
+  loadCompilerExplainability
 } from '../../../shared/compiler/index.js';
 
 export async function buildCompilerSnapshotContext(args = {}, context = {}, overrides = {}) {

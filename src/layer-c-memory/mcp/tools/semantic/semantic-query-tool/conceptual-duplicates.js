@@ -1,4 +1,4 @@
-import { parseSemanticFingerprint } from '../../../../../shared/compiler/canonical-contracts.js';
+import { parseSemanticFingerprint } from '../../../../../shared/compiler/index.js';
 
 function buildConceptualSummary(groups) {
     const totalGroups = groups.length;

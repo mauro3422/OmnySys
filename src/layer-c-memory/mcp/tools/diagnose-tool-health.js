@@ -15,12 +15,12 @@
 
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
-import { 
-  calculateToolTrend, 
-  generateAutomaticAlerts, 
+import {
+  calculateToolTrend,
+  generateAutomaticAlerts,
   getDailyToolMetrics,
-  formatToolHealthDashboard 
-} from '../../../shared/compiler/tool-health-trending.js';
+  formatToolHealthDashboard
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:diagnose_tool_health');
 

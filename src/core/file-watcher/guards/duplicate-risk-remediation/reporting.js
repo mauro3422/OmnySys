@@ -22,52 +22,59 @@ export async function persistStructuralDuplicateFinding({
     eventEmitterContext,
     maxFindings
 }) {
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const repo = getRepository(rootPath);
-    const previousFindings = loadPreviousFindings(repo.db, normalizedFilePath, 'code_duplicate');
-    const remediationPlan = buildDuplicateRemediationPlan(
-        buildStructuralRemediationInput(normalizedFilePath, findings)
-    );
-    const preview = findings.map((finding) => `${finding.symbol}(${finding.totalInstances})`).join(', ');
-    const severity = resolveStructuralDuplicateSeverity(findings);
-    const issueType = createIssueType(IssueDomains.CODE, 'duplicate', severity);
-    const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, findings, previousFindings);
+    try {
+        const { getRepository } = await import('#layer-c/storage/repository/index.js');
+        const repo = getRepository(rootPath);
+        const previousFindings = loadPreviousFindings(repo.db, normalizedFilePath, 'code_duplicate');
+        const remediationPlan = buildDuplicateRemediationPlan(
+            buildStructuralRemediationInput(normalizedFilePath, findings)
+        );
+        const preview = findings.map((finding) => `${finding.symbol}(${finding.totalInstances})`).join(', ');
+        const severity = resolveStructuralDuplicateSeverity(findings);
+        const issueType = createIssueType(IssueDomains.CODE, 'duplicate', severity);
+        const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, findings, previousFindings);
 
-    logger.warn(
-        `[DUPLICATE GUARD] ${normalizedFilePath}: ${findings.length} duplicated symbol(s) -> ${preview} | Debt: ${debtHistory.debt.level} (${debtHistory.debt.score}/100, ${debtHistory.debt.trend})`
-    );
+        logger.warn(
+            `[DUPLICATE GUARD] ${normalizedFilePath}: ${findings.length} duplicated symbol(s) -> ${preview} | Debt: ${debtHistory.debt.level} (${debtHistory.debt.score}/100, ${debtHistory.debt.trend})`
+        );
 
-    const context = buildStructuralDuplicateContext({
-        findings,
-        debtHistory,
-        severity,
-        remediationPlan,
-        maxFindings
-    });
+        const context = buildStructuralDuplicateContext({
+            findings,
+            debtHistory,
+            severity,
+            remediationPlan,
+            maxFindings
+        });
 
-    await persistWatcherIssue(
-        rootPath,
-        normalizedFilePath,
-        issueType,
-        severity,
-        `${findings.length} duplicate symbol(s): ${preview}`,
-        context
-    );
+        await persistWatcherIssue(
+            rootPath,
+            normalizedFilePath,
+            issueType,
+            severity,
+            `${findings.length} duplicate symbol(s): ${preview}`,
+            context
+        );
 
-    if (severity === 'high') {
-        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
-    } else {
-        await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
+        if (severity === 'high') {
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_medium');
+        } else {
+            await clearWatcherIssue(rootPath, normalizedFilePath, 'code_duplicate_high');
+        }
+
+        eventEmitterContext?.emit?.('code:duplicate', {
+            filePath: normalizedFilePath,
+            severity,
+            duplicateCount: findings.length,
+            findings: findings.map((finding) => ({
+                symbol: finding.symbol,
+                instances: finding.totalInstances,
+                files: finding.duplicateFiles.length
+            }))
+        });
+
+        return { severity, issueType, preview };
+    } catch (error) {
+        logger.warn(`[DUPLICATE GUARD] persistStructuralDuplicateFinding failed: ${error.message}`);
+        return { severity: 'unknown', issueType: null, preview: '', error: error.message };
     }
-
-    eventEmitterContext.emit('code:duplicate', {
-        filePath: normalizedFilePath,
-        severity,
-        duplicateCount: findings.length,
-        findings: findings.map((finding) => ({
-            symbol: finding.symbol,
-            instances: finding.totalInstances,
-            files: finding.duplicateFiles.length
-        }))
-    });
 }

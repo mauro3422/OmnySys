@@ -1,11 +1,8 @@
 /**
- * Summarizes the live update pipeline after atom/function changes.
+ * Canonical summary for the live atom/function update pipeline.
  */
 
-function toCount(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
+import { normalizeCount } from './contract-helpers.js';
 
 function resolveRepositoryIntegrity(status) {
   const repository = status?.repository || {};
@@ -15,7 +12,7 @@ function resolveRepositoryIntegrity(status) {
 function resolveQueueSize(status) {
   const repository = status?.repository || {};
   const journal = repository.journal || repository.status?.journal || {};
-  return toCount(journal.queued);
+  return normalizeCount(journal.queued);
 }
 
 export function buildUpdateSurfaceSummary(status = {}) {
@@ -29,14 +26,14 @@ export function buildUpdateSurfaceSummary(status = {}) {
   const integrity = resolveRepositoryIntegrity(status);
   const dbOpen = status.repository?.status?.dbOpen !== false;
   const integrityHealthy = integrity ? integrity.healthy !== false : true;
-  const pendingChanges = toCount(watcher.pendingChanges);
-  const failedChanges = toCount(watcher.failedChanges);
-  const phase2PendingFiles = toCount(metadata.phase2PendingFiles);
-  const phase2CompletedFiles = toCount(metadata.phase2CompletedFiles);
-  const liveFileCount = toCount(metadata.liveFileCount || metadata.totalFiles);
-  const fileMirrorCount = toCount(cache.files || metadata.liveFileCount || 0);
+  const pendingChanges = normalizeCount(watcher.pendingChanges);
+  const failedChanges = normalizeCount(watcher.failedChanges);
+  const phase2PendingFiles = normalizeCount(metadata.phase2PendingFiles);
+  const phase2CompletedFiles = normalizeCount(metadata.phase2CompletedFiles);
+  const liveFileCount = normalizeCount(metadata.liveFileCount || metadata.totalFiles);
+  const fileMirrorCount = normalizeCount(cache.files || metadata.liveFileCount || 0);
   const queuedMutations = resolveQueueSize(status);
-  const dependencyTotal = toCount(status.background?.graphCoverage?.dependenciesTotal);
+  const dependencyTotal = normalizeCount(status.background?.graphCoverage?.dependenciesTotal);
 
   let state = 'synced';
   if (!dbOpen || !integrityHealthy) {

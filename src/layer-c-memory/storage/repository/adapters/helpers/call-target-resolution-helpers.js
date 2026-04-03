@@ -7,7 +7,7 @@
  * @module storage/repository/adapters/helpers/call-target-resolution-helpers
  */
 
-import { normalizeFilePath } from '#shared/compiler/path-normalization.js';
+import { normalizeFilePath } from '#shared/compiler/index.js';
 
 export function normalizeComparablePath(value = '') {
   return normalizeFilePath(String(value || ''))

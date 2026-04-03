@@ -168,6 +168,9 @@ export function buildToolRunTelemetrySummary(db, options = {}) {
   }
 }
 
+export const summarizeToolRunTelemetry = buildToolRunTelemetrySummary;
+
 export default {
-  buildToolRunTelemetrySummary
+  buildToolRunTelemetrySummary,
+  summarizeToolRunTelemetry
 };

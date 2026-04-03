@@ -1,15 +1,13 @@
 import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
 import { loadCompilerHealthArchiveHistory } from './compiler-health-archive.js';
 import { summarizeHistoryRow } from './compiler-metrics-current.js';
+import { asNumber } from './core-utils.js';
+
+export { asNumber };
 
 export function normalizeSnapshotPath(value = '') {
   const normalized = normalizeFolderizationPath(value);
   return normalized || null;
-}
-
-export function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function mergeHistoryRows(primaryRows = [], secondaryRows = []) {

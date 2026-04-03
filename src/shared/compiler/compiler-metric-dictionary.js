@@ -9,11 +9,7 @@
  */
 
 import { buildCompilerLayerReliability } from './compiler-metric-reliability.js';
-
-function asNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
+import { asNumber } from './core-utils.js';
 
 function buildMetricEntry(key, value, options = {}) {
   return {

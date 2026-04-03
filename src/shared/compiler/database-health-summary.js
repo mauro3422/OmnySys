@@ -38,6 +38,7 @@ export function getDatabaseHealthSummary(db, options = {}) {
     };
   }
 
+  const semanticSurface = getSemanticSurfaceGranularity(db);
   const liveRowSync = resolveDatabaseHealthLiveRowSync(db, options);
   const phase2PendingFiles = getPhase2PendingFiles(db);
   let systemMapCoverage = getSystemMapPersistenceCoverage(db);
@@ -51,13 +52,15 @@ export function getDatabaseHealthSummary(db, options = {}) {
     }
   }
 
-  const counts = loadDatabaseHealthCounts(db);
+  const counts = loadDatabaseHealthCounts(db, {
+    systemMapCoverage,
+    semanticSurfaceGranularity: semanticSurface
+  });
   const fileUniverse = getFileUniverseGranularity({
     scannedFileTotal: counts.scannedFiles,
     manifestFileTotal: counts.scannedFiles,
     liveFileCount: counts.activeFiles
   });
-  const semanticSurface = getSemanticSurfaceGranularity(db);
 
   const assessment = buildDatabaseHealthAssessment({
     counts,
