@@ -2,9 +2,25 @@
  * Compact MCP tool inventory payloads for status output.
  */
 
-function takeSample(items = [], limit = 3) {
-  if (!Array.isArray(items)) return [];
-  return items.slice(0, limit);
+import { takeSample } from './status-summary-helpers.js';
+
+function compactInventorySnapshot(snapshot = {}) {
+  return {
+    totalTools: snapshot.summary?.totalTools || 0,
+    categories: snapshot.summary?.categories || []
+  };
+}
+
+function compactInventoryReport(report = {}) {
+  return {
+    dominantCategory: report.dominantCategory || null,
+    dominantSubgroup: report.dominantSubgroup || null,
+    categoryConcentration: report.categoryConcentration || 0,
+    concentration: report.subgroupConcentration || report.concentration || 0,
+    subgroupConcentration: report.subgroupConcentration || 0,
+    subgroupStats: takeSample(report.subgroupStats || [], 5),
+    recommendations: takeSample(report.recommendations || [], 3)
+  };
 }
 
 export function compactToolInventory(toolInventory) {
@@ -14,10 +30,7 @@ export function compactToolInventory(toolInventory) {
   const report = toolInventory.report || {};
 
   return {
-    totalTools: snapshot.summary?.totalTools || 0,
-    categories: snapshot.summary?.categories || [],
-    dominantCategory: report.dominantCategory || null,
-    concentration: report.concentration || 0,
-    recommendations: takeSample(report.recommendations || [], 3)
+    ...compactInventorySnapshot(snapshot),
+    ...compactInventoryReport(report)
   };
 }

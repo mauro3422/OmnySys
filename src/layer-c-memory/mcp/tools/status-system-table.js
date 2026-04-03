@@ -91,7 +91,7 @@ export function buildSystemTableSummary(status = {}) {
       {
         area: 'Tools',
         state: `${normalizeCount(toolInventory.totalTools)} tools`,
-        detail: `dominant=${toolInventory.dominantCategory || 'n/a'} | concentration=${normalizeCount(toolInventory.concentration)}`,
+        detail: `dominant=${toolInventory.dominantCategory?.category || toolInventory.dominantCategory || 'n/a'} | subgroup=${toolInventory.dominantSubgroup?.subgroup || 'n/a'} | category=${normalizeCount(toolInventory.categoryConcentration)} | concentration=${normalizeCount(toolInventory.concentration)}`,
         source: 'tool inventory'
       },
       ...(status.cachePolicy ? [

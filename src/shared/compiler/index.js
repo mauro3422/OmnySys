@@ -103,6 +103,14 @@ export {
 } from './compiler-metric-dictionary.js';
 
 export {
+  buildCompilerToolInventoryReport
+} from './tool-inventory-summary.js';
+
+export {
+  buildCompilerToolInventorySnapshot
+} from './tool-inventory-summary.js';
+
+export {
   buildCompilerLayerReliability
 } from './compiler-metric-reliability.js';
 

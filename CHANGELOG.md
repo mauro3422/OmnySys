@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Reworked the tool inventory report to compute real subgroups for query/action/admin tools so concentration is measured at a more useful granularity than the coarse category buckets.
+- Promoted the tool inventory snapshot/report builder into `shared/compiler` so status and list tools share one canonical inventory policy.
+- Updated the control-plane status surface to show both category concentration and subgroup concentration for the tool inventory instead of only the broad category bucket.
 - Added an explicit update-surface summary to the status panel so atom/function changes now expose the live sync chain across `files`, `system_files`, dependencies, watcher state, and repository integrity.
 - Mirrored that same update-surface summary into the bootstrap dashboard so startup output now reflects the same sync signal the runtime status panel shows.
 - Wired the file watcher and single-file save path through incremental system-map sync so every analyzed file refreshes the file mirror, dependency rows, and `used_by_json` without waiting for a full reindex.
@@ -72,6 +75,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Normalized the `contract-taxonomy` folder basenames to role-only names (`classification`, `query`, `report`, `summary-helpers`) so the folderized convention stays consistent.
 - Folderized `event-leak` into its own guard subfolder and normalized the basenames to role-only names with a barrel at `event-leak/index.js`.
 - [v0.9.395 - Canonical Status Summary Refactor & Debt Cleanup](changelogs/v0.9.395.md)
+- [v0.9.396 - Canonical Tool Inventory Subgroups & Ownership Cleanup](changelogs/v0.9.396.md)
 - [v0.9.394 - Incremental Update Surface & Repository Integrity](changelogs/v0.9.394.md)
 - [v0.9.393 - Tool Health Trending & Automatic Alerts](changelogs/v0.9.393.md)
 - [v0.9.392 - Sistema de Diagnóstico Inteligente de Herramientas MCP](changelogs/v0.9.392.md)

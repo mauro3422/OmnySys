@@ -33,7 +33,10 @@ import {
   compactCompilerExplainabilitySummary,
   compactWatcherSummary
 } from './status-summary.js';
-import { buildInventoryReport, buildInventorySnapshot } from './list-tools.js';
+import {
+  buildCompilerToolInventoryReport,
+  buildCompilerToolInventorySnapshot
+} from '../../../shared/compiler/tool-inventory-summary.js';
 
 function applyRepositoryIntegrityToDatabaseHealth(databaseHealth, repositoryIntegrity) {
   if (!databaseHealth || repositoryIntegrity?.healthy !== false) {
@@ -172,10 +175,10 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     recentErrors
   });
   status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
-  const toolInventorySnapshot = buildInventorySnapshot({ includeSchemas: false });
+  const toolInventorySnapshot = buildCompilerToolInventorySnapshot({ includeSchemas: false });
   status.toolInventory = {
     snapshot: toolInventorySnapshot,
-    report: buildInventoryReport(toolInventorySnapshot)
+    report: buildCompilerToolInventoryReport(toolInventorySnapshot)
   };
   return {
     repo,
