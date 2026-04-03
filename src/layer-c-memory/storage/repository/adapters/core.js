@@ -59,44 +59,8 @@ export class SQLiteAdapterCore extends AtomRepository {
     this.projectPath = null;
   }
 
-  getDatabase() {
-    return this.db;
-  }
-
-  getStatements() {
-    return this.statements;
-  }
-
-  getProjectPath() {
-    return this.projectPath;
-  }
-
   isReady() {
     return !!(this.initialized && this.db && this.db.open !== false);
-  }
-
-  getAtomRowById(normalizedId) {
-    return this.statements.getById.get(normalizedId);
-  }
-
-  getAtomRowsByFile(filePath) {
-    const normalizedPath = this._normalize(filePath);
-    return this.statements.getByFile.all(normalizedPath);
-  }
-
-  getFileRow(filePath) {
-    const normalizedPath = this._normalize(filePath);
-    return this.statements.query.get(normalizedPath);
-  }
-
-  getAtomIdsByFile(filePath) {
-    const normalizedPath = this._normalize(filePath);
-    return this.db.prepare('SELECT id FROM atoms WHERE file_path = ?').all(normalizedPath).map((row) => row.id);
-  }
-
-  hasAtomById(id) {
-    const normalizedId = this._normalizeId(id);
-    return !!this.statements.exists.get(normalizedId);
   }
 
   getSQLiteAdapterCoreStats() {

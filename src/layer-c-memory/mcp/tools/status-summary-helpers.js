@@ -4,9 +4,11 @@
 
 import {
   normalizeCount,
+} from '../../../shared/compiler/contract-helpers.js';
+import {
   summarizeCompilerHealthDashboard,
   summarizeCompilerHealthPanel
-} from '../../../shared/compiler/index.js';
+} from '../../../shared/compiler/compiler-health-dashboard.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 
 export function takeSample(items = [], limit = 3) {

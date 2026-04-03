@@ -71,8 +71,9 @@ All notable changes to this project are documented here as a release index. Deta
 - Folderized `contract-taxonomy` into its own compiler subfolder and updated the compiler barrel plus snapshot test mock to point at the new barrel path.
 - Normalized the `contract-taxonomy` folder basenames to role-only names (`classification`, `query`, `report`, `summary-helpers`) so the folderized convention stays consistent.
 - Folderized `event-leak` into its own guard subfolder and normalized the basenames to role-only names with a barrel at `event-leak/index.js`.
-- [v0.9.393 - Tool Health Trending & Automatic Alerts](changelogs/v0.9.393.md)
+- [v0.9.395 - Canonical Status Summary Refactor & Debt Cleanup](changelogs/v0.9.395.md)
 - [v0.9.394 - Incremental Update Surface & Repository Integrity](changelogs/v0.9.394.md)
+- [v0.9.393 - Tool Health Trending & Automatic Alerts](changelogs/v0.9.393.md)
 - [v0.9.392 - Sistema de Diagnóstico Inteligente de Herramientas MCP](changelogs/v0.9.392.md)
 - [v0.9.391 - Error Handling & Async Safety Improvements](changelogs/v0.9.391.md)
 - [v0.9.390 - Policy Drift Fix: Canonical Compiler API](changelogs/v0.9.390.md)

@@ -2,14 +2,22 @@
  * Builds the structured MCP status payload.
  */
 
-import { compactDatabaseHealth, compactCompilerHealthDashboardSummary, compactCompilerHealthPanelSummary, compactRepositoryDiagnostics, summarizeNodeVitals, takeSample } from './status-summary-helpers.js';
+import {
+  compactDatabaseHealth,
+  compactCompilerHealthDashboardSummary,
+  compactCompilerHealthPanelSummary,
+  compactRepositoryDiagnostics,
+  summarizeNodeVitals,
+  takeSample
+} from './status-summary-helpers.js';
 import { compactCompilerMetricsSnapshotSummary } from './status-metrics-snapshot-summary.js';
 import { compactCompilerExplainabilitySummary } from './status-explainability-summary.js';
 import { buildSystemTableSummary } from './status-system-table.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 import { compactToolInventory } from './status-tool-inventory.js';
 import { buildUpdateSurfaceSummary } from './status-update-summary.js';
-import { buildCachePolicySummary, summarizeSurfaceAuditForStatus } from '../../../shared/compiler/index.js';
+import { buildCachePolicySummary } from '../../../shared/compiler/cache-policy-summary.js';
+import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/surface-audit/summary.js';
 
 export function buildStatusSummaryPayload(status, recentErrors) {
   const databaseHealth = compactDatabaseHealth(status.databaseHealth);

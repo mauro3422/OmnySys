@@ -91,5 +91,20 @@ describe('status summary payload', () => {
     expect(updateRow.detail).toContain('mirror=2456');
     expect(updateRow.detail).toContain('deps=3');
     expect(updateRow.detail).toContain('integrity=ok');
+
+    expect(payload.systemTable.rows.map((row) => row.area)).toEqual([
+      'Daemon',
+      'Database',
+      'Snapshots',
+      'Update',
+      'Behavior',
+      'Drift',
+      'Debt',
+      'Sessions',
+      'Tools',
+      'Cache',
+      'Watcher',
+      'Errors'
+    ]);
   });
 });

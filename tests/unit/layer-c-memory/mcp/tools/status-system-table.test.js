@@ -63,6 +63,13 @@ describe('status system table', () => {
         failedChanges: 1,
         lastChangeOrigin: 'src/example.js'
       },
+      recentErrors: {
+        summary: {
+          total: 1,
+          warnings: 1,
+          errors: 0
+        }
+      },
       cache: {
         files: 2456,
         status: 'aligned'
@@ -140,5 +147,30 @@ describe('status system table', () => {
     expect(updateRow.detail).toContain('watcher=0/1');
     expect(updateRow.detail).toContain('journal=0');
     expect(updateRow.detail).toContain('integrity=ok');
+
+    const areas = summary.rows.map((row) => row.area);
+    expect(areas).toEqual([
+      'Daemon',
+      'Database',
+      'Snapshots',
+      'Update',
+      'Behavior',
+      'Drift',
+      'Debt',
+      'Sessions',
+      'Tools',
+      'Cache',
+      'Watcher',
+      'Errors'
+    ]);
+
+    const errorsRow = summary.rows.find((row) => row.area === 'Errors');
+    expect(errorsRow).toMatchObject({
+      area: 'Errors',
+      state: 'watching',
+      source: 'recent_errors'
+    });
+    expect(errorsRow.detail).toContain('warnings=1');
+    expect(errorsRow.detail).toContain('errors=0');
   });
 });

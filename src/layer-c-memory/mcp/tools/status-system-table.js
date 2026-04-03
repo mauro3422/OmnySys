@@ -3,11 +3,7 @@
  */
 
 import { buildUpdateSurfaceSummary } from './status-update-summary.js';
-
-function formatCount(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
+import { normalizeCount } from '../../../shared/compiler/index.js';
 
 export function buildSystemTableSummary(status = {}) {
   if (!status || typeof status !== 'object') {
@@ -22,12 +18,13 @@ export function buildSystemTableSummary(status = {}) {
   const mcpSessions = status.background?.mcpSessionSummary || status.mcpSessions || {};
   const watcher = status.watcher || {};
   const toolInventory = status.toolInventory || {};
+  const recentErrorSummary = status.recentErrors?.summary || {};
   const updateSurface = buildUpdateSurfaceSummary(status);
-  const structuralGroups = formatCount(current.structuralGroups);
-  const conceptualGroups = formatCount(current.conceptualGroups);
+  const structuralGroups = normalizeCount(current.structuralGroups);
+  const conceptualGroups = normalizeCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
   const healthGrade = databaseHealth.grade || current.healthGrade || 'F';
-  const healthScore = formatCount(databaseHealth.healthScore || current.healthScore);
+  const healthScore = normalizeCount(databaseHealth.healthScore || current.healthScore);
   const snapshotState = daily && lifetime
     ? 'daily + lifetime'
     : daily
@@ -62,46 +59,40 @@ export function buildSystemTableSummary(status = {}) {
         source: '.omnysysdata/health-history.db'
       },
       {
-        area: 'Behavior',
-        state: current.behaviorState || 'unknown',
-        detail: `blockers=${formatCount(current.behaviorGateSummary?.blockerCount || current.behaviorBlockers?.length || 0)} | primary=${current.primaryBehaviorBlocker?.gate || current.behaviorGateSummary?.primaryBlocker?.gate || 'n/a'} | reason=${current.readinessReason || 'n/a'}`,
-        source: 'behavior gate summary'
-      },
-      {
-        area: 'Debt',
-        state: (current.issueCount > 0 || totalDuplicates > 0 || formatCount(current.pipelineOrphans) > 0 || formatCount(current.namingDebt) > 0) ? 'watching' : 'quiet',
-        detail: `issues=${formatCount(current.issueCount)} | dups=${totalDuplicates} | orphans=${formatCount(current.pipelineOrphans)} | naming=${formatCount(current.namingDebt)}`,
-        source: 'technical_debt_report + compiler snapshot'
-      },
-      {
-        area: 'Sessions',
-        state: current.clientSyncState || mcpSessions.clientSyncState || 'fresh',
-        detail: `persistent=${formatCount(mcpSessions.totalPersistentActive || mcpSessions.totalPersistent || 0)} active / ${formatCount(mcpSessions.totalPersistent || 0)} total | clients=${formatCount(mcpSessions.uniqueClients || 0)}`,
-        source: 'mcp_sessions'
-      },
-      {
-        area: 'Tools',
-        state: `${formatCount(toolInventory.totalTools)} tools`,
-        detail: `dominant=${toolInventory.dominantCategory || 'n/a'} | concentration=${formatCount(toolInventory.concentration)}`,
-        source: 'tool inventory'
-      },
-      {
-        area: 'Watcher',
-        state: watcher.isRunning === false ? 'stopped' : 'running',
-        detail: `pending=${formatCount(watcher.pendingChanges)} | failed=${formatCount(watcher.failedChanges)} | last=${watcher.lastChangeOrigin || 'n/a'}`,
-        source: 'file watcher'
-      },
-      {
         area: 'Update',
         state: updateSurface?.state || 'unknown',
         detail: updateSurface?.detail || 'update pipeline not loaded',
         source: updateSurface?.source || 'atom/function update pipeline'
       },
       {
+        area: 'Behavior',
+        state: current.behaviorState || 'unknown',
+        detail: `blockers=${normalizeCount(current.behaviorGateSummary?.blockerCount || current.behaviorBlockers?.length || 0)} | primary=${current.primaryBehaviorBlocker?.gate || current.behaviorGateSummary?.primaryBlocker?.gate || 'n/a'} | reason=${current.readinessReason || 'n/a'}`,
+        source: 'behavior gate summary'
+      },
+      {
         area: 'Drift',
         state: current.driftState || current.activeAtomsDriftState || 'n/a',
-        detail: `drift=${formatCount(current.driftScore)} | blockers=${(current.behaviorGateSummary?.blockedBy || current.behaviorBlockers || []).slice(0, 2).map((item) => item.gate || 'gate').join(',') || 'none'} | readiness=${current.readinessReason || 'n/a'}`,
+        detail: `drift=${normalizeCount(current.driftScore)} | blockers=${(current.behaviorGateSummary?.blockedBy || current.behaviorBlockers || []).slice(0, 2).map((item) => item.gate || 'gate').join(',') || 'none'} | readiness=${current.readinessReason || 'n/a'}`,
         source: 'drift assessment'
+      },
+      {
+        area: 'Debt',
+        state: (current.issueCount > 0 || totalDuplicates > 0 || normalizeCount(current.pipelineOrphans) > 0 || normalizeCount(current.namingDebt) > 0) ? 'watching' : 'quiet',
+        detail: `issues=${normalizeCount(current.issueCount)} | dups=${totalDuplicates} | orphans=${normalizeCount(current.pipelineOrphans)} | naming=${normalizeCount(current.namingDebt)}`,
+        source: 'technical_debt_report + compiler snapshot'
+      },
+      {
+        area: 'Sessions',
+        state: current.clientSyncState || mcpSessions.clientSyncState || 'fresh',
+        detail: `persistent=${normalizeCount(mcpSessions.totalPersistentActive || mcpSessions.totalPersistent || 0)} active / ${normalizeCount(mcpSessions.totalPersistent || 0)} total | clients=${normalizeCount(mcpSessions.uniqueClients || 0)}`,
+        source: 'mcp_sessions'
+      },
+      {
+        area: 'Tools',
+        state: `${normalizeCount(toolInventory.totalTools)} tools`,
+        detail: `dominant=${toolInventory.dominantCategory || 'n/a'} | concentration=${normalizeCount(toolInventory.concentration)}`,
+        source: 'tool inventory'
       },
       ...(status.cachePolicy ? [
         {
@@ -110,7 +101,19 @@ export function buildSystemTableSummary(status = {}) {
           detail: `${status.cachePolicy.whereToCache?.length || status.cachePolicy.targets?.length || 0} cache targets | no-cache=${status.cachePolicy.whereNotToCache?.length || 0} | hot=${status.cachePolicy.hotPathDetected ? 'yes' : 'no'} | thrash=${status.cachePolicy.signals?.metrics?.toolTelemetry?.thrashingRuns || 0} | recent=${status.cachePolicy.signals?.recentErrors?.errors || 0} err`,
           source: 'cache policy advisor'
         }
-      ] : [])
+      ] : []),
+      {
+        area: 'Watcher',
+        state: watcher.isRunning === false ? 'stopped' : 'running',
+        detail: `pending=${normalizeCount(watcher.pendingChanges)} | failed=${normalizeCount(watcher.failedChanges)} | last=${watcher.lastChangeOrigin || 'n/a'}`,
+        source: 'file watcher'
+      },
+      {
+        area: 'Errors',
+        state: normalizeCount(recentErrorSummary.errors) > 0 || normalizeCount(recentErrorSummary.warnings) > 0 ? 'watching' : 'clear',
+        detail: `warnings=${normalizeCount(recentErrorSummary.warnings)} | errors=${normalizeCount(recentErrorSummary.errors)} | total=${normalizeCount(recentErrorSummary.total)}`,
+        source: 'recent_errors'
+      }
     ]
   };
 }

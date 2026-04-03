@@ -15,7 +15,7 @@ export { buildSystemTableSummary } from './status-system-table.js';
 export { buildUpdateSurfaceSummary } from './status-update-summary.js';
 export { compactCompilerMetricsSnapshotSummary } from './status-metrics-snapshot-summary.js';
 export { compactCompilerExplainabilitySummary } from './status-explainability-summary.js';
-export { buildCachePolicySummary } from '../../../shared/compiler/index.js';
+export { buildCachePolicySummary } from '../../../shared/compiler/cache-policy-summary.js';
 export { buildStatusSummaryPayload } from './status-summary-payload.js';
 
 export { summarizeStatus } from './status-summary-assembly.js';

@@ -94,6 +94,10 @@ export {
 } from './snapshot.js';
 
 export {
+  buildCompilerStatusSummaryEnvelope
+} from './status-summary.js';
+
+export {
   buildCompilerMetricDictionary,
   summarizeCompilerMetricDictionary
 } from './compiler-metric-dictionary.js';
