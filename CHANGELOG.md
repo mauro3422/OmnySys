@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Connected the `impact-wave` file-guard flow to the shared propagation engine so alerts now carry a cacheable propagation plan alongside the evidence.
+- Persisted the impact-wave propagation summary inside the watcher issue context and surfaced it in the emitted `arch:impact-wave` event.
+- Added impact-wave propagation coverage to the shared propagation engine, including change-type defaults and watcher-connected systems.
 - Made the shared propagation engine derive its own stable cache key when callers do not provide one, so the plan can be cached immediately instead of depending on a manual key.
 - Kept the propagation cache contract reusable by preserving the key and cache-hit state in the folderization report summary and explainability compactors.
 - Added a shared propagation engine that computes a reusable plan for folderization changes, including cache keys, connected systems, move targets, impacted files, rewrites, and validation targets.

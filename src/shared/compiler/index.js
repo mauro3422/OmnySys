@@ -370,6 +370,7 @@ export {
 } from './directory-structure-folderization.js';
 
 export {
+  buildImpactWavePropagationPlan,
   buildPropagationPlan,
   summarizePropagationPlan
 } from './propagation-engine.js';

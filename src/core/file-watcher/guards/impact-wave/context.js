@@ -12,6 +12,7 @@ export function buildImpactWaveIssueContext({
     relatedFiles,
     brokenImports,
     brokenCallers,
+    propagation,
     maxRelatedFiles,
     maxBrokenSamples
 }) {
@@ -43,6 +44,7 @@ export function buildImpactWaveIssueContext({
             relatedFiles: Math.min(relatedFiles.size, maxRelatedFiles),
             brokenImports: brokenImports.length,
             brokenCallers: brokenCallers.length,
+            propagation,
             sample: {
                 atoms: focusedAtoms.slice(0, 8),
                 relatedFiles: Array.from(relatedFiles).slice(0, maxRelatedFiles),

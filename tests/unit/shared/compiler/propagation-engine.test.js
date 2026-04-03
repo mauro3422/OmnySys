@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildImpactWavePropagationPlan,
   buildPropagationPlan,
   buildPropagationCacheKey,
   clearPropagationPlanCache,
@@ -40,6 +41,30 @@ describe('propagation-engine', () => {
       'compiler_explainability',
       'cache_policy',
       'watcher',
+      'drift_assessment'
+    ]));
+  });
+
+  it('builds an impact-wave propagation plan with watcher-connected systems', () => {
+    const plan = buildImpactWavePropagationPlan({
+      severity: 'high',
+      scopePath: 'src/core/file-watcher/guards/impact-wave',
+      focusPath: 'src/core/file-watcher/guards/impact-wave/impact-wave-core.js',
+      impactedFileCount: 4,
+      rewriteCount: 2
+    });
+
+    expect(plan.changeType).toBe('impact_wave');
+    expect(plan.mode).toBe('alert_and_review');
+    expect(plan.connectedSystems.map((item) => item.name)).toEqual(expect.arrayContaining([
+      'impact_wave_guard',
+      'watcher',
+      'export_validation',
+      'technical_debt_report',
+      'status_panel',
+      'health_snapshot',
+      'compiler_explainability',
+      'cache_policy',
       'drift_assessment'
     ]));
   });

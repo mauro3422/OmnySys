@@ -5,7 +5,11 @@ import { computeImpactWaveScore, summarizeImpactWave } from '../impact-wave-scor
 import { buildImpactWaveIssueContext } from './context.js';
 import { clearPersistedImpactWaveIssues } from './persistence.js';
 import { isTestFilePath } from './helpers.js';
-import { runAsyncBoundary } from '../../../../shared/compiler/index.js';
+import {
+    buildImpactWavePropagationPlan,
+    summarizePropagationPlan,
+    runAsyncBoundary
+} from '../../../../shared/compiler/index.js';
 
 export async function collectImpactWaveEvidence({
     rootPath,
@@ -66,6 +70,38 @@ export async function collectImpactWaveEvidence({
             return null;
         }
 
+        const propagationPlan = buildImpactWavePropagationPlan({
+            scopePath: rootPath,
+            focusPath: filePath,
+            severity: summary.severity,
+            score,
+            decision: summary.severity === 'low' ? 'approve' : 'review',
+            impactedFileCount: relatedFiles.size,
+            rewriteCount: brokenImports.length + brokenCallers.length,
+            validationTargetCount: relatedFiles.size + brokenImports.length + brokenCallers.length,
+            hasCrossFamilyPropagation: relatedFiles.size > 0,
+            topImpactedFiles: Array.from(relatedFiles).slice(0, maxRelatedFiles).map((path) => ({ filePath: path })),
+            topCandidates: focusedAtoms.slice(0, 5).map((atom) => ({
+                name: atom.name || atom.symbol || atom.id || null,
+                filePath: atom.filePath || atom.path || filePath
+            })),
+            candidateCount: focusedAtoms.length,
+            flatFamilies: 0,
+            mixedFamilies: relatedFiles.size > 0 ? 1 : 0,
+            alreadyFolderizedFamilies: 0,
+            guidance: hasBreakingChanges(brokenImports, brokenCallers)
+                ? 'Route the propagation plan to the watcher, cache policy, and drift surfaces before mutating code.'
+                : 'Keep the propagation plan as a visibility signal for the current change set.',
+            recommendationStrategy: 'impact_wave',
+            drift: {
+                state: hasBreakingChanges(brokenImports, brokenCallers) ? 'watch' : 'stable',
+                reason: hasBreakingChanges(brokenImports, brokenCallers)
+                    ? 'breaking-change evidence'
+                    : 'no breaking-change evidence'
+            }
+        });
+        const propagation = summarizePropagationPlan(propagationPlan);
+
         return {
             severity: summary.severity,
             score,
@@ -83,9 +119,14 @@ export async function collectImpactWaveEvidence({
                 relatedFiles,
                 brokenImports,
                 brokenCallers,
+                propagation,
                 maxRelatedFiles,
                 maxBrokenSamples
             })
         };
     });
+}
+
+function hasBreakingChanges(brokenImports, brokenCallers) {
+    return brokenCallers.length > 0 || brokenImports.length > 0;
 }

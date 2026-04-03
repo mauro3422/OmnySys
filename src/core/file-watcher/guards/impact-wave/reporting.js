@@ -9,6 +9,7 @@ export async function reportImpactWaveFinding(rootPath, filePath, evidence, Even
     return await runAsyncBoundary('reportImpactWaveFinding', async () => {
         try {
             const { severity, score, summary, issueContext } = evidence;
+            const propagation = issueContext?.propagation || null;
             logger.warn(
                 `[IMPACT WAVE][${severity.toUpperCase()}] ${filePath}: atoms=${summary.changedAtoms}, related=${summary.relatedFiles}, brokenImports=${summary.brokenImports}, brokenCallers=${summary.brokenCallers}, score=${summary.score}`
             );
@@ -30,7 +31,8 @@ export async function reportImpactWaveFinding(rootPath, filePath, evidence, Even
             EventEmitterContext.emit('arch:impact-wave', {
                 filePath,
                 ...summary,
-                sample: issueContext.extraData.sample
+                propagation,
+                sample: issueContext.sample
             });
 
             return summary;
