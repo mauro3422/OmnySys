@@ -10,7 +10,7 @@ import {
   compactFolderization,
   compactMetadataExtractionCoverage,
   compactSurfaceAudit,
-  compactWatcherSummary
+  compactExplainabilityWatcherSummary
 } from './compiler-explainability-summary-helpers.js';
 import { compactCompilerContractLayer } from './compiler-explainability-contract-layer.js';
 import { compactPolicySummary } from './compiler-explainability-policy.js';
@@ -33,7 +33,7 @@ export function summarizeCompilerExplainability(explainability) {
     driftAssessment: compactDriftAssessment(explainability.driftAssessment),
     fileUniverseGranularity: compactCountPair(explainability.fileUniverseGranularity),
     analysisGeneration: compactAnalysisGeneration(explainability.analysisGeneration),
-    watcher: compactWatcherSummary(explainability.watcher),
+    watcher: compactExplainabilityWatcherSummary(explainability.watcher),
     dataGatewayContract: compactDataGatewayContract(explainability.dataGatewayContract),
     folderization: compactFolderization(explainability.folderization),
     databaseHealth: explainability.databaseHealth || null

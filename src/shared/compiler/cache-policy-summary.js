@@ -6,11 +6,8 @@
  */
 
 import { asNumber } from './core-utils.js';
-
-function takeSample(items = [], limit = 3) {
-  if (!Array.isArray(items)) return [];
-  return items.slice(0, limit);
-}
+import { takeSample } from './sample-helpers.js';
+import { buildToolCachePolicySummary } from './tool-run-telemetry-helpers.js';
 
 function summarizeRecentErrors(recentErrors = null) {
   if (!recentErrors || typeof recentErrors !== 'object') {
@@ -36,6 +33,36 @@ function summarizeToolTelemetry(toolTelemetry = null) {
     return null;
   }
 
+  const cachePolicySummary = toolTelemetry.cachePolicySummary
+    ? {
+        totalTools: asNumber(toolTelemetry.cachePolicySummary.totalTools, 0),
+        tierCounts: {
+          live: asNumber(toolTelemetry.cachePolicySummary.tierCounts?.live, 0),
+          fingerprintCache: asNumber(toolTelemetry.cachePolicySummary.tierCounts?.fingerprintCache, 0),
+          snapshotCache: asNumber(toolTelemetry.cachePolicySummary.tierCounts?.snapshotCache, 0),
+          ttlCache: asNumber(toolTelemetry.cachePolicySummary.tierCounts?.ttlCache, 0)
+        },
+        topTools: takeSample(toolTelemetry.cachePolicySummary.topTools || [], 5),
+        defaultPolicy: toolTelemetry.cachePolicySummary.defaultPolicy || null
+      }
+    : buildToolCachePolicySummary(
+      Array.isArray(toolTelemetry.topTools)
+        ? toolTelemetry.topTools.map((tool) => ({
+            toolName: tool.toolName || tool.tool_name || null,
+            runCount: asNumber(tool.runCount, 0),
+            successRate: asNumber(tool.successRate, 0),
+            avgDurationMs: asNumber(tool.avgDurationMs, 0),
+            avgRepairScore: asNumber(tool.avgRepairScore, 0),
+            noiseScore: asNumber(tool.noise?.noiseScore ?? tool.noiseSummary?.noiseScore ?? tool.noiseScore, 0),
+            noiseSummary: tool.noiseSummary || tool.noise || null
+          }))
+        : [],
+      {
+        totalRuns: asNumber(toolTelemetry.totalRuns, 0),
+        noiseSummary: toolTelemetry.noiseSummary || null
+      }
+    );
+
   return {
     totalRuns: asNumber(toolTelemetry.totalRuns, 0),
     successfulRuns: asNumber(toolTelemetry.successfulRuns, 0),
@@ -57,7 +84,17 @@ function summarizeToolTelemetry(toolTelemetry = null) {
     averageRepairScore: asNumber(toolTelemetry.averageRepairScore, 0),
     lastRunAt: toolTelemetry.lastRunAt || null,
     lastSuccessfulRunAt: toolTelemetry.lastSuccessfulRunAt || null,
-    topTools: takeSample(toolTelemetry.topTools || [], 5)
+    topTools: takeSample(toolTelemetry.topTools || [], 5),
+    noiseSummary: toolTelemetry.noiseSummary ? {
+      totalRuns: asNumber(toolTelemetry.noiseSummary.totalRuns, 0),
+      noisyRunCount: asNumber(toolTelemetry.noiseSummary.noisyRunCount, 0),
+      noisyToolCount: asNumber(toolTelemetry.noiseSummary.noisyToolCount, 0),
+      noiseRate: asNumber(toolTelemetry.noiseSummary.noiseRate, 0),
+      noiseScore: asNumber(toolTelemetry.noiseSummary.noiseScore, 0),
+      noiseTopTools: takeSample(toolTelemetry.noiseSummary.noiseTopTools || [], 5),
+      topReasons: takeSample(toolTelemetry.noiseSummary.topReasons || [], 5)
+    } : null,
+    cachePolicySummary
   };
 }
 
@@ -65,7 +102,8 @@ function buildWhereToCache({ current = {}, daily = null, lifetime = null, toolTe
   const captureDay = current.capturedAt ? current.capturedAt.slice(0, 10) : null;
   const hasHotToolTelemetry = asNumber(toolTelemetry?.thrashingRuns, 0) > 0
     || asNumber(toolTelemetry?.averageDurationMs, 0) > 5000
-    || asNumber(toolTelemetry?.pressureRuns, 0) > 0;
+    || asNumber(toolTelemetry?.pressureRuns, 0) > 0
+    || asNumber(toolTelemetry?.noiseSummary?.noiseScore, 0) >= 35;
 
   return [
     {
@@ -217,6 +255,15 @@ function buildRecurringHotspots({ recentErrors = null, watcher = null, toolTelem
     });
   }
 
+  if (asNumber(toolTelemetry?.noiseSummary?.noiseScore, 0) >= 35) {
+    hotspots.push({
+      surface: 'mcp_tool_runs',
+      signal: 'operational noise',
+      count: Math.round(asNumber(toolTelemetry?.noiseSummary?.noiseScore, 0)),
+      why: 'Repeated polling, thrash and slow observation are the clearest candidates for noise-aware caching and tool triage.'
+    });
+  }
+
   return {
     hotspots,
     topTools: takeSample(toolTelemetry?.topTools || [], 3).map((tool) => ({
@@ -224,7 +271,8 @@ function buildRecurringHotspots({ recentErrors = null, watcher = null, toolTelem
       runCount: asNumber(tool.runCount, 0),
       successRate: asNumber(tool.successRate, 0),
       avgRepairScore: asNumber(tool.avgRepairScore, 0),
-      lastRunAt: tool.lastRunAt || null
+      lastRunAt: tool.lastRunAt || null,
+      noiseSummary: tool.noise || tool.noiseSummary || null
     }))
   };
 }
@@ -248,13 +296,15 @@ export function buildCachePolicySummary({
     || asNumber(current.phase2PendingFiles, 0) > 0
     || asNumber(toolTelemetry?.thrashingRuns, 0) > 0
     || asNumber(toolTelemetry?.averageDurationMs, 0) > 5000
-    || asNumber(toolTelemetry?.pressureRuns, 0) > 0;
+    || asNumber(toolTelemetry?.pressureRuns, 0) > 0
+    || asNumber(toolTelemetry?.noiseSummary?.noiseScore, 0) >= 35;
   const stableSnapshot = !!metricsSnapshot?.current?.snapshotFingerprint
     && asNumber(current.phase2PendingFiles, 0) === 0
     && asNumber(current.recentErrorCount, 0) === 0
     && asNumber(current.watcherAlertCount, 0) === 0
     && asNumber(toolTelemetry?.thrashingRuns, 0) === 0
-    && asNumber(toolTelemetry?.averageDurationMs, 0) <= 5000;
+    && asNumber(toolTelemetry?.averageDurationMs, 0) <= 5000
+    && asNumber(toolTelemetry?.noiseSummary?.noiseScore, 0) < 35;
 
   const whereToCache = buildWhereToCache({
     current,

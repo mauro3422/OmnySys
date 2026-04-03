@@ -58,13 +58,51 @@ describe('cache policy summary', () => {
             averageRepairScore: 0.8,
             lastRunAt: '2026-04-02T18:00:00.000Z',
             lastSuccessfulRunAt: '2026-04-02T18:05:00.000Z',
+            noiseSummary: {
+              totalRuns: 80,
+              noisyRunCount: 36,
+              noisyToolCount: 2,
+              noiseRate: 0.45,
+              noiseScore: 62,
+              noiseTopTools: [
+                {
+                  toolName: 'mcp_omnysystem_get_technical_debt_report',
+                  runCount: 10,
+                  successRate: 1,
+                  avgRepairScore: 0,
+                  noiseScore: 82,
+                  noiseLevel: 'high',
+                  noiseReasons: ['slow-critical', 'observation-only']
+                }
+              ],
+              topReasons: [
+                { reason: 'slow-critical', count: 18 }
+              ]
+            },
             topTools: [
               {
                 toolName: 'mcp_omnysystem_get_technical_debt_report',
                 runCount: 10,
                 successRate: 1,
                 avgRepairScore: 0,
-                lastRunAt: '2026-04-02T18:05:00.000Z'
+                lastRunAt: '2026-04-02T18:05:00.000Z',
+                noise: {
+                  toolName: 'mcp_omnysystem_get_technical_debt_report',
+                  runCount: 10,
+                  successRate: 1,
+                  repairedCount: 0,
+                  thrashingCount: 0,
+                  stableCount: 0,
+                  pressureCount: 0,
+                  observationCount: 0,
+                  clearanceCount: 0,
+                  avgDurationMs: 28600,
+                  avgRepairScore: 0,
+                  observationOnly: true,
+                  noiseScore: 82,
+                  noiseLevel: 'high',
+                  noiseReasons: ['slow-critical', 'observation-only']
+                }
               }
             ]
           }
@@ -125,8 +163,12 @@ describe('cache policy summary', () => {
     expect(summary.whereNotToCache.map((item) => item.surface)).toContain('recentErrors / watcherAlerts');
     expect(summary.signals.recentErrors.errors).toBe(1);
     expect(summary.signals.metrics.toolTelemetry.thrashingRuns).toBe(4);
+    expect(summary.signals.metrics.toolTelemetry.noiseSummary.noisyToolCount).toBe(2);
+    expect(summary.signals.metrics.toolTelemetry.cachePolicySummary.tierCounts.fingerprintCache).toBeGreaterThan(0);
+    expect(summary.signals.metrics.toolTelemetry.cachePolicySummary.topTools[0].cacheTier).toBe('fingerprint-cache');
     expect(summary.recurringHotspots.hotspots.length).toBeGreaterThanOrEqual(2);
     expect(summary.recurringHotspots.topTools[0].toolName).toBe('mcp_omnysystem_get_technical_debt_report');
+    expect(summary.recurringHotspots.hotspots.some((item) => item.signal === 'operational noise')).toBe(true);
     expect(summary.targets).toHaveLength(summary.whereToCache.length);
     expect(summary.summary).toContain('Cache fingerprinted snapshots');
     expect(summary.why).toContain('Fingerprint-led surfaces');

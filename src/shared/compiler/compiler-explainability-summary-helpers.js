@@ -2,11 +2,7 @@ import { summarizeCompilerDriftAssessment } from './compiler-drift-assessment.js
 import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import { summarizeDataGatewayContract } from './contract.js';
 import { summarizeSurfaceAuditForStatus } from './surface-audit/summary.js';
-
-export function takeSample(items = [], limit = 3) {
-  if (!Array.isArray(items)) return [];
-  return items.slice(0, limit);
-}
+import { takeSample } from './sample-helpers.js';
 
 export function compactCountPair(summary = null) {
   if (!summary) return null;
@@ -26,7 +22,7 @@ export function compactAnalysisGeneration(analysisGeneration = null) {
   };
 }
 
-export function compactWatcherSummary(watcher = null) {
+export function compactExplainabilityWatcherSummary(watcher = null) {
   if (!watcher) return null;
   return {
     total: watcher.total,

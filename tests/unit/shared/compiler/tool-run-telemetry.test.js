@@ -38,14 +38,28 @@ function createDbMock() {
               tool_name: 'mcp_omnysystem_get_metrics_snapshot',
               run_count: 4,
               success_count: 4,
+              repaired_count: 3,
+              thrashing_count: 1,
+              stable_count: 1,
+              pressure_count: 3,
+              observation_count: 4,
+              clearance_count: 2,
               avg_repair_score: 11.5,
+              avg_duration_ms: 6400,
               last_run_at: '2026-03-30T10:00:00.000Z'
             },
             {
               tool_name: 'mcp_omnysystem_status',
               run_count: 3,
               success_count: 2,
+              repaired_count: 0,
+              thrashing_count: 0,
+              stable_count: 2,
+              pressure_count: 1,
+              observation_count: 1,
+              clearance_count: 0,
               avg_repair_score: 7.1,
+              avg_duration_ms: 900,
               last_run_at: '2026-03-30T09:30:00.000Z'
             }
           ]))
@@ -118,6 +132,12 @@ describe('tool-run-telemetry', () => {
     expect(summary.alertClearanceRate).toBe(0.67);
     expect(summary.topTools).toHaveLength(2);
     expect(summary.topTools[0].toolName).toBe('mcp_omnysystem_get_metrics_snapshot');
+    expect(summary.noiseSummary.noisyToolCount).toBe(1);
+    expect(summary.noiseSummary.noisyRunCount).toBe(4);
+    expect(summary.noiseSummary.noiseTopTools[0].toolName).toBe('mcp_omnysystem_get_metrics_snapshot');
+    expect(summary.topTools[0].noise.noiseLevel).toBe('medium');
+    expect(summary.topTools[0].cachePolicy.cacheTier).toBe('fingerprint-cache');
+    expect(summary.cachePolicySummary.tierCounts.fingerprintCache).toBeGreaterThan(0);
   });
 
   it('persists telemetry with compact safe JSON payloads', () => {

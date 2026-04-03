@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Classified the heavy MCP tools into explicit cache tiers and centralized the shared sampling helpers used by the snapshot and dashboard layers.
 - Removed the remaining compiler policy drift findings by routing testability, shared-state hotspot, semantic-coverage, semantic-purity, and metadata-propagation paths through canonical shared compiler helpers.
 - Exposed the compiler explainability policy and standardization projections in the health snapshot so the live dashboard now shows the remaining debt surface directly.
 - Exposed `policySummary` and `standardization` in the health snapshot response so the remaining compiler explainability debt can be surfaced in the live dashboard instead of being hidden by a narrow projection.

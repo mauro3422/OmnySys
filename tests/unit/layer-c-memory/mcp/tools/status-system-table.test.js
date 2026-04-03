@@ -104,7 +104,19 @@ describe('status system table', () => {
           },
           metrics: {
             toolTelemetry: {
-              thrashingRuns: 4
+              thrashingRuns: 4,
+              noiseSummary: {
+                noiseScore: 48,
+                noisyToolCount: 3
+              },
+              cachePolicySummary: {
+                tierCounts: {
+                  live: 2,
+                  fingerprintCache: 5,
+                  snapshotCache: 1,
+                  ttlCache: 7
+                }
+              }
             }
           }
         }
@@ -122,6 +134,9 @@ describe('status system table', () => {
     expect(cacheRow.detail).toContain('no-cache=1');
     expect(cacheRow.detail).toContain('hot=yes');
     expect(cacheRow.detail).toContain('thrash=4');
+    expect(cacheRow.detail).toContain('noise=48');
+    expect(cacheRow.detail).toContain('noisyTools=3');
+    expect(cacheRow.detail).toContain('tiers=l:2/fp:5/snap:1/ttl:7');
     expect(cacheRow.detail).toContain('recent=1 err');
 
     const behaviorRow = summary.rows.find((row) => row.area === 'Behavior');

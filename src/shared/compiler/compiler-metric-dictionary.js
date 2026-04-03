@@ -185,6 +185,30 @@ export function buildCompilerMetricDictionary({ current = {}, compilerExplainabi
         summary: 'Share of pressured runs that ended in a real repair outcome.',
         caveat: 'This is stricter than repairYield because it only scores runs that started with active pressure.'
       }),
+      toolNoiseScore: buildMetricEntry('toolNoiseScore', asNumber(current.toolTelemetry?.noiseSummary?.noiseScore, 0), {
+        layer: 'runtime',
+        kind: 'tool telemetry',
+        sourceOfTruth: ['mcp tool run telemetry', 'cache policy advisor'],
+        sourceTables: ['mcp_tool_runs'],
+        summary: 'Noise-weighted score for tools that create observability load without clear value-added state change.',
+        caveat: 'A high score usually means repeated polling, slow summaries or thrashing repair loops.'
+      }),
+      toolNoiseRate: buildMetricEntry('toolNoiseRate', asNumber(current.toolTelemetry?.noiseSummary?.noiseRate, 0), {
+        layer: 'runtime',
+        kind: 'tool telemetry',
+        sourceOfTruth: ['mcp tool run telemetry', 'cache policy advisor'],
+        sourceTables: ['mcp_tool_runs'],
+        summary: 'Share of tool runs attributed to noisy tools.',
+        caveat: 'Use this to identify tooling that consumes time but rarely settles the system.'
+      }),
+      toolNoisyToolCount: buildMetricEntry('toolNoisyToolCount', asNumber(current.toolTelemetry?.noiseSummary?.noisyToolCount, 0), {
+        layer: 'runtime',
+        kind: 'tool telemetry',
+        sourceOfTruth: ['mcp tool run telemetry', 'cache policy advisor'],
+        sourceTables: ['mcp_tool_runs'],
+        summary: 'Count of tools whose historical behavior crosses the noise threshold.',
+        caveat: 'The count is a triage signal, not a moral judgment on the tool.'
+      }),
       dataGatewayTrustworthy: buildMetricEntry('dataGatewayTrustworthy', dataGatewaySummary.trustworthy === true, {
         layer: 'governance',
         kind: 'contract state',

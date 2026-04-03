@@ -99,7 +99,7 @@ export function buildSystemTableSummary(status = {}) {
         {
           area: 'Cache',
           state: status.cachePolicy.decision || (status.cachePolicy.stableSnapshot ? 'snapshot-led' : status.cachePolicy.confidence || 'watchful'),
-          detail: `${status.cachePolicy.whereToCache?.length || status.cachePolicy.targets?.length || 0} cache targets | no-cache=${status.cachePolicy.whereNotToCache?.length || 0} | hot=${status.cachePolicy.hotPathDetected ? 'yes' : 'no'} | thrash=${status.cachePolicy.signals?.metrics?.toolTelemetry?.thrashingRuns || 0} | recent=${status.cachePolicy.signals?.recentErrors?.errors || 0} err`,
+          detail: `${status.cachePolicy.whereToCache?.length || status.cachePolicy.targets?.length || 0} cache targets | no-cache=${status.cachePolicy.whereNotToCache?.length || 0} | hot=${status.cachePolicy.hotPathDetected ? 'yes' : 'no'} | thrash=${status.cachePolicy.signals?.metrics?.toolTelemetry?.thrashingRuns || 0} | noise=${status.cachePolicy.signals?.metrics?.toolTelemetry?.noiseSummary?.noiseScore || 0} | noisyTools=${status.cachePolicy.signals?.metrics?.toolTelemetry?.noiseSummary?.noisyToolCount || 0} | tiers=l:${status.cachePolicy.signals?.metrics?.toolTelemetry?.cachePolicySummary?.tierCounts?.live || 0}/fp:${status.cachePolicy.signals?.metrics?.toolTelemetry?.cachePolicySummary?.tierCounts?.fingerprintCache || 0}/snap:${status.cachePolicy.signals?.metrics?.toolTelemetry?.cachePolicySummary?.tierCounts?.snapshotCache || 0}/ttl:${status.cachePolicy.signals?.metrics?.toolTelemetry?.cachePolicySummary?.tierCounts?.ttlCache || 0} | recent=${status.cachePolicy.signals?.recentErrors?.errors || 0} err`,
           source: 'cache policy advisor'
         }
       ] : []),

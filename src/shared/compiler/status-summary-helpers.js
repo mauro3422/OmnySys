@@ -7,11 +7,7 @@ import {
   summarizeCompilerHealthDashboard,
   summarizeCompilerHealthPanel
 } from './compiler-health-dashboard.js';
-
-function takeSample(items = [], limit = 3) {
-  if (!Array.isArray(items)) return [];
-  return items.slice(0, limit);
-}
+import { takeSample } from './sample-helpers.js';
 
 export function compactDatabaseHealth(databaseHealth) {
   if (!databaseHealth || typeof databaseHealth !== 'object') return databaseHealth;

@@ -2,6 +2,8 @@
  * Compact snapshot summary helpers for compiler metrics.
  */
 
+import { takeSample } from './sample-helpers.js';
+
 function summarizeCompactPipelineTimingTelemetry(telemetry = null) {
   if (!telemetry) {
     return null;
@@ -22,7 +24,7 @@ function summarizeCompactPipelineTimingTelemetry(telemetry = null) {
   };
 }
 
-function summarizeCompactToolTelemetry(toolTelemetry = null) {
+export function summarizeCompactToolTelemetry(toolTelemetry = null) {
   if (!toolTelemetry) {
     return null;
   }
@@ -54,11 +56,20 @@ function summarizeCompactToolTelemetry(toolTelemetry = null) {
     ...compact,
     lastRunAt: toolTelemetry.lastRunAt || null,
     lastSuccessfulRunAt: toolTelemetry.lastSuccessfulRunAt || null,
-    topTools: Array.isArray(toolTelemetry.topTools) ? toolTelemetry.topTools.slice(0, 5) : []
+    topTools: Array.isArray(toolTelemetry.topTools) ? toolTelemetry.topTools.slice(0, 5) : [],
+    noiseSummary: toolTelemetry.noiseSummary ? {
+      totalRuns: toolTelemetry.noiseSummary.totalRuns || 0,
+      noisyRunCount: toolTelemetry.noiseSummary.noisyRunCount || 0,
+      noisyToolCount: toolTelemetry.noiseSummary.noisyToolCount || 0,
+      noiseRate: toolTelemetry.noiseSummary.noiseRate || 0,
+      noiseScore: toolTelemetry.noiseSummary.noiseScore || 0,
+      noiseTopTools: Array.isArray(toolTelemetry.noiseSummary.noiseTopTools) ? toolTelemetry.noiseSummary.noiseTopTools.slice(0, 5) : [],
+      topReasons: Array.isArray(toolTelemetry.noiseSummary.topReasons) ? toolTelemetry.noiseSummary.topReasons.slice(0, 5) : []
+    } : null
   };
 }
 
-function summarizeCompactCurrentSnapshot(current = null) {
+export function summarizeCompactCurrentSnapshot(current = null) {
   if (!current) {
     return null;
   }
@@ -121,7 +132,7 @@ function summarizeCompactCurrentSnapshot(current = null) {
   };
 }
 
-function summarizeCompactTrend(trend = null) {
+export function summarizeCompactTrend(trend = null) {
   if (!trend) {
     return null;
   }
@@ -142,7 +153,7 @@ function summarizeCompactTrend(trend = null) {
   };
 }
 
-function summarizeCompactHistory(history = null) {
+export function summarizeCompactHistory(history = null) {
   if (!history) {
     return {
       total: 0,

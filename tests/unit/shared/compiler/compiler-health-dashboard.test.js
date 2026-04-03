@@ -234,6 +234,10 @@ describe('compiler-health-dashboard', () => {
           toolSuccessRate: 0.75,
           alertClearanceRate: 0.5,
           errorClearanceRate: 0.5,
+          noiseSummary: {
+            noisyToolCount: 2,
+            noiseScore: 44
+          },
           topTools: [{ toolName: 'mcp_omnysystem_get_health_snapshot', repairScore: 8 }]
         },
         summaryText: 'health=88/A | success=84/85'
@@ -257,6 +261,7 @@ describe('compiler-health-dashboard', () => {
     expect(panel.oneLine).toContain('clientsync=blocked');
     expect(panel.oneLine).toContain('tools=3/4 ok');
     expect(panel.oneLine).toContain('repair=1/2');
+    expect(panel.oneLine).toContain('noise=2/44');
     expect(panel.topRegressors).toEqual([]);
     expect(panel.topImprovements).toEqual([]);
 
