@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a canonical `propagation_expansion` policy area so watcher and tool surfaces can report when propagation is not being surfaced where expected.
+- Surfaced propagation-expansion drift in the compiler health dashboard, status table, and drift assessment so the live panel shows the recommendation alongside the reason.
+- Expanded the propagation-expansion detector to cover watcher and tool surfaces that emit status, health, snapshot, summary, or report payloads without attaching the shared propagation contract.
 - Connected pipeline-health issue builders to the shared propagation engine so shadow-volume, zero-atom, and slow-analysis issues now carry a cacheable propagation summary.
 - Connected pipeline-orphan reporting payloads to the shared propagation engine so orphan findings now propagate into watcher persistence and downstream consumers.
 - Connected duplicate-risk remediation contexts to the shared propagation engine so duplicate finding clusters now expose propagation guidance for folderization and renaming.

@@ -4,6 +4,7 @@
 
 import { asNumber } from './core-utils.js';
 import { mapArchiveSummary } from './compiler-health-dashboard-archive.js';
+import { buildPanelHighlights, buildPanelIdentity, buildPanelSections } from './compiler-health-dashboard-panel-helpers.js';
 import { takeSample } from './sample-helpers.js';
 
 function mapHealthSummaryCore(current = {}) {
@@ -22,6 +23,23 @@ function mapHealthSummaryCore(current = {}) {
   };
 }
 
+function mapHealthSummaryConnectionSignals(current = {}) {
+  return {
+    clientSyncState: current.clientSyncState || null,
+    clientSyncSeverity: current.clientSyncSeverity || null,
+    clientSyncReason: current.clientSyncReason || null,
+    clientSyncRecommendation: current.clientSyncRecommendation || null
+  };
+}
+
+function mapHealthSummaryPropagationSignals(current = {}) {
+  return {
+    propagationExpansionState: current.propagationExpansionState || null,
+    propagationExpansionReason: current.propagationExpansionReason || null,
+    propagationExpansionRecommendation: current.propagationExpansionRecommendation || null
+  };
+}
+
 function mapHealthSummarySignals(current = {}) {
   return {
     reliabilityState: current.reliabilityState || null,
@@ -32,10 +50,8 @@ function mapHealthSummarySignals(current = {}) {
     stabilityScore: asNumber(current.stabilityScore, 0),
     activeAtomsDriftState: current.activeAtomsDriftState || null,
     activeAtomsDriftReason: current.activeAtomsDriftReason || null,
-    clientSyncState: current.clientSyncState || null,
-    clientSyncSeverity: current.clientSyncSeverity || null,
-    clientSyncReason: current.clientSyncReason || null,
-    clientSyncRecommendation: current.clientSyncRecommendation || null,
+    ...mapHealthSummaryConnectionSignals(current),
+    ...mapHealthSummaryPropagationSignals(current),
     healthArchive: current.healthArchive || null
   };
 }
@@ -147,6 +163,9 @@ export function buildHealthPanelNowSummary(now = {}) {
     clientSyncSeverity: now.clientSyncSeverity || null,
     clientSyncReason: now.clientSyncReason || null,
     clientSyncRecommendation: now.clientSyncRecommendation || null,
+    propagationExpansionState: now.propagationExpansionState || null,
+    propagationExpansionReason: now.propagationExpansionReason || null,
+    propagationExpansionRecommendation: now.propagationExpansionRecommendation || null,
     activeAtomsDelta: asNumber(now.activeAtomsDelta, 0),
     activeAtomsDeltaPct: asNumber(now.activeAtomsDeltaPct, 0)
   };
@@ -159,6 +178,7 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     `trust=${Math.round(now.reliabilityScore || 0)}/${now.reliabilityGrade || 'F'}`,
     `trend=${compact.trend?.status || 'missing'}:${compact.trend?.velocityPerDay || 0}/day`,
     `dbsync=${now.activeAtomsDriftState || 'missing'}`,
+    now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,
     perf?.status ? `perf=${perf.status}:${Math.round(perf.current?.totalDurationMs || 0)}ms` : null,
     tools?.totalRuns > 0 ? `tools=${tools.successfulRuns || 0}/${tools.totalRuns} ok` : 'tools=0',
@@ -169,30 +189,46 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
   ].filter(Boolean).join(' | ');
 }
 
-export function summarizeCompilerHealthDashboard(dashboard = null) {
-  if (!dashboard || typeof dashboard !== 'object') {
-    return null;
-  }
-
+function buildDashboardIdentitySummary(dashboard = {}) {
   return {
     projectPath: dashboard.projectPath || null,
     scopePath: dashboard.scopePath || null,
     focusPath: dashboard.focusPath || null,
     snapshotKind: dashboard.snapshotKind || 'status',
     captureSource: dashboard.captureSource || null,
-    capturedAt: dashboard.capturedAt || null,
+    capturedAt: dashboard.capturedAt || null
+  };
+}
+
+function buildDashboardArchiveSummary(dashboard = {}) {
+  return {
     daily: dashboard.daily || null,
     lifetime: dashboard.lifetime || dashboard.archive || dashboard.healthArchive || null,
-    archive: mapArchiveSummary(dashboard.archive || null),
+    archive: mapArchiveSummary(dashboard.archive || null)
+  };
+}
+
+function buildDashboardHealthSummary(dashboard = {}) {
+  return {
     status: dashboard.status || null,
     health: dashboard.health ? mapHealthSummary(dashboard.health) : null,
-    trend: dashboard.trend ? { ...dashboard.trend } : null,
+    trend: dashboard.trend ? { ...dashboard.trend } : null
+  };
+}
+
+function buildDashboardCollectionsSummary(dashboard = {}) {
+  return {
     performance: dashboard.pipelineTimingTelemetry || null,
     metrics: dashboard.metrics ? mapMetricsSummary(dashboard.metrics, dashboard.pipelineTimingTelemetry || null) : null,
     sessions: mapSessionsSummary(dashboard),
     toolTelemetry: dashboard.toolTelemetry ? { ...dashboard.toolTelemetry } : null,
     metricDictionary: dashboard.metricDictionary || null,
-    pipelineTimingTelemetry: dashboard.pipelineTimingTelemetry || null,
+    pipelineTimingTelemetry: dashboard.pipelineTimingTelemetry || null
+  };
+}
+
+function buildDashboardSignalsSummary(dashboard = {}) {
+  return {
     regressors: takeSample(dashboard.regressors || [], 5),
     improvements: takeSample(dashboard.improvements || [], 5),
     recommendations: takeSample(dashboard.recommendations || [], 5),
@@ -203,32 +239,29 @@ export function summarizeCompilerHealthDashboard(dashboard = null) {
   };
 }
 
+export function summarizeCompilerHealthDashboard(dashboard = null) {
+  if (!dashboard || typeof dashboard !== 'object') {
+    return null;
+  }
+
+  return {
+    ...buildDashboardIdentitySummary(dashboard),
+    ...buildDashboardArchiveSummary(dashboard),
+    ...buildDashboardHealthSummary(dashboard),
+    ...buildDashboardCollectionsSummary(dashboard),
+    ...buildDashboardSignalsSummary(dashboard)
+  };
+}
+
 export function summarizeCompilerHealthPanel(panel = null) {
   if (!panel || typeof panel !== 'object') {
     return null;
   }
 
   return {
-    projectPath: panel.projectPath || null,
-    scopePath: panel.scopePath || null,
-    focusPath: panel.focusPath || null,
-    snapshotKind: panel.snapshotKind || 'status',
-    captureSource: panel.captureSource || null,
-    capturedAt: panel.capturedAt || null,
-    status: panel.status || null,
-    headline: panel.headline || null,
-    now: panel.now || null,
-    trend: panel.trend || null,
-    performance: panel.performance || null,
-    tools: panel.tools || null,
-    metricDictionary: panel.metricDictionary || null,
-    archive: panel.archive || null,
-    topRegressors: takeSample(panel.topRegressors || [], 3),
-    topImprovements: takeSample(panel.topImprovements || [], 3),
-    topRecommendations: takeSample(panel.topRecommendations || [], 3),
-    nextAction: panel.nextAction || null,
-    summary: panel.summary || null,
-    oneLine: panel.oneLine || null
+    ...buildPanelIdentity(panel),
+    ...buildPanelSections(panel),
+    ...buildPanelHighlights(panel)
   };
 }
 

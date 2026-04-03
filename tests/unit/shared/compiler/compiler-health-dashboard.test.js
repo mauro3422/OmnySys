@@ -151,6 +151,22 @@ describe('compiler-health-dashboard', () => {
             nextAction: 'Reconcile canonical rows'
           }
         },
+        driftAssessment: {
+          primaryIssue: {
+            key: 'propagation_expansion',
+            state: 'stale',
+            reason: '2 propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.',
+            recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
+          },
+          signals: [
+            {
+              key: 'propagation_expansion',
+              state: 'stale',
+              reason: '2 propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.',
+              recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
+            }
+          ]
+        },
         folderization: {
           creationGuidance: {
             guidance: 'Reuse the current folderized family'
@@ -185,6 +201,8 @@ describe('compiler-health-dashboard', () => {
     expect(dashboard.toolTelemetry.totalRuns).toBe(10);
     expect(dashboard.toolTelemetry.repairRateOnPressure).toBe(0.86);
     expect(dashboard.recommendations.length).toBeGreaterThan(0);
+    expect(dashboard.recommendations.some((item) => item.source === 'propagationExpansion')).toBe(true);
+    expect(dashboard.health.propagationExpansionState).toBe('stale');
     expect(dashboard.archive.daily.capturedAt).toBe('2026-03-30T01:38:18.819Z');
     expect(dashboard.archive.lifetime.daysObserved).toBe(12);
     expect(dashboard.archive.lifetime.firstCapturedAt).toBe('2026-03-01T00:00:00.000Z');
@@ -195,6 +213,7 @@ describe('compiler-health-dashboard', () => {
     expect(compact.health.globalHealthScore).toBe(93);
     expect(compact.health.reliabilityGrade).toBe('B+');
     expect(compact.health.successScore).toBe(91);
+    expect(compact.health.propagationExpansionState).toBe('stale');
     expect(compact.trend.velocityPerDay).toBe(1.5);
     expect(compact.regressors.length).toBeGreaterThan(0);
     expect(compact.recentErrors.errors).toBe(0);

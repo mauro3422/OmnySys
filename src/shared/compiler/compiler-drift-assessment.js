@@ -26,6 +26,7 @@ function policySignal(policySummary = {}) {
   const medium = normalizeCount(policySummary.medium);
   const byPolicyArea = policySummary.byPolicyArea || {};
   const dataGateway = normalizeCount(byPolicyArea.data_gateway);
+  const propagationExpansion = normalizeCount(byPolicyArea.propagation_expansion);
   const liveRowDrift = normalizeCount(byPolicyArea.live_row_drift);
   const watcherDiagnostics = normalizeCount(byPolicyArea.watcher_diagnostics);
   const semanticSurface = normalizeCount(byPolicyArea.semantic_surface_granularity);
@@ -37,12 +38,48 @@ function policySignal(policySummary = {}) {
   if (medium > 0 || liveRowDrift > 0 || watcherDiagnostics > 0 || semanticSurface > 0 || fileUniverse > 0) {
     const reason = liveRowDrift > 0 ? `${liveRowDrift} live_row_drift policy finding(s) still route drift checks through manual SQL or local heuristics.`
       : watcherDiagnostics > 0 ? `${watcherDiagnostics} watcher_diagnostics policy finding(s) still compose watcher reconciliation inline.`
+      : propagationExpansion > 0 ? `${propagationExpansion} propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.`
       : semanticSurface > 0 ? `${semanticSurface} semantic_surface_granularity policy finding(s) still mix file-level and atom-level semantic surfaces.`
       : fileUniverse > 0 ? `${fileUniverse} file_universe_granularity policy finding(s) still treat scanned, persisted and live file universes as interchangeable.`
       : `${medium} medium-severity policy finding(s) remain active.`;
-    return signal({ ...base, state: 'stale', healthy: false, trustworthy: false, severity: 'medium', reason, recommendation: 'Reduce policy drift in existing canonical families before adding more heuristics.' });
+    return signal({ ...base, state: 'stale', healthy: false, trustworthy: false, severity: 'medium', reason, recommendation: propagationExpansion > 0 ? 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.' : 'Reduce policy drift in existing canonical families before adding more heuristics.' });
   }
   return signal({ ...base, state: 'partial', healthy: false, trustworthy: false, severity: 'low', reason: `${total} low-signal policy finding(s) remain active.`, recommendation: 'Prefer the canonical shared helpers before adding more ad hoc heuristics.' });
+}
+
+function propagationExpansionSignal(policySummary = {}) {
+  const total = normalizeCount(policySummary.total);
+  const byPolicyArea = policySummary.byPolicyArea || {};
+  const count = normalizeCount(byPolicyArea.propagation_expansion);
+  const base = {
+    key: 'propagation_expansion',
+    label: 'Propagation expansion',
+    sourceOfTruth: 'watcher/tool propagation contract',
+    evidence: policySummary,
+    counts: { total, count, byPolicyArea }
+  };
+
+  if (count === 0) {
+    return signal({
+      ...base,
+      state: 'fresh',
+      healthy: true,
+      trustworthy: true,
+      severity: 'low',
+      reason: 'No propagation expansion drift detected.',
+      recommendation: 'Keep watcher and tool surfaces attached to the canonical propagation engine.'
+    });
+  }
+
+  return signal({
+    ...base,
+    state: 'stale',
+    healthy: false,
+    trustworthy: false,
+    severity: 'medium',
+    reason: `${count} propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.`,
+    recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
+  });
 }
 
 function analysisGenerationSignal(analysisGeneration = null) {
@@ -141,6 +178,7 @@ export function buildCompilerDriftAssessment({
   fileUniverseGranularity = null
 } = {}) {
   const signals = [
+    propagationExpansionSignal(policySummary || {}),
     policySignal(policySummary || {}),
     paritySignal(metadataSurfaceParity),
     extractionSignal(metadataExtractionCoverage),

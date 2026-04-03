@@ -21,6 +21,8 @@ export function buildSystemTableSummary(status = {}) {
   const toolInventory = compactToolInventory(status.toolInventory) || {};
   const recentErrorSummary = status.recentErrors?.summary || {};
   const updateSurface = buildUpdateSurfaceSummary(status);
+  const propagationExpansion = status.compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
+    || (status.compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? status.compilerExplainability.driftAssessment.primaryIssue : null);
   const structuralGroups = normalizeCount(current.structuralGroups);
   const conceptualGroups = normalizeCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
@@ -76,6 +78,12 @@ export function buildSystemTableSummary(status = {}) {
         state: current.driftState || current.activeAtomsDriftState || 'n/a',
         detail: `drift=${normalizeCount(current.driftScore)} | blockers=${(current.behaviorGateSummary?.blockedBy || current.behaviorBlockers || []).slice(0, 2).map((item) => item.gate || 'gate').join(',') || 'none'} | readiness=${current.readinessReason || 'n/a'}`,
         source: 'drift assessment'
+      },
+      {
+        area: 'Propagation',
+        state: propagationExpansion?.state || 'fresh',
+        detail: `signal=${propagationExpansion?.state || 'fresh'} | reason=${propagationExpansion?.reason || 'canonical propagation is attached'} | next=${propagationExpansion?.recommendation || 'n/a'}`,
+        source: 'compiler drift assessment'
       },
       {
         area: 'Debt',

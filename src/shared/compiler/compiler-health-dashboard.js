@@ -26,6 +26,8 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
   const history = normalized.history || {};
   const watcherAlerts = Array.isArray(options.watcherAlerts) ? options.watcherAlerts : [];
   const recentErrors = options.recentErrors || null;
+  const propagationExpansion = compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
+    || (compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? compilerExplainability.driftAssessment.primaryIssue : null);
   const signalRows = buildSignalRows(trend.deltaSinceBaseline || {});
   const toolTelemetry = mapToolTelemetry(current.toolTelemetry);
   const pipelineTimingTelemetry = mapPipelineTimingTelemetry(current.pipelineTimingTelemetry);
@@ -82,6 +84,9 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       successScore: asNumber(current.successScore, 0),
       behaviorState: current.behaviorState || null,
       clientSyncState: current.clientSyncState || null,
+      propagationExpansionState: propagationExpansion?.state || null,
+      propagationExpansionReason: propagationExpansion?.reason || null,
+      propagationExpansionRecommendation: propagationExpansion?.recommendation || null,
       summary: current.summaryText || trend.summary || null
     },
     lifetime: normalized.healthArchive ? {
@@ -147,6 +152,9 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       clientSyncSeverity: current.clientSyncSeverity || null,
       clientSyncReason: current.clientSyncReason || null,
       clientSyncRecommendation: current.clientSyncRecommendation || null,
+      propagationExpansionState: propagationExpansion?.state || null,
+      propagationExpansionReason: propagationExpansion?.reason || null,
+      propagationExpansionRecommendation: propagationExpansion?.recommendation || null,
       activeAtomsDelta: asNumber(current.activeAtomsDelta, 0),
       activeAtomsDeltaPct: asNumber(current.activeAtomsDeltaPct, 0)
     },

@@ -279,6 +279,10 @@ export {
 } from './metadata-propagation-conformance.js';
 
 export {
+  detectPropagationExpansionConformanceFromSource
+} from './propagation-expansion-conformance.js';
+
+export {
   detectSummaryConformanceFromSource
 } from './summary-conformance.js';
 

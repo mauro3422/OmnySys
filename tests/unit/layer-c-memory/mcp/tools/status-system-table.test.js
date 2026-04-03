@@ -54,6 +54,19 @@ describe('status system table', () => {
           ],
           primaryBehaviorBlocker: {
             gate: 'drift_assessment'
+          },
+          propagationExpansionState: 'stale',
+          propagationExpansionReason: '2 propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.',
+          propagationExpansionRecommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
+        }
+      },
+      compilerExplainability: {
+        driftAssessment: {
+          primaryIssue: {
+            key: 'propagation_expansion',
+            state: 'stale',
+            reason: '2 propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.',
+            recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
           }
         }
       },
@@ -149,6 +162,15 @@ describe('status system table', () => {
     expect(behaviorRow.detail).toContain('primary=drift_assessment');
     expect(behaviorRow.detail).toContain('reason=blocked');
 
+    const propagationRow = summary.rows.find((row) => row.area === 'Propagation');
+    expect(propagationRow).toMatchObject({
+      area: 'Propagation',
+      state: 'stale',
+      source: 'compiler drift assessment'
+    });
+    expect(propagationRow.detail).toContain('signal=stale');
+    expect(propagationRow.detail).toContain('propagation_expansion policy finding');
+
     const updateRow = summary.rows.find((row) => row.area === 'Update');
     expect(updateRow).toMatchObject({
       area: 'Update',
@@ -171,6 +193,7 @@ describe('status system table', () => {
       'Update',
       'Behavior',
       'Drift',
+      'Propagation',
       'Debt',
       'Sessions',
       'Tools',

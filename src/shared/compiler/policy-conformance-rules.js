@@ -9,6 +9,7 @@ import { detectSemanticPurityConformanceFromSource } from './semantic-purity-con
 import { detectMetadataPropagationConformanceFromSource } from './metadata-propagation-conformance.js';
 import { detectSemanticSurfaceGranularityConformanceFromSource } from './semantic-surface-granularity-conformance.js';
 import { detectSummaryConformanceFromSource } from './summary-conformance.js';
+import { detectPropagationExpansionConformanceFromSource } from './propagation-expansion-conformance.js';
 
 export function collectConformanceFindings(normalizedPath, source) {
   const conformanceDetectors = [
@@ -22,6 +23,7 @@ export function collectConformanceFindings(normalizedPath, source) {
     [detectSemanticPurityConformanceFromSource, 'semantic_purity'],
     [detectMetadataPropagationConformanceFromSource, 'metadata_propagation'],
     [detectSemanticSurfaceGranularityConformanceFromSource, 'semantic_surface_granularity'],
+    [detectPropagationExpansionConformanceFromSource, 'propagation_expansion'],
     [detectSummaryConformanceFromSource, 'summary_presentation']
   ];
 

@@ -94,10 +94,112 @@ describe('compiler drift assessment', () => {
       status: 'stable',
       healthy: true,
       trustworthy: true,
-      total: 10,
-      fresh: 10,
+      total: 11,
+      fresh: 11,
       partial: 0,
       stale: 0,
+      missing: 0,
+      blocked: 0
+    });
+  });
+
+  it('flags propagation expansion drift when watcher or tool surfaces omit the canonical plan', () => {
+    const assessment = buildCompilerDriftAssessment({
+      analysisGeneration: {
+        drift: { status: 'stable', recommendation: 'ok' },
+        counts: { files: 1, atoms: 1, relations: 1, semanticConnections: 1, derivedFeatures: 1 }
+      },
+      policySummary: {
+        total: 1,
+        high: 0,
+        medium: 1,
+        byPolicyArea: { propagation_expansion: 1 }
+      },
+      metadataSurfaceParity: { healthy: true, trustworthy: true, summary: 'parity' },
+      metadataExtractionCoverage: {
+        summary: {
+          healthy: true,
+          trustworthy: true,
+          nextAction: 'ok',
+          totalTables: 1,
+          totalRows: 1,
+          totalFields: 1,
+          coveredFields: 1,
+          emptyFields: 0,
+          partialFields: 0,
+          coveragePct: 100,
+          fieldCoveragePct: 100
+        }
+      },
+      dataGatewayContract: {
+        summary: {
+          total: 1,
+          fresh: 1,
+          partial: 0,
+          stale: 0,
+          missing: 0,
+          blocked: 0,
+          trustworthy: true,
+          nextAction: 'ok',
+          primaryIssue: null
+        }
+      },
+      databaseHealth: {
+        healthy: true,
+        healthScore: 95,
+        summary: 'db healthy',
+        criticalFindings: [],
+        warnings: [],
+        recommendations: [],
+        metrics: {}
+      },
+      liveRowSync: {
+        summary: {
+          staleAtomRows: 0,
+          staleFileRows: 0,
+          staleRiskRows: 0,
+          staleRelationRows: 0,
+          staleConnectionRows: 0
+        },
+        phase2PendingFiles: 0,
+        synchronized: true,
+        hadDrift: false
+      },
+      systemMapPersistenceCoverage: {
+        healthy: true,
+        summary: 'ok',
+        filesTotal: 1,
+        activeFiles: 1,
+        systemFilesTotal: 1,
+        fileDependenciesTotal: 1
+      },
+      semanticSurfaceGranularity: {
+        healthy: true,
+        summary: 'ok',
+        materiallyDrifting: false
+      },
+      fileUniverseGranularity: {
+        healthy: true,
+        contract: { trustworthy: true },
+        scannedFileTotal: 1,
+        manifestFileTotal: 1,
+        liveFileCount: 1,
+        zeroAtomFileCount: 0
+      }
+    });
+
+    expect(assessment.status).toBe('drifting');
+    expect(assessment.healthy).toBe(false);
+    expect(assessment.summary.primaryIssue.key).toBe('propagation_expansion');
+    expect(assessment.issues[0].key).toBe('propagation_expansion');
+    expect(summarizeCompilerDriftAssessment(assessment)).toMatchObject({
+      status: 'drifting',
+      healthy: false,
+      trustworthy: false,
+      total: 11,
+      fresh: 9,
+      partial: 0,
+      stale: 2,
       missing: 0,
       blocked: 0
     });

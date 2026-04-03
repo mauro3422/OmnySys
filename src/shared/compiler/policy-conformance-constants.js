@@ -23,6 +23,7 @@ export const COMPILER_POLICY_AREA = {
   METADATA_PROPAGATION: 'metadata_propagation',
   SEMANTIC_SURFACE_GRANULARITY: 'semantic_surface_granularity',
   SUMMARY_PRESENTATION: 'summary_presentation',
+  PROPAGATION_EXPANSION: 'propagation_expansion',
   WATCHER_DIAGNOSTICS: 'watcher_diagnostics',
   WATCHER_LIFECYCLE: 'watcher_lifecycle',
   CANONICAL_BYPASS: 'canonical_bypass'

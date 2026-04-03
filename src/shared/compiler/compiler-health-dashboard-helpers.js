@@ -72,6 +72,11 @@ function buildRecommendations(snapshot = {}, compilerExplainability = {}) {
   push(compilerExplainability?.compilerContractLayer?.summary?.nextAction, 'compilerContractLayer');
   push(compilerExplainability?.metadataExtractionCoverage?.summary?.nextAction, 'metadataExtractionCoverage');
   push(compilerExplainability?.dataGatewayContract?.summary?.nextAction, 'dataGatewayContract');
+  push(
+    compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.recommendation
+      || compilerExplainability?.driftAssessment?.primaryIssue?.recommendation,
+    'propagationExpansion'
+  );
   push(compilerExplainability?.folderization?.creationGuidance?.guidance, 'folderization');
   push(snapshot?.current?.clientSyncRecommendation, 'clientSync');
   push(snapshot?.current?.pipelineTimingTelemetry?.summary, 'pipelineTiming');
