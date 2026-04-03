@@ -98,6 +98,28 @@ export function compactCreationGuidance(creationGuidance = null) {
   };
 }
 
+export function compactPropagation(propagation = null) {
+  if (!propagation) return null;
+  return {
+    decision: propagation.decision || null,
+    mode: propagation.mode || null,
+    moveTargetCount: propagation.moveTargetCount || 0,
+    impactedFileCount: propagation.impactedFileCount || 0,
+    rewriteCount: propagation.rewriteCount || 0,
+    renameTargetCount: propagation.renameTargetCount || 0,
+    validationTargetCount: propagation.validationTargetCount || 0,
+    hasCrossFamilyPropagation: propagation.hasCrossFamilyPropagation || false,
+    topImpactedFiles: takeSample(propagation.topImpactedFiles || [], 3),
+    topCandidates: takeSample(propagation.topCandidates || [], 3),
+    candidateCount: propagation.candidateCount || 0,
+    flatFamilies: propagation.flatFamilies || 0,
+    mixedFamilies: propagation.mixedFamilies || 0,
+    alreadyFolderizedFamilies: propagation.alreadyFolderizedFamilies || 0,
+    guidance: propagation.guidance || null,
+    recommendationStrategy: propagation.recommendationStrategy || null
+  };
+}
+
 export function compactFolderization(folderization = null) {
   if (!folderization) return null;
   return {
@@ -107,6 +129,7 @@ export function compactFolderization(folderization = null) {
     naming: compactNaming(folderization.naming),
     namingPatterns: compactNamingPatterns(folderization.namingPatterns),
     creationGuidance: compactCreationGuidance(folderization.creationGuidance),
+    propagation: compactPropagation(folderization.propagation),
     namingDebt: folderization.namingDebt ? {
       familyCount: folderization.namingDebt.familyCount,
       renameTargetCount: folderization.namingDebt.renameTargetCount,

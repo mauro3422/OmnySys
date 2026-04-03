@@ -189,6 +189,67 @@ function buildFolderizationRecommendation({
   return buildEmptyRecommendation();
 }
 
+function buildFolderizationPropagationSummary({
+  candidateReport,
+  familyState,
+  migrationPlans,
+  naming,
+  creationGuidance,
+  recommendation,
+  decision
+}) {
+  const focusPlan = migrationPlans?.focusCandidate || null;
+  const importImpact = focusPlan?.importImpact || null;
+  const moveTargets = Array.isArray(focusPlan?.moveTargets) ? focusPlan.moveTargets : [];
+  const impactedFiles = Array.isArray(importImpact?.impactedFiles) ? importImpact.impactedFiles : [];
+  const topImpactedFiles = impactedFiles.slice(0, 5).map((item) => ({
+    filePath: item.filePath || null,
+    importCount: Number(item.importCount || 0),
+    matchedImports: Array.isArray(item.matchedImports) ? item.matchedImports.slice(0, 5) : [],
+    dependencyCount: Number(item.dependencyCount || item.importCount || 0)
+  }));
+  const topCandidates = Array.isArray(migrationPlans?.candidates)
+    ? migrationPlans.candidates.slice(0, 5).map((plan) => ({
+        familyRoot: plan?.candidate?.familyRoot || null,
+        directory: plan?.candidate?.directory || null,
+        decision: plan?.decision || null,
+        moveTargetCount: Array.isArray(plan?.moveTargets) ? plan.moveTargets.length : 0,
+        impactedFileCount: Number(plan?.importImpact?.impactedFileCount || 0),
+        rewriteCount: Number(plan?.importImpact?.rewriteCount || 0)
+      }))
+    : [];
+  const moveTargetCount = moveTargets.length;
+  const impactedFileCount = Number(importImpact?.impactedFileCount || 0);
+  const rewriteCount = Number(importImpact?.rewriteCount || 0);
+  const renameTargetCount = Number(naming?.renameTargetCount || 0);
+  const validationTargetCount = moveTargetCount + impactedFileCount + (focusPlan?.candidate?.barrelFile ? 1 : 0);
+
+  return {
+    decision: decision || focusPlan?.decision || 'reject',
+    mode: focusPlan?.decision === 'approve'
+      ? 'move_and_rewrite'
+      : focusPlan?.decision === 'review'
+        ? 'review'
+        : focusPlan?.decision === 'already_folderized'
+          ? 'rename_only'
+          : 'blocked',
+    moveTargetCount,
+    impactedFileCount,
+    rewriteCount,
+    renameTargetCount,
+    validationTargetCount,
+    hasCrossFamilyPropagation: impactedFileCount > 0 || rewriteCount > 0,
+    topImpactedFiles,
+    topCandidates,
+    candidateCount: Number(candidateReport?.candidateCount || 0),
+    flatFamilies: Number(familyState?.stateCounts?.flat || 0),
+    mixedFamilies: Number(familyState?.stateCounts?.mixed || 0),
+    alreadyFolderizedFamilies: Number(familyState?.stateCounts?.already_folderized || 0),
+    guidance: creationGuidance?.guidance || null,
+    recommendationStrategy: recommendation?.strategy || null
+  };
+}
+
 function buildFolderizationSummary({
   candidateReport,
   familyState,
@@ -198,7 +259,8 @@ function buildFolderizationSummary({
   creationGuidance,
   decision,
   recommendation,
-  drift
+  drift,
+  propagation
 }) {
   return {
     candidateCount: candidateReport?.candidateCount || 0,
@@ -212,6 +274,11 @@ function buildFolderizationSummary({
     guidanceFocusPath: creationGuidance?.focusPath || null,
     focusDecision: migrationPlans?.focusCandidate?.decision || decision || 'reject',
     recommendationStrategy: recommendation?.strategy || null,
+    propagationMoveTargets: propagation?.moveTargetCount || 0,
+    propagationImpactedFiles: propagation?.impactedFileCount || 0,
+    propagationRewriteCount: propagation?.rewriteCount || 0,
+    propagationValidationTargets: propagation?.validationTargetCount || 0,
+    propagationMode: propagation?.mode || 'blocked',
     driftState: drift?.state || 'fresh',
     driftScore: drift?.score || 0,
     driftReason: drift?.reason || null,
@@ -389,6 +456,15 @@ function buildFolderizationReport({
     naming,
     recommendation
   });
+  const propagation = buildFolderizationPropagationSummary({
+    candidateReport,
+    familyState,
+    migrationPlans,
+    naming,
+    creationGuidance,
+    recommendation,
+    decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject'
+  });
   const summary = buildFolderizationSummary({
     candidateReport,
     familyState,
@@ -398,7 +474,8 @@ function buildFolderizationReport({
     creationGuidance,
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     recommendation,
-    drift
+    drift,
+    propagation
   });
 
   return {
@@ -409,6 +486,7 @@ function buildFolderizationReport({
     naming,
     namingPatterns: namingPatterns || null,
     creationGuidance,
+    propagation,
     scopePath: creationGuidance.scopePath || null,
     focusPath: creationGuidance.focusPath || null,
     focusCandidate: focusCandidate || null,
@@ -492,6 +570,24 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
         familyExamples: [],
         guidance: 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.'
       },
+      propagation: {
+        decision: 'reject',
+        mode: 'blocked',
+        moveTargetCount: 0,
+        impactedFileCount: 0,
+        rewriteCount: 0,
+        renameTargetCount: 0,
+        validationTargetCount: 0,
+        hasCrossFamilyPropagation: false,
+        topImpactedFiles: [],
+        topCandidates: [],
+        candidateCount: 0,
+        flatFamilies: 0,
+        mixedFamilies: 0,
+        alreadyFolderizedFamilies: 0,
+        guidance: null,
+        recommendationStrategy: null
+      },
       scopePath: null,
       focusPath: null,
       focusCandidate: null,
@@ -509,7 +605,12 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
         guidanceScopePath: null,
         guidanceFocusPath: null,
         focusDecision: 'reject',
-        recommendationStrategy: null
+        recommendationStrategy: null,
+        propagationMoveTargets: 0,
+        propagationImpactedFiles: 0,
+        propagationRewriteCount: 0,
+        propagationValidationTargets: 0,
+        propagationMode: 'blocked'
       }
     };
   }

@@ -90,6 +90,24 @@ describe('folderization-snapshot-service', () => {
         scopePath: 'src/core/file-watcher/guards',
         focusPath: 'src/core/file-watcher/guards/dead-code/guard.js'
       },
+      propagation: {
+        decision: 'review',
+        mode: 'move_and_rewrite',
+        moveTargetCount: 2,
+        impactedFileCount: 3,
+        rewriteCount: 4,
+        renameTargetCount: 6,
+        validationTargetCount: 5,
+        hasCrossFamilyPropagation: true,
+        topImpactedFiles: [{ filePath: 'src/core/file-watcher/guards/dead-code/index.js', importCount: 2 }],
+        topCandidates: [{ familyRoot: 'dead-code', decision: 'review', moveTargetCount: 2, impactedFileCount: 3, rewriteCount: 4 }],
+        candidateCount: 2,
+        flatFamilies: 3,
+        mixedFamilies: 1,
+        alreadyFolderizedFamilies: 5,
+        guidance: 'Use the nearest folderized family',
+        recommendationStrategy: 'folderization'
+      },
       recommendation: { strategy: 'folderization' },
       decision: 'review',
       summary: {
@@ -102,7 +120,12 @@ describe('folderization-snapshot-service', () => {
         namingPatternCounts: { helper: 2 },
         guidanceScopePath: 'src/core/file-watcher/guards',
         guidanceFocusPath: 'src/core/file-watcher/guards/dead-code/guard.js',
-        recommendationStrategy: 'folderization'
+        recommendationStrategy: 'folderization',
+        propagationMoveTargets: 2,
+        propagationImpactedFiles: 3,
+        propagationRewriteCount: 4,
+        propagationValidationTargets: 5,
+        propagationMode: 'move_and_rewrite'
       }
     });
     mocks.buildEmptyFolderizationReport.mockReturnValue({
@@ -159,6 +182,8 @@ describe('folderization-snapshot-service', () => {
     expect(result.snapshot.summary.nextBestFolder).toBe('src/core/file-watcher/guards/dead-code');
     expect(result.snapshot.summary.nextBestStem).toBe('core.js');
     expect(result.snapshot.folderization.creationGuidance.guidance).toContain('folderized family');
+    expect(result.snapshot.folderization.propagation.impactedFileCount).toBe(3);
+    expect(result.snapshot.folderization.propagation.rewriteCount).toBe(4);
     expect(result.databaseHealth.healthScore).toBe(73);
     expect(result.history).toHaveLength(2);
     expect(result.trend.status).toBe('improving');

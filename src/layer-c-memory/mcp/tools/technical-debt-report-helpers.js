@@ -105,13 +105,13 @@ export function buildTechnicalDebtPriorityActions(data) {
         .filter((plan) => plan?.decision === 'approve')
         .slice(0, 5);
     folderizableFamilies.forEach((plan) => {
-        actions.push({
-            priority: 'high',
-            type: 'folderization_candidate',
-            action: `Folderize ${plan.candidate?.familyRoot || 'family'} into ${plan.candidate?.recommendedFolder || 'dedicated folder'}`,
-            impact: `Requires ${plan.moveTargets?.length || 0} moves and ${plan.importImpact?.rewriteCount || 0} rewrites`,
-            urgencyScore: (plan.candidate?.confidence || 0) + (plan.importImpact?.rewriteCount || 0)
-        });
+      actions.push({
+        priority: 'high',
+        type: 'folderization_candidate',
+        action: `Folderize ${plan.candidate?.familyRoot || 'family'} into ${plan.candidate?.recommendedFolder || 'dedicated folder'}`,
+        impact: `Requires ${plan.moveTargets?.length || 0} moves, ${plan.importImpact?.rewriteCount || 0} rewrites and affects ${plan.importImpact?.impactedFileCount || 0} dependent file(s)`,
+        urgencyScore: (plan.candidate?.confidence || 0) + (plan.importImpact?.rewriteCount || 0)
+      });
     });
 
     const mixedFamilies = folderizationFamilyState?.topFamilies

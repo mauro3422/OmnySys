@@ -182,6 +182,7 @@ export function buildTechnicalDebtReportResult({
     naming: folderizationReport.naming,
     namingPatterns: folderizationReport.namingPatterns,
     creationGuidance: folderizationReport.creationGuidance,
+    propagation: folderizationReport.propagation || null,
     namingDebt: {
       familyCount: folderizationReport.naming?.familyCount || 0,
       renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,
