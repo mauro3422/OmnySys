@@ -107,6 +107,21 @@ function buildWhereToCache({ current = {}, daily = null, lifetime = null, toolTe
 
   return [
     {
+      surface: 'folderization propagation / propagation-engine',
+      layer: 'persistent-snapshot',
+      strategy: 'fingerprint cache',
+      cacheKey: 'projectPath + scopePath + focusPath + propagationCacheKey',
+      invalidateOn: [
+        'move target change',
+        'impacted file change',
+        'rewrite target change',
+        'drift change'
+      ],
+      why: 'Propagation is a derived change plan, so repeated callers should reuse the same plan until the folderization fingerprint changes.',
+      priority: 'high',
+      freshEnough: stableSnapshot
+    },
+    {
       surface: 'technical_debt_report',
       layer: 'persistent-snapshot',
       strategy: 'fingerprint cache',

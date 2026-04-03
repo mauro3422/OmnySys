@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildPropagationPlan,
+  buildPropagationCacheKey,
+  clearPropagationPlanCache,
+  getPropagationPlanCacheEntry,
+  setPropagationPlanCacheEntry,
   summarizePropagationPlan
 } from '../../../../src/shared/compiler/propagation-engine.js';
 
@@ -60,5 +64,38 @@ describe('propagation-engine', () => {
       rewriteCount: 4
     });
     expect(summary.connectedSystems).toHaveLength(2);
+  });
+
+  it('stores and reuses cached propagation plans', () => {
+    clearPropagationPlanCache();
+    const cacheKey = buildPropagationCacheKey({
+      changeType: 'folderization',
+      decision: 'review',
+      moveTargetCount: 2,
+      impactedFileCount: 3,
+      rewriteCount: 4,
+      connectedSystems: [{ name: 'folderization' }]
+    });
+    const plan = buildPropagationPlan({
+      changeType: 'folderization',
+      decision: 'review',
+      moveTargetCount: 2,
+      impactedFileCount: 3,
+      rewriteCount: 4,
+      cacheKey
+    });
+
+    const entry = setPropagationPlanCacheEntry(cacheKey, plan);
+    const cached = getPropagationPlanCacheEntry(cacheKey);
+
+    expect(entry.cacheKey).toBe(cacheKey);
+    expect(cached.plan).toMatchObject({
+      changeType: 'folderization',
+      decision: 'review',
+      moveTargetCount: 2,
+      impactedFileCount: 3,
+      rewriteCount: 4,
+      cacheKey
+    });
   });
 });

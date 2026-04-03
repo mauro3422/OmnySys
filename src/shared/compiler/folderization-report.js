@@ -18,7 +18,10 @@ import {
   findBestFolderizedFamilyForPaths
 } from './directory-structure-folderization-naming.js';
 import {
-  buildPropagationPlan
+  buildPropagationCacheKey,
+  buildPropagationPlan,
+  getPropagationPlanCacheEntry,
+  setPropagationPlanCacheEntry
 } from './propagation-engine.js';
 
 function normalizeFocusPaths(filePaths = []) {
@@ -227,8 +230,10 @@ function buildFolderizationPropagationSummary({
   const rewriteCount = Number(importImpact?.rewriteCount || 0);
   const renameTargetCount = Number(naming?.renameTargetCount || 0);
   const validationTargetCount = moveTargetCount + impactedFileCount + (focusPlan?.candidate?.barrelFile ? 1 : 0);
-  return buildPropagationPlan({
+  const cacheKey = buildPropagationCacheKey({
     changeType: 'folderization',
+    scopePath: creationGuidance?.scopePath || null,
+    focusPath: creationGuidance?.focusPath || null,
     decision: decision || focusPlan?.decision || 'reject',
     mode: focusPlan?.decision === 'approve'
       ? 'move_and_rewrite'
@@ -253,6 +258,46 @@ function buildFolderizationPropagationSummary({
     recommendationStrategy: recommendation?.strategy || null,
     drift
   });
+  const cachedEntry = getPropagationPlanCacheEntry(cacheKey);
+  if (cachedEntry?.plan) {
+    return {
+      ...cachedEntry.plan,
+      cacheKey,
+      cacheHit: true
+    };
+  }
+
+  const plan = buildPropagationPlan({
+    changeType: 'folderization',
+    cacheKey,
+    scopePath: creationGuidance?.scopePath || null,
+    focusPath: creationGuidance?.focusPath || null,
+    decision: decision || focusPlan?.decision || 'reject',
+    mode: focusPlan?.decision === 'approve'
+      ? 'move_and_rewrite'
+      : focusPlan?.decision === 'review'
+        ? 'review'
+        : focusPlan?.decision === 'already_folderized'
+          ? 'rename_only'
+          : 'blocked',
+    moveTargetCount,
+    impactedFileCount,
+    rewriteCount,
+    renameTargetCount,
+    validationTargetCount,
+    hasCrossFamilyPropagation: impactedFileCount > 0 || rewriteCount > 0,
+    topImpactedFiles,
+    topCandidates,
+    candidateCount: Number(candidateReport?.candidateCount || 0),
+    flatFamilies: Number(familyState?.stateCounts?.flat || 0),
+    mixedFamilies: Number(familyState?.stateCounts?.mixed || 0),
+    alreadyFolderizedFamilies: Number(familyState?.stateCounts?.already_folderized || 0),
+    guidance: creationGuidance?.guidance || null,
+    recommendationStrategy: recommendation?.strategy || null,
+    drift
+  });
+  const stored = setPropagationPlanCacheEntry(cacheKey, plan);
+  return stored?.plan || plan;
 }
 
 function buildFolderizationSummary({
@@ -280,6 +325,8 @@ function buildFolderizationSummary({
     focusDecision: migrationPlans?.focusCandidate?.decision || decision || 'reject',
     recommendationStrategy: recommendation?.strategy || null,
     propagationChangeType: propagation?.changeType || 'folderization',
+    propagationCacheKey: propagation?.cacheKey || null,
+    propagationCacheHit: Boolean(propagation?.cacheHit),
     propagationMoveTargets: propagation?.moveTargetCount || 0,
     propagationImpactedFiles: propagation?.impactedFileCount || 0,
     propagationRewriteCount: propagation?.rewriteCount || 0,
@@ -581,6 +628,8 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
       propagation: {
         decision: 'reject',
         mode: 'blocked',
+        cacheKey: null,
+        cacheHit: false,
         moveTargetCount: 0,
         impactedFileCount: 0,
         rewriteCount: 0,
@@ -618,7 +667,9 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
         propagationImpactedFiles: 0,
         propagationRewriteCount: 0,
         propagationValidationTargets: 0,
-        propagationMode: 'blocked'
+        propagationMode: 'blocked',
+        propagationCacheKey: null,
+        propagationCacheHit: false
       }
     };
   }

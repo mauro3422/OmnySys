@@ -40,5 +40,11 @@ describe('folderization-report', () => {
     expect(report.creationGuidance.collisionPolicy).toContain('suffix');
     expect(report.summary.guidanceScopePath).toBe('src/core/file-watcher/guards/impact-wave');
     expect(report.summary.guidanceFocusPath).toBe('src/core/file-watcher/guards/impact-wave');
+    expect(report.propagation).toMatchObject({
+      changeType: 'folderization',
+      cacheHit: false,
+      mode: expect.any(String)
+    });
+    expect(report.propagation.cacheKey).toBeTruthy();
   });
 });

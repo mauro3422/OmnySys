@@ -4,6 +4,11 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a shared propagation engine that computes a reusable plan for folderization changes, including cache keys, connected systems, move targets, impacted files, rewrites, and validation targets.
+- Gave the propagation plan an in-memory cache contract so repeated callers can reuse the same derived plan while the underlying folderization fingerprint remains stable.
+- Rewired folderization report generation to read and write the shared propagation cache instead of maintaining a one-off local propagation shape.
+- Surfaced propagation cache keys and cache-hit state through folderization explainability so the live dashboard can show when a plan was reused versus recomputed.
+- Declared folderization propagation as a first-class cacheable surface in the cache policy summary, alongside the other derived snapshot tiers.
 - Added a shared propagation engine so folderization changes now derive a single propagation plan with connected systems, move targets, impacted files, rewrites, and validation targets from one canonical place.
 - Rewired `folderization-report` to build propagation through the shared engine instead of maintaining a local propagation shape.
 - Preserved the propagation signal in compiler explainability compactors so the live dashboard can surface connected systems and change scope consistently.

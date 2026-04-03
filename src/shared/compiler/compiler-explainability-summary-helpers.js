@@ -102,6 +102,8 @@ export function compactPropagation(propagation = null) {
   if (!propagation) return null;
   return {
     changeType: propagation.changeType || 'folderization',
+    cacheKey: propagation.cacheKey || null,
+    cacheHit: Boolean(propagation.cacheHit),
     decision: propagation.decision || null,
     mode: propagation.mode || null,
     moveTargetCount: propagation.moveTargetCount || 0,
@@ -118,6 +120,8 @@ export function compactPropagation(propagation = null) {
     alreadyFolderizedFamilies: propagation.alreadyFolderizedFamilies || 0,
     guidance: propagation.guidance || null,
     recommendationStrategy: propagation.recommendationStrategy || null,
+    scopePath: propagation.scopePath || null,
+    focusPath: propagation.focusPath || null,
     connectedSystems: takeSample(propagation.connectedSystems || [], 8)
   };
 }
