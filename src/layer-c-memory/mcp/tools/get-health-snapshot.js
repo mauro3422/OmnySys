@@ -38,6 +38,8 @@ export async function get_health_snapshot(args, context) {
       trend: result.snapshot.trend,
       oneLine: result.healthPanel?.oneLine || null,
       compilerExplainability: result.compilerExplainability ? {
+        policySummary: result.compilerExplainability.policySummary || null,
+        standardization: result.compilerExplainability.standardization || null,
         databaseHealth: result.compilerExplainability.databaseHealth || null,
         folderization: result.compilerExplainability.folderization || null,
         dataGatewayContract: result.compilerExplainability.dataGatewayContract || null,

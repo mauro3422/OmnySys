@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Exposed `policySummary` and `standardization` in the health snapshot response so the remaining compiler explainability debt can be surfaced in the live dashboard instead of being hidden by a narrow projection.
 - Split the compiler explainability policy, standardization, and contract-layer compactors into dedicated shared modules while keeping the explainability summary as a thin wrapper.
 - Split the canonical compiler explainability summary into shared compact helpers so policy, standardization, contract, drift, metadata, and folderization projections now live behind a thin wrapper.
 - Slimmed the technical-debt cache persistence path and centralized snapshot-path normalization into shared compiler helpers so the last hot warning clears while keeping fingerprinted persistence intact.
