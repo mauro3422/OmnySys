@@ -374,6 +374,10 @@ export {
   buildTopologyRegressionPropagationPlan,
   buildSemanticCoveragePropagationPlan,
   buildPolicyDriftPropagationPlan,
+  buildPipelineHealthPropagationPlan,
+  buildPipelineOrphanPropagationPlan,
+  buildDuplicateRiskPropagationPlan,
+  buildIntegrityGuardPropagationPlan,
   buildPropagationPlan,
   summarizePropagationPlan
 } from './propagation-engine.js';

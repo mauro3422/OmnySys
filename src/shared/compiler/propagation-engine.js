@@ -78,6 +78,62 @@ function buildConnectedSystems(changeType = 'folderization') {
     ];
   }
 
+  if (changeType === 'pipeline_health') {
+    return [
+      { name: 'pipeline_health_guard', role: 'evidence' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' }
+    ];
+  }
+
+  if (changeType === 'pipeline_orphan') {
+    return [
+      { name: 'pipeline_orphan_guard', role: 'evidence' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' },
+      { name: 'semantic_persistence', role: 'storage' }
+    ];
+  }
+
+  if (changeType === 'duplicate_risk_remediation') {
+    return [
+      { name: 'duplicate_risk_remediation', role: 'evidence' },
+      { name: 'folderization', role: 'structure' },
+      { name: 'rename_folderized_family', role: 'normalizer' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' }
+    ];
+  }
+
+  if (changeType === 'integrity_guard') {
+    return [
+      { name: 'integrity_guard', role: 'evidence' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'semantic_persistence', role: 'storage' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' }
+    ];
+  }
+
   if (changeType === 'rename') {
     return [
       { name: 'rename_folderized_family', role: 'planner' },
@@ -119,6 +175,24 @@ function buildPropagationMode(changeType, decision, mode = null) {
   }
 
   if (changeType === 'policy_drift') {
+    if (decision === 'reject') return 'alert_only';
+    if (decision === 'approve') return 'alert_and_recommend';
+    return 'alert_and_review';
+  }
+
+  if (changeType === 'pipeline_health' || changeType === 'pipeline_orphan') {
+    if (decision === 'reject') return 'alert_only';
+    if (decision === 'approve') return 'alert_and_recommend';
+    return 'alert_and_review';
+  }
+
+  if (changeType === 'duplicate_risk_remediation') {
+    if (decision === 'reject') return 'recommend_only';
+    if (decision === 'approve') return 'remediate_and_rewrite';
+    return 'recommend_and_review';
+  }
+
+  if (changeType === 'integrity_guard') {
     if (decision === 'reject') return 'alert_only';
     if (decision === 'approve') return 'alert_and_recommend';
     return 'alert_and_review';
@@ -170,6 +244,10 @@ function normalizeChangeSpecificKeyFields(input = {}) {
     findingCount: Number(input.findingCount || 0),
     ruleCount: Number(input.ruleCount || 0),
     policyAreaCount: Number(input.policyAreaCount || 0),
+    warningCount: Number(input.warningCount || 0),
+    orphanCount: Number(input.orphanCount || 0),
+    duplicateCount: Number(input.duplicateCount || 0),
+    violationCount: Number(input.violationCount || 0),
     impactedFileCount: Number(input.impactedFileCount || 0),
     rewriteCount: Number(input.rewriteCount || 0)
   };
@@ -415,12 +493,160 @@ export function buildPolicyDriftPropagationPlan(input = {}) {
   });
 }
 
+export function buildPipelineHealthPropagationPlan(input = {}) {
+  const severity = input.severity || 'medium';
+  const decision = input.decision || 'review';
+  const mode = input.mode || 'alert_and_review';
+  const warningCount = Number(input.warningCount || 0);
+  const impactedFileCount = Number(input.impactedFileCount || 1);
+  const connectedSystems = Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
+    ? input.connectedSystems
+    : buildConnectedSystems('pipeline_health');
+
+  return buildPropagationPlan({
+    ...input,
+    changeType: 'pipeline_health',
+    severity,
+    decision,
+    mode,
+    guidance: input.guidance || 'Surface pipeline health issues to watcher persistence, technical debt, and health snapshots before trusting the indexed graph.',
+    recommendationStrategy: input.recommendationStrategy || 'pipeline_health',
+    impactedFileCount,
+    rewriteCount: Number(input.rewriteCount || warningCount),
+    validationTargetCount: Number(input.validationTargetCount || warningCount + impactedFileCount),
+    hasCrossFamilyPropagation: input.hasCrossFamilyPropagation ?? warningCount > 0,
+    topImpactedFiles: input.topImpactedFiles || [{ filePath: input.focusPath || null }],
+    topCandidates: input.topCandidates || [],
+    candidateCount: Number(input.candidateCount || warningCount),
+    flatFamilies: Number(input.flatFamilies || 0),
+    mixedFamilies: Number(input.mixedFamilies || (warningCount > 0 ? 1 : 0)),
+    alreadyFolderizedFamilies: Number(input.alreadyFolderizedFamilies || 0),
+    drift: input.drift || {
+      state: warningCount > 0 ? 'watch' : 'stable',
+      reason: warningCount > 0 ? 'pipeline health warnings present' : 'no pipeline health warnings'
+    },
+    connectedSystems
+  });
+}
+
+export function buildPipelineOrphanPropagationPlan(input = {}) {
+  const severity = input.severity || 'medium';
+  const decision = input.decision || 'review';
+  const mode = input.mode || 'alert_and_review';
+  const orphanCount = Number(input.orphanCount || 0);
+  const impactedFileCount = Number(input.impactedFileCount || 1);
+  const connectedSystems = Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
+    ? input.connectedSystems
+    : buildConnectedSystems('pipeline_orphan');
+
+  return buildPropagationPlan({
+    ...input,
+    changeType: 'pipeline_orphan',
+    severity,
+    decision,
+    mode,
+    guidance: input.guidance || 'Route orphan findings to watcher persistence, semantic storage, and debt consumers before trusting pipeline connectivity.',
+    recommendationStrategy: input.recommendationStrategy || 'pipeline_orphan',
+    impactedFileCount,
+    rewriteCount: Number(input.rewriteCount || orphanCount),
+    validationTargetCount: Number(input.validationTargetCount || orphanCount + impactedFileCount),
+    hasCrossFamilyPropagation: input.hasCrossFamilyPropagation ?? orphanCount > 0,
+    topImpactedFiles: input.topImpactedFiles || [{ filePath: input.focusPath || null }],
+    topCandidates: input.topCandidates || [],
+    candidateCount: Number(input.candidateCount || orphanCount),
+    flatFamilies: Number(input.flatFamilies || 0),
+    mixedFamilies: Number(input.mixedFamilies || (orphanCount > 0 ? 1 : 0)),
+    alreadyFolderizedFamilies: Number(input.alreadyFolderizedFamilies || 0),
+    drift: input.drift || {
+      state: orphanCount > 0 ? 'watch' : 'stable',
+      reason: orphanCount > 0 ? 'pipeline orphan evidence present' : 'no pipeline orphan evidence'
+    },
+    connectedSystems
+  });
+}
+
+export function buildDuplicateRiskPropagationPlan(input = {}) {
+  const severity = input.severity || 'medium';
+  const decision = input.decision || 'review';
+  const mode = input.mode || 'recommend_and_review';
+  const duplicateCount = Number(input.duplicateCount || 0);
+  const impactedFileCount = Number(input.impactedFileCount || duplicateCount || 1);
+  const connectedSystems = Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
+    ? input.connectedSystems
+    : buildConnectedSystems('duplicate_risk_remediation');
+
+  return buildPropagationPlan({
+    ...input,
+    changeType: 'duplicate_risk_remediation',
+    severity,
+    decision,
+    mode,
+    guidance: input.guidance || 'Route duplicate remediation through folderization, renaming, debt reporting, and cache policy before mutating families.',
+    recommendationStrategy: input.recommendationStrategy || 'duplicate_risk_remediation',
+    impactedFileCount,
+    rewriteCount: Number(input.rewriteCount || duplicateCount),
+    validationTargetCount: Number(input.validationTargetCount || duplicateCount + impactedFileCount),
+    hasCrossFamilyPropagation: input.hasCrossFamilyPropagation ?? duplicateCount > 0,
+    topImpactedFiles: input.topImpactedFiles || [{ filePath: input.focusPath || null }],
+    topCandidates: input.topCandidates || [],
+    candidateCount: Number(input.candidateCount || duplicateCount),
+    flatFamilies: Number(input.flatFamilies || 0),
+    mixedFamilies: Number(input.mixedFamilies || (duplicateCount > 0 ? 1 : 0)),
+    alreadyFolderizedFamilies: Number(input.alreadyFolderizedFamilies || 0),
+    drift: input.drift || {
+      state: duplicateCount > 0 ? 'watch' : 'stable',
+      reason: duplicateCount > 0 ? 'duplicate risk evidence present' : 'no duplicate risk evidence'
+    },
+    connectedSystems
+  });
+}
+
+export function buildIntegrityGuardPropagationPlan(input = {}) {
+  const severity = input.severity || 'medium';
+  const decision = input.decision || 'review';
+  const mode = input.mode || 'alert_and_review';
+  const violationCount = Number(input.violationCount || 0);
+  const impactedFileCount = Number(input.impactedFileCount || 1);
+  const connectedSystems = Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
+    ? input.connectedSystems
+    : buildConnectedSystems('integrity_guard');
+
+  return buildPropagationPlan({
+    ...input,
+    changeType: 'integrity_guard',
+    severity,
+    decision,
+    mode,
+    guidance: input.guidance || 'Surface integrity violations to watcher persistence, semantic storage, and drift governance before trusting data-flow coherence.',
+    recommendationStrategy: input.recommendationStrategy || 'integrity_guard',
+    impactedFileCount,
+    rewriteCount: Number(input.rewriteCount || violationCount),
+    validationTargetCount: Number(input.validationTargetCount || violationCount + impactedFileCount),
+    hasCrossFamilyPropagation: input.hasCrossFamilyPropagation ?? violationCount > 0,
+    topImpactedFiles: input.topImpactedFiles || [{ filePath: input.focusPath || null }],
+    topCandidates: input.topCandidates || [],
+    candidateCount: Number(input.candidateCount || violationCount),
+    flatFamilies: Number(input.flatFamilies || 0),
+    mixedFamilies: Number(input.mixedFamilies || (violationCount > 0 ? 1 : 0)),
+    alreadyFolderizedFamilies: Number(input.alreadyFolderizedFamilies || 0),
+    drift: input.drift || {
+      state: violationCount > 0 ? 'watch' : 'stable',
+      reason: violationCount > 0 ? 'integrity violation evidence present' : 'no integrity violation evidence'
+    },
+    connectedSystems
+  });
+}
+
 export default {
   buildPropagationCacheKey,
   buildImpactWavePropagationPlan,
   buildTopologyRegressionPropagationPlan,
   buildSemanticCoveragePropagationPlan,
   buildPolicyDriftPropagationPlan,
+  buildPipelineHealthPropagationPlan,
+  buildPipelineOrphanPropagationPlan,
+  buildDuplicateRiskPropagationPlan,
+  buildIntegrityGuardPropagationPlan,
   buildPropagationPlan,
   clearPropagationPlanCache,
   getPropagationPlanCacheEntry,

@@ -4,6 +4,10 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Connected pipeline-health issue builders to the shared propagation engine so shadow-volume, zero-atom, and slow-analysis issues now carry a cacheable propagation summary.
+- Connected pipeline-orphan reporting payloads to the shared propagation engine so orphan findings now propagate into watcher persistence and downstream consumers.
+- Connected duplicate-risk remediation contexts to the shared propagation engine so duplicate finding clusters now expose propagation guidance for folderization and renaming.
+- Connected integrity-guard data-flow violations to the shared propagation engine so low-coherence and unused-input findings now include propagation coverage.
 - Connected `impact-wave` to the shared propagation engine so file-guard alerts now carry a cacheable propagation plan alongside the evidence.
 - Connected topology-regression and semantic-coverage guards to the shared propagation engine so their persisted watcher issues and emitted events now include propagation summaries.
 - Connected compiler policy drift reporting to the shared propagation engine so governance findings now propagate into the shared cache, status, and explainability surfaces.

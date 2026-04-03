@@ -2,9 +2,28 @@ import {
     createStandardContext,
     StandardThresholds
 } from '../guard-standards.js';
+import {
+    buildIntegrityGuardPropagationPlan,
+    summarizePropagationPlan
+} from '../../../../shared/compiler/index.js';
 
 function buildLowCoherenceViolation(atom, analysis) {
     const severity = analysis.coherence < 0.1 ? 'high' : 'medium';
+    const propagation = summarizePropagationPlan(buildIntegrityGuardPropagationPlan({
+        severity,
+        scopePath: atom.filePath || null,
+        focusPath: atom.filePath || null,
+        violationCount: 1,
+        impactedFileCount: 1,
+        rewriteCount: 1,
+        topCandidates: [{ name: atom.name, filePath: atom.filePath || null }],
+        guidance: 'Route data-flow coherence violations through watcher persistence, semantic storage, and drift governance before trusting the atom graph.',
+        recommendationStrategy: 'integrity_guard',
+        drift: {
+            state: analysis.coherence < 0.1 ? 'watch' : 'stable',
+            reason: `coherence ${analysis.coherence}`
+        }
+    }));
 
     return {
         atomId: atom.id,
@@ -29,13 +48,30 @@ function buildLowCoherenceViolation(atom, analysis) {
                 coherence: analysis.coherence,
                 inputs: analysis.inputs?.length || 0,
                 outputs: analysis.outputs?.length || 0,
-                transformationCount: analysis.transformations?.length || 0
+                transformationCount: analysis.transformations?.length || 0,
+                propagation
             }
         })
     };
 }
 
 function buildUnusedInputsViolation(atom, analysis, inputNames) {
+    const propagation = summarizePropagationPlan(buildIntegrityGuardPropagationPlan({
+        severity: 'low',
+        scopePath: atom.filePath || null,
+        focusPath: atom.filePath || null,
+        violationCount: 1,
+        impactedFileCount: 1,
+        rewriteCount: inputNames.length,
+        topCandidates: [{ name: atom.name, filePath: atom.filePath || null }],
+        guidance: 'Route unused-input violations through watcher persistence, semantic storage, and drift governance before trusting the atom graph.',
+        recommendationStrategy: 'integrity_guard',
+        drift: {
+            state: inputNames.length > 0 ? 'watch' : 'stable',
+            reason: inputNames.length > 0 ? 'unused inputs detected' : 'no unused inputs'
+        }
+    }));
+
     return {
         atomId: atom.id,
         atomName: atom.name,
@@ -55,7 +91,8 @@ function buildUnusedInputsViolation(atom, analysis, inputNames) {
             ],
             extraData: {
                 unusedInputs: inputNames,
-                inputCount: analysis.inputs?.length || 0
+                inputCount: analysis.inputs?.length || 0,
+                propagation
             }
         })
     };

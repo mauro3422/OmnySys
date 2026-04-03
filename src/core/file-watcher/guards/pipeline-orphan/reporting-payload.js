@@ -1,4 +1,8 @@
 import { createIssueType, IssueDomains, createStandardContext, StandardSuggestions } from '../guard-standards.js';
+import {
+    buildPipelineOrphanPropagationPlan,
+    summarizePropagationPlan
+} from '../../../../shared/compiler/index.js';
 
 export function buildPipelineOrphanReportPayload({
     disconnected,
@@ -8,6 +12,25 @@ export function buildPipelineOrphanReportPayload({
 }) {
     const issueType = createIssueType(IssueDomains.ARCH, 'pipeline_orphan', severity);
     const message = `Detected ${disconnected.length} exported pipeline atom(s) with no callers, no callees, and no file-level import evidence`;
+    const propagation = summarizePropagationPlan(buildPipelineOrphanPropagationPlan({
+        severity,
+        scopePath: null,
+        focusPath: null,
+        orphanCount: disconnected.length,
+        impactedFileCount: disconnected.length > 0 ? 1 : 0,
+        rewriteCount: disconnected.length,
+        candidateCount: disconnected.length,
+        topCandidates: disconnected.slice(0, 5).map((atom) => ({
+            name: atom.name,
+            filePath: atom.filePath || null
+        })),
+        guidance: 'Route pipeline orphan propagation to watcher persistence, semantic storage, and debt consumers before trusting export reachability.',
+        recommendationStrategy: 'pipeline_orphan',
+        drift: {
+            state: disconnected.length > 0 ? 'watch' : 'stable',
+            reason: disconnected.length > 0 ? 'orphaned pipeline atoms detected' : 'no orphaned pipeline atoms detected'
+        }
+    }));
 
     const context = createStandardContext({
         guardName: 'pipeline-orphan-guard',
@@ -27,6 +50,7 @@ export function buildPipelineOrphanReportPayload({
                 suspiciousDeadCandidates: deadCodeSummary.suspiciousDeadCandidates,
                 hasCoverageGap: deadCodeSummary.hasCoverageGap
             } : null,
+            propagation,
             disconnectedAtoms: disconnected.slice(0, 10).map((atom) => ({
                 name: atom.name,
                 complexity: atom.complexity || 0,
@@ -38,6 +62,7 @@ export function buildPipelineOrphanReportPayload({
     return {
         issueType,
         message,
-        context
+        context,
+        propagation
     };
 }
