@@ -85,6 +85,14 @@ describe('status summary payload', () => {
         legacySystemCount: 0,
         nextAction: 'Promote runtime boundary checks into a canonical API.'
       },
+      canonicalPromotion: {
+        promotionState: 'ready',
+        candidateCount: 3,
+        folderizedFamilyCount: 1,
+        emergentCandidateCount: 2,
+        canonicalCandidateCount: 0,
+        nextAction: 'Promote the strongest emergent surface into a canonical API.'
+      },
       mcpSessions: {
         totalPersistentActive: 2,
         totalPersistent: 4,
@@ -101,6 +109,7 @@ describe('status summary payload', () => {
 
     expect(payload).toHaveProperty('updateSurface');
     expect(payload).toHaveProperty('systemInventory');
+    expect(payload).toHaveProperty('canonicalPromotion');
     expect(payload.updateSurface).toMatchObject({
       state: 'synced',
       source: 'atom/function update pipeline'
@@ -109,6 +118,11 @@ describe('status summary payload', () => {
       inventoryState: 'watching',
       canonicalSurfaceCount: 12,
       canonicalEntrypointCount: 4
+    });
+    expect(payload.canonicalPromotion).toMatchObject({
+      promotionState: 'ready',
+      candidateCount: 3,
+      folderizedFamilyCount: 1
     });
     expect(payload.propagation).toMatchObject({
       cacheKey: 'folderization:abc123',
@@ -136,6 +150,16 @@ describe('status summary payload', () => {
     expect(systemsRow.detail).toContain('emergent=2');
     expect(systemsRow.detail).toContain('bridge=1');
 
+    const promotionRow = payload.systemTable.rows.find((row) => row.area === 'Promotion');
+    expect(promotionRow).toMatchObject({
+      area: 'Promotion',
+      state: 'ready',
+      source: 'canonical promotion'
+    });
+    expect(promotionRow.detail).toContain('candidates=3');
+    expect(promotionRow.detail).toContain('folder=1');
+    expect(promotionRow.detail).toContain('emergent=2');
+
     expect(payload.systemTable.rows.map((row) => row.area)).toEqual([
       'Daemon',
       'Database',
@@ -148,6 +172,7 @@ describe('status summary payload', () => {
       'Sessions',
       'Tools',
       'Systems',
+      'Promotion',
       'Cache',
       'Watcher',
       'Errors'

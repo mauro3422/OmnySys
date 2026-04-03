@@ -37,10 +37,13 @@ export async function get_system_inventory_report(args, context) {
       summary: result.systemInventory?.summaryText || result.systemInventory?.summary?.summaryText || null,
       topSystems: result.systemInventory?.topSystems || [],
       promotionCandidates: result.systemInventory?.topPromotionCandidates || [],
+      canonicalPromotionDetail: result.canonicalPromotionDetail || null,
+      canonicalPromotion: result.canonicalPromotion || null,
       tooling: result.systemInventory?.tooling || null,
       compilerExplainability: result.compilerExplainability ? {
         standardization: result.compilerExplainability.standardization || null,
         compilerContractLayer: result.compilerExplainability.compilerContractLayer || null,
+        canonicalPromotion: result.compilerExplainability.canonicalPromotion || null,
         surfaceAudit: result.compilerExplainability.surfaceAudit || null,
         driftAssessment: result.compilerExplainability.driftAssessment || null
       } : null

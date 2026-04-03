@@ -140,6 +140,23 @@ export const adminToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_get_canonical_promotion_report',
+    description: 'Returns the canonical promotion plan for folderized families and emergent surfaces, combining system inventory and folderization evidence into a reusable contract.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scopePath: { type: 'string', description: 'Scope contextual para elegir la familia o dominio mÃ¡s cercano' },
+        focusPath: { type: 'string', description: 'Focus contextual para afinar la guÃ­a y la comparaciÃ³n' },
+        snapshotKind: { type: 'string', enum: ['manual', 'status', 'dashboard', 'promotion'], default: 'promotion', description: 'Tipo de snapshot a capturar' },
+        compareDays: { type: 'number', default: 3, description: 'Ventana en dÃ­as para comparar tendencia' },
+        historyLimit: { type: 'number', default: 12, description: 'Cantidad mÃ¡xima de snapshots devueltos en el history' },
+        persist: { type: 'boolean', default: true, description: 'Si es true, guarda la snapshot en SQLite' },
+        limit: { type: 'number', default: 5, description: 'Cantidad mÃ¡xima de candidatos de promociÃ³n a incluir' }
+      },
+      required: []
+    }
+  },
+  {
     name: 'mcp_omnysystem_list_tools',
     description: 'Returns the canonical MCP tool inventory grouped by query, action, and admin categories, using the registry as the source of truth.',
     inputSchema: {

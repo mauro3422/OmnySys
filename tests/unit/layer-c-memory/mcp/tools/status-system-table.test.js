@@ -198,6 +198,7 @@ describe('status system table', () => {
       'Sessions',
       'Tools',
       'Systems',
+      'Promotion',
       'Cache',
       'Watcher',
       'Errors'

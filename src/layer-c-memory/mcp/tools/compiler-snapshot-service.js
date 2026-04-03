@@ -10,6 +10,8 @@ import {
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
   buildCompilerMetricsSnapshot,
+  buildCanonicalPromotionReport,
+  buildCanonicalPromotionSnapshot,
   buildCompilerSystemInventoryReport,
   buildCompilerSystemInventorySnapshot,
   summarizeCompilerMetricsSnapshot,
@@ -47,7 +49,15 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     limit: 10
   });
   const systemInventory = buildCompilerSystemInventoryReport(systemInventoryDetail);
+  const canonicalPromotionDetail = buildCanonicalPromotionSnapshot({
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    systemInventory
+  });
+  const canonicalPromotion = buildCanonicalPromotionReport(canonicalPromotionDetail);
   compilerExplainability.systemInventory = systemInventoryDetail;
+  compilerExplainability.canonicalPromotion = canonicalPromotionDetail;
   const governanceAlerts = buildGovernanceAlerts({
     compilerExplainability,
     source: 'snapshot'
@@ -60,6 +70,7 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     repo,
     compilerExplainability,
     systemInventory,
+    canonicalPromotion,
     watcherAlerts: mergedNotifications.watcherAlerts || [],
     recentErrors,
     scopePath: args?.scopePath || null,
@@ -73,7 +84,10 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
   });
   snapshot.systemInventoryDetail = systemInventoryDetail;
   snapshot.systemInventory = systemInventory;
+  snapshot.canonicalPromotionDetail = canonicalPromotionDetail;
+  snapshot.canonicalPromotion = canonicalPromotion;
   snapshot.current.systemInventory = systemInventory;
+  snapshot.current.canonicalPromotion = canonicalPromotion;
 
   const compactSnapshot = summarizeCompilerMetricsSnapshot(snapshot);
   const healthDashboard = buildCompilerHealthDashboard(snapshot, compilerExplainability, {
@@ -83,6 +97,8 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
   });
   healthDashboard.systemInventory = systemInventory;
   healthDashboard.systemInventoryDetail = systemInventoryDetail;
+  healthDashboard.canonicalPromotion = canonicalPromotion;
+  healthDashboard.canonicalPromotionDetail = canonicalPromotionDetail;
   const healthPanel = buildCompilerHealthPanel(healthDashboard);
 
   return {
@@ -97,6 +113,8 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     compactSnapshot,
     systemInventory,
     systemInventoryDetail,
+    canonicalPromotion,
+    canonicalPromotionDetail,
     healthDashboard,
     healthPanel
   };

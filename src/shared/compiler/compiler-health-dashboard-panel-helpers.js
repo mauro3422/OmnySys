@@ -24,6 +24,7 @@ export function buildPanelSections(panel = {}) {
     performance: panel.performance || null,
     tools: panel.tools || null,
     systemInventory: panel.systemInventory || null,
+    canonicalPromotion: panel.canonicalPromotion || null,
     metricDictionary: panel.metricDictionary || null,
     archive: panel.archive || null
   };

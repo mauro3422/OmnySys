@@ -34,7 +34,9 @@ export async function get_metrics_snapshot(args, context) {
       summary: result.snapshot.summary,
       history: result.snapshot.history,
       trend: result.snapshot.trend,
-      systemInventory: result.systemInventory || null
+      systemInventory: result.systemInventory || null,
+      canonicalPromotionDetail: result.canonicalPromotionDetail || null,
+      canonicalPromotion: result.canonicalPromotion || null
     };
   } catch (error) {
     logger.error(`[Tool] get_metrics_snapshot failed: ${error.message}`);

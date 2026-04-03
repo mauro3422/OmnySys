@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a canonical promotion layer above folderization so folderized families and emergent system surfaces can be evaluated for promotion into canonical APIs without moving files inside the same tool.
+- Surfaced canonical promotion in the metrics snapshot, health dashboard, status payload, and status table so the runtime can show when a family is ready to become a canonical surface.
+- Added a dedicated `mcp_omnysystem_get_canonical_promotion_report` tool to combine system inventory with folderization evidence and produce a reusable promotion plan.
 - Added a canonical system inventory layer so the compiler health stack can classify canonical surfaces, emergent systems, bridges, wrappers, and promotion candidates in one reusable report.
 - Surfaced system inventory in the metrics snapshot, health dashboard, status payload, and status table so the runtime can show system centrality alongside tool inventory and cache policy.
 - Surfaced folderization propagation in the compiler health dashboard tool telemetry so the derived plan is visible in the same collection that reports tool noise and cache policy.

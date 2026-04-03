@@ -109,6 +109,12 @@ export function buildSystemTableSummary(status = {}) {
         detail: `canonical=${normalizeCount((status.systemInventory?.canonicalSurfaceCount || status.systemInventory?.summary?.canonicalSurfaceCount || 0) + (status.systemInventory?.canonicalEntrypointCount || status.systemInventory?.summary?.canonicalEntrypointCount || 0))} | emergent=${normalizeCount(status.systemInventory?.emergentSystemCount || status.systemInventory?.summary?.emergentSystemCount)} | bridge=${normalizeCount(status.systemInventory?.bridgeSystemCount || status.systemInventory?.summary?.bridgeSystemCount)} | wrapper=${normalizeCount(status.systemInventory?.wrapperSystemCount || status.systemInventory?.summary?.wrapperSystemCount)} | audit=${status.systemInventory?.surfaceAuditTrustworthy === true ? 'ok' : 'watching'} | gateway=${status.systemInventory?.dataGatewayTrustworthy === true ? 'ok' : 'watching'} | meta=${normalizeCount(status.systemInventory?.metadataCoveragePct || status.systemInventory?.summary?.metadataCoveragePct)}% | next=${status.systemInventory?.nextAction || status.systemInventory?.summary?.nextAction || 'n/a'}`,
         source: 'system inventory'
       },
+      {
+        area: 'Promotion',
+        state: status.canonicalPromotion?.promotionState || status.canonicalPromotion?.summary?.promotionState || 'watching',
+        detail: `candidates=${normalizeCount(status.canonicalPromotion?.candidateCount || status.canonicalPromotion?.summary?.candidateCount || 0)} | folder=${normalizeCount(status.canonicalPromotion?.folderizedFamilyCount || status.canonicalPromotion?.summary?.folderizedFamilyCount || 0)} | emergent=${normalizeCount(status.canonicalPromotion?.emergentCandidateCount || status.canonicalPromotion?.summary?.emergentCandidateCount || 0)} | canonical=${normalizeCount(status.canonicalPromotion?.canonicalCandidateCount || status.canonicalPromotion?.summary?.canonicalCandidateCount || 0)} | next=${status.canonicalPromotion?.nextAction || status.canonicalPromotion?.summary?.nextAction || 'n/a'}`,
+        source: 'canonical promotion'
+      },
       ...(status.cachePolicy ? [
         {
           area: 'Cache',

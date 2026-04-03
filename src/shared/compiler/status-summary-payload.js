@@ -30,6 +30,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
   const healthPanel = compactCompilerHealthPanelSummary(status.healthPanel);
   const toolInventory = compactToolInventory(status.toolInventory);
   const systemInventory = status.systemInventory || status.healthSnapshot?.systemInventory || status.metricsSnapshot?.systemInventory || null;
+  const canonicalPromotion = status.canonicalPromotion || status.healthSnapshot?.canonicalPromotion || status.metricsSnapshot?.canonicalPromotion || null;
   const updateSurface = buildUpdateSurfaceSummary(status);
   const cachePolicy = buildCachePolicySummary({
     recentErrors,
@@ -117,6 +118,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     healthPanel,
     systemTable,
     systemInventory,
+    canonicalPromotion,
     cachePolicy,
     toolInventory,
     updateSurface,

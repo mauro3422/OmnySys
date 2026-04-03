@@ -5,6 +5,7 @@ import { get_health_snapshot } from './get-health-snapshot.js';
 import { get_health_panel } from './get-health-panel.js';
 import { get_folderization_snapshot } from './get-folderization-snapshot.js';
 import { get_system_inventory_report } from './get-system-inventory.js';
+import { get_canonical_promotion_report } from './get-canonical-promotion-report.js';
 import { restart_server } from './restart-server.js';
 import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
@@ -20,6 +21,7 @@ export const adminToolHandlers = {
   mcp_omnysystem_get_health_panel: get_health_panel,
   mcp_omnysystem_get_folderization_snapshot: get_folderization_snapshot,
   mcp_omnysystem_get_system_inventory_report: get_system_inventory_report,
+  mcp_omnysystem_get_canonical_promotion_report: get_canonical_promotion_report,
   mcp_omnysystem_get_tool_inventory_report: get_tool_inventory_report,
   mcp_omnysystem_list_tools: list_tools,
   mcp_omnysystem_get_recent_errors: get_recent_errors,

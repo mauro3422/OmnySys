@@ -34,7 +34,8 @@ function mapHealthSummaryConnectionSignals(current = {}) {
 
 function mapHealthSummaryFolderizationSignals(current = {}) {
   return {
-    folderizationPropagation: current.folderizationPropagation || null
+    folderizationPropagation: current.folderizationPropagation || null,
+    canonicalPromotion: current.canonicalPromotion || null
   };
 }
 
@@ -109,6 +110,7 @@ export function mapMetricsSummary(current = {}, pipelineTimingTelemetry = null) 
     metadataFieldCoveragePct: asNumber(current.metadataFieldCoveragePct, 0),
     dataGatewayTrustworthy: current.dataGatewayTrustworthy === true,
     systemInventory: current.systemInventory || null,
+    canonicalPromotion: current.canonicalPromotion || null,
     pipelineTimingTelemetry
   };
 }
@@ -172,6 +174,7 @@ export function buildHealthPanelNowSummary(now = {}) {
     clientSyncReason: now.clientSyncReason || null,
     clientSyncRecommendation: now.clientSyncRecommendation || null,
     folderizationPropagation: now.folderizationPropagation || null,
+    canonicalPromotion: now.canonicalPromotion || null,
     propagationExpansionState: now.propagationExpansionState || null,
     propagationExpansionReason: now.propagationExpansionReason || null,
     propagationExpansionRecommendation: now.propagationExpansionRecommendation || null,
@@ -188,6 +191,7 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     `trend=${compact.trend?.status || 'missing'}:${compact.trend?.velocityPerDay || 0}/day`,
     `dbsync=${now.activeAtomsDriftState || 'missing'}`,
     now.folderizationPropagation?.decision ? `folderprop=${now.folderizationPropagation.decision}` : null,
+    now.canonicalPromotion?.promotionState ? `promotion=${now.canonicalPromotion.promotionState}:${now.canonicalPromotion.candidateCount || 0}` : null,
     now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
     compact.systemInventory ? `systems=${compact.systemInventory.inventoryState || 'watching'}:${compact.systemInventory.totalSystemCount || 0}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,
@@ -234,6 +238,7 @@ function buildDashboardCollectionsSummary(dashboard = {}) {
     sessions: mapSessionsSummary(dashboard),
     toolTelemetry: dashboard.toolTelemetry ? { ...dashboard.toolTelemetry } : null,
     systemInventory: dashboard.systemInventory || null,
+    canonicalPromotion: dashboard.canonicalPromotion || null,
     metricDictionary: dashboard.metricDictionary || null,
     pipelineTimingTelemetry: dashboard.pipelineTimingTelemetry || null
   };

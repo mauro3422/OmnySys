@@ -8,6 +8,8 @@ import {
   buildCompilerMetricsSnapshot,
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
+  buildCanonicalPromotionReport,
+  buildCanonicalPromotionSnapshot,
   buildCompilerToolInventorySnapshot,
   buildCompilerToolInventoryReport,
   buildCompilerSystemInventoryReport,
@@ -142,7 +144,15 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     limit: 10
   });
   const systemInventory = buildCompilerSystemInventoryReport(systemInventoryDetail);
+  const canonicalPromotionDetail = buildCanonicalPromotionSnapshot({
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    systemInventory
+  });
+  const canonicalPromotion = buildCanonicalPromotionReport(canonicalPromotionDetail);
   compilerExplainability.systemInventory = systemInventoryDetail;
+  compilerExplainability.canonicalPromotion = canonicalPromotionDetail;
   const governanceAlerts = buildGovernanceAlerts({
     compilerExplainability,
     source: 'status'
@@ -173,6 +183,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     recentErrors,
     mcpSessionSummary: sessionSummary,
     systemInventory,
+    canonicalPromotion,
     scopePath: args?.scopePath || null,
     focusPath: args?.focusPath || null,
     captureSource: 'status.runtime',
@@ -181,8 +192,11 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.metricsSnapshot = metricsSnapshot;
   status.metricsSnapshot.systemInventory = systemInventory;
   status.metricsSnapshot.systemInventoryDetail = systemInventoryDetail;
+  status.metricsSnapshot.canonicalPromotion = canonicalPromotion;
+  status.metricsSnapshot.canonicalPromotionDetail = canonicalPromotionDetail;
   if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
     status.metricsSnapshot.current.systemInventory = systemInventory;
+    status.metricsSnapshot.current.canonicalPromotion = canonicalPromotion;
   }
   status.healthSnapshot = buildCompilerHealthDashboard(metricsSnapshot, compilerExplainability, {
     watcherAlerts: mergedNotifications.watcherAlerts || [],
@@ -191,6 +205,8 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   });
   status.healthSnapshot.systemInventory = systemInventory;
   status.healthSnapshot.systemInventoryDetail = systemInventoryDetail;
+  status.healthSnapshot.canonicalPromotion = canonicalPromotion;
+  status.healthSnapshot.canonicalPromotionDetail = canonicalPromotionDetail;
   status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
   status.toolInventory = {
     snapshot: toolInventorySnapshot,
@@ -198,6 +214,8 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   };
   status.systemInventory = systemInventory;
   status.systemInventoryDetail = systemInventoryDetail;
+  status.canonicalPromotion = canonicalPromotion;
+  status.canonicalPromotionDetail = canonicalPromotionDetail;
   return {
     repo,
     recentErrors

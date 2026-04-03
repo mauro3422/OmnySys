@@ -56,6 +56,7 @@ export function buildCurrentMetrics({
   snapshotKind = 'status',
   compilerExplainability = null,
   systemInventory = null,
+  canonicalPromotion = null,
   repo = null,
   watcherAlerts = [],
   recentErrors = null,
@@ -141,6 +142,7 @@ export function buildCurrentMetrics({
     clientSyncRecommendation: mcpSessionSummary?.clientSyncRecommendation || null,
     clientSyncEvidence: mcpSessionSummary?.clientSyncEvidence || null,
     systemInventory: systemInventory || null,
+    canonicalPromotion: canonicalPromotion || null,
     folderizationDecision: folderization?.decision || null,
     folderizationPropagation: compactFolderizationPropagation(folderization?.propagation || null),
     driftState: behavior.driftState,
@@ -179,6 +181,9 @@ export function buildCurrentMetrics({
     `issues=${current.issueCount}`,
     `dups=${current.structuralGroups + current.conceptualGroups}`,
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
+    current.canonicalPromotion?.promotionState
+      ? `promotion=${current.canonicalPromotion.promotionState}:${current.canonicalPromotion.candidateCount || 0}`
+      : null,
     current.folderizationPropagation?.decision
       ? `propagation=${current.folderizationPropagation.decision}`
       : null,

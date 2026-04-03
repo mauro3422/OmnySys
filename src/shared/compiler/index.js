@@ -163,6 +163,12 @@ export {
 } from './system-inventory-summary.js';
 
 export {
+  buildCanonicalPromotionSnapshot,
+  buildCanonicalPromotionReport,
+  summarizeCanonicalPromotion
+} from './canonical-promotion-summary.js';
+
+export {
   buildCompilerLayerReliability
 } from './compiler-metric-reliability.js';
 
