@@ -77,6 +77,13 @@ function buildRecommendations(snapshot = {}, compilerExplainability = {}) {
       || compilerExplainability?.driftAssessment?.primaryIssue?.recommendation,
     'propagationExpansion'
   );
+  push(
+    compilerExplainability?.systemInventory?.summary?.summaryText
+      || compilerExplainability?.systemInventory?.summary?.nextAction
+      || compilerExplainability?.systemInventory?.summaryText
+      || compilerExplainability?.systemInventory?.nextAction,
+    'systemInventory'
+  );
   push(compilerExplainability?.folderization?.creationGuidance?.guidance, 'folderization');
   push(snapshot?.current?.clientSyncRecommendation, 'clientSync');
   push(snapshot?.current?.pipelineTimingTelemetry?.summary, 'pipelineTiming');
@@ -163,6 +170,7 @@ export function buildCompilerHealthPanel(dashboard = null) {
     metrics: compact.metrics || null,
     sessions: compact.sessions || null,
     toolTelemetry: tools || null,
+    systemInventory: compact.systemInventory || null,
     metricDictionary: compact.metricDictionary || null,
     archive: context.snapshots.archive || null,
     pipelineTimingTelemetry: compact.pipelineTimingTelemetry || null,

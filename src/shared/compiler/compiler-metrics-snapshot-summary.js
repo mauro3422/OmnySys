@@ -143,7 +143,8 @@ function summarizeCompactCurrentConnections(current = {}) {
 function summarizeCompactCurrentTelemetry(current = {}) {
   return {
     pipelineTimingTelemetry: summarizeCompactPipelineTimingTelemetry(current.pipelineTimingTelemetry),
-    toolTelemetry: summarizeCompactToolTelemetry(current.toolTelemetry)
+    toolTelemetry: summarizeCompactToolTelemetry(current.toolTelemetry),
+    systemInventory: current.systemInventory || null
   };
 }
 
@@ -231,6 +232,7 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
     lifetime,
     archive,
     propagation: current?.folderizationPropagation || null,
+    systemInventory: snapshot.systemInventory || snapshot.systemInventoryReport || current?.systemInventory || null,
     current: summarizeCompactCurrentSnapshot(snapshot.current),
     trend: summarizeCompactTrend(snapshot.trend),
     history: summarizeCompactHistory(snapshot.history),

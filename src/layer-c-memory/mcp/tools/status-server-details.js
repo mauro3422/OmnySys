@@ -10,6 +10,8 @@ import {
   buildCompilerHealthPanel,
   buildCompilerToolInventorySnapshot,
   buildCompilerToolInventoryReport,
+  buildCompilerSystemInventoryReport,
+  buildCompilerSystemInventorySnapshot,
   loadCompilerExplainability,
   compactDatabaseHealth,
   compactWatcherSummary,
@@ -130,6 +132,17 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
       focusPath: args?.focusPath || null
     }
   );
+  const toolInventorySnapshot = buildCompilerToolInventorySnapshot({ includeSchemas: false });
+  const systemInventoryDetail = buildCompilerSystemInventorySnapshot({
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    compilerExplainability,
+    toolInventory: toolInventorySnapshot,
+    limit: 10
+  });
+  const systemInventory = buildCompilerSystemInventoryReport(systemInventoryDetail);
+  compilerExplainability.systemInventory = systemInventoryDetail;
   const governanceAlerts = buildGovernanceAlerts({
     compilerExplainability,
     source: 'status'
@@ -159,22 +172,32 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     watcherAlerts: compactNotifications.watcherAlerts || [],
     recentErrors,
     mcpSessionSummary: sessionSummary,
+    systemInventory,
     scopePath: args?.scopePath || null,
     focusPath: args?.focusPath || null,
     captureSource: 'status.runtime',
     snapshotKind: 'status'
   });
   status.metricsSnapshot = metricsSnapshot;
+  status.metricsSnapshot.systemInventory = systemInventory;
+  status.metricsSnapshot.systemInventoryDetail = systemInventoryDetail;
+  if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
+    status.metricsSnapshot.current.systemInventory = systemInventory;
+  }
   status.healthSnapshot = buildCompilerHealthDashboard(metricsSnapshot, compilerExplainability, {
     watcherAlerts: mergedNotifications.watcherAlerts || [],
-    recentErrors
+    recentErrors,
+    systemInventory
   });
+  status.healthSnapshot.systemInventory = systemInventory;
+  status.healthSnapshot.systemInventoryDetail = systemInventoryDetail;
   status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
-  const toolInventorySnapshot = buildCompilerToolInventorySnapshot({ includeSchemas: false });
   status.toolInventory = {
     snapshot: toolInventorySnapshot,
     report: buildCompilerToolInventoryReport(toolInventorySnapshot)
   };
+  status.systemInventory = systemInventory;
+  status.systemInventoryDetail = systemInventoryDetail;
   return {
     repo,
     recentErrors

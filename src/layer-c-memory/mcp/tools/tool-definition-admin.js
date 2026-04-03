@@ -124,6 +124,22 @@ export const adminToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_get_system_inventory_report',
+    description: 'Returns the canonical system inventory for emergent APIs, canonical surfaces, bridges and wrappers, plus the compact report used by status/health consumers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scopePath: { type: 'string', description: 'Scope contextual para elegir la familia o dominio más cercano' },
+        focusPath: { type: 'string', description: 'Focus contextual para afinar la guía y la comparación' },
+        snapshotKind: { type: 'string', enum: ['manual', 'status', 'dashboard', 'inventory'], default: 'inventory', description: 'Tipo de snapshot a capturar' },
+        compareDays: { type: 'number', default: 3, description: 'Ventana en días para comparar tendencia' },
+        historyLimit: { type: 'number', default: 12, description: 'Cantidad máxima de snapshots devueltos en el history' },
+        persist: { type: 'boolean', default: true, description: 'Si es true, guarda la snapshot en SQLite' }
+      },
+      required: []
+    }
+  },
+  {
     name: 'mcp_omnysystem_list_tools',
     description: 'Returns the canonical MCP tool inventory grouped by query, action, and admin categories, using the registry as the source of truth.',
     inputSchema: {

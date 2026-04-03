@@ -103,6 +103,12 @@ export function buildSystemTableSummary(status = {}) {
         detail: `dominant=${toolInventory.dominantCategory?.category || toolInventory.dominantCategory || 'n/a'} | subgroup=${toolInventory.dominantSubgroup?.subgroup || 'n/a'} | category=${normalizeCount(toolInventory.categoryConcentration)} | concentration=${normalizeCount(toolInventory.concentration)}`,
         source: 'tool inventory'
       },
+      {
+        area: 'Systems',
+        state: status.systemInventory?.inventoryState || status.systemInventory?.summary?.inventoryState || 'watching',
+        detail: `canonical=${normalizeCount((status.systemInventory?.canonicalSurfaceCount || status.systemInventory?.summary?.canonicalSurfaceCount || 0) + (status.systemInventory?.canonicalEntrypointCount || status.systemInventory?.summary?.canonicalEntrypointCount || 0))} | emergent=${normalizeCount(status.systemInventory?.emergentSystemCount || status.systemInventory?.summary?.emergentSystemCount)} | bridge=${normalizeCount(status.systemInventory?.bridgeSystemCount || status.systemInventory?.summary?.bridgeSystemCount)} | wrapper=${normalizeCount(status.systemInventory?.wrapperSystemCount || status.systemInventory?.summary?.wrapperSystemCount)} | audit=${status.systemInventory?.surfaceAuditTrustworthy === true ? 'ok' : 'watching'} | gateway=${status.systemInventory?.dataGatewayTrustworthy === true ? 'ok' : 'watching'} | meta=${normalizeCount(status.systemInventory?.metadataCoveragePct || status.systemInventory?.summary?.metadataCoveragePct)}% | next=${status.systemInventory?.nextAction || status.systemInventory?.summary?.nextAction || 'n/a'}`,
+        source: 'system inventory'
+      },
       ...(status.cachePolicy ? [
         {
           area: 'Cache',

@@ -29,6 +29,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
   const healthSnapshot = compactCompilerHealthDashboardSummary(status.healthSnapshot);
   const healthPanel = compactCompilerHealthPanelSummary(status.healthPanel);
   const toolInventory = compactToolInventory(status.toolInventory);
+  const systemInventory = status.systemInventory || status.healthSnapshot?.systemInventory || status.metricsSnapshot?.systemInventory || null;
   const updateSurface = buildUpdateSurfaceSummary(status);
   const cachePolicy = buildCachePolicySummary({
     recentErrors,
@@ -115,6 +116,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     healthSnapshot,
     healthPanel,
     systemTable,
+    systemInventory,
     cachePolicy,
     toolInventory,
     updateSurface,

@@ -10,6 +10,8 @@ import {
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
   buildCompilerMetricsSnapshot,
+  buildCompilerSystemInventoryReport,
+  buildCompilerSystemInventorySnapshot,
   summarizeCompilerMetricsSnapshot,
   loadCompilerExplainability
 } from '../../../shared/compiler/index.js';
@@ -36,6 +38,16 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
       focusPath: args?.focusPath || null
     }
   );
+  const systemInventoryDetail = buildCompilerSystemInventorySnapshot({
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    compilerExplainability,
+    toolInventory: null,
+    limit: 10
+  });
+  const systemInventory = buildCompilerSystemInventoryReport(systemInventoryDetail);
+  compilerExplainability.systemInventory = systemInventoryDetail;
   const governanceAlerts = buildGovernanceAlerts({
     compilerExplainability,
     source: 'snapshot'
@@ -47,6 +59,7 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     projectPath,
     repo,
     compilerExplainability,
+    systemInventory,
     watcherAlerts: mergedNotifications.watcherAlerts || [],
     recentErrors,
     scopePath: args?.scopePath || null,
@@ -58,12 +71,18 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     persist: args?.persist !== false,
     toolRunTelemetryWindowDays: args?.toolRunTelemetryWindowDays || 7
   });
+  snapshot.systemInventoryDetail = systemInventoryDetail;
+  snapshot.systemInventory = systemInventory;
+  snapshot.current.systemInventory = systemInventory;
 
   const compactSnapshot = summarizeCompilerMetricsSnapshot(snapshot);
   const healthDashboard = buildCompilerHealthDashboard(snapshot, compilerExplainability, {
     watcherAlerts: mergedNotifications.watcherAlerts || [],
-    recentErrors
+    recentErrors,
+    systemInventory
   });
+  healthDashboard.systemInventory = systemInventory;
+  healthDashboard.systemInventoryDetail = systemInventoryDetail;
   const healthPanel = buildCompilerHealthPanel(healthDashboard);
 
   return {
@@ -76,6 +95,8 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     compilerExplainability,
     snapshot,
     compactSnapshot,
+    systemInventory,
+    systemInventoryDetail,
     healthDashboard,
     healthPanel
   };

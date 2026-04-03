@@ -157,6 +157,12 @@ export {
 } from './tool-inventory-summary.js';
 
 export {
+  buildCompilerSystemInventoryReport,
+  buildCompilerSystemInventorySnapshot,
+  summarizeCompilerSystemInventory
+} from './system-inventory-summary.js';
+
+export {
   buildCompilerLayerReliability
 } from './compiler-metric-reliability.js';
 

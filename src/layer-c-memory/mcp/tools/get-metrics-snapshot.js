@@ -33,7 +33,8 @@ export async function get_metrics_snapshot(args, context) {
       dashboard: result.healthDashboard,
       summary: result.snapshot.summary,
       history: result.snapshot.history,
-      trend: result.snapshot.trend
+      trend: result.snapshot.trend,
+      systemInventory: result.systemInventory || null
     };
   } catch (error) {
     logger.error(`[Tool] get_metrics_snapshot failed: ${error.message}`);

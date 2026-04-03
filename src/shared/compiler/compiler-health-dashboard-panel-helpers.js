@@ -23,6 +23,7 @@ export function buildPanelSections(panel = {}) {
     trend: panel.trend || null,
     performance: panel.performance || null,
     tools: panel.tools || null,
+    systemInventory: panel.systemInventory || null,
     metricDictionary: panel.metricDictionary || null,
     archive: panel.archive || null
   };

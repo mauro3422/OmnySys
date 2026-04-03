@@ -37,6 +37,7 @@ export async function get_health_snapshot(args, context) {
       history: result.snapshot.history,
       trend: result.snapshot.trend,
       oneLine: result.healthPanel?.oneLine || null,
+      systemInventory: result.systemInventory || null,
       compilerExplainability: result.compilerExplainability ? {
         policySummary: result.compilerExplainability.policySummary || null,
         standardization: result.compilerExplainability.standardization || null,

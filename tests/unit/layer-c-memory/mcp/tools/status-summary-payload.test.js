@@ -75,6 +75,16 @@ describe('status summary payload', () => {
         dominantCategory: 'action',
         concentration: 50
       },
+      systemInventory: {
+        inventoryState: 'watching',
+        canonicalSurfaceCount: 12,
+        canonicalEntrypointCount: 4,
+        emergentSystemCount: 2,
+        bridgeSystemCount: 1,
+        wrapperSystemCount: 1,
+        legacySystemCount: 0,
+        nextAction: 'Promote runtime boundary checks into a canonical API.'
+      },
       mcpSessions: {
         totalPersistentActive: 2,
         totalPersistent: 4,
@@ -90,9 +100,15 @@ describe('status summary payload', () => {
     });
 
     expect(payload).toHaveProperty('updateSurface');
+    expect(payload).toHaveProperty('systemInventory');
     expect(payload.updateSurface).toMatchObject({
       state: 'synced',
       source: 'atom/function update pipeline'
+    });
+    expect(payload.systemInventory).toMatchObject({
+      inventoryState: 'watching',
+      canonicalSurfaceCount: 12,
+      canonicalEntrypointCount: 4
     });
     expect(payload.propagation).toMatchObject({
       cacheKey: 'folderization:abc123',
@@ -110,6 +126,16 @@ describe('status summary payload', () => {
     expect(updateRow.detail).toContain('deps=3');
     expect(updateRow.detail).toContain('integrity=ok');
 
+    const systemsRow = payload.systemTable.rows.find((row) => row.area === 'Systems');
+    expect(systemsRow).toMatchObject({
+      area: 'Systems',
+      state: 'watching',
+      source: 'system inventory'
+    });
+    expect(systemsRow.detail).toContain('canonical=16');
+    expect(systemsRow.detail).toContain('emergent=2');
+    expect(systemsRow.detail).toContain('bridge=1');
+
     expect(payload.systemTable.rows.map((row) => row.area)).toEqual([
       'Daemon',
       'Database',
@@ -121,6 +147,7 @@ describe('status summary payload', () => {
       'Debt',
       'Sessions',
       'Tools',
+      'Systems',
       'Cache',
       'Watcher',
       'Errors'

@@ -197,6 +197,7 @@ describe('status system table', () => {
       'Debt',
       'Sessions',
       'Tools',
+      'Systems',
       'Cache',
       'Watcher',
       'Errors'

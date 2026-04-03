@@ -108,6 +108,7 @@ export function mapMetricsSummary(current = {}, pipelineTimingTelemetry = null) 
     metadataCoveragePct: asNumber(current.metadataCoveragePct, 0),
     metadataFieldCoveragePct: asNumber(current.metadataFieldCoveragePct, 0),
     dataGatewayTrustworthy: current.dataGatewayTrustworthy === true,
+    systemInventory: current.systemInventory || null,
     pipelineTimingTelemetry
   };
 }
@@ -188,6 +189,7 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     `dbsync=${now.activeAtomsDriftState || 'missing'}`,
     now.folderizationPropagation?.decision ? `folderprop=${now.folderizationPropagation.decision}` : null,
     now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
+    compact.systemInventory ? `systems=${compact.systemInventory.inventoryState || 'watching'}:${compact.systemInventory.totalSystemCount || 0}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,
     perf?.status ? `perf=${perf.status}:${Math.round(perf.current?.totalDurationMs || 0)}ms` : null,
     tools?.totalRuns > 0 ? `tools=${tools.successfulRuns || 0}/${tools.totalRuns} ok` : 'tools=0',
@@ -231,6 +233,7 @@ function buildDashboardCollectionsSummary(dashboard = {}) {
     metrics: dashboard.metrics ? mapMetricsSummary(dashboard.metrics, dashboard.pipelineTimingTelemetry || null) : null,
     sessions: mapSessionsSummary(dashboard),
     toolTelemetry: dashboard.toolTelemetry ? { ...dashboard.toolTelemetry } : null,
+    systemInventory: dashboard.systemInventory || null,
     metricDictionary: dashboard.metricDictionary || null,
     pipelineTimingTelemetry: dashboard.pipelineTimingTelemetry || null
   };
