@@ -145,6 +145,23 @@ export function compactFolderization(folderization = null) {
   };
 }
 
+export function compactCanonicalPromotion(canonicalPromotion = null) {
+  if (!canonicalPromotion) return null;
+  return {
+    promotionState: canonicalPromotion.summary?.promotionState || canonicalPromotion.promotionState || null,
+    inventoryState: canonicalPromotion.summary?.inventoryState || canonicalPromotion.inventoryState || null,
+    folderizationState: canonicalPromotion.summary?.folderizationState || canonicalPromotion.folderizationState || null,
+    folderizationDecision: canonicalPromotion.summary?.folderizationDecision || canonicalPromotion.folderizationDecision || null,
+    candidateCount: canonicalPromotion.summary?.candidateCount || canonicalPromotion.candidateCount || 0,
+    folderizedFamilyCount: canonicalPromotion.summary?.folderizedFamilyCount || canonicalPromotion.folderizedFamilyCount || 0,
+    emergentCandidateCount: canonicalPromotion.summary?.emergentCandidateCount || canonicalPromotion.emergentCandidateCount || 0,
+    canonicalCandidateCount: canonicalPromotion.summary?.canonicalCandidateCount || canonicalPromotion.canonicalCandidateCount || 0,
+    nextAction: canonicalPromotion.summary?.nextAction || canonicalPromotion.nextAction || null,
+    summaryText: canonicalPromotion.summary?.summaryText || canonicalPromotion.summaryText || null,
+    topPromotionTargets: takeSample(canonicalPromotion.topPromotionTargets || [], 5)
+  };
+}
+
 export function compactSurfaceAudit(surfaceAudit = null) {
   return surfaceAudit ? summarizeSurfaceAuditForStatus(surfaceAudit) : null;
 }

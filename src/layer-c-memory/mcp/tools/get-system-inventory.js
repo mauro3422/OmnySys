@@ -11,6 +11,30 @@ import { buildCompilerSnapshotContext } from './compiler-snapshot-service.js';
 
 const logger = createLogger('OmnySys:system-inventory');
 
+function buildSystemInventoryResponse(result) {
+  return {
+    success: true,
+    aggregationType: 'system_inventory',
+    inventory: result.systemInventoryDetail || null,
+    report: result.systemInventory || null,
+    snapshot: result.compactSnapshot,
+    dashboard: result.healthDashboard,
+    summary: result.systemInventory?.summaryText || result.systemInventory?.summary?.summaryText || null,
+    topSystems: result.systemInventory?.topSystems || [],
+    promotionCandidates: result.systemInventory?.topPromotionCandidates || [],
+    canonicalPromotionDetail: result.canonicalPromotionDetail || null,
+    canonicalPromotion: result.canonicalPromotion || null,
+    tooling: result.systemInventory?.tooling || null,
+    compilerExplainability: result.compilerExplainability ? {
+      standardization: result.compilerExplainability.standardization || null,
+      compilerContractLayer: result.compilerExplainability.compilerContractLayer || null,
+      canonicalPromotion: result.compilerExplainability.canonicalPromotion || null,
+      surfaceAudit: result.compilerExplainability.surfaceAudit || null,
+      driftAssessment: result.compilerExplainability.driftAssessment || null
+    } : null
+  };
+}
+
 export async function get_system_inventory_report(args, context) {
   logger.info('[Tool] get_system_inventory_report()');
 
@@ -27,27 +51,7 @@ export async function get_system_inventory_report(args, context) {
       };
     }
 
-    return {
-      success: true,
-      aggregationType: 'system_inventory',
-      inventory: result.systemInventoryDetail || null,
-      report: result.systemInventory || null,
-      snapshot: result.compactSnapshot,
-      dashboard: result.healthDashboard,
-      summary: result.systemInventory?.summaryText || result.systemInventory?.summary?.summaryText || null,
-      topSystems: result.systemInventory?.topSystems || [],
-      promotionCandidates: result.systemInventory?.topPromotionCandidates || [],
-      canonicalPromotionDetail: result.canonicalPromotionDetail || null,
-      canonicalPromotion: result.canonicalPromotion || null,
-      tooling: result.systemInventory?.tooling || null,
-      compilerExplainability: result.compilerExplainability ? {
-        standardization: result.compilerExplainability.standardization || null,
-        compilerContractLayer: result.compilerExplainability.compilerContractLayer || null,
-        canonicalPromotion: result.compilerExplainability.canonicalPromotion || null,
-        surfaceAudit: result.compilerExplainability.surfaceAudit || null,
-        driftAssessment: result.compilerExplainability.driftAssessment || null
-      } : null
-    };
+    return buildSystemInventoryResponse(result);
   } catch (error) {
     logger.error(`[Tool] get_system_inventory_report failed: ${error.message}`);
     return {

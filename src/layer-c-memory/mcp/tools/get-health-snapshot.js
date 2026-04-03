@@ -11,6 +11,34 @@ import { buildCompilerSnapshotContext } from './compiler-snapshot-service.js';
 
 const logger = createLogger('OmnySys:health-snapshot');
 
+function buildHealthSnapshotResponse(result) {
+  return {
+    success: true,
+    aggregationType: 'health_snapshot',
+    dashboard: result.healthDashboard,
+    panel: result.healthPanel,
+    snapshot: result.compactSnapshot,
+    summary: result.snapshot.summary,
+    history: result.snapshot.history,
+    trend: result.snapshot.trend,
+    oneLine: result.healthPanel?.oneLine || null,
+    systemInventory: result.systemInventory || null,
+    canonicalPromotionDetail: result.canonicalPromotionDetail || null,
+    canonicalPromotion: result.canonicalPromotion || null,
+    compilerExplainability: result.compilerExplainability ? {
+      policySummary: result.compilerExplainability.policySummary || null,
+      standardization: result.compilerExplainability.standardization || null,
+      databaseHealth: result.compilerExplainability.databaseHealth || null,
+      folderization: result.compilerExplainability.folderization || null,
+      canonicalPromotion: result.compilerExplainability.canonicalPromotion || null,
+      dataGatewayContract: result.compilerExplainability.dataGatewayContract || null,
+      compilerContractLayer: result.compilerExplainability.compilerContractLayer || null,
+      surfaceAudit: result.compilerExplainability.surfaceAudit || null,
+      driftAssessment: result.compilerExplainability.driftAssessment || null
+    } : null
+  };
+}
+
 export async function get_health_snapshot(args, context) {
   logger.info('[Tool] get_health_snapshot()');
 
@@ -27,31 +55,7 @@ export async function get_health_snapshot(args, context) {
       };
     }
 
-    return {
-      success: true,
-      aggregationType: 'health_snapshot',
-      dashboard: result.healthDashboard,
-      panel: result.healthPanel,
-      snapshot: result.compactSnapshot,
-      summary: result.snapshot.summary,
-      history: result.snapshot.history,
-      trend: result.snapshot.trend,
-      oneLine: result.healthPanel?.oneLine || null,
-      systemInventory: result.systemInventory || null,
-      canonicalPromotionDetail: result.canonicalPromotionDetail || null,
-      canonicalPromotion: result.canonicalPromotion || null,
-      compilerExplainability: result.compilerExplainability ? {
-        policySummary: result.compilerExplainability.policySummary || null,
-        standardization: result.compilerExplainability.standardization || null,
-        databaseHealth: result.compilerExplainability.databaseHealth || null,
-        folderization: result.compilerExplainability.folderization || null,
-        canonicalPromotion: result.compilerExplainability.canonicalPromotion || null,
-        dataGatewayContract: result.compilerExplainability.dataGatewayContract || null,
-        compilerContractLayer: result.compilerExplainability.compilerContractLayer || null,
-        surfaceAudit: result.compilerExplainability.surfaceAudit || null,
-        driftAssessment: result.compilerExplainability.driftAssessment || null
-      } : null
-    };
+    return buildHealthSnapshotResponse(result);
   } catch (error) {
     logger.error(`[Tool] get_health_snapshot failed: ${error.message}`);
     return {

@@ -7,6 +7,7 @@
  */
 
 import { asNumber } from './core-utils.js';
+import { clampScore } from './score-utils.js';
 
 function normalizeText(value, fallback = null) {
   if (typeof value === 'string' && value.trim()) {
@@ -14,10 +15,6 @@ function normalizeText(value, fallback = null) {
   }
 
   return fallback;
-}
-
-function clampScore(value) {
-  return Math.max(0, Math.min(100, Math.round(asNumber(value, 0))));
 }
 
 function buildPromotionTarget(candidate = {}, { index = 0, source = 'inventory' } = {}) {

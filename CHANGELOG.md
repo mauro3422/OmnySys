@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Simplified the health and system inventory snapshot tools into thin wrappers so their exported MCP contracts stay below the watcher complexity threshold.
+- Moved canonical promotion compacting into the shared explainability helpers and reused the canonical score clamp helper to remove duplicate scoring logic.
 - Surfaced canonical promotion in the raw compiler health dashboard daily payload so the live dashboard keeps the promotion signal aligned with the archive and snapshot consumers.
 - Split the compiler health dashboard test fixture into a dedicated helper file so the main dashboard test stays under the watcher file-size threshold.
 - Added a canonical promotion layer above folderization so folderized families and emergent system surfaces can be evaluated for promotion into canonical APIs without moving files inside the same tool.
