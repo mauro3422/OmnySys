@@ -2,7 +2,7 @@ import { createLogger } from '../../../utils/logger.js';
 import {
   buildCompilerToolInventoryReport,
   buildCompilerToolInventorySnapshot
-} from '../../../shared/compiler/tool-inventory-summary.js';
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:list_tools');
 

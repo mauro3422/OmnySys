@@ -10,6 +10,7 @@ import { mkdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { createLogger } from '#utils/logger.js';
 import { getCompilerHistoryDbPath, getCompilerHistoryDir } from './compiler-persistence-paths.js';
+import { safeJsonStringify } from './safe-json.js';
 
 const logger = createLogger('OmnySys:Compiler:HealthArchive');
 const archiveConnections = new Map();
@@ -17,14 +18,6 @@ const archiveConnections = new Map();
 function asNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function safeJsonStringify(value) {
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return null;
-  }
 }
 
 function normalizeKey(value) {

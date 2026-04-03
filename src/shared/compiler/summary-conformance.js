@@ -15,8 +15,14 @@ function isCanonicalSummaryModule(normalizedPath = '') {
     '/shared/compiler/snapshot.js',
     '/shared/compiler/surface-audit.js',
     '/shared/compiler/status-summary.js',
-    '/shared/compiler/status-compiler-explainability.js',
-    '/layer-c-memory/mcp/tools/status.js'
+    '/layer-c-memory/mcp/tools/status.js',
+    '/layer-c-memory/mcp/tools/status-server-details.js',
+    '/layer-c-memory/mcp/tools/status-summary.js',
+    '/layer-c-memory/mcp/tools/status-summary-helpers.js',
+    '/layer-c-memory/mcp/tools/status-summary-payload.js',
+    '/layer-c-memory/mcp/tools/status-explainability-summary.js',
+    '/layer-c-memory/mcp/tools/status-metrics-snapshot-summary.js',
+    '/layer-c-memory/mcp/tools/status-compiler-explainability.js'
   ].some((segment) => normalizedPath.endsWith(segment));
 }
 

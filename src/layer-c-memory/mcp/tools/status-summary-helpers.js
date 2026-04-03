@@ -3,8 +3,8 @@
  */
 
 import {
-  normalizeCount,
-} from '../../../shared/compiler/contract-helpers.js';
+  normalizeCount
+} from '../../../shared/compiler/index.js';
 import {
   summarizeCompilerHealthDashboard,
   summarizeCompilerHealthPanel

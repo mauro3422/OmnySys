@@ -2,6 +2,8 @@
  * @fileoverview Helper normalizers for tool run telemetry.
  */
 
+import { safeJsonStringify } from './safe-json.js';
+
 function asNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -13,46 +15,6 @@ function normalizeTelemetryPath(value = '') {
   }
 
   return String(value).replaceAll('\\', '/');
-}
-
-function safeJsonStringify(value) {
-  const seen = new WeakSet();
-
-  return JSON.stringify(value, (key, currentValue) => {
-    if (typeof currentValue === 'bigint') {
-      return Number(currentValue);
-    }
-
-    if (currentValue instanceof Error) {
-      return {
-        name: currentValue.name,
-        message: currentValue.message,
-        stack: currentValue.stack
-      };
-    }
-
-    if (currentValue instanceof Map) {
-      return Object.fromEntries(currentValue.entries());
-    }
-
-    if (currentValue instanceof Set) {
-      return Array.from(currentValue.values());
-    }
-
-    if (typeof currentValue === 'function') {
-      return `[Function ${currentValue.name || 'anonymous'}]`;
-    }
-
-    if (currentValue && typeof currentValue === 'object') {
-      if (seen.has(currentValue)) {
-        return '[Circular]';
-      }
-
-      seen.add(currentValue);
-    }
-
-    return currentValue;
-  });
 }
 
 function compactSnapshotForStorage(snapshot = null) {
@@ -173,7 +135,36 @@ function computeTelemetryDeltas(before = {}, after = {}) {
   };
 }
 
-function classifyTelemetryRepair(before = {}, after = {}, success = true, deltas = {}) {
+function normalizeToolName(toolName) {
+  return typeof toolName === 'string' ? toolName.trim().toLowerCase() : '';
+}
+
+function isObservationOnlyTool(toolName, captureSource = '') {
+  const normalized = normalizeToolName(toolName);
+  if (!normalized) {
+    return false;
+  }
+
+  if (normalized.startsWith('mcp_omnysystem_get_') || normalized.startsWith('mcp_omnysystem_list_')) {
+    return true;
+  }
+
+  if (normalized.startsWith('mcp_omnysystem_query_') || normalized.startsWith('mcp_omnysystem_traverse_')) {
+    return true;
+  }
+
+  if (normalized === 'mcp_omnysystem_aggregate_metrics' || normalized === 'mcp_omnysystem_execute_sql') {
+    return true;
+  }
+
+  if (normalized.startsWith('mcp_omnysystem_check_') || normalized.startsWith('mcp_omnysystem_diagnose_')) {
+    return true;
+  }
+
+  return captureSource === 'mcp.tool.observe';
+}
+
+function classifyTelemetryRepair(before = {}, after = {}, success = true, deltas = {}, context = {}) {
   const {
     alertClearance,
     errorClearance,
@@ -187,7 +178,13 @@ function classifyTelemetryRepair(before = {}, after = {}, success = true, deltas
     repairScore
   } = deltas;
 
-  const hadPressure = before.watcherAlertCount > 0 || before.recentErrorCount > 0 || before.issueCount > 0 || before.driftScore > 0;
+  const observationOnly = isObservationOnlyTool(context?.toolName, context?.captureSource);
+  const hadPressure = !observationOnly && (
+    before.watcherAlertCount > 0 ||
+    before.recentErrorCount > 0 ||
+    before.issueCount > 0 ||
+    before.driftScore > 0
+  );
   const repaired = success && hadPressure && (
     alertClearance > 0 ||
     errorClearance > 0 ||

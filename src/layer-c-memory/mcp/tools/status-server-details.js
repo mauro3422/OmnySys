@@ -7,7 +7,9 @@ import {
   summarizeSurfaceAuditForStatus,
   buildCompilerMetricsSnapshot,
   buildCompilerHealthDashboard,
-  buildCompilerHealthPanel
+  buildCompilerHealthPanel,
+  buildCompilerToolInventorySnapshot,
+  buildCompilerToolInventoryReport
 } from '../../../shared/compiler/index.js';
 import { sessionManager } from '../core/session-manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
@@ -33,10 +35,6 @@ import {
   compactCompilerExplainabilitySummary,
   compactWatcherSummary
 } from './status-summary.js';
-import {
-  buildCompilerToolInventoryReport,
-  buildCompilerToolInventorySnapshot
-} from '../../../shared/compiler/tool-inventory-summary.js';
 
 function applyRepositoryIntegrityToDatabaseHealth(databaseHealth, repositoryIntegrity) {
   if (!databaseHealth || repositoryIntegrity?.healthy !== false) {

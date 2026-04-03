@@ -98,6 +98,10 @@ export {
 } from './status-summary.js';
 
 export {
+  summarizeCompilerExplainability
+} from './compiler-explainability-summary.js';
+
+export {
   buildCompilerMetricDictionary,
   summarizeCompilerMetricDictionary
 } from './compiler-metric-dictionary.js';
@@ -135,9 +139,12 @@ export {
 export {
   evaluateToolRunTelemetry,
   persistToolRunTelemetry,
-  buildToolRunTelemetrySummary,
   summarizeToolRunTelemetry
 } from './tool-run-telemetry.js';
+
+export {
+  buildToolRunTelemetrySummary
+} from './tool-run-telemetry-summary.js';
 
 export {
   buildSurfaceAudit,

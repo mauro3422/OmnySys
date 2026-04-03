@@ -4,6 +4,11 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Reduced live `policy_drift` by moving the status summary modules back onto canonical barrels and removing manual summary recomposition paths.
+- Restored `tool-run-telemetry` as a single canonical implementation with a shared summary helper and tightened the repair classifier so observation-only tools no longer count as repair thrash.
+- Added a short TTL cache around telemetry summaries to avoid repeated DB aggregation in tight polling loops.
+- Kept recent errors clean while preserving the live health and status surfaces.
+
 - Reworked the tool inventory report to compute real subgroups for query/action/admin tools so concentration is measured at a more useful granularity than the coarse category buckets.
 - Promoted the tool inventory snapshot/report builder into `shared/compiler` so status and list tools share one canonical inventory policy.
 - Updated the control-plane status surface to show both category concentration and subgroup concentration for the tool inventory instead of only the broad category bucket.

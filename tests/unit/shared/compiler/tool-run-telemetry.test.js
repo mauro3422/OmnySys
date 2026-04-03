@@ -64,7 +64,7 @@ describe('tool-run-telemetry', () => {
   it('derives repair status from before/after snapshot deltas', () => {
     const telemetry = evaluateToolRunTelemetry({
       projectPath: 'C:/Dev/OmnySystem',
-      toolName: 'mcp_omnysystem_get_metrics_snapshot',
+      toolName: 'mcp_omnysystem_atomic_edit',
       startedAt: '2026-03-30T09:59:00.000Z',
       endedAt: '2026-03-30T10:00:00.000Z',
       success: true,

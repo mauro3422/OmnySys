@@ -16,8 +16,10 @@ import { buildSystemTableSummary } from './status-system-table.js';
 import { compactWatcherSummary } from './status-watcher-summary.js';
 import { compactToolInventory } from './status-tool-inventory.js';
 import { buildUpdateSurfaceSummary } from './status-update-summary.js';
-import { buildCachePolicySummary } from '../../../shared/compiler/cache-policy-summary.js';
-import { summarizeSurfaceAuditForStatus } from '../../../shared/compiler/surface-audit/summary.js';
+import {
+  buildCachePolicySummary,
+  summarizeSurfaceAuditForStatus
+} from '../../../shared/compiler/index.js';
 
 export function buildStatusSummaryPayload(status, recentErrors) {
   const databaseHealth = compactDatabaseHealth(status.databaseHealth);
