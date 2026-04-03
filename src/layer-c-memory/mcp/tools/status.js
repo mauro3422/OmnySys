@@ -9,7 +9,10 @@ import {
   getCachedMetadata,
   getPhase2Status,
   loadCompilerExplainability,
-  buildCompilerStatusSummaryEnvelope
+  buildCompilerStatusSummaryEnvelope,
+  clearStatusResponseCache,
+  getStatusResponseCacheEntry,
+  setStatusResponseCacheEntry
 } from '../../../shared/compiler/index.js';
 import {
   buildServerStatusEnvelope
@@ -22,11 +25,29 @@ import {
 import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
 
 const logger = createLogger('OmnySys:status');
+const STATUS_CACHE_TTL_MS = 1500;
+
+function buildStatusCacheKey(projectPath, args = {}) {
+  return JSON.stringify({
+    projectPath: projectPath || null,
+    args: args || null
+  });
+}
+
+export function clearServerStatusCache() {
+  clearStatusResponseCache();
+}
 
 export async function get_server_status(args, context) {
   logger.info('[Tool] get_server_status()');
   try {
     const { orchestrator, cache, projectPath, server } = context;
+    const cacheKey = buildStatusCacheKey(projectPath, args);
+    const cached = getStatusResponseCacheEntry(cacheKey);
+    if (cached && (Date.now() - cached.capturedAt) < STATUS_CACHE_TTL_MS) {
+      return cached.response;
+    }
+
     const phase2Status = getPhase2Status(orchestrator);
     const phase2InProgress = !!phase2Status?.inProgress;
     const cachedMetadata = getCachedMetadata(server, cache);
@@ -42,7 +63,9 @@ export async function get_server_status(args, context) {
       cachedMetadata,
       cachedCounts
     );
-    return buildCompilerStatusSummaryEnvelope(status, recentErrors, {});
+    const response = buildCompilerStatusSummaryEnvelope(status, recentErrors, {});
+    setStatusResponseCacheEntry(cacheKey, response);
+    return response;
   } catch (error) {
     logger.warn(`[Tool] get_server_status degraded: ${error.message}`);
     return {

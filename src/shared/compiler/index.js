@@ -111,6 +111,12 @@ export {
 } from './status-system-table.js';
 
 export {
+  getStatusResponseCacheEntry,
+  setStatusResponseCacheEntry,
+  clearStatusResponseCache
+} from './status-response-cache.js';
+
+export {
   compactDatabaseHealth,
   compactRepositoryDiagnostics,
   compactCompilerHealthDashboardSummary,

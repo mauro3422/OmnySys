@@ -12,6 +12,44 @@ import {
   buildEmptyPipelineHealthResult
 } from './technical-debt-report-cache.js';
 
+function loadLatestFolderizationSnapshotReport(db, {
+  projectPath = null,
+  scopePath = null,
+  focusPath = null
+} = {}) {
+  if (!db?.prepare || !projectPath) {
+    return null;
+  }
+
+  try {
+    const row = db.prepare(`
+      SELECT payload_json
+      FROM compiler_metrics_snapshots
+      WHERE project_path = ?
+        AND snapshot_kind = 'folderization'
+        AND (? IS NULL OR scope_path = ?)
+        AND (? IS NULL OR focus_path = ?)
+      ORDER BY captured_at DESC
+      LIMIT 1
+    `).get(
+      projectPath,
+      scopePath,
+      scopePath,
+      focusPath,
+      focusPath
+    );
+
+    if (!row?.payload_json) {
+      return null;
+    }
+
+    const payload = JSON.parse(row.payload_json);
+    return payload?.folderization || payload?.snapshot?.folderization || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function loadTechnicalDebtReportDetails({
   aggregateTool,
   context,
@@ -20,12 +58,22 @@ export async function loadTechnicalDebtReportDetails({
   currentSnapshot
 } = {}) {
   const snapshotCurrent = currentSnapshot.current || {};
+  const folderizationSnapshotReport = repo
+    ? loadLatestFolderizationSnapshotReport(repo.db, {
+        projectPath: context?.projectPath || null,
+        scopePath: folderizationOptions?.scopePath || null,
+        focusPath: folderizationOptions?.focusPath || null
+      })
+    : null;
   const needsStructuralDetails = Number(snapshotCurrent.structuralGroups || 0) > 0;
   const needsConceptualDetails = Number(snapshotCurrent.conceptualGroups || 0) > 0
     || Number(snapshotCurrent.conceptualRawGroups || 0) > 0;
   const needsPipelineDetails = Number(snapshotCurrent.pipelineOrphans || 0) > 0;
-  const needsFolderizationDetails = Number(snapshotCurrent.folderizationCandidateCount || 0) > 0
+  const needsFolderizationDetails = Boolean(folderizationSnapshotReport)
+    || Number(snapshotCurrent.folderizationCandidateCount || 0) > 0
     || Number(snapshotCurrent.namingDebt || 0) > 0
+    || Number(snapshotCurrent.namingFamilies || 0) > 0
+    || Number(snapshotCurrent.namingTargets || 0) > 0
     || Number(snapshotCurrent.flatFamilies || 0) > 0
     || Number(snapshotCurrent.mixedFamilies || 0) > 0;
 
@@ -44,11 +92,10 @@ export async function loadTechnicalDebtReportDetails({
     needsPipelineDetails
       ? aggregateTool.execute({ aggregationType: 'pipeline_health' }, context)
       : buildEmptyPipelineHealthResult(),
-    repo
-      ? (needsFolderizationDetails
+    folderizationSnapshotReport
+      || (repo && needsFolderizationDetails
         ? buildFolderizationReportFromRepo(repo, folderizationOptions)
         : buildEmptyFolderizationReport(folderizationOptions))
-      : buildEmptyFolderizationReport(folderizationOptions)
   ]);
 
   return {

@@ -1,13 +1,13 @@
 import {
   loadCompilerDiagnosticsSnapshot,
-  summarizeCompilerPolicyDrift,
-  buildFolderizationReportFromRepo,
-  getDatabaseHealthSummary
-} from './index.js';
+} from './snapshot.js';
+import { summarizeCompilerPolicyDrift } from './policy-conformance-summary.js';
+import { buildFolderizationReportFromRepo } from './folderization-report.js';
+import { getDatabaseHealthSummary } from './database-health-summary.js';
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
   try {
-    const { scanCompilerPolicyDrift } = await import('./index.js');
+    const { scanCompilerPolicyDrift } = await import('./scan.js');
     const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
     const policySummary = summarizeCompilerPolicyDrift(findings);
     const { getRepository } = await import('#layer-c/storage/repository/index.js');

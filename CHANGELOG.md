@@ -4,6 +4,11 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Reused the latest DB-backed folderization snapshot inside `technical_debt_report` so naming debt no longer disappears when the live compiler snapshot starts empty.
+- Added a short TTL cache to `get_server_status` so repeated panel polls reuse the same status envelope instead of recomputing every field on every call.
+- Reexported the status response cache through the canonical compiler barrel and removed the private helper import that was still surfacing as policy drift.
+- Rewired `SemanticQueryTool` to import canonical compiler helpers directly instead of pulling the whole barrel, reducing the risk of loader cycles in heavy query tools.
+- Split `SemanticQueryTool` duplicate/society helpers into a dedicated semantic helper module so the coordinator stays under the complexity threshold.
 - Classified the heavy MCP tools into explicit cache tiers and centralized the shared sampling helpers used by the snapshot and dashboard layers.
 - Removed the remaining compiler policy drift findings by routing testability, shared-state hotspot, semantic-coverage, semantic-purity, and metadata-propagation paths through canonical shared compiler helpers.
 - Exposed the compiler explainability policy and standardization projections in the health snapshot so the live dashboard now shows the remaining debt surface directly.
