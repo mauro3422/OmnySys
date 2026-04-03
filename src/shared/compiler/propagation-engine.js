@@ -78,6 +78,7 @@ export function clearPropagationPlanCache() {
 }
 
 export function buildPropagationPlan(input = {}) {
+  const cacheKey = input.cacheKey || buildPropagationCacheKey(input);
   const mode = input.mode || (input.decision === 'approve'
     ? 'move_and_rewrite'
     : input.decision === 'review'
@@ -110,7 +111,7 @@ export function buildPropagationPlan(input = {}) {
     connectedSystems: Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
       ? input.connectedSystems
       : buildFolderizationConnectedSystems(),
-    cacheKey: input.cacheKey || null,
+    cacheKey,
     cacheHit: Boolean(input.cacheHit)
   };
 }

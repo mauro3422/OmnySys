@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Made the shared propagation engine derive its own stable cache key when callers do not provide one, so the plan can be cached immediately instead of depending on a manual key.
+- Kept the propagation cache contract reusable by preserving the key and cache-hit state in the folderization report summary and explainability compactors.
 - Added a shared propagation engine that computes a reusable plan for folderization changes, including cache keys, connected systems, move targets, impacted files, rewrites, and validation targets.
 - Gave the propagation plan an in-memory cache contract so repeated callers can reuse the same derived plan while the underlying folderization fingerprint remains stable.
 - Rewired folderization report generation to read and write the shared propagation cache instead of maintaining a one-off local propagation shape.
