@@ -126,6 +126,18 @@ export {
 } from './compiler-explainability-summary.js';
 
 export {
+  compactPolicySummary
+} from './compiler-explainability-policy.js';
+
+export {
+  compactStandardization
+} from './compiler-explainability-standardization.js';
+
+export {
+  compactCompilerContractLayer
+} from './compiler-explainability-contract-layer.js';
+
+export {
   buildCompilerMetricDictionary,
   summarizeCompilerMetricDictionary
 } from './compiler-metric-dictionary.js';

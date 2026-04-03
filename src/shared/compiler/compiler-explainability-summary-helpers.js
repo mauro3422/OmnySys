@@ -16,41 +16,6 @@ export function compactCountPair(summary = null) {
   };
 }
 
-export function compactPolicySummary(policySummary = null) {
-  if (!policySummary) return null;
-  return {
-    total: policySummary.total,
-    high: policySummary.high,
-    medium: policySummary.medium,
-    low: policySummary.low
-  };
-}
-
-export function compactStandardization(standardization = null) {
-  if (!standardization) return null;
-  return {
-    canonicalFamilies: standardization.canonicalFamilies?.length || 0,
-    stableCanonicalFamilies: standardization.stableCanonicalFamilies?.length || 0,
-    summary: standardization.summary || null
-  };
-}
-
-export function compactCompilerContractLayer(compilerContractLayer = null) {
-  if (!compilerContractLayer) return null;
-  return {
-    summary: {
-      healthy: compilerContractLayer.summary?.healthy,
-      failedInvariantCount: compilerContractLayer.summary?.failedInvariantCount,
-      canonicalWrapperFindings: compilerContractLayer.summary?.canonicalWrapperFindings,
-      canonicalBypassFindings: compilerContractLayer.summary?.canonicalBypassFindings,
-      parallelCanonicalSurfaceFindings: compilerContractLayer.summary?.parallelCanonicalSurfaceFindings,
-      dataGatewayContractTrustworthy: compilerContractLayer.summary?.dataGatewayContractTrustworthy,
-      dataGatewayContractState: compilerContractLayer.summary?.dataGatewayContractState,
-      nextAction: compilerContractLayer.summary?.nextAction
-    }
-  };
-}
-
 export function compactAnalysisGeneration(analysisGeneration = null) {
   if (!analysisGeneration) return null;
   return {

@@ -4,17 +4,17 @@
 
 import {
   compactAnalysisGeneration,
-  compactCompilerContractLayer,
   compactCountPair,
   compactDataGatewayContract,
   compactDriftAssessment,
   compactFolderization,
   compactMetadataExtractionCoverage,
-  compactPolicySummary,
-  compactStandardization,
   compactSurfaceAudit,
   compactWatcherSummary
 } from './compiler-explainability-summary-helpers.js';
+import { compactCompilerContractLayer } from './compiler-explainability-contract-layer.js';
+import { compactPolicySummary } from './compiler-explainability-policy.js';
+import { compactStandardization } from './compiler-explainability-standardization.js';
 
 export function summarizeCompilerExplainability(explainability) {
   if (!explainability || typeof explainability !== 'object') return null;
