@@ -170,6 +170,15 @@ export {
 } from './update-surface-summary.js';
 
 export {
+  summarizeMcpParseContext
+} from './mcp-parse-context.js';
+
+export {
+  analyzeTestCoverage,
+  compareWithGeneratedTests
+} from './test-coverage-analyzer.js';
+
+export {
   loadCompilerExplainability
 } from './compiler-explainability-loader.js';
 
@@ -582,6 +591,15 @@ export {
   getMcpSessionSummary,
   summarizeWatcherNoise
 } from './compiler-runtime-metrics/index.js';
+
+export {
+  analyzeAtomSemantics,
+  buildAssertionFromSemantics,
+  getAnalyzerForFile,
+  getAssertionForAtom,
+  getAtomSemantics,
+  JsAnalyzer
+} from './atom-semantic-analyzer.js';
 
 export {
   performAction

@@ -24,7 +24,8 @@ import {
   mapSemanticIssueRowToWatcherAlert,
   normalizeWatcherIssueFilePath,
   partitionWatcherAlertsByLifecycle,
-  shouldSuppressWatcherAlert
+  shouldSuppressWatcherAlert,
+  summarizeAtomSemanticPurity
 } from '../../shared/compiler/index.js';
 import { getWatcherIssueDb } from './watcher-issue-repository.js';
 import { createEmptyWatcherIssueLoadResult, createWatcherIssueReconciliationSummary, normalizeWatcherMessage, safeJsonParse, stableJson } from './watcher-issue-persistence-support.js';
@@ -127,9 +128,10 @@ export async function persistWatcherIssue(projectPath, filePath, issueType, seve
         run: (repo) => {
           const db = repo?.db;
           if (!db) return false;
+          const semanticPurity = summarizeAtomSemanticPurity([]);
           return upsertWatcherIssueRecord(
             db,
-            { filePath: normalizedFilePath, issueType, severity, message, context },
+            { filePath: normalizedFilePath, issueType, severity, message, context: { ...context, semanticPurity } },
             { logPrefix: '[WATCHER ISSUE]' }
           );
         }

@@ -5,10 +5,12 @@ import {
     createStandardContext,
     severityFromSharedState
 } from '../guard-standards.js';
+import { summarizeSharedStateHotspots } from '../../../../shared/compiler/index.js';
 
 export function resolveSharedStateContentionSeverity(sharedStateSummary, criticalThreshold) {
-    let severity = severityFromSharedState(sharedStateSummary.maxContention);
-    if (!severity && sharedStateSummary.totalLinks > criticalThreshold * 1.5) {
+    const normalizedSummary = summarizeSharedStateHotspots(sharedStateSummary);
+    let severity = severityFromSharedState(normalizedSummary.maxContention);
+    if (!severity && normalizedSummary.totalLinks > criticalThreshold * 1.5) {
         severity = 'low';
     }
 
@@ -39,11 +41,13 @@ export function buildSharedStateContentionIssue({
         suggestedAction = 'Review architecture for excessive shared state usage';
     }
 
+    const normalizedSummary = summarizeSharedStateHotspots(sharedStateSummary);
+
     const context = createStandardContext({
         guardName: 'shared-state-guard',
         atomId: hotAtom?.id,
         atomName: hotAtom?.name,
-        metricValue: maxContention,
+        metricValue: normalizedSummary.maxContention || maxContention,
         threshold: severity === 'high' ? criticalThreshold : contentionThreshold,
         severity,
         suggestedAction,
@@ -54,12 +58,12 @@ export function buildSharedStateContentionIssue({
             'Consider immutable state patterns'
         ],
         extraData: {
-            maxContention: sharedStateSummary.maxContention,
-            totalContention: sharedStateSummary.totalLinks,
+            maxContention: normalizedSummary.maxContention,
+            totalContention: normalizedSummary.totalLinks,
             contentionThreshold,
             criticalThreshold,
             atomCount,
-            hottestKey: sharedStateSummary.hottestKey
+            hottestKey: normalizedSummary.hottestKey
         }
     });
 

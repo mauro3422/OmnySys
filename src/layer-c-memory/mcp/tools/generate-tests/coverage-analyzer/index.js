@@ -1,2 +1,8 @@
-export { analyzeTestCoverage, compareWithGeneratedTests } from '../../../../../shared/compiler/test-coverage-analyzer.js';
-export { default } from '../../../../../shared/compiler/test-coverage-analyzer.js';
+import { analyzeTestCoverage, compareWithGeneratedTests } from '#shared/compiler/index.js';
+
+export { analyzeTestCoverage, compareWithGeneratedTests };
+
+export default {
+  analyzeTestCoverage,
+  compareWithGeneratedTests
+};

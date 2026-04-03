@@ -5,4 +5,4 @@ export {
   getAssertionForAtom,
   getAtomSemantics,
   JsAnalyzer
-} from '../../../../../shared/compiler/atom-semantic-analyzer.js';
+} from '#shared/compiler/index.js';

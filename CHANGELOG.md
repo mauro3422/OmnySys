@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Removed the remaining compiler policy drift findings by routing testability, shared-state hotspot, semantic-coverage, semantic-purity, and metadata-propagation paths through canonical shared compiler helpers.
+- Exposed the compiler explainability policy and standardization projections in the health snapshot so the live dashboard now shows the remaining debt surface directly.
 - Exposed `policySummary` and `standardization` in the health snapshot response so the remaining compiler explainability debt can be surfaced in the live dashboard instead of being hidden by a narrow projection.
 - Split the compiler explainability policy, standardization, and contract-layer compactors into dedicated shared modules while keeping the explainability summary as a thin wrapper.
 - Split the canonical compiler explainability summary into shared compact helpers so policy, standardization, contract, drift, metadata, and folderization projections now live behind a thin wrapper.

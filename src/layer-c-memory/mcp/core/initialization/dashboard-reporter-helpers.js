@@ -1,5 +1,5 @@
 import { getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
-import { getDatabaseHealthSummary, buildUpdateSurfaceSummary } from '#shared/compiler/index.js';
+import { getDatabaseHealthSummary, getSystemMapPersistenceCoverage, buildUpdateSurfaceSummary } from '#shared/compiler/index.js';
 
 function getGraphDependencyTotal(db) {
   if (!db?.prepare) return 0;
@@ -22,6 +22,7 @@ export function buildBootstrapUpdateSurface({
   const repositoryDiagnostics = projectPath ? getRepositoryDiagnostics(projectPath) : null;
   const repositoryDb = repositoryDiagnostics?.status?.repo?.db || null;
   const databaseHealth = repositoryDb ? getDatabaseHealthSummary(repositoryDb) : null;
+  const systemMapPersistenceCoverage = repositoryDb ? getSystemMapPersistenceCoverage(repositoryDb) : null;
   const liveFileCount = fileUniverseSummary?.liveFileCount || 0;
   const bootstrapStatus = {
     repository: {
@@ -29,7 +30,8 @@ export function buildBootstrapUpdateSurface({
         dbOpen: !!db?.open,
         journal: { queued: 0 }
       },
-      integrity: repositoryDiagnostics?.integrity || null
+      integrity: repositoryDiagnostics?.integrity || null,
+      systemMapPersistenceCoverage
     },
     databaseHealth,
     metadata: {

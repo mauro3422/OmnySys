@@ -1,6 +1,7 @@
 import {
     generateAlternativeNames,
-    classifyUtilityHelperDuplicate
+    classifyUtilityHelperDuplicate,
+    summarizeAtomTestability
 } from '../../../../shared/compiler/index.js';
 
 export function buildConceptualFinding(localAtom, structuralVariants, testabilitySeverity = 'low') {
@@ -10,6 +11,7 @@ export function buildConceptualFinding(localAtom, structuralVariants, testabilit
         localAtom.name,
         localAtom.semanticFingerprint
     );
+    const testabilitySummary = summarizeAtomTestability([localAtom]);
 
     const finding = {
         symbol: localAtom.name,
@@ -22,7 +24,7 @@ export function buildConceptualFinding(localAtom, structuralVariants, testabilit
         sample: uniqueFiles.slice(0, 3),
         isExported: localAtom.isExported,
         existingExports: structuralVariants.filter((duplicate) => duplicate.is_exported).length,
-        testabilitySeverity,
+        testabilitySeverity: testabilitySummary?.severity || testabilitySeverity,
         suggestedAlternatives: generateAlternativeNames(localAtom.name, structuralVariants[0]?.name)
     };
 

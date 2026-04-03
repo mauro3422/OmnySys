@@ -8,6 +8,7 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getSystemMapPersistenceCoverage } from '#shared/compiler/index.js';
 
 function normalizeSystemPath(filePath = '') {
   return String(filePath || '')
@@ -80,6 +81,8 @@ export async function getSystemFileSnapshot(rootPath, filePath) {
     return null;
   }
 
+  const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(repo.db);
+
   const row = repo.db.prepare(`
     SELECT *
     FROM system_files
@@ -87,7 +90,11 @@ export async function getSystemFileSnapshot(rootPath, filePath) {
       AND (is_removed IS NULL OR is_removed = 0)
   `).get(normalizedPath);
 
-  return mapSystemFileRow(row);
+  const snapshot = mapSystemFileRow(row);
+  return snapshot ? {
+    ...snapshot,
+    systemMapPersistenceCoverage
+  } : null;
 }
 
 export async function getSystemFilesSnapshot(rootPath) {
@@ -100,8 +107,13 @@ export async function getSystemFilesSnapshot(rootPath) {
     return [];
   }
 
+  const systemMapPersistenceCoverage = getSystemMapPersistenceCoverage(repo.db);
+
   return loadActiveSystemFileRows(repo.db)
     .map(mapSystemFileRow)
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((row) => ({
+      ...row,
+      systemMapPersistenceCoverage
+    }));
 }
-

@@ -1,9 +1,14 @@
 import { persistWatcherIssue } from '../../watcher-issue-persistence.js';
 import { createIssueType, createStandardContext, IssueDomains, StandardSuggestions } from '../guard-standards.js';
+import { summarizeSemanticCoverage } from '../../../../shared/compiler/index.js';
 
 export async function persistSemanticCoverageFinding({ rootPath, filePath, evidence, EventEmitterContext }) {
     const issueType = createIssueType(IssueDomains.SEM, 'coverage_gap', evidence.severity);
     const message = evidence.gaps.map((gap) => gap.message).join('; ');
+    const semanticCoverage = summarizeSemanticCoverage(evidence.sharedStateCandidates || [], {
+        filePath,
+        sharesStateRelations: evidence.sharesStateRelations || 0
+    });
 
     await persistWatcherIssue(
         rootPath,
@@ -25,7 +30,8 @@ export async function persistSemanticCoverageFinding({ rootPath, filePath, evide
                 networkCandidates: evidence.networkCandidates,
                 networkFlagged: evidence.networkFlagged,
                 sharedStateCandidates: evidence.sharedStateCandidates,
-                sharesStateRelations: evidence.sharesStateRelations
+                sharesStateRelations: evidence.sharesStateRelations,
+                semanticCoverage
             }
         })
     );
