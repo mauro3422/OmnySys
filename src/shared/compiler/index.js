@@ -371,6 +371,9 @@ export {
 
 export {
   buildImpactWavePropagationPlan,
+  buildTopologyRegressionPropagationPlan,
+  buildSemanticCoveragePropagationPlan,
+  buildPolicyDriftPropagationPlan,
   buildPropagationPlan,
   summarizePropagationPlan
 } from './propagation-engine.js';

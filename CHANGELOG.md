@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Connected `impact-wave` to the shared propagation engine so file-guard alerts now carry a cacheable propagation plan alongside the evidence.
+- Connected topology-regression and semantic-coverage guards to the shared propagation engine so their persisted watcher issues and emitted events now include propagation summaries.
+- Connected compiler policy drift reporting to the shared propagation engine so governance findings now propagate into the shared cache, status, and explainability surfaces.
 - Connected the `impact-wave` file-guard flow to the shared propagation engine so alerts now carry a cacheable propagation plan alongside the evidence.
 - Persisted the impact-wave propagation summary inside the watcher issue context and surfaced it in the emitted `arch:impact-wave` event.
 - Added impact-wave propagation coverage to the shared propagation engine, including change-type defaults and watcher-connected systems.

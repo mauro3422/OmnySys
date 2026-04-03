@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildImpactWavePropagationPlan,
+  buildSemanticCoveragePropagationPlan,
+  buildPolicyDriftPropagationPlan,
+  buildTopologyRegressionPropagationPlan,
   buildPropagationPlan,
   buildPropagationCacheKey,
   clearPropagationPlanCache,
@@ -67,6 +70,89 @@ describe('propagation-engine', () => {
       'cache_policy',
       'drift_assessment'
     ]));
+  });
+
+  it('builds a topology-regression propagation plan with semantic-connected systems', () => {
+    const plan = buildTopologyRegressionPropagationPlan({
+      severity: 'high',
+      scopePath: 'src/core/file-watcher/guards/topology-regression',
+      focusPath: 'src/core/file-watcher/guards/topology-regression-reporting.js',
+      previousSignal: 24,
+      currentSignal: 0,
+      ratio: 0,
+      regressedAtomCount: 3
+    });
+
+    expect(plan.changeType).toBe('topology_regression');
+    expect(plan.mode).toBe('alert_and_review');
+    expect(plan.connectedSystems.map((item) => item.name)).toEqual(expect.arrayContaining([
+      'topology_regression_guard',
+      'watcher',
+      'semantic_coverage',
+      'semantic_persistence',
+      'technical_debt_report',
+      'status_panel',
+      'health_snapshot',
+      'compiler_explainability',
+      'cache_policy',
+      'drift_assessment'
+    ]));
+    expect(plan.rewriteCount).toBe(3);
+    expect(plan.validationTargetCount).toBe(4);
+  });
+
+  it('builds a semantic-coverage propagation plan with metadata-connected systems', () => {
+    const plan = buildSemanticCoveragePropagationPlan({
+      severity: 'medium',
+      scopePath: 'src/core/file-watcher/guards/semantic-coverage',
+      focusPath: 'src/core/file-watcher/guards/semantic-coverage/reporting.js',
+      gapCount: 2,
+      sharesStateRelations: 1,
+      networkCandidateCount: 3
+    });
+
+    expect(plan.changeType).toBe('semantic_coverage');
+    expect(plan.mode).toBe('alert_and_review');
+    expect(plan.connectedSystems.map((item) => item.name)).toEqual(expect.arrayContaining([
+      'semantic_coverage_guard',
+      'watcher',
+      'semantic_persistence',
+      'technical_debt_report',
+      'status_panel',
+      'health_snapshot',
+      'compiler_explainability',
+      'cache_policy',
+      'drift_assessment'
+    ]));
+    expect(plan.rewriteCount).toBe(2);
+    expect(plan.validationTargetCount).toBe(6);
+  });
+
+  it('builds a policy-drift propagation plan with governance-connected systems', () => {
+    const plan = buildPolicyDriftPropagationPlan({
+      severity: 'high',
+      scopePath: 'src/core/file-watcher/guards/compiler-policy-conformance-guard.js',
+      focusPath: 'src/core/file-watcher/guards/compiler-policy-conformance-guard.js',
+      findingCount: 3,
+      ruleCount: 2,
+      policyAreaCount: 1
+    });
+
+    expect(plan.changeType).toBe('policy_drift');
+    expect(plan.mode).toBe('alert_and_review');
+    expect(plan.connectedSystems.map((item) => item.name)).toEqual(expect.arrayContaining([
+      'compiler_policy_conformance_guard',
+      'watcher',
+      'technical_debt_report',
+      'status_panel',
+      'health_snapshot',
+      'compiler_explainability',
+      'cache_policy',
+      'drift_assessment',
+      'semantic_persistence'
+    ]));
+    expect(plan.rewriteCount).toBe(3);
+    expect(plan.validationTargetCount).toBe(6);
   });
 
   it('summarizes propagation plans for status surfaces', () => {

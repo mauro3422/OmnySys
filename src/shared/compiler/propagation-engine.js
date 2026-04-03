@@ -35,6 +35,49 @@ function buildConnectedSystems(changeType = 'folderization') {
     ];
   }
 
+  if (changeType === 'topology_regression') {
+    return [
+      { name: 'topology_regression_guard', role: 'evidence' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'semantic_coverage', role: 'verification' },
+      { name: 'semantic_persistence', role: 'storage' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' }
+    ];
+  }
+
+  if (changeType === 'semantic_coverage') {
+    return [
+      { name: 'semantic_coverage_guard', role: 'evidence' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'semantic_persistence', role: 'storage' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' }
+    ];
+  }
+
+  if (changeType === 'policy_drift') {
+    return [
+      { name: 'compiler_policy_conformance_guard', role: 'evidence' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' },
+      { name: 'semantic_persistence', role: 'storage' }
+    ];
+  }
+
   if (changeType === 'rename') {
     return [
       { name: 'rename_folderized_family', role: 'planner' },
@@ -58,6 +101,24 @@ function buildPropagationMode(changeType, decision, mode = null) {
   }
 
   if (changeType === 'impact_wave') {
+    if (decision === 'reject') return 'alert_only';
+    if (decision === 'approve') return 'alert_and_recommend';
+    return 'alert_and_review';
+  }
+
+  if (changeType === 'topology_regression') {
+    if (decision === 'reject') return 'alert_only';
+    if (decision === 'approve') return 'alert_and_recommend';
+    return 'alert_and_review';
+  }
+
+  if (changeType === 'semantic_coverage') {
+    if (decision === 'reject') return 'alert_only';
+    if (decision === 'approve') return 'alert_and_recommend';
+    return 'alert_and_review';
+  }
+
+  if (changeType === 'policy_drift') {
     if (decision === 'reject') return 'alert_only';
     if (decision === 'approve') return 'alert_and_recommend';
     return 'alert_and_review';
@@ -97,6 +158,23 @@ function normalizePropagationCore(plan = {}) {
   };
 }
 
+function normalizeChangeSpecificKeyFields(input = {}) {
+  return {
+    previousSignal: Number(input.previousSignal || 0),
+    currentSignal: Number(input.currentSignal || 0),
+    ratio: input.ratio === undefined ? null : Number(input.ratio),
+    regressedAtomCount: Number(input.regressedAtomCount || 0),
+    gapCount: Number(input.gapCount || 0),
+    sharesStateRelations: Number(input.sharesStateRelations || 0),
+    networkCandidateCount: Number(input.networkCandidateCount || 0),
+    findingCount: Number(input.findingCount || 0),
+    ruleCount: Number(input.ruleCount || 0),
+    policyAreaCount: Number(input.policyAreaCount || 0),
+    impactedFileCount: Number(input.impactedFileCount || 0),
+    rewriteCount: Number(input.rewriteCount || 0)
+  };
+}
+
 function normalizePropagationCollections(plan = {}) {
   return {
     topImpactedFiles: takeTop(plan.topImpactedFiles || [], 3),
@@ -114,8 +192,7 @@ export function buildPropagationCacheKey(input = {}) {
       decision: input.decision || 'reject',
       mode: input.mode || null,
       moveTargetCount: Number(input.moveTargetCount || 0),
-      impactedFileCount: Number(input.impactedFileCount || 0),
-      rewriteCount: Number(input.rewriteCount || 0),
+      ...normalizeChangeSpecificKeyFields(input),
       renameTargetCount: Number(input.renameTargetCount || 0),
       validationTargetCount: Number(input.validationTargetCount || 0),
       candidateCount: Number(input.candidateCount || 0),
@@ -228,9 +305,122 @@ export function buildImpactWavePropagationPlan(input = {}) {
   });
 }
 
+export function buildTopologyRegressionPropagationPlan(input = {}) {
+  const severity = input.severity || 'medium';
+  const decision = input.decision || 'review';
+  const mode = input.mode || 'alert_and_review';
+  const impactedFileCount = Number(input.impactedFileCount || 1);
+  const regressedAtomCount = Number(input.regressedAtomCount || 0);
+  const connectedSystems = Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
+    ? input.connectedSystems
+    : buildConnectedSystems('topology_regression');
+
+  return buildPropagationPlan({
+    ...input,
+    changeType: 'topology_regression',
+    severity,
+    decision,
+    mode,
+    guidance: input.guidance || 'Surface the topology regression plan to watcher persistence, semantic coverage, and drift governance before trusting the recalculated graph.',
+    recommendationStrategy: input.recommendationStrategy || 'topology_regression',
+    impactedFileCount,
+    rewriteCount: Number(input.rewriteCount || regressedAtomCount || 0),
+    validationTargetCount: Number(input.validationTargetCount || impactedFileCount + regressedAtomCount),
+    hasCrossFamilyPropagation: input.hasCrossFamilyPropagation ?? (impactedFileCount > 1 || regressedAtomCount > 0),
+    topImpactedFiles: input.topImpactedFiles || [{ filePath: input.focusPath || null }],
+    topCandidates: input.topCandidates || [],
+    candidateCount: Number(input.candidateCount || regressedAtomCount),
+    flatFamilies: Number(input.flatFamilies || 0),
+    mixedFamilies: Number(input.mixedFamilies || (impactedFileCount > 1 ? 1 : 0)),
+    alreadyFolderizedFamilies: Number(input.alreadyFolderizedFamilies || 0),
+    drift: input.drift || {
+      state: regressedAtomCount > 0 ? 'watch' : 'stable',
+      reason: regressedAtomCount > 0 ? 'regressed topology signal' : 'no regressed topology signal'
+    },
+    connectedSystems
+  });
+}
+
+export function buildSemanticCoveragePropagationPlan(input = {}) {
+  const severity = input.severity || 'medium';
+  const decision = input.decision || 'review';
+  const mode = input.mode || 'alert_and_review';
+  const gapCount = Number(input.gapCount || (Array.isArray(input.gaps) ? input.gaps.length : 0));
+  const sharesStateRelations = Number(input.sharesStateRelations || 0);
+  const networkCandidateCount = Number(input.networkCandidateCount || (Array.isArray(input.networkCandidates) ? input.networkCandidates.length : 0));
+  const connectedSystems = Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
+    ? input.connectedSystems
+    : buildConnectedSystems('semantic_coverage');
+
+  return buildPropagationPlan({
+    ...input,
+    changeType: 'semantic_coverage',
+    severity,
+    decision,
+    mode,
+    guidance: input.guidance || 'Surface semantic coverage gaps to watcher persistence, semantic storage, and drift governance before trusting the extracted graph.',
+    recommendationStrategy: input.recommendationStrategy || 'semantic_coverage',
+    impactedFileCount: Number(input.impactedFileCount || 1),
+    rewriteCount: Number(input.rewriteCount || gapCount),
+    validationTargetCount: Number(input.validationTargetCount || gapCount + sharesStateRelations + networkCandidateCount),
+    hasCrossFamilyPropagation: input.hasCrossFamilyPropagation ?? (gapCount > 0 || sharesStateRelations > 0 || networkCandidateCount > 0),
+    topImpactedFiles: input.topImpactedFiles || [{ filePath: input.focusPath || null }],
+    topCandidates: input.topCandidates || [],
+    candidateCount: Number(input.candidateCount || gapCount + networkCandidateCount),
+    flatFamilies: Number(input.flatFamilies || 0),
+    mixedFamilies: Number(input.mixedFamilies || (gapCount > 0 ? 1 : 0)),
+    alreadyFolderizedFamilies: Number(input.alreadyFolderizedFamilies || 0),
+    drift: input.drift || {
+      state: gapCount > 0 ? 'watch' : 'stable',
+      reason: gapCount > 0 ? 'semantic coverage gap' : 'no semantic coverage gap'
+    },
+    connectedSystems
+  });
+}
+
+export function buildPolicyDriftPropagationPlan(input = {}) {
+  const severity = input.severity || 'medium';
+  const decision = input.decision || 'review';
+  const mode = input.mode || 'alert_and_review';
+  const findingCount = Number(input.findingCount || (Array.isArray(input.findings) ? input.findings.length : 0));
+  const ruleCount = Number(input.ruleCount || (input.summary?.byRule ? Object.keys(input.summary.byRule).length : 0));
+  const policyAreaCount = Number(input.policyAreaCount || (input.summary?.byPolicyArea ? Object.keys(input.summary.byPolicyArea).length : 0));
+  const connectedSystems = Array.isArray(input.connectedSystems) && input.connectedSystems.length > 0
+    ? input.connectedSystems
+    : buildConnectedSystems('policy_drift');
+
+  return buildPropagationPlan({
+    ...input,
+    changeType: 'policy_drift',
+    severity,
+    decision,
+    mode,
+    guidance: input.guidance || 'Surface policy drift to watcher persistence, technical debt, and governance consumers before trusting the canonical compiler APIs.',
+    recommendationStrategy: input.recommendationStrategy || 'policy_drift',
+    impactedFileCount: Number(input.impactedFileCount || 1),
+    rewriteCount: Number(input.rewriteCount || findingCount),
+    validationTargetCount: Number(input.validationTargetCount || findingCount + ruleCount + policyAreaCount),
+    hasCrossFamilyPropagation: input.hasCrossFamilyPropagation ?? (findingCount > 0 || ruleCount > 0 || policyAreaCount > 0),
+    topImpactedFiles: input.topImpactedFiles || [{ filePath: input.focusPath || null }],
+    topCandidates: input.topCandidates || [],
+    candidateCount: Number(input.candidateCount || findingCount),
+    flatFamilies: Number(input.flatFamilies || 0),
+    mixedFamilies: Number(input.mixedFamilies || (findingCount > 0 ? 1 : 0)),
+    alreadyFolderizedFamilies: Number(input.alreadyFolderizedFamilies || 0),
+    drift: input.drift || {
+      state: findingCount > 0 ? 'watch' : 'stable',
+      reason: findingCount > 0 ? 'policy drift findings present' : 'no policy drift findings'
+    },
+    connectedSystems
+  });
+}
+
 export default {
   buildPropagationCacheKey,
   buildImpactWavePropagationPlan,
+  buildTopologyRegressionPropagationPlan,
+  buildSemanticCoveragePropagationPlan,
+  buildPolicyDriftPropagationPlan,
   buildPropagationPlan,
   clearPropagationPlanCache,
   getPropagationPlanCacheEntry,

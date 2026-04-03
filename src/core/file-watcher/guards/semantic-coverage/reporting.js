@@ -1,6 +1,10 @@
 import { persistWatcherIssue } from '../../watcher-issue-persistence.js';
 import { createIssueType, createStandardContext, IssueDomains, StandardSuggestions } from '../guard-standards.js';
-import { summarizeSemanticCoverage } from '../../../../shared/compiler/index.js';
+import {
+    buildSemanticCoveragePropagationPlan,
+    summarizePropagationPlan,
+    summarizeSemanticCoverage
+} from '../../../../shared/compiler/index.js';
 
 export async function persistSemanticCoverageFinding({ rootPath, filePath, evidence, EventEmitterContext }) {
     const issueType = createIssueType(IssueDomains.SEM, 'coverage_gap', evidence.severity);
@@ -9,6 +13,29 @@ export async function persistSemanticCoverageFinding({ rootPath, filePath, evide
         filePath,
         sharesStateRelations: evidence.sharesStateRelations || 0
     });
+    const propagationPlan = buildSemanticCoveragePropagationPlan({
+        scopePath: rootPath,
+        focusPath: filePath,
+        severity: evidence.severity,
+        gapCount: evidence.gaps.length,
+        sharesStateRelations: evidence.sharesStateRelations || 0,
+        networkCandidateCount: (evidence.networkCandidates || []).length,
+        impactedFileCount: 1,
+        rewriteCount: evidence.gaps.length,
+        candidateCount: evidence.gaps.length + (evidence.networkCandidates || []).length,
+        topCandidates: (evidence.sharedStateCandidates || []).slice(0, 5).map((candidate) => ({
+            name: candidate?.name || candidate?.symbol || candidate?.filePath || null,
+            filePath: candidate?.filePath || filePath
+        })),
+        topImpactedFiles: [{ filePath }],
+        guidance: 'Route semantic coverage gaps through watcher persistence, semantic storage, and drift governance before trusting the extracted graph.',
+        recommendationStrategy: 'semantic_coverage',
+        drift: {
+            state: evidence.gaps.length > 0 ? 'watch' : 'stable',
+            reason: evidence.gaps.length > 0 ? 'semantic coverage gap' : 'no semantic coverage gap'
+        }
+    });
+    const propagation = summarizePropagationPlan(propagationPlan);
 
     await persistWatcherIssue(
         rootPath,
@@ -31,7 +58,8 @@ export async function persistSemanticCoverageFinding({ rootPath, filePath, evide
                 networkFlagged: evidence.networkFlagged,
                 sharedStateCandidates: evidence.sharedStateCandidates,
                 sharesStateRelations: evidence.sharesStateRelations,
-                semanticCoverage
+                semanticCoverage,
+                propagation
             }
         })
     );
@@ -41,13 +69,15 @@ export async function persistSemanticCoverageFinding({ rootPath, filePath, evide
         severity: evidence.severity,
         gaps: evidence.gaps,
         networkCandidates: evidence.networkCandidates,
-        sharedStateCandidates: evidence.sharedStateCandidates
+        sharedStateCandidates: evidence.sharedStateCandidates,
+        propagation
     });
 
     return {
         issueType,
         severity: evidence.severity,
         message,
-        gaps: evidence.gaps
+        gaps: evidence.gaps,
+        propagation
     };
 }

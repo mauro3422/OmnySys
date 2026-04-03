@@ -19,7 +19,9 @@ import {
 } from './guard-standards.js';
 import {
   buildCompilerPolicyIssueSummary,
-  detectCompilerPolicyDriftFromSource
+  detectCompilerPolicyDriftFromSource,
+  buildPolicyDriftPropagationPlan,
+  summarizePropagationPlan
 } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:compiler-policy');
@@ -55,6 +57,28 @@ export async function detectCompilerPolicyConformance(rootPath, filePath) {
   }
 
   const { severity, summary, message, reuseGuidance = [] } = buildCompilerPolicyIssueSummary(findings);
+  const propagationPlan = buildPolicyDriftPropagationPlan({
+    scopePath: rootPath,
+    focusPath: filePath,
+    severity,
+    findingCount: findings.length,
+    ruleCount: Object.keys(summary.byRule || {}).length,
+    policyAreaCount: Object.keys(summary.byPolicyArea || {}).length,
+    impactedFileCount: 1,
+    rewriteCount: findings.length,
+    candidateCount: findings.length,
+    topCandidates: findings.slice(0, 5).map((finding) => ({
+      name: finding.rule || finding.policyArea || finding.name || null,
+      filePath
+    })),
+    guidance: 'Treat policy drift as a propagation signal for technical debt, governance, and canonical helper adoption before mutating more surfaces.',
+    recommendationStrategy: 'policy_drift',
+    drift: {
+      state: severity === 'high' ? 'watch' : 'stable',
+      reason: `policy drift severity ${severity}`
+    }
+  });
+  const propagation = summarizePropagationPlan(propagationPlan);
   const issueType = createIssueType(IssueDomains.ARCH, 'policy_drift', severity);
   const context = createStandardContext({
     guardName: 'compiler-policy-conformance-guard',
@@ -65,7 +89,8 @@ export async function detectCompilerPolicyConformance(rootPath, filePath) {
       byPolicyArea: summary.byPolicyArea,
       byRule: summary.byRule,
       findings,
-      reuseGuidance
+      reuseGuidance,
+      propagation
     }
   });
 
