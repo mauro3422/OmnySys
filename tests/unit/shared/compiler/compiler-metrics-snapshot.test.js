@@ -79,6 +79,25 @@ describe('compiler-metrics-snapshot', () => {
           hasCrossFamilyPropagation: true,
           connectedSystems: ['folderization', 'status']
         },
+        canonicalPromotion: {
+          promotionState: 'watching',
+          inventoryState: 'ready',
+          folderizationState: 'fresh',
+          folderizationDecision: 'approve',
+          candidateCount: 2,
+          folderizedFamilyCount: 1,
+          emergentCandidateCount: 1,
+          canonicalCandidateCount: 1,
+          nextAction: 'Review the top promotion targets',
+          summaryText: 'promotion=watching:2',
+          topPromotionTargets: [
+            {
+              surface: 'compiler-health-dashboard',
+              type: 'folderized-family',
+              priority: 1
+            }
+          ]
+        },
         summaryText: 'snapshot summary'
       },
       trend: null,
@@ -97,9 +116,17 @@ describe('compiler-metrics-snapshot', () => {
       cacheKey: 'folderization:abc123',
       decision: 'approve'
     });
+    expect(compact.daily.canonicalPromotion).toMatchObject({
+      promotionState: 'watching',
+      candidateCount: 2
+    });
     expect(compact.propagation).toMatchObject({
       cacheKey: 'folderization:abc123',
       connectedSystems: ['folderization', 'status']
+    });
+    expect(compact.canonicalPromotion).toMatchObject({
+      promotionState: 'watching',
+      inventoryState: 'ready'
     });
   });
 

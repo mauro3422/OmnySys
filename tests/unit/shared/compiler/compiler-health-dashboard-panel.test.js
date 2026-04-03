@@ -28,6 +28,10 @@ describe('compiler-health-dashboard panel', () => {
         folderizationPropagation: {
           decision: 'approve'
         },
+        canonicalPromotion: {
+          promotionState: 'watching',
+          candidateCount: 2
+        },
         clientSyncState: 'blocked',
         clientSyncReason: 'client cache drift detected',
         clientSyncRecommendation: 'Refresh the client UI and verify the MCP catalog.',
@@ -68,6 +72,7 @@ describe('compiler-health-dashboard panel', () => {
     expect(panel.oneLine).toContain('trust=73/C');
     expect(panel.oneLine).toContain('clientsync=blocked');
     expect(panel.oneLine).toContain('folderprop=approve');
+    expect(panel.oneLine).toContain('promotion=watching:2');
     expect(panel.oneLine).toContain('tools=3/4 ok');
     expect(panel.oneLine).toContain('repair=1/2');
     expect(panel.oneLine).toContain('noise=2/44');
@@ -79,6 +84,10 @@ describe('compiler-health-dashboard panel', () => {
     expect(compact.now.healthScore).toBe(88);
     expect(compact.now.folderizationPropagation).toMatchObject({
       decision: 'approve'
+    });
+    expect(compact.now.canonicalPromotion).toMatchObject({
+      promotionState: 'watching',
+      candidateCount: 2
     });
     expect(compact.trend.velocityPerDay).toBe(2);
     expect(compact.oneLine).toContain('ready=no');

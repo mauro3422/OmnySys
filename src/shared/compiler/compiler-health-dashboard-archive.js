@@ -18,6 +18,7 @@ function mapArchiveDailySummary(daily = null) {
     behaviorState: daily.behaviorState || null,
     driftState: daily.driftState || null,
     folderizationPropagation: daily.folderizationPropagation || null,
+    canonicalPromotion: daily.canonicalPromotion || null,
     successScore: asNumber(daily.successScore, 0),
     issueCount: asNumber(daily.issueCount, 0),
     summary: daily.summary || null

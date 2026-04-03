@@ -77,6 +77,25 @@ describe('compiler-health-dashboard', () => {
             hasCrossFamilyPropagation: true,
             connectedSystems: ['folderization', 'status']
           },
+          canonicalPromotion: {
+            promotionState: 'watching',
+            inventoryState: 'ready',
+            folderizationState: 'fresh',
+            folderizationDecision: 'approve',
+            candidateCount: 2,
+            folderizedFamilyCount: 1,
+            emergentCandidateCount: 1,
+            canonicalCandidateCount: 1,
+            nextAction: 'Review the top promotion targets',
+            summaryText: 'promotion=watching:2',
+            topPromotionTargets: [
+              {
+                surface: 'compiler-health-dashboard',
+                type: 'folderized-family',
+                priority: 1
+              }
+            ]
+          },
           issueCount: 2,
           structuralGroups: 1,
           conceptualGroups: 0,
@@ -219,6 +238,10 @@ describe('compiler-health-dashboard', () => {
       cacheKey: 'folderization:abc123',
       decision: 'approve'
     });
+    expect(dashboard.health.canonicalPromotion).toMatchObject({
+      promotionState: 'watching',
+      candidateCount: 2
+    });
     expect(dashboard.toolTelemetry.folderizationPropagation).toMatchObject({
       cacheKey: 'folderization:abc123',
       decision: 'approve'
@@ -228,6 +251,10 @@ describe('compiler-health-dashboard', () => {
     expect(dashboard.archive.daily.folderizationPropagation).toMatchObject({
       cacheKey: 'folderization:abc123',
       decision: 'approve'
+    });
+    expect(dashboard.archive.daily.canonicalPromotion).toMatchObject({
+      promotionState: 'watching',
+      candidateCount: 2
     });
     expect(dashboard.archive.lifetime.daysObserved).toBe(12);
     expect(dashboard.archive.lifetime.firstCapturedAt).toBe('2026-03-01T00:00:00.000Z');
@@ -242,6 +269,10 @@ describe('compiler-health-dashboard', () => {
       cacheKey: 'folderization:abc123',
       decision: 'approve'
     });
+    expect(compact.health.canonicalPromotion).toMatchObject({
+      promotionState: 'watching',
+      candidateCount: 2
+    });
     expect(compact.toolTelemetry.folderizationPropagation).toMatchObject({
       cacheKey: 'folderization:abc123',
       decision: 'approve'
@@ -249,6 +280,10 @@ describe('compiler-health-dashboard', () => {
     expect(compact.archive.daily.folderizationPropagation).toMatchObject({
       cacheKey: 'folderization:abc123',
       decision: 'approve'
+    });
+    expect(compact.archive.daily.canonicalPromotion).toMatchObject({
+      promotionState: 'watching',
+      candidateCount: 2
     });
     expect(compact.health.propagationExpansionState).toBe('stale');
     expect(compact.trend.velocityPerDay).toBe(1.5);

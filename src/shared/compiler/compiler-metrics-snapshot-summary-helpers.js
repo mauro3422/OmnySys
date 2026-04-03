@@ -20,6 +20,7 @@ export function buildMetricsSnapshotDaily(snapshot = {}, current = null) {
     behaviorState: current.behaviorState || null,
     clientSyncState: current.clientSyncState || null,
     propagation: current.folderizationPropagation || null,
+    canonicalPromotion: current.canonicalPromotion || null,
     issueCount: current.issueCount || 0,
     summary: snapshot.summary || current.summaryText || null
   };

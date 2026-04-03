@@ -9,6 +9,7 @@ All notable changes to this project are documented here as a release index. Deta
 - Added a dedicated `mcp_omnysystem_get_canonical_promotion_report` tool to combine system inventory with folderization evidence and produce a reusable promotion plan.
 - Added a canonical system inventory layer so the compiler health stack can classify canonical surfaces, emergent systems, bridges, wrappers, and promotion candidates in one reusable report.
 - Surfaced system inventory in the metrics snapshot, health dashboard, status payload, and status table so the runtime can show system centrality alongside tool inventory and cache policy.
+- Surfaced canonical promotion in the archive daily summary and compact metrics snapshot daily shape so historical and derived views keep the promotion signal without recomputing it.
 - Surfaced folderization propagation in the compiler health dashboard tool telemetry so the derived plan is visible in the same collection that reports tool noise and cache policy.
 - Preserved folderization propagation in the daily archive summary so historical health snapshots can replay the same propagation plan without recomputing it.
 - Split the compiler metrics snapshot summary builders into a dedicated helper module so the compact snapshot path stays under the watcher complexity and file-size thresholds.

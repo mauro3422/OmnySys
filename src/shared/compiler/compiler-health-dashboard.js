@@ -45,6 +45,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       behaviorState: current.behaviorState || null,
       driftState: current.driftState || null,
       folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
+      canonicalPromotion: current.canonicalPromotion ? { ...current.canonicalPromotion } : null,
       successScore: asNumber(current.successScore, 0),
       issueCount: asNumber(current.issueCount, 0),
       summary: current.summaryText || trend.summary || null
@@ -152,6 +153,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       driftScore: asNumber(current.driftScore, 0),
       stabilityScore: asNumber(current.stabilityScore, 0),
       folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
+      canonicalPromotion: current.canonicalPromotion ? { ...current.canonicalPromotion } : null,
       activeAtomsDriftState: current.activeAtomsDriftState || null,
       activeAtomsDriftReason: current.activeAtomsDriftReason || null,
       clientSyncState: current.clientSyncState || null,
