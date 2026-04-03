@@ -110,6 +110,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
       restartRequired: status.hotReload.restartRequired
     } : null,
     proxyRuntimeTelemetry: status.proxyRuntimeTelemetry || null,
+    bridgeRuntimeTelemetry: status.bridgeRuntimeTelemetry || null,
     watcher,
     telemetryProvenance: status.telemetryProvenance || null,
     compilerExplainability,

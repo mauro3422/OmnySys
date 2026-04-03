@@ -72,15 +72,18 @@ export function summarizeProxyRuntimeTelemetry(telemetry = null) {
   const crashCount = asNumber(telemetry.crashCount, 0);
   const unexpectedExitCount = asNumber(telemetry.unexpectedExitCount, 0);
   const cleanExitCount = asNumber(telemetry.cleanExitCount, 0);
+  const workerPid = telemetry.workerPid || null;
   const recentRestartCount = countRecentEvents(events, 'restart-requested');
   const recentCrashCount = countRecentEvents(events, 'worker-crash');
+  const recentPlannedRestartCount = countRecentEvents(events, 'worker-exit-planned-restart');
   const recentUnexpectedExitCount = countRecentEvents(events, 'worker-exit-unexpected');
+  const recentRecoverySignals = recentRestartCount + recentCrashCount + recentPlannedRestartCount + recentUnexpectedExitCount;
 
-  const state = recentCrashCount > 0 || crashCount > 1 || unexpectedExitCount > 1
+  const state = recentCrashCount > 0 || recentPlannedRestartCount > 2 || recentRestartCount > 3
     ? 'thrashing'
-    : recentCrashCount > 0 || recentRestartCount > 2 || recentUnexpectedExitCount > 0
+    : recentRecoverySignals > 0
       ? 'watchful'
-      : cleanExitCount > 0 && restartCount === 0
+      : workerPid || cleanExitCount > 0
         ? 'stable'
         : 'watchful';
 
@@ -92,7 +95,7 @@ export function summarizeProxyRuntimeTelemetry(telemetry = null) {
     port: telemetry.port || null,
     pid: telemetry.pid || null,
     state,
-    summary: `${state} | restarts=${restartCount} | crashes=${crashCount} | exits=${unexpectedExitCount} | clean=${cleanExitCount}${telemetry.workerPid ? ` | worker=${telemetry.workerPid}` : ''}`,
+    summary: `${state} | restarts=${restartCount} | crashes=${crashCount} | exits=${unexpectedExitCount} | clean=${cleanExitCount}${workerPid ? ` | worker=${workerPid}` : ''}`,
     recommendation: state === 'thrashing'
       ? 'Investigate rapid worker exits and restart loops before trusting bootstrap snapshots.'
       : 'Keep proxy restart telemetry persisted so regressions are visible in status.',
@@ -102,11 +105,13 @@ export function summarizeProxyRuntimeTelemetry(telemetry = null) {
     cleanExitCount,
     recentRestartCount,
     recentCrashCount,
+    recentPlannedRestartCount,
     recentUnexpectedExitCount,
+    recentRecoverySignals,
     lastEventType: lastEvent?.type || null,
     lastEventAt: lastEvent?.at || null,
     lastEventAgeMs,
-    workerPid: telemetry.workerPid || null,
+    workerPid,
     workerStartedAt: telemetry.workerStartedAt || null,
     workerExitAt: telemetry.workerExitAt || null,
     workerExitCode: telemetry.workerExitCode ?? null,

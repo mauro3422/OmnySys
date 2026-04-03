@@ -6,6 +6,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 - Added canonical proxy runtime telemetry so MCP status and health can detect restart/crash thrashing instead of inferring daemon instability from logs alone.
 - Surfaced proxy runtime telemetry in the system table, structured status payload, and compiler metrics snapshot so restart loops, crash loops, and clean exits are visible alongside startup telemetry.
+- Added canonical bridge runtime telemetry so client disconnects, transport closes, session expiry, and reconnect loops are visible instead of forcing shell fallback when the MCP client transport drops.
+- Preserved proxy and bridge runtime telemetry across restarts so status can distinguish fresh boot noise from a real reconnect or crash pattern.
 - Added canonical startup regression telemetry so bootstrap summaries can distinguish expected full reindex startup from a real regression and surface the result in status, health, and dashboard consumers.
 - Simplified the health and system inventory snapshot tools into thin wrappers so their exported MCP contracts stay below the watcher complexity threshold.
 - Moved canonical promotion compacting into the shared explainability helpers and reused the canonical score clamp helper to remove duplicate scoring logic.

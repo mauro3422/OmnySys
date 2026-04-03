@@ -106,6 +106,16 @@ describe('status summary payload', () => {
         unexpectedExitCount: 0,
         cleanExitCount: 1,
         lastEventType: 'worker-exit-clean'
+      },
+      bridgeRuntimeTelemetry: {
+        state: 'watchful',
+        connectCount: 2,
+        reconnectCount: 1,
+        transportClosedCount: 1,
+        sessionExpiredCount: 0,
+        retryableErrorCount: 1,
+        stdioCloseCount: 0,
+        lastEventType: 'transport-closed'
       }
     }, {
       summary: {
@@ -136,6 +146,11 @@ describe('status summary payload', () => {
       state: 'stable',
       restartCount: 0,
       cleanExitCount: 1
+    });
+    expect(payload.bridgeRuntimeTelemetry).toMatchObject({
+      state: 'watchful',
+      connectCount: 2,
+      reconnectCount: 1
     });
     expect(payload.propagation).toMatchObject({
       cacheKey: 'folderization:abc123',
@@ -180,6 +195,7 @@ describe('status summary payload', () => {
       'Update',
       'Startup',
       'Proxy',
+      'Bridge',
       'Behavior',
       'Drift',
       'Propagation',

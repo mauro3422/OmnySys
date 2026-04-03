@@ -76,6 +76,16 @@ describe('status system table', () => {
         cleanExitCount: 0,
         lastEventType: 'worker-crash'
       },
+      bridgeRuntimeTelemetry: {
+        state: 'reconnecting',
+        connectCount: 3,
+        reconnectCount: 2,
+        transportClosedCount: 1,
+        sessionExpiredCount: 1,
+        retryableErrorCount: 2,
+        stdioCloseCount: 0,
+        lastEventType: 'bridge-recovery-needed'
+      },
       compilerExplainability: {
         driftAssessment: {
           primaryIssue: {
@@ -223,6 +233,19 @@ describe('status system table', () => {
     expect(proxyRow.detail).toContain('clean=0');
     expect(proxyRow.detail).toContain('last=worker-crash');
 
+    const bridgeRow = summary.rows.find((row) => row.area === 'Bridge');
+    expect(bridgeRow).toMatchObject({
+      area: 'Bridge',
+      state: 'reconnecting',
+      source: '.omnysysdata/bridge-runtime-telemetry.json'
+    });
+    expect(bridgeRow.detail).toContain('connects=3');
+    expect(bridgeRow.detail).toContain('reconnects=2');
+    expect(bridgeRow.detail).toContain('closed=1');
+    expect(bridgeRow.detail).toContain('expired=1');
+    expect(bridgeRow.detail).toContain('retryable=2');
+    expect(bridgeRow.detail).toContain('last=bridge-recovery-needed');
+
     const areas = summary.rows.map((row) => row.area);
     expect(areas).toEqual([
       'Daemon',
@@ -231,6 +254,7 @@ describe('status system table', () => {
       'Update',
       'Startup',
       'Proxy',
+      'Bridge',
       'Behavior',
       'Drift',
       'Propagation',

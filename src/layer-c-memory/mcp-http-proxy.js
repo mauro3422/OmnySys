@@ -32,6 +32,7 @@ import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import {
     ensureCompilerRuntimeDirSync,
+    readProxyRuntimeTelemetry,
     removeDaemonOwnerLockSync,
     writeDaemonOwnerLockSync,
     writeProxyRuntimeTelemetrySync
@@ -75,7 +76,7 @@ let restartInFlight = false;
 let restartCount = 0;
 let respawnTimer = null;
 let shutdownInProgress = false;
-let proxyTelemetry = null;
+let proxyTelemetry = readProxyRuntimeTelemetry(projectRoot) || null;
 
 function nowIso() {
     return new Date().toISOString();
@@ -375,11 +376,6 @@ if (await detectHealthyDaemon()) {
 ensureCompilerRuntimeDirSync(projectRoot);
 writeOwnerLock('starting');
 persistProxyTelemetry({
-    state: 'booting',
-    events: [],
-    restartCount: 0,
-    crashCount: 0,
-    unexpectedExitCount: 0,
-    cleanExitCount: 0
+    state: 'booting'
 });
 spawnWorker();

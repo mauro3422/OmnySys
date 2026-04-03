@@ -28,8 +28,66 @@ import {
     shouldTriggerRecovery,
     waitForBridgeSessionId
 } from './mcp/stdio-bridge-helpers.js';
+import {
+    readBridgeRuntimeTelemetry,
+    writeBridgeRuntimeTelemetrySync
+} from '../shared/compiler/index.js';
 
 const DAEMON_URL = getDaemonUrl();
+const PROJECT_PATH = process.env.OMNYSYS_PROJECT_PATH || process.cwd();
+
+let bridgeTelemetry = readBridgeRuntimeTelemetry(PROJECT_PATH) || null;
+
+function nowIso() {
+    return new Date().toISOString();
+}
+
+function persistBridgeTelemetry(patch = {}) {
+    bridgeTelemetry = {
+        ...(bridgeTelemetry || {}),
+        projectPath: PROJECT_PATH,
+        updatedAt: nowIso(),
+        ...patch
+    };
+
+    try {
+        writeBridgeRuntimeTelemetrySync(PROJECT_PATH, bridgeTelemetry);
+    } catch (error) {
+        log(`bridge telemetry persist failed: ${error.message}`);
+    }
+
+    return bridgeTelemetry;
+}
+
+function recordBridgeEvent(type, details = {}) {
+    const current = bridgeTelemetry || { events: [] };
+    const events = Array.isArray(current.events) ? current.events.slice(-29) : [];
+    events.push({
+      type,
+      at: nowIso(),
+      ...details
+    });
+
+    const connectCount = (current.connectCount || 0) + (type === 'bridge-connect' ? 1 : 0);
+    const reconnectCount = (current.reconnectCount || 0) + (type === 'bridge-reconnect' ? 1 : 0);
+    const transportClosedCount = (current.transportClosedCount || 0) + (type === 'transport-closed' ? 1 : 0);
+    const sessionExpiredCount = (current.sessionExpiredCount || 0) + (type === 'session-expired' ? 1 : 0);
+    const retryableErrorCount = (current.retryableErrorCount || 0) + (type === 'bridge-recovery-needed' ? 1 : 0);
+    const stdioCloseCount = (current.stdioCloseCount || 0) + (type === 'stdio-close' ? 1 : 0);
+
+    return persistBridgeTelemetry({
+        connectCount,
+        reconnectCount,
+        transportClosedCount,
+        sessionExpiredCount,
+        retryableErrorCount,
+        stdioCloseCount,
+        events,
+        lastEventType: type,
+        lastEventAt: events[events.length - 1]?.at || nowIso(),
+        ...details
+    });
+}
 
 async function connectBridgeTransport(state, options = {}) {
     const sessionId = Object.prototype.hasOwnProperty.call(options, 'sessionId')
@@ -43,6 +101,11 @@ async function connectBridgeTransport(state, options = {}) {
         sessionId ? { sessionId } : undefined
     );
     state.httpTransport = transport;
+    recordBridgeEvent(state.transportGeneration <= 1 ? 'bridge-connect' : 'bridge-reconnect', {
+        sessionId: sessionId || null,
+        transportGeneration,
+        hasSessionId: Boolean(sessionId)
+    });
 
     const isStaleTransport = () => state.httpTransport !== transport || state.transportGeneration !== transportGeneration;
 
@@ -78,6 +141,11 @@ async function connectBridgeTransport(state, options = {}) {
     transport.onerror = (err) => {
         if (!isStaleTransport()) {
             log(`http error: ${err.message}`);
+            recordBridgeEvent('bridge-http-error', {
+                message: String(err?.message || err || ''),
+                sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
+                transportGeneration
+            });
         }
     };
     transport.onclose = async () => {
@@ -85,9 +153,18 @@ async function connectBridgeTransport(state, options = {}) {
             return;
         }
 
-        log('Daemon disconnected.');
-        await startBridgeRecovery(state, 'transport closed', connectBridgeTransport);
-    };
+    log('Daemon disconnected.');
+    recordBridgeEvent('transport-closed', {
+        sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
+        transportGeneration
+    });
+    recordBridgeEvent('bridge-recovery-needed', {
+        trigger: 'transport closed',
+        sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
+        transportGeneration
+    });
+    await startBridgeRecovery(state, 'transport closed', connectBridgeTransport);
+};
 
     await transport.start();
 }
@@ -158,6 +235,17 @@ async function handleBridgeStdioMessage(state, message) {
             if (currentTransport) {
                 currentTransport.close().catch(() => {});
             }
+            recordBridgeEvent('session-expired', {
+                method: normalizedMessage?.method || null,
+                message: String(err?.message || err || ''),
+                transportGeneration
+            });
+            recordBridgeEvent('bridge-recovery-needed', {
+                trigger: 'session expired',
+                method: normalizedMessage?.method || null,
+                message: String(err?.message || err || ''),
+                transportGeneration
+            });
             void startBridgeRecovery(
                 state,
                 'session expired',
@@ -173,6 +261,11 @@ async function handleBridgeStdioMessage(state, message) {
             if (currentTransport) {
                 currentTransport.close().catch(() => {});
             }
+            recordBridgeEvent('bridge-recovery-needed', {
+                method: normalizedMessage?.method || null,
+                message: String(err?.message || err || ''),
+                transportGeneration
+            });
             void scheduleBridgeRecovery(
                 state,
                 'server rejected request after daemon restart',
@@ -197,6 +290,9 @@ async function handleBridgeStdioMessage(state, message) {
 
 function handleBridgeStdioClose(state) {
     log('IDE disconnected - shutting down bridge.');
+    recordBridgeEvent('stdio-close', {
+        sessionId: state.lastSessionId || null
+    });
     if (state.httpTransport && !state.isReconnecting) {
         state.httpTransport.close().catch(() => {});
     }
@@ -215,6 +311,9 @@ const main = createCliOrchestrator({
     keepAlive: true,
     run: async () => {
         log(`Starting bridge for ${process.env.OMNYSYS_PROJECT_PATH || process.cwd()} - checking daemon...`);
+        persistBridgeTelemetry({
+            state: 'booting'
+        });
         await waitForDaemonReady();
 
         log(`Daemon ready. Bridging stdio <-> ${DAEMON_URL}`);
@@ -234,6 +333,7 @@ const main = createCliOrchestrator({
         };
 
         await stdioTransport.start();
+        recordBridgeEvent('stdio-started', {});
         log('Bridge active.');
     }
 });

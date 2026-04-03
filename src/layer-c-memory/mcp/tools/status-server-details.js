@@ -19,7 +19,9 @@ import {
   compactWatcherSummary,
   summarizeCompilerExplainability,
   readProxyRuntimeTelemetry,
-  summarizeProxyRuntimeTelemetry
+  summarizeProxyRuntimeTelemetry,
+  readBridgeRuntimeTelemetry,
+  summarizeBridgeRuntimeTelemetry
 } from '../../../shared/compiler/index.js';
 import { sessionManager } from '../core/session-manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
@@ -178,6 +180,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     sessionDb: repo?.db || null
   });
   const proxyRuntimeTelemetry = summarizeProxyRuntimeTelemetry(readProxyRuntimeTelemetry(projectPath));
+  const bridgeRuntimeTelemetry = summarizeBridgeRuntimeTelemetry(readBridgeRuntimeTelemetry(projectPath));
   const metricsSnapshot = buildCompilerMetricsSnapshot({
     projectPath,
     repo,
@@ -189,6 +192,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     canonicalPromotion,
     startupTelemetry: server?.startupTelemetry || null,
     proxyRuntimeTelemetry,
+    bridgeRuntimeTelemetry,
     scopePath: args?.scopePath || null,
     focusPath: args?.focusPath || null,
     captureSource: 'status.runtime',
@@ -225,12 +229,16 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.canonicalPromotionDetail = canonicalPromotionDetail;
   status.startupTelemetry = server?.startupTelemetry || null;
   status.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+  status.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
   status.metricsSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+  status.metricsSnapshot.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
   if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
     status.metricsSnapshot.current.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+    status.metricsSnapshot.current.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
   }
   if (status.healthSnapshot && typeof status.healthSnapshot === 'object') {
     status.healthSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
+    status.healthSnapshot.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
   }
   return {
     repo,

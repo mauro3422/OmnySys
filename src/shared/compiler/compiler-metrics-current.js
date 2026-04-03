@@ -60,6 +60,7 @@ export function buildCurrentMetrics({
   canonicalPromotion = null,
   startupTelemetry = null,
   proxyRuntimeTelemetry = null,
+  bridgeRuntimeTelemetry = null,
   repo = null,
   watcherAlerts = [],
   recentErrors = null,
@@ -148,6 +149,7 @@ export function buildCurrentMetrics({
     canonicalPromotion: canonicalPromotion || null,
     startupTelemetry: buildStartupRegressionSummary(startupTelemetry),
     proxyRuntimeTelemetry: proxyRuntimeTelemetry || null,
+    bridgeRuntimeTelemetry: bridgeRuntimeTelemetry || null,
     folderizationDecision: folderization?.decision || null,
     folderizationPropagation: compactFolderizationPropagation(folderization?.propagation || null),
     driftState: behavior.driftState,
@@ -185,6 +187,9 @@ export function buildCurrentMetrics({
       : null,
     current.proxyRuntimeTelemetry?.state
       ? `proxy=${current.proxyRuntimeTelemetry.state}`
+      : null,
+    current.bridgeRuntimeTelemetry?.state
+      ? `bridge=${current.bridgeRuntimeTelemetry.state}`
       : null,
     current.toolTelemetry?.pressureRuns > 0
       ? `repair=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.pressureRuns}`

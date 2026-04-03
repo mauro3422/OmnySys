@@ -199,6 +199,13 @@ export {
 } from './proxy-runtime-telemetry.js';
 
 export {
+  getBridgeRuntimeTelemetryPath,
+  readBridgeRuntimeTelemetry,
+  writeBridgeRuntimeTelemetrySync,
+  summarizeBridgeRuntimeTelemetry
+} from './bridge-runtime-telemetry.js';
+
+export {
   analyzeTestCoverage,
   compareWithGeneratedTests
 } from './test-coverage-analyzer.js';

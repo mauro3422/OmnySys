@@ -84,6 +84,14 @@ export function buildSystemTableSummary(status = {}) {
         source: '.omnysysdata/proxy-runtime-telemetry.json'
       },
       {
+        area: 'Bridge',
+        state: status.bridgeRuntimeTelemetry?.state || 'unknown',
+        detail: status.bridgeRuntimeTelemetry
+          ? `connects=${normalizeCount(status.bridgeRuntimeTelemetry.connectCount || 0)} | reconnects=${normalizeCount(status.bridgeRuntimeTelemetry.reconnectCount || 0)} | closed=${normalizeCount(status.bridgeRuntimeTelemetry.transportClosedCount || 0)} | expired=${normalizeCount(status.bridgeRuntimeTelemetry.sessionExpiredCount || 0)} | retryable=${normalizeCount(status.bridgeRuntimeTelemetry.retryableErrorCount || 0)} | stdioClose=${normalizeCount(status.bridgeRuntimeTelemetry.stdioCloseCount || 0)} | last=${status.bridgeRuntimeTelemetry.lastEventType || 'n/a'}`
+          : 'bridge runtime telemetry not available',
+        source: '.omnysysdata/bridge-runtime-telemetry.json'
+      },
+      {
         area: 'Behavior',
         state: current.behaviorState || 'unknown',
         detail: `blockers=${normalizeCount(current.behaviorGateSummary?.blockerCount || current.behaviorBlockers?.length || 0)} | primary=${current.primaryBehaviorBlocker?.gate || current.behaviorGateSummary?.primaryBlocker?.gate || 'n/a'} | reason=${current.readinessReason || 'n/a'}`,
