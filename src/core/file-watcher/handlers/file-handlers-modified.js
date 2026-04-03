@@ -1,4 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
+import { runAsyncBoundary } from '../../../shared/compiler/index.js';
 import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js';
@@ -51,33 +52,39 @@ async function reconcileWatcherIssuesAfterModification(fileWatcher, filePath) {
 }
 
 export async function handleFileModifiedForWatcher(fileWatcher, filePath, fullPath, changeContext = {}) {
-  const snapshot = await readModifiedFileSnapshot(fullPath);
-  if (shouldSkipModifiedFile(snapshot)) {
-    return;
-  }
+  return await runAsyncBoundary('handleFileModifiedForWatcher', async () => {
+    try {
+      const snapshot = await readModifiedFileSnapshot(fullPath);
+      if (shouldSkipModifiedFile(snapshot)) {
+        return;
+      }
 
-  const newHash = await fileWatcher._calculateContentHash(fullPath);
-  if (await invalidateModifiedFileCache(fileWatcher, filePath, newHash)) {
-    return;
-  }
+      const newHash = await fileWatcher._calculateContentHash(fullPath);
+      if (await invalidateModifiedFileCache(fileWatcher, filePath, newHash)) {
+        return;
+      }
 
-  await recordModifiedFileStats(fileWatcher, filePath, snapshot);
+      await recordModifiedFileStats(fileWatcher, filePath, snapshot);
 
-  logFileLifecycle(`[FILE MODIFIED] ${filePath}${formatOriginSuffix(changeContext)}`);
-  const previousAtoms = await loadPreviousAtomsForFile(fileWatcher, filePath);
+      logFileLifecycle(`[FILE MODIFIED] ${filePath}${formatOriginSuffix(changeContext)}`);
+      const previousAtoms = await loadPreviousAtomsForFile(fileWatcher, filePath);
 
-  const analysis = await collectAndIndexFile.call(fileWatcher, filePath, fullPath, true);
+      const analysis = await collectAndIndexFile.call(fileWatcher, filePath, fullPath, true);
 
-  await processModifiedFilePostActions(
-    fileWatcher,
-    filePath,
-    fullPath,
-    previousAtoms,
-    analysis,
-    validateExportsForModifiedFile,
-    runImpactGuardsForModifiedFile,
-    reconcileWatcherIssuesAfterModification
-  );
+      await processModifiedFilePostActions(
+        fileWatcher,
+        filePath,
+        fullPath,
+        previousAtoms,
+        analysis,
+        validateExportsForModifiedFile,
+        runImpactGuardsForModifiedFile,
+        reconcileWatcherIssuesAfterModification
+      );
 
-  emitFileLifecycleEvent(fileWatcher, 'file:modified', filePath, changeContext, { analysis });
+      emitFileLifecycleEvent(fileWatcher, 'file:modified', filePath, changeContext, { analysis });
+    } catch (error) {
+      throw error;
+    }
+  });
 }

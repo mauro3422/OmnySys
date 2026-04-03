@@ -5,6 +5,7 @@ import { computeImpactWaveScore, summarizeImpactWave } from '../impact-wave-scor
 import { buildImpactWaveIssueContext } from './context.js';
 import { clearPersistedImpactWaveIssues } from './persistence.js';
 import { isTestFilePath } from './helpers.js';
+import { runAsyncBoundary } from '../../../../shared/compiler/index.js';
 
 export async function collectImpactWaveEvidence({
     rootPath,
@@ -18,62 +19,54 @@ export async function collectImpactWaveEvidence({
     relationHelpers = {},
     options = {}
 }) {
-    const {
-        countRequiredSignatureParams: countRequiredParams = countRequiredSignatureParams,
-        extractRelatedFilePath: extractRelationFile = extractRelatedFilePath
-    } = relationHelpers;
+    return await runAsyncBoundary('collectImpactWaveEvidence', async () => {
+        const {
+            countRequiredSignatureParams: countRequiredParams = countRequiredSignatureParams,
+            extractRelatedFilePath: extractRelationFile = extractRelatedFilePath
+        } = relationHelpers;
 
-    const currentAtoms = options.atoms || await getAtomsFn(filePath);
-    if (!currentAtoms || currentAtoms.length === 0) {
-        await clearPersistedImpactWaveIssues(rootPath, filePath);
-        return null;
-    }
+        const currentAtoms = options.atoms || await getAtomsFn(filePath);
+        if (!currentAtoms || currentAtoms.length === 0) {
+            await clearPersistedImpactWaveIssues(rootPath, filePath);
+            return null;
+        }
 
-    const { validateImportsInEdit, validatePostEditOptimized } = await import('#layer-c/mcp/tools/atomic-edit/validators.js');
-    const changedAtoms = collectImpactWaveAtomChanges(previousAtoms, currentAtoms, countRequiredParams);
+        const { validateImportsInEdit, validatePostEditOptimized } = await import('#layer-c/mcp/tools/atomic-edit/validators.js');
+        const changedAtoms = collectImpactWaveAtomChanges(previousAtoms, currentAtoms, countRequiredParams);
 
-    const focusedAtoms = changedAtoms.slice(0, maxAtoms);
-    const focusedAtomNames = new Set(focusedAtoms.map((atom) => atom.name));
-    const focusedAtomIds = focusedAtoms.map((atom) => atom.id).filter(Boolean);
-    const relatedFiles = collectImpactWaveRelatedFiles(currentAtoms, focusedAtomNames, filePath, extractRelationFile);
-    const brokenImports = await loadImpactWaveBrokenImports(fullPath, filePath, rootPath, validateImportsInEdit);
-    const brokenCallers = await loadImpactWaveBrokenCallers({
-        filePath,
-        rootPath,
-        previousAtoms,
-        currentAtoms,
-        changedAtoms,
-        validatePostEditOptimized
-    });
-    const score = computeImpactWaveScore(focusedAtoms, relatedFiles, brokenImports, brokenCallers);
-    const summary = summarizeImpactWave(
-        focusedAtoms,
-        new Set(Array.from(relatedFiles).slice(0, maxRelatedFiles)),
-        brokenImports,
-        brokenCallers,
-        score
-    );
+        const focusedAtoms = changedAtoms.slice(0, maxAtoms);
+        const focusedAtomNames = new Set(focusedAtoms.map((atom) => atom.name));
+        const focusedAtomIds = focusedAtoms.map((atom) => atom.id).filter(Boolean);
+        const relatedFiles = collectImpactWaveRelatedFiles(currentAtoms, focusedAtomNames, filePath, extractRelationFile);
+        const brokenImports = await loadImpactWaveBrokenImports(fullPath, filePath, rootPath, validateImportsInEdit);
+        const brokenCallers = await loadImpactWaveBrokenCallers({
+            filePath,
+            rootPath,
+            previousAtoms,
+            currentAtoms,
+            changedAtoms,
+            validatePostEditOptimized
+        });
+        const score = computeImpactWaveScore(focusedAtoms, relatedFiles, brokenImports, brokenCallers);
+        const summary = summarizeImpactWave(
+            focusedAtoms,
+            new Set(Array.from(relatedFiles).slice(0, maxRelatedFiles)),
+            brokenImports,
+            brokenCallers,
+            score
+        );
 
-    if (!summary.severity) {
-        await clearPersistedImpactWaveIssues(rootPath, filePath);
-        return null;
-    }
+        if (!summary.severity) {
+            await clearPersistedImpactWaveIssues(rootPath, filePath);
+            return null;
+        }
 
-    if (isTestFilePath(filePath) && brokenImports.length === 0 && brokenCallers.length === 0 && relatedFiles.size === 0) {
-        await clearPersistedImpactWaveIssues(rootPath, filePath);
-        return null;
-    }
+        if (isTestFilePath(filePath) && brokenImports.length === 0 && brokenCallers.length === 0 && relatedFiles.size === 0) {
+            await clearPersistedImpactWaveIssues(rootPath, filePath);
+            return null;
+        }
 
-    return {
-        severity: summary.severity,
-        score,
-        focusedAtoms,
-        focusedAtomIds,
-        relatedFiles,
-        brokenImports,
-        brokenCallers,
-        summary,
-        issueContext: buildImpactWaveIssueContext({
+        return {
             severity: summary.severity,
             score,
             focusedAtoms,
@@ -81,8 +74,18 @@ export async function collectImpactWaveEvidence({
             relatedFiles,
             brokenImports,
             brokenCallers,
-            maxRelatedFiles,
-            maxBrokenSamples
-        })
-    };
+            summary,
+            issueContext: buildImpactWaveIssueContext({
+                severity: summary.severity,
+                score,
+                focusedAtoms,
+                focusedAtomIds,
+                relatedFiles,
+                brokenImports,
+                brokenCallers,
+                maxRelatedFiles,
+                maxBrokenSamples
+            })
+        };
+    });
 }

@@ -1,5 +1,10 @@
 import path from 'path';
 import { createLogger } from '../../../../utils/logger.js';
+import { runAsyncBoundary } from '../../../../shared/compiler/index.js';
+import {
+    normalizeComparisonPath as normalizeComparisonPathShared,
+    normalizeSnapshotPath as normalizeSnapshotPathShared
+} from '../../../../shared/compiler/index.js';
 import { getFileDependents } from '#layer-c/query/apis/file-api.js';
 import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../utils/path-utils.js';
 
@@ -7,16 +12,8 @@ const logger = createLogger('OmnySys:move:helpers');
 const MOVE_INDEXER_WAIT_ATTEMPTS = 50;
 const MOVE_INDEXER_WAIT_MS = 200;
 
-export function normalizeSnapshotPath(filePath = '') {
-    return String(filePath || '')
-        .trim()
-        .replace(/\\/g, '/')
-        .replace(/^\.\//, '')
-        .replace(/^\/+/, '');
-}
-
 export function normalizeComparisonPath(filePath = '') {
-    return normalizeSnapshotPath(filePath).replace(/\.[jt]sx?$/, '');
+    return normalizeComparisonPathShared(filePath);
 }
 
 function wait(ms) {
@@ -24,16 +21,22 @@ function wait(ms) {
 }
 
 export async function waitForBackgroundIndexer(orchestrator) {
-    if (!orchestrator) {
-        return;
-    }
+    return await runAsyncBoundary('waitForBackgroundIndexer', async () => {
+        try {
+            if (!orchestrator) {
+                return;
+            }
 
-    logger.info('[MoveOrchestrator] Synchronizing with background indexer...');
-    let attempts = 0;
-    while (attempts < MOVE_INDEXER_WAIT_ATTEMPTS && (orchestrator.queue?.size() > 0 || orchestrator.activeJobs > 0)) {
-        await wait(MOVE_INDEXER_WAIT_MS);
-        attempts++;
-    }
+            logger.info('[MoveOrchestrator] Synchronizing with background indexer...');
+            let attempts = 0;
+            while (attempts < MOVE_INDEXER_WAIT_ATTEMPTS && (orchestrator.queue?.size() > 0 || orchestrator.activeJobs > 0)) {
+                await wait(MOVE_INDEXER_WAIT_MS);
+                attempts++;
+            }
+        } catch (error) {
+            throw error;
+        }
+    });
 }
 
 export function resolveDependentsFromSnapshot(oldPath, snapshot) {
@@ -41,7 +44,7 @@ export function resolveDependentsFromSnapshot(oldPath, snapshot) {
         return null;
     }
 
-    const normalizedOldPath = normalizeSnapshotPath(oldPath);
+    const normalizedOldPath = normalizeSnapshotPathShared(oldPath);
     const directMap = snapshot.dependentsBySourcePath;
 
     if (directMap instanceof Map) {
@@ -66,12 +69,18 @@ export function resolveDependentsFromSnapshot(oldPath, snapshot) {
 }
 
 export async function collectMoveDependents(oldPath, projectPath, snapshot) {
-    const snapshotDependents = resolveDependentsFromSnapshot(oldPath, snapshot);
-    if (Array.isArray(snapshotDependents)) {
-        return snapshotDependents;
-    }
+    return await runAsyncBoundary('collectMoveDependents', async () => {
+        try {
+            const snapshotDependents = resolveDependentsFromSnapshot(oldPath, snapshot);
+            if (Array.isArray(snapshotDependents)) {
+                return snapshotDependents;
+            }
 
-    return await getFileDependents(projectPath, oldPath);
+            return await getFileDependents(projectPath, oldPath);
+        } catch (error) {
+            throw error;
+        }
+    });
 }
 
 export function findModuleSourceLineIndex(code, moduleSource) {
@@ -79,11 +88,11 @@ export function findModuleSourceLineIndex(code, moduleSource) {
 }
 
 export function findMatchingMoveImport(imports, depPath, oldPath, projectPath) {
-    const normalizedOldTarget = normalizeComparisonPath(path.resolve(projectPath, oldPath));
+    const normalizedOldTarget = normalizeComparisonPathShared(path.resolve(projectPath, oldPath));
 
     return imports.find((imp) => {
         const absResolved = normalizeImportToAbsolute(imp, depPath, projectPath);
-        const normResolved = normalizeComparisonPath(absResolved);
+        const normResolved = normalizeComparisonPathShared(absResolved);
         return normResolved === normalizedOldTarget;
     }) || null;
 }

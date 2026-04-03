@@ -9,19 +9,12 @@ import {
   loadFolderizationRows,
   normalizeFolderizationPath
 } from '../../../shared/compiler/index.js';
+import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:rename_folderized_family');
 
 function sortRenameTargets(renameTargets = []) {
   return renameTargets.slice().sort((a, b) => a.from.localeCompare(b.from));
-}
-
-function normalizeSnapshotPath(filePath = '') {
-  return String(filePath || '')
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
 }
 
 function buildRowDependencyTargets(row = {}) {

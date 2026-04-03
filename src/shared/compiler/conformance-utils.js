@@ -112,6 +112,8 @@ export function hasExplicitErrorBoundary(source = '') {
         /\btry\s*\{/.test(source) ||
         /\.catch\s*\(/.test(source) ||
         /Promise\.allSettled/.test(source) ||
+        /\brunAsyncBoundary\b/.test(source) ||
+        /\bwithAsyncBoundary\b/.test(source) ||
         /\bwithRetry\b|\bretryable\b|buildRestartLifecycleGuidance|buildCompilerReadinessStatus/.test(source)
     );
 }

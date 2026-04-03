@@ -1,32 +1,37 @@
+import { runAsyncBoundary } from '../../../../shared/compiler/index.js';
 import { clearWatcherIssue, persistWatcherIssue } from '../../watcher-issue-persistence.js';
 
 export async function clearPersistedEventLeakIssues(rootPath, filePath) {
-    await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_high');
-    await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_medium');
-    await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_low');
+    return await runAsyncBoundary('clearPersistedEventLeakIssues', async () => {
+        await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_high');
+        await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_medium');
+        await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_low');
+    });
 }
 
 export async function persistEventLeakIssues(rootPath, filePath, issues) {
-    const highIssues = issues.filter((issue) => issue.severity === 'high');
-    const mediumIssues = issues.filter((issue) => issue.severity === 'medium');
+    return await runAsyncBoundary('persistEventLeakIssues', async () => {
+        const highIssues = issues.filter((issue) => issue.severity === 'high');
+        const mediumIssues = issues.filter((issue) => issue.severity === 'medium');
 
-    for (const issue of [...highIssues, ...mediumIssues]) {
-        await persistWatcherIssue(
-            rootPath,
-            filePath,
-            issue.issueType,
-            issue.severity,
-            issue.message,
-            issue.context
-        );
-    }
+        for (const issue of [...highIssues, ...mediumIssues]) {
+            await persistWatcherIssue(
+                rootPath,
+                filePath,
+                issue.issueType,
+                issue.severity,
+                issue.message,
+                issue.context
+            );
+        }
 
-    if (highIssues.length === 0) {
-        await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_high');
-    }
-    if (mediumIssues.length === 0) {
-        await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_medium');
-    }
+        if (highIssues.length === 0) {
+            await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_high');
+        }
+        if (mediumIssues.length === 0) {
+            await clearWatcherIssue(rootPath, filePath, 'runtime_event_leak_medium');
+        }
 
-    return { highIssues, mediumIssues };
+        return { highIssues, mediumIssues };
+    });
 }

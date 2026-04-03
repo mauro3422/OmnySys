@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Slimmed the technical-debt cache persistence path and centralized snapshot-path normalization into shared compiler helpers so the last hot warning clears while keeping fingerprinted persistence intact.
+- Added a shared async boundary helper and wrapped noisy watcher/MCP surfaces so observation-only flows stop being counted as async-error noise.
 - Fixed the database-health summary load order so live DB health and metrics snapshots no longer collapse to zero after daemon restarts.
 - Centralized repeated `asNumber` and `isRepositoryReady` helpers into shared canonical utilities to remove the last conceptual duplicate debt group.
 - Split the tool-run and pipeline timing telemetry mappers into smaller helpers so the remaining telemetry warnings clear after reload.

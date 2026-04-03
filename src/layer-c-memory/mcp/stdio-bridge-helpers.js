@@ -1,3 +1,4 @@
+import { runAsyncBoundary } from '../../shared/compiler/index.js';
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
 const BRIDGE_CLIENT_ID = String(process.env.OMNYSYS_CLIENT_ID || '').trim();
 const BRIDGE_CLIENT_NAME = String(process.env.OMNYSYS_CLIENT_NAME || '').trim();
@@ -102,18 +103,24 @@ export function normalizeBridgeInitializeMessage(message) {
 }
 
 export async function waitForBridgeSessionId(state, timeoutMs = 2500) {
-    const deadline = Date.now() + timeoutMs;
+    return await runAsyncBoundary('waitForBridgeSessionId', async () => {
+        try {
+            const deadline = Date.now() + timeoutMs;
 
-    while (Date.now() < deadline) {
-        const sessionId = state.lastSessionId || state.httpTransport?._sessionId;
-        if (sessionId) {
-            return sessionId;
+            while (Date.now() < deadline) {
+                const sessionId = state.lastSessionId || state.httpTransport?._sessionId;
+                if (sessionId) {
+                    return sessionId;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            return state.lastSessionId || state.httpTransport?._sessionId || null;
+        } catch (error) {
+            throw error;
         }
-
-        await new Promise((resolve) => setTimeout(resolve, 25));
-    }
-
-    return state.lastSessionId || state.httpTransport?._sessionId || null;
+    }, { fallback: null });
 }
 
 export function getDaemonUrl() {

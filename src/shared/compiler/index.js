@@ -24,6 +24,11 @@ export {
 } from './contract-helpers.js';
 
 export {
+  normalizeSnapshotPath,
+  normalizeComparisonPath
+} from './snapshot-path.js';
+
+export {
   LANGUAGE_ADAPTER_CONTRACT,
   createLanguageAdapterContract,
   assertLanguageAdapterContract
@@ -183,6 +188,10 @@ export {
   buildCompilerDriftAssessment,
   summarizeCompilerDriftAssessment
 } from './compiler-drift-assessment.js';
+
+export {
+  runAsyncBoundary
+} from './async-boundary.js';
 
 export {
   getMetadataExtractionCoverage,

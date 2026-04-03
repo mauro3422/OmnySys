@@ -24,6 +24,9 @@ function hasDelegatedRecoveryContract(source = '') {
   return (
     /extends\s+BaseStrategy/.test(source) ||
     /extends\s+AtomicMutationTool/.test(source) ||
+    /\brunAsyncBoundary\b/.test(source) ||
+    /\brunFileHandlerWithBoundary\b/.test(source) ||
+    /\bwithAsyncBoundary\b/.test(source) ||
     /this\.runRoutedAction\s*\(/.test(source) ||
     /this\.dispatchByKey\s*\(/.test(source) ||
     /this\.runInTransaction\s*\(/.test(source) ||

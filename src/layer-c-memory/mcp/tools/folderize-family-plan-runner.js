@@ -1,4 +1,6 @@
 import { createLogger } from '../../../utils/logger.js';
+import { runAsyncBoundary } from '../../../shared/compiler/index.js';
+import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
 import { MoveOrchestrator } from '../core/shared/move-orchestrator.js';
 import { withMutationBatch } from '../core/shared/mutation-batch.js';
 import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
@@ -18,14 +20,6 @@ function sortMoveTargets(moveTargets = [], barrelPath = null) {
 
     return a.from.localeCompare(b.from);
   });
-}
-
-function normalizeSnapshotPath(filePath = '') {
-  return String(filePath || '')
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '');
 }
 
 export function buildFolderizationMoveSnapshot(focusPlan) {
@@ -103,19 +97,8 @@ function buildFinalMoveTargets(moveTargets = [], renameTargets = []) {
     to: renameMap.get(normalizeSnapshotPath(target.to)) || normalizeSnapshotPath(target.to)
   }));
 }
-
-export async function executeFolderizationPlan({
-  focusPlan,
-  projectPath,
-  context,
-  moveContext,
-  server,
-  validateAfterMove
-}) {
-  const moveTargets = sortMoveTargets(focusPlan.moveTargets, focusPlan.candidate?.barrelFile || null);
-  const renameTargets = sortMoveTargets(buildAutoRenameTargets(moveTargets), null);
-
-  const moveResult = await withMutationBatch(server, {
+async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPath, moveContext }) {
+  return await withMutationBatch(server, {
     reason: 'folderize_family',
     files: focusPlan.files || []
   }, async () => {
@@ -149,53 +132,59 @@ export async function executeFolderizationPlan({
       results
     };
   });
-
-  if (!moveResult?.success) {
-    return moveResult;
+}
+async function runFolderizeRenameBatch({ server, focusPlan, renameTargets, projectPath, moveContext }) {
+  if (renameTargets.length === 0) {
+    return null;
   }
 
-  let renameResult = null;
-  if (renameTargets.length > 0) {
-    renameResult = await withMutationBatch(server, {
-      reason: 'folderize_family_rename',
-      files: renameTargets.map((target) => target.from)
-    }, async () => {
-      const results = [];
+  const renameResult = await withMutationBatch(server, {
+    reason: 'folderize_family_rename',
+    files: renameTargets.map((target) => target.from)
+  }, async () => {
+    const results = [];
 
-      for (const target of renameTargets) {
-        logger.info(`[Tool] folderize rename: ${target.from} -> ${target.to}`);
-        const renameMoveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, moveContext);
-        results.push({
-          from: target.from,
-          to: target.to,
-          result: renameMoveResult
-        });
+    for (const target of renameTargets) {
+      logger.info(`[Tool] folderize rename: ${target.from} -> ${target.to}`);
+      const renameMoveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, moveContext);
+      results.push({
+        from: target.from,
+        to: target.to,
+        result: renameMoveResult
+      });
 
-        if (!renameMoveResult?.success) {
-          logger.error(`[Tool] folderize_family rename failed: ${renameMoveResult?.error || `Failed to rename ${target.from}`}`);
-          return {
-            success: false,
-            mode: 'failed',
-            plan: focusPlan,
-            results,
-            error: renameMoveResult?.error || `Failed to rename ${target.from}`
-          };
-        }
+      if (!renameMoveResult?.success) {
+        logger.error(`[Tool] folderize_family rename failed: ${renameMoveResult?.error || `Failed to rename ${target.from}`}`);
+        return {
+          success: false,
+          mode: 'failed',
+          plan: focusPlan,
+          results,
+          error: renameMoveResult?.error || `Failed to rename ${target.from}`
+        };
       }
-
-      return {
-        success: true,
-        mode: 'applied',
-        plan: focusPlan,
-        results
-      };
-    });
-
-    if (!renameResult?.success) {
-      return renameResult;
     }
-  }
 
+    return {
+      success: true,
+      mode: 'applied',
+      plan: focusPlan,
+      results
+    };
+  });
+
+  return renameResult;
+}
+async function runFolderizeRewritePhase({
+  focusPlan,
+  moveResult,
+  renameResult,
+  moveTargets,
+  renameTargets,
+  projectPath,
+  moveContext,
+  validateAfterMove
+}) {
   const finalMoveTargets = buildFinalMoveTargets(moveTargets, renameTargets);
   const rewriteResult = await rewriteFolderizedFamilyImports({
     projectPath,
@@ -250,4 +239,50 @@ export async function executeFolderizationPlan({
     rewrites: rewriteResult,
     validations
   };
+}
+
+export async function executeFolderizationPlan({ focusPlan, projectPath, context, moveContext, server, validateAfterMove }) {
+  return await runAsyncBoundary('executeFolderizationPlan', async () => {
+    try {
+      const moveTargets = sortMoveTargets(focusPlan.moveTargets, focusPlan.candidate?.barrelFile || null);
+      const renameTargets = sortMoveTargets(buildAutoRenameTargets(moveTargets), null);
+
+      const moveResult = await runFolderizeMoveBatch({
+        server,
+        focusPlan,
+        moveTargets,
+        projectPath,
+        moveContext
+      });
+
+      if (!moveResult?.success) {
+        return moveResult;
+      }
+
+      const renameResult = await runFolderizeRenameBatch({
+        server,
+        focusPlan,
+        renameTargets,
+        projectPath,
+        moveContext
+      });
+
+      if (renameResult?.success === false) {
+        return renameResult;
+      }
+
+      return await runFolderizeRewritePhase({
+        focusPlan,
+        moveResult,
+        renameResult,
+        moveTargets,
+        renameTargets,
+        projectPath,
+        moveContext,
+        validateAfterMove
+      });
+    } catch (error) {
+      throw error;
+    }
+  });
 }
