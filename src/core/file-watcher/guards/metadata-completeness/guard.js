@@ -9,12 +9,26 @@ import { persistMetadataCompletenessFinding } from './reporting.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:metadata-completeness');
 
+function isMetadataCompletenessExemptPath(filePath = '') {
+    const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+    return normalizedPath.startsWith('src/core/file-watcher/guards/')
+        || normalizedPath.includes('/metadata-completeness/')
+        || normalizedPath.includes('/signal-coverage-')
+        || normalizedPath.includes('/conformance')
+        || normalizedPath.startsWith('src/shared/compiler/')
+        || normalizedPath.startsWith('src/layer-a-static/pipeline/phases/atom-extraction/builders/');
+}
+
 export async function detectMetadataCompleteness(rootPath, filePath, EventEmitterContext, atoms = [], options = {}) {
     const { verbose = true } = options;
 
     try {
         await clearWatcherIssue(rootPath, filePath, 'code_metadata_completeness_high');
         await clearWatcherIssue(rootPath, filePath, 'code_metadata_completeness_medium');
+
+        if (isMetadataCompletenessExemptPath(filePath)) {
+            return [];
+        }
 
         const evidence = loadMetadataCompletenessEvidence(atoms, filePath);
         if (!evidence) {

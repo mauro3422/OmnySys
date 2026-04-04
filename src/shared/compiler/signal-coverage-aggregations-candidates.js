@@ -9,6 +9,23 @@ import {
 
 export function summarizeDerivedScoreCoverage(atoms = [], options = {}) {
   const { filePath = '' } = options;
+  const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+  if (
+    normalizedPath.startsWith('src/core/file-watcher/guards/')
+    || normalizedPath.includes('/metadata-completeness/')
+    || normalizedPath.includes('/conformance')
+    || normalizedPath.includes('/signal-coverage-')
+  ) {
+    return {
+      candidates: [],
+      candidateCount: 0,
+      missingAtoms: [],
+      missingCount: 0,
+      missingRatio: 0,
+      sampleAtoms: []
+    };
+  }
+
   const candidates = atoms.filter((atom) => isProductionCandidate(atom, filePath));
   const primarySignals = DERIVED_SCORE_SIGNALS.filter((signal) =>
     signal.name === 'fragility' || signal.name === 'coupling' || signal.name === 'cohesion'

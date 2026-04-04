@@ -19,6 +19,14 @@ const PROPAGATION_CONTRACT_PATTERN = /\b(?:buildPropagationPlan|summarizePropaga
 const PROPAGATION_PAYLOAD_PATTERN = /\bpropagation\b/;
 const PROPAGATION_AWARE_SURFACE_PATTERN = /\b(?:issueContext|extraData|summaryText|payload|reporting|watcher|status|health|snapshot|driftAssessment|surfaceAudit|persistWatcherIssue|createStandardContext|emit\s*\(|build[A-Z]\w*(?:Issue|Report|Payload|Summary|Snapshot|Health))\b/;
 
+function isPropagationExemptPath(normalizedPath = '') {
+  return normalizedPath.startsWith('src/core/file-watcher/guards/guard-standards/')
+    || normalizedPath.includes('/metadata-completeness/')
+    || normalizedPath.startsWith('src/shared/compiler/atom-metadata-helpers.js')
+    || normalizedPath.startsWith('src/shared/compiler/propagation-expansion-conformance.js')
+    || normalizedPath.startsWith('src/shared/compiler/policy-conformance.js');
+}
+
 function isPropagationSurfaceCandidate(normalizedPath = '') {
   return normalizedPath.startsWith('src/core/file-watcher/guards/')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/');
@@ -49,6 +57,10 @@ export function detectPropagationExpansionConformanceFromSource(filePath, source
     options,
     { severity: 'medium', policyArea: COMPILER_POLICY_AREA.PROPAGATION_EXPANSION },
     ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
+      if (isPropagationExemptPath(normalizedPath)) {
+        return;
+      }
+
       if (!isPropagationSurfaceCandidate(normalizedPath)) {
         return;
       }

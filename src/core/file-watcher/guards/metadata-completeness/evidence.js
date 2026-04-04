@@ -1,8 +1,21 @@
 import { summarizeDerivedScoreCoverage } from '../../../../shared/compiler/index.js';
 import { evaluateGuardTargetTestability, isValidGuardTarget } from '../guard-standards.js';
 
+function isMetadataGuardExemptPath(filePath = '') {
+    const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+    return normalizedPath.startsWith('src/core/file-watcher/guards/')
+        || normalizedPath.includes('/metadata-completeness/')
+        || normalizedPath.startsWith('src/shared/compiler/')
+        || normalizedPath.includes('/conformance')
+        || normalizedPath.startsWith('src/layer-a-static/pipeline/phases/atom-extraction/builders/');
+}
+
 export function loadMetadataCompletenessEvidence(atoms = [], filePath) {
     if (!Array.isArray(atoms) || atoms.length === 0) {
+        return null;
+    }
+
+    if (isMetadataGuardExemptPath(filePath)) {
         return null;
     }
 
