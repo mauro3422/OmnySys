@@ -1,16 +1,8 @@
 import {
-  buildEmptyFolderizationReport,
-  buildFolderizationReportFromRepo
-} from '../../../shared/compiler/index.js';
-import {
   buildTechnicalDebtPriorityActions,
   calculateTechnicalDebtScore
 } from './technical-debt-report-helpers.js';
-import {
-  buildEmptyConceptualResult,
-  buildEmptyDuplicatesResult,
-  buildEmptyPipelineHealthResult
-} from './technical-debt-report-cache.js';
+import { loadTechnicalDebtReportArtifacts } from './technical-debt-report-core-helpers.js';
 
 function loadLatestFolderizationSnapshotReport(db, {
   projectPath = null,
@@ -65,45 +57,14 @@ export async function loadTechnicalDebtReportDetails({
         focusPath: folderizationOptions?.focusPath || null
       })
     : null;
-  const needsStructuralDetails = Number(snapshotCurrent.structuralGroups || 0) > 0;
-  const needsConceptualDetails = Number(snapshotCurrent.conceptualGroups || 0) > 0
-    || Number(snapshotCurrent.conceptualRawGroups || 0) > 0;
-  const needsPipelineDetails = Number(snapshotCurrent.pipelineOrphans || 0) > 0;
-  const needsFolderizationDetails = Boolean(folderizationSnapshotReport)
-    || Number(snapshotCurrent.folderizationCandidateCount || 0) > 0
-    || Number(snapshotCurrent.namingDebt || 0) > 0
-    || Number(snapshotCurrent.namingFamilies || 0) > 0
-    || Number(snapshotCurrent.namingTargets || 0) > 0
-    || Number(snapshotCurrent.flatFamilies || 0) > 0
-    || Number(snapshotCurrent.mixedFamilies || 0) > 0;
-
-  const [
-    duplicatesResult,
-    conceptualResult,
-    pipelineHealthResult,
-    folderizationReport
-  ] = await Promise.all([
-    needsStructuralDetails
-      ? aggregateTool.execute({ aggregationType: 'duplicates', limit: 10 }, context)
-      : buildEmptyDuplicatesResult(),
-    needsConceptualDetails
-      ? aggregateTool.execute({ aggregationType: 'conceptual_duplicates', limit: 10 }, context)
-      : buildEmptyConceptualResult(),
-    needsPipelineDetails
-      ? aggregateTool.execute({ aggregationType: 'pipeline_health' }, context)
-      : buildEmptyPipelineHealthResult(),
+  return loadTechnicalDebtReportArtifacts({
+    aggregateTool,
+    context,
+    repo,
+    folderizationOptions,
+    snapshotCurrent,
     folderizationSnapshotReport
-      || (repo && needsFolderizationDetails
-        ? buildFolderizationReportFromRepo(repo, folderizationOptions)
-        : buildEmptyFolderizationReport(folderizationOptions))
-  ]);
-
-  return {
-    duplicatesResult,
-    conceptualResult,
-    pipelineHealthResult,
-    folderizationReport
-  };
+  });
 }
 
 export function buildTechnicalDebtReportResult({
@@ -194,6 +155,7 @@ export function buildTechnicalDebtReportResult({
     decision: folderizationReport.decision,
     summary: folderizationReport.summary
   };
+  const propagation = folderization.propagation || null;
 
   const debtScore = calculateTechnicalDebtScore({
     structuralGroups: structural.totalGroups,
@@ -226,6 +188,7 @@ export function buildTechnicalDebtReportResult({
     conceptual,
     pipelineOrphans,
     folderization,
+    propagation,
     debtScore,
     priorityActions,
     cache: {

@@ -10,6 +10,10 @@
 import { PipelineIntegrityDetector } from '../../../core/meta-detector/pipeline-integrity-detector.js';
 import { IntegrityDashboard } from '../../../core/meta-detector/integrity-dashboard.js';
 import { createLogger } from '../../utils/logger.js';
+import {
+    buildIntegrityGuardPropagationPlan,
+    summarizePropagationPlan
+} from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:MCP:PipelineIntegrity');
 
@@ -43,6 +47,42 @@ export async function check_pipeline_integrity(args = {}, context = {}) {
         // Generar reporte consolidado
         const dashboard = new IntegrityDashboard();
         const report = await dashboard.generateReport(results);
+        const failureCount = report.summary?.failedChecks || results.filter((result) => !result.passed).length;
+        const warningCount = report.summary?.warnings || results.filter((result) => !result.passed && result.severity === 'medium').length;
+        const propagation = buildIntegrityGuardPropagationPlan({
+            decision: failureCount > 0 ? 'review' : 'approve',
+            mode: failureCount > 0 ? 'alert_and_review' : 'alert_and_recommend',
+            violationCount: failureCount,
+            impactedFileCount: Math.max(1, failureCount || warningCount || 1),
+            candidateCount: failureCount,
+            topImpactedFiles: results
+                .filter((result) => !result.passed)
+                .slice(0, 5)
+                .map((result) => ({
+                    name: result.name,
+                    severity: result.severity,
+                    details: result.details
+                })),
+            topCandidates: results
+                .filter((result) => !result.passed)
+                .slice(0, 5)
+                .map((result) => ({
+                    name: result.name,
+                    severity: result.severity,
+                    recommendation: result.recommendation
+                })),
+            connectedSystems: [
+                { name: 'integrity_guard', role: 'evidence' },
+                { name: 'watcher', role: 'persistence' },
+                { name: 'semantic_persistence', role: 'storage' },
+                { name: 'technical_debt_report', role: 'consumer' },
+                { name: 'status_panel', role: 'visibility' },
+                { name: 'health_snapshot', role: 'history' },
+                { name: 'compiler_explainability', role: 'explainability' },
+                { name: 'cache_policy', role: 'freshness' },
+                { name: 'drift_assessment', role: 'governance' }
+            ]
+        });
 
         // Log en consola si es verbose
         if (verbose) {
@@ -61,6 +101,7 @@ export async function check_pipeline_integrity(args = {}, context = {}) {
                 criticalIssues: report.criticalIssues,
                 warnings: report.warnings,
                 recommendations: report.recommendations,
+                propagation: summarizePropagationPlan(propagation),
                 detailedResults: includeSamples ? report.detailedResults : undefined
             }
         };

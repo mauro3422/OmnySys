@@ -16,10 +16,12 @@
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
 import {
+  buildPipelineHealthPropagationPlan,
   calculateToolTrend,
   generateAutomaticAlerts,
   getDailyToolMetrics,
-  formatToolHealthDashboard
+  formatToolHealthDashboard,
+  summarizePropagationPlan
 } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:diagnose_tool_health');
@@ -320,6 +322,46 @@ function generateDiagnosticReport(analysis, options = {}) {
     ? formatToolHealthDashboard(toolHealthMap, alerts, toolTrends)
     : null;
 
+  const propagation = buildPipelineHealthPropagationPlan({
+    decision: summary.failedRuns === 0 ? 'approve' : 'review',
+    mode: summary.failedRuns === 0 ? 'alert_and_recommend' : 'alert_and_review',
+    warningCount: summary.warningAlerts || 0,
+    impactedFileCount: Math.max(1, summary.uniqueTools || 1),
+    candidateCount: summary.totalAlerts || 0,
+    topImpactedFiles: Object.entries(toolHealthMap)
+      .sort((left, right) => {
+        const leftScore = Number(left[1]?.successRate || 0);
+        const rightScore = Number(right[1]?.successRate || 0);
+        return leftScore - rightScore;
+      })
+      .slice(0, 5)
+      .map(([tool, stats]) => ({
+        filePath: tool,
+        name: tool,
+        successRate: stats.successRate,
+        thrashingCount: stats.thrashingCount,
+        avgDuration: stats.avgDuration
+      })),
+    topCandidates: Object.entries(toolStats)
+      .filter(([, stats]) => stats.successRate < 90 || stats.thrashingCount > 0)
+      .slice(0, 5)
+      .map(([tool, stats]) => ({
+        name: tool,
+        successRate: stats.successRate,
+        thrashingCount: stats.thrashingCount,
+        avgDuration: stats.avgDuration
+      })),
+    connectedSystems: [
+      { name: 'tool_health', role: 'evidence' },
+      { name: 'watcher', role: 'persistence' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'drift_assessment', role: 'governance' }
+    ]
+  });
+
   const report = {
     timestamp: new Date().toISOString(),
     dashboard,
@@ -341,7 +383,8 @@ function generateDiagnosticReport(analysis, options = {}) {
     priorityIssues,
     errorPatterns,
     dailyMetrics: includeDetails ? dailyMetrics : undefined,
-    recommendations: generateRecommendations(summary, priorityIssues, alerts)
+    recommendations: generateRecommendations(summary, priorityIssues, alerts),
+    propagation: summarizePropagationPlan(propagation)
   };
 
   return report;

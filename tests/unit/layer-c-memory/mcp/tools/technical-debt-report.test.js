@@ -273,6 +273,7 @@ describe('technical_debt_report', () => {
     expect(result.folderization.naming.renameTargetCount).toBe(1549);
     expect(result.folderization.summary.namingTargets).toBe(1549);
     expect(result.folderization.propagation.renameTargetCount).toBe(1549);
+    expect(result.propagation.renameTargetCount).toBe(1549);
     expect(result.priorityActions.some((item) => item.type === 'folderization_naming_debt')).toBe(true);
   });
 });
