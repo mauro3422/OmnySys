@@ -30,6 +30,7 @@ export function buildSystemTableSummary(status = {}) {
     || (status.compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? status.compilerExplainability.driftAssessment.primaryIssue : null);
   const controlPlaneContracts = resolveControlPlaneContracts(status);
   const policyCoverage = controlPlaneContracts.policyCoverage || resolvePolicyCoverageSummary(status);
+  const folderizationAutomation = controlPlaneContracts.folderizationAutomation || status.compilerExplainability?.folderization?.automation || null;
   const structuralGroups = normalizeCount(current.structuralGroups);
   const conceptualGroups = normalizeCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
@@ -153,6 +154,14 @@ export function buildSystemTableSummary(status = {}) {
         state: controlPlaneContracts.canonicalPromotion?.promotionState || controlPlaneContracts.canonicalPromotion?.summary?.promotionState || 'watching',
         detail: `candidates=${normalizeCount(controlPlaneContracts.canonicalPromotion?.candidateCount || controlPlaneContracts.canonicalPromotion?.summary?.candidateCount || 0)} | folder=${normalizeCount(controlPlaneContracts.canonicalPromotion?.folderizedFamilyCount || controlPlaneContracts.canonicalPromotion?.summary?.folderizedFamilyCount || 0)} | emergent=${normalizeCount(controlPlaneContracts.canonicalPromotion?.emergentCandidateCount || controlPlaneContracts.canonicalPromotion?.summary?.emergentCandidateCount || 0)} | canonical=${normalizeCount(controlPlaneContracts.canonicalPromotion?.canonicalCandidateCount || controlPlaneContracts.canonicalPromotion?.summary?.canonicalCandidateCount || 0)} | next=${controlPlaneContracts.canonicalPromotion?.nextAction || controlPlaneContracts.canonicalPromotion?.summary?.nextAction || 'n/a'}`,
         source: 'canonical promotion'
+      },
+      {
+        area: 'Automation',
+        state: folderizationAutomation?.automationState || 'watching',
+        detail: folderizationAutomation
+          ? `mode=${folderizationAutomation.executionMode || 'n/a'} | exec=${folderizationAutomation.shouldExecute ? 'yes' : 'no'} | target=${folderizationAutomation.executionTarget || 'n/a'} | confidence=${normalizeCount(folderizationAutomation.confidence || 0)} | risk=${normalizeCount(folderizationAutomation.riskScore || 0)} | systems=${normalizeCount(folderizationAutomation.connectedSystemCount || 0)} | next=${folderizationAutomation.nextAction || 'n/a'}`
+          : 'folderization automation not available',
+        source: 'folderization automation plan'
       },
       ...(status.cachePolicy ? [
         {

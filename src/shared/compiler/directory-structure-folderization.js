@@ -33,3 +33,8 @@ export {
   buildFolderizationReportFromRepo,
   buildEmptyFolderizationReport
 } from './folderization-report.js';
+
+export {
+  buildFolderizationAutomationSummaryFromRows,
+  buildFolderizationAutomationSummaryFromRepo
+} from './folderization-automation-summary.js';

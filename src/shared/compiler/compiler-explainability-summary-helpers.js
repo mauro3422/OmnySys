@@ -98,6 +98,35 @@ export function compactCreationGuidance(creationGuidance = null) {
   };
 }
 
+export function compactFolderizationAutomation(automation = null) {
+  if (!automation) return null;
+  return {
+    automationState: automation.automationState || null,
+    executionMode: automation.executionMode || null,
+    shouldExecute: automation.shouldExecute === true,
+    executionTarget: automation.executionTarget || null,
+    confidence: automation.confidence || 0,
+    riskScore: automation.riskScore || 0,
+    decision: automation.decision || null,
+    propagationMode: automation.propagationMode || null,
+    propagationCacheHit: Boolean(automation.propagationCacheHit),
+    normalizationSafetyLevel: automation.normalizationSafetyLevel || null,
+    normalizationAction: automation.normalizationAction || null,
+    normalizationTargets: automation.normalizationTargets || 0,
+    normalizationDensity: automation.normalizationDensity || 0,
+    policyCoverageState: automation.policyCoverageState || null,
+    promotionState: automation.promotionState || null,
+    systemInventoryState: automation.systemInventoryState || null,
+    driftState: automation.driftState || null,
+    driftScore: automation.driftScore || 0,
+    nextAction: automation.nextAction || null,
+    reason: automation.reason || null,
+    connectedSystemCount: automation.connectedSystemCount || 0,
+    connectedSystems: takeSample(automation.connectedSystems || [], 8),
+    connectedSystemNames: takeSample(automation.connectedSystemNames || [], 8)
+  };
+}
+
 export function compactPropagation(propagation = null) {
   if (!propagation) return null;
   return {
@@ -136,6 +165,7 @@ export function compactFolderization(folderization = null) {
     namingPatterns: compactNamingPatterns(folderization.namingPatterns),
     creationGuidance: compactCreationGuidance(folderization.creationGuidance),
     propagation: compactPropagation(folderization.propagation),
+    automation: compactFolderizationAutomation(folderization.automation),
     namingDebt: folderization.namingDebt ? {
       familyCount: folderization.namingDebt.familyCount,
       renameTargetCount: folderization.namingDebt.renameTargetCount,

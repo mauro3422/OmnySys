@@ -86,6 +86,37 @@ describe('status system table', () => {
         lastEventType: 'bridge-recovery-needed'
       },
       compilerExplainability: {
+        folderization: {
+          automation: {
+            automationState: 'ready',
+            executionMode: 'execute',
+            shouldExecute: true,
+            executionTarget: 'folderize_family',
+            confidence: 91,
+            riskScore: 9,
+            decision: 'approve',
+            propagationMode: 'move_and_rewrite',
+            propagationCacheHit: false,
+            normalizationSafetyLevel: 'safe',
+            normalizationAction: 'execute',
+            normalizationTargets: 6,
+            normalizationDensity: 1.5,
+            policyCoverageState: 'fresh',
+            promotionState: 'watching',
+            systemInventoryState: 'watching',
+            driftState: 'fresh',
+            driftScore: 5,
+            nextAction: 'Execute folderize_family using the propagation plan.',
+            reason: 'Folderization can execute because propagation is attached and the normalization plan is safe.',
+            connectedSystemCount: 3,
+            connectedSystems: [
+              { name: 'technical_debt_report', role: 'consumer' },
+              { name: 'status_panel', role: 'visibility' },
+              { name: 'compiler_explainability', role: 'explainability' }
+            ],
+            connectedSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability']
+          }
+        },
         driftAssessment: {
           primaryIssue: {
             key: 'propagation_expansion',
@@ -206,6 +237,18 @@ describe('status system table', () => {
     expect(propagationRow.detail).toContain('signal=stale');
     expect(propagationRow.detail).toContain('propagation_expansion policy finding');
 
+    const automationRow = summary.rows.find((row) => row.area === 'Automation');
+    expect(automationRow).toMatchObject({
+      area: 'Automation',
+      state: 'ready',
+      source: 'folderization automation plan'
+    });
+    expect(automationRow.detail).toContain('mode=execute');
+    expect(automationRow.detail).toContain('exec=yes');
+    expect(automationRow.detail).toContain('target=folderize_family');
+    expect(automationRow.detail).toContain('confidence=91');
+    expect(automationRow.detail).toContain('systems=3');
+
     const updateRow = summary.rows.find((row) => row.area === 'Update');
     expect(updateRow).toMatchObject({
       area: 'Update',
@@ -282,6 +325,7 @@ describe('status system table', () => {
       'Systems',
       'Aduana',
       'Promotion',
+      'Automation',
       'Cache',
       'Watcher',
       'Errors'

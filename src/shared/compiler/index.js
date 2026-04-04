@@ -396,6 +396,8 @@ export {
   buildFolderizationMigrationPlanFromRepo,
   buildFolderizationNamingReportFromRows,
   buildFolderizationNamingReportFromRepo,
+  buildFolderizationAutomationSummaryFromRows,
+  buildFolderizationAutomationSummaryFromRepo,
   buildFolderizationReportFromRows,
   buildFolderizationReportFromRepo,
   buildEmptyFolderizationReport,

@@ -237,6 +237,11 @@ export function resolveControlPlaneContracts(status = {}) {
     systemInventory: systemInventory || status.systemInventory,
     compilerExplainability
   });
+  const folderizationAutomation = firstDefined(
+    compilerExplainability.folderization?.automation,
+    healthSnapshot.compilerExplainability?.folderization?.automation,
+    metricsSnapshot.compilerExplainability?.folderization?.automation
+  );
   const propagation = firstDefined(
     metricsSnapshot.propagation,
     metricsSnapshot.current?.folderizationPropagation
@@ -246,6 +251,7 @@ export function resolveControlPlaneContracts(status = {}) {
     systemInventory: systemInventory || null,
     canonicalPromotion: canonicalPromotion || null,
     policyCoverage,
+    folderizationAutomation: folderizationAutomation || null,
     propagation
   };
 }

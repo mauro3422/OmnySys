@@ -121,6 +121,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     systemTable,
     systemInventory: controlPlaneContracts.systemInventory,
     canonicalPromotion: controlPlaneContracts.canonicalPromotion,
+    folderizationAutomation: controlPlaneContracts.folderizationAutomation,
     cachePolicy,
     toolInventory,
     updateSurface,

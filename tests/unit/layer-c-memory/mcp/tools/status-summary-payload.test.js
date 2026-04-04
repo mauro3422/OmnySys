@@ -124,6 +124,39 @@ describe('status summary payload', () => {
         retryableErrorCount: 1,
         stdioCloseCount: 0,
         lastEventType: 'transport-closed'
+      },
+      compilerExplainability: {
+        folderization: {
+          automation: {
+            automationState: 'ready',
+            executionMode: 'execute',
+            shouldExecute: true,
+            executionTarget: 'folderize_family',
+            confidence: 89,
+            riskScore: 11,
+            decision: 'approve',
+            propagationMode: 'move_and_rewrite',
+            propagationCacheHit: true,
+            normalizationSafetyLevel: 'safe',
+            normalizationAction: 'execute',
+            normalizationTargets: 4,
+            normalizationDensity: 1.2,
+            policyCoverageState: 'watching',
+            promotionState: 'ready',
+            systemInventoryState: 'watching',
+            driftState: 'fresh',
+            driftScore: 3,
+            nextAction: 'Execute folderize_family using the propagation plan.',
+            reason: 'Folderization can execute because propagation is attached and the normalization plan is safe.',
+            connectedSystemCount: 3,
+            connectedSystems: [
+              { name: 'technical_debt_report', role: 'consumer' },
+              { name: 'status_panel', role: 'visibility' },
+              { name: 'compiler_explainability', role: 'explainability' }
+            ],
+            connectedSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability']
+          }
+        }
       }
     }, {
       summary: {
@@ -149,6 +182,11 @@ describe('status summary payload', () => {
       promotionState: 'ready',
       candidateCount: 3,
       folderizedFamilyCount: 1
+    });
+    expect(payload.folderizationAutomation).toMatchObject({
+      automationState: 'ready',
+      executionMode: 'execute',
+      executionTarget: 'folderize_family'
     });
     expect(payload.proxyRuntimeTelemetry).toMatchObject({
       state: 'stable',
@@ -207,6 +245,17 @@ describe('status summary payload', () => {
     expect(promotionRow.detail).toContain('folder=1');
     expect(promotionRow.detail).toContain('emergent=2');
 
+    const automationRow = payload.systemTable.rows.find((row) => row.area === 'Automation');
+    expect(automationRow).toMatchObject({
+      area: 'Automation',
+      state: 'ready',
+      source: 'folderization automation plan'
+    });
+    expect(automationRow.detail).toContain('mode=execute');
+    expect(automationRow.detail).toContain('exec=yes');
+    expect(automationRow.detail).toContain('target=folderize_family');
+    expect(automationRow.detail).toContain('systems=3');
+
     expect(payload.systemTable.rows.map((row) => row.area)).toEqual([
       'Daemon',
       'Database',
@@ -224,6 +273,7 @@ describe('status summary payload', () => {
       'Systems',
       'Aduana',
       'Promotion',
+      'Automation',
       'Cache',
       'Watcher',
       'Errors'

@@ -4,6 +4,7 @@ import {
 import { buildCompilerSystemInventorySnapshot } from './system-inventory-summary.js';
 import { summarizeCompilerPolicyDrift } from './policy-conformance-summary.js';
 import { buildFolderizationReportFromRepo } from './folderization-report.js';
+import { buildFolderizationAutomationSummaryFromReport } from './folderization-automation-summary.js';
 import { getDatabaseHealthSummary } from './database-health-summary.js';
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
@@ -42,6 +43,11 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         driftAssessment: snapshot.driftAssessment
       }
     });
+    const folderizationAutomation = buildFolderizationAutomationSummaryFromReport(folderizationReport, {
+      systemInventory,
+      policyCoverage: systemInventory.policyCoverage || null,
+      canonicalPromotion: systemInventory.canonicalPromotion || null
+    });
 
     return {
       policySummary,
@@ -69,6 +75,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         normalization: folderizationReport.normalization,
         namingPatterns: folderizationReport.namingPatterns,
         creationGuidance: folderizationReport.creationGuidance,
+        automation: folderizationAutomation,
         namingDebt: {
           familyCount: folderizationReport.naming?.familyCount || 0,
           renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,
