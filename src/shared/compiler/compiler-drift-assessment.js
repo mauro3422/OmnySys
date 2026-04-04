@@ -47,29 +47,45 @@ function policySignal(policySummary = {}) {
   return signal({ ...base, state: 'partial', healthy: false, trustworthy: false, severity: 'low', reason: `${total} low-signal policy finding(s) remain active.`, recommendation: 'Prefer the canonical shared helpers before adding more ad hoc heuristics.' });
 }
 
-function propagationExpansionSignal(policySummary = {}) {
+function propagationExpansionSignal(policySummary = {}, metadataExtractionCoverage = null, metadataSurfaceParity = null) {
   const total = normalizeCount(policySummary.total);
   const byPolicyArea = policySummary.byPolicyArea || {};
   const count = normalizeCount(byPolicyArea.propagation_expansion);
+  const metadataCoveragePct = normalizeCount(metadataExtractionCoverage?.summary?.coveragePct || metadataExtractionCoverage?.coveragePct || 0);
+  const parityHealthy = metadataSurfaceParity?.healthy === true;
   const base = {
     key: 'propagation_expansion',
     label: 'Propagation expansion',
     sourceOfTruth: 'watcher/tool propagation contract',
     evidence: policySummary,
-    counts: { total, count, byPolicyArea }
+    counts: { total, count, byPolicyArea, metadataCoveragePct, parityHealthy }
   };
 
   if (count === 0) {
+    const reason = parityHealthy === false
+      ? 'No propagation expansion drift detected, but metadata surface parity is still drifting.'
+      : metadataCoveragePct > 0 && metadataCoveragePct < 80
+        ? `No propagation expansion drift detected, but metadata extraction coverage is still ${metadataCoveragePct}%.`
+        : 'No propagation expansion drift detected.';
     return signal({
       ...base,
       state: 'fresh',
       healthy: true,
       trustworthy: true,
       severity: 'low',
-      reason: 'No propagation expansion drift detected.',
+      reason,
       recommendation: 'Keep watcher and tool surfaces attached to the canonical propagation engine.'
     });
   }
+
+  const metadataContext = [];
+  if (metadataCoveragePct > 0) {
+    metadataContext.push(`metadata coverage is ${metadataCoveragePct}%`);
+  }
+  if (parityHealthy === false) {
+    metadataContext.push('metadata surface parity is drifting');
+  }
+  const contextSuffix = metadataContext.length > 0 ? `, and ${metadataContext.join(' while ')}` : '';
 
   return signal({
     ...base,
@@ -77,7 +93,7 @@ function propagationExpansionSignal(policySummary = {}) {
     healthy: false,
     trustworthy: false,
     severity: 'medium',
-    reason: `${count} propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.`,
+    reason: `${count} propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected${contextSuffix}.`,
     recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
   });
 }
@@ -178,7 +194,7 @@ export function buildCompilerDriftAssessment({
   fileUniverseGranularity = null
 } = {}) {
   const signals = [
-    propagationExpansionSignal(policySummary || {}),
+    propagationExpansionSignal(policySummary || {}, metadataExtractionCoverage, metadataSurfaceParity),
     policySignal(policySummary || {}),
     paritySignal(metadataSurfaceParity),
     extractionSignal(metadataExtractionCoverage),

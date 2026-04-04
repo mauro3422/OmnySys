@@ -205,6 +205,39 @@ describe('compiler drift assessment', () => {
     });
   });
 
+  it('adds metadata context to propagation expansion drift reasons when extraction is partial', () => {
+    const assessment = buildCompilerDriftAssessment({
+      policySummary: {
+        total: 1,
+        high: 0,
+        medium: 1,
+        byPolicyArea: { propagation_expansion: 1 }
+      },
+      metadataSurfaceParity: { healthy: false, trustworthy: false, summary: 'parity drifting' },
+      metadataExtractionCoverage: {
+        summary: {
+          healthy: false,
+          trustworthy: false,
+          nextAction: 'rebuild metadata coverage',
+          totalTables: 4,
+          totalRows: 20,
+          totalFields: 12,
+          coveredFields: 6,
+          emptyFields: 6,
+          partialFields: 3,
+          coveragePct: 50,
+          fieldCoveragePct: 50
+        }
+      }
+    });
+
+    const propagation = assessment.signals.find((signal) => signal.key === 'propagation_expansion');
+
+    expect(propagation.state).toBe('stale');
+    expect(propagation.reason).toContain('metadata coverage is 50%');
+    expect(propagation.reason).toContain('metadata surface parity is drifting');
+  });
+
   it('blocks on canonical data-gateway bypasses', () => {
     const assessment = buildCompilerDriftAssessment({
       policySummary: {

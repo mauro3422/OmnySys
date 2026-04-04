@@ -404,7 +404,13 @@ Current conclusion:
 - Tratarlo como drift de gobernanza y surface propagation.
 
 **Extensión aprendida**:
+- propagationExpansion ahora también explicita si la metadata extractada o la paridad de superficie están débiles.
+- Si el inventory o la metadata todavía están incompletos, el motivo del drift lo menciona para no culpar solo a las tools.
+- El gate sigue midiendo el contrato de propagación; solo gana contexto para que la lectura sea más operativa.
+
+**Extensión aprendida**:
 - policyCoverage también absorbe señales de metadataCoveragePct e integrationCoveragePct cuando están presentes.
 - Un inventory con cobertura parcial de metadata o integración no debería leerse como resh solo porque el daemon esté sano.
 - El customs gate puede estar watching aunque el runtime siga en A+.
+
 
