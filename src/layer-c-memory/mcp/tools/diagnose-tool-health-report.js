@@ -3,7 +3,7 @@ import {
   formatToolHealthDashboard,
   summarizePropagationPlan
 } from '../../../shared/compiler/index.js';
-import { generateRecommendations } from './diagnose-tool-health-analysis.js';
+import { generateRecommendations } from './diagnose-tool-health-analysis-rules.js';
 
 export function buildToolHealthMap(toolStats) {
   const toolHealthMap = {};

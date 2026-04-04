@@ -17,6 +17,10 @@ function buildSystemInventoryResponse(result) {
     aggregationType: 'system_inventory',
     inventory: result.systemInventoryDetail || null,
     report: result.systemInventory || null,
+    propagation: result.canonicalPromotionDetail?.folderization?.propagation
+      || result.compactSnapshot?.current?.folderizationPropagation
+      || result.compactSnapshot?.folderizationPropagation
+      || null,
     snapshot: result.compactSnapshot,
     dashboard: result.healthDashboard,
     summary: result.systemInventory?.summaryText || result.systemInventory?.summary?.summaryText || null,

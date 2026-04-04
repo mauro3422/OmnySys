@@ -218,6 +218,10 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.healthSnapshot.systemInventoryDetail = systemInventoryDetail;
   status.healthSnapshot.canonicalPromotion = canonicalPromotion;
   status.healthSnapshot.canonicalPromotionDetail = canonicalPromotionDetail;
+  status.propagation = canonicalPromotionDetail?.folderization?.propagation
+    || metricsSnapshot?.current?.folderizationPropagation
+    || metricsSnapshot?.folderizationPropagation
+    || null;
   status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
   status.toolInventory = {
     snapshot: toolInventorySnapshot,
@@ -239,6 +243,9 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   if (status.healthSnapshot && typeof status.healthSnapshot === 'object') {
     status.healthSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
     status.healthSnapshot.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
+  }
+  if (status.metricsSnapshot && typeof status.metricsSnapshot === 'object') {
+    status.metricsSnapshot.propagation = status.propagation;
   }
   return {
     repo,

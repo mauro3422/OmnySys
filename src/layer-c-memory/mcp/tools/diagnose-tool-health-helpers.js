@@ -5,8 +5,5 @@ export {
 } from './diagnose-tool-health-report.js';
 
 export {
-  analyzeToolHealth,
-  detectErrorPatterns,
-  prioritizeIssues,
-  generateRecommendations
-} from './diagnose-tool-health-analysis.js';
+  buildToolHealthAnalysis as analyzeToolHealth
+} from './diagnose-tool-health-analysis-core.js';

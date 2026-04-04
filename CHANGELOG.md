@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Surfaced `propagation` directly in `status-server-details`, `get-system-inventory-report`, and `get-canonical-promotion-report` so the public control-plane surfaces expose the shared contract instead of burying it in nested snapshot payloads.
+- Split `diagnose-tool-health` into analysis/rules/core helpers and moved the canonical promotion report orchestration into a runner helper to keep the public tool files flatter and watcher-friendly.
 - Split `diagnose-tool-health` into analysis/report helpers, exposed the canonical propagation plan on the tool response, and surfaced `propagation` in `pipeline_health` so both surfaces now publish the shared contract directly.
 - Surfaced the canonical propagation plan in `diagnose-tool-health` and `check-pipeline-integrity` so tool-health and integrity reports now carry the same plan language as folderization, status, and metrics consumers.
 - Split the technical-debt report load path into a dedicated helper so the core report loader stays flatter and easier for the watcher to reason about.
