@@ -163,6 +163,10 @@ export {
 } from './system-inventory-summary.js';
 
 export {
+  buildCompilerPolicyCoverageSummary
+} from './policy-coverage-summary.js';
+
+export {
   buildCanonicalPromotionSnapshot,
   buildCanonicalPromotionReport,
   summarizeCanonicalPromotion

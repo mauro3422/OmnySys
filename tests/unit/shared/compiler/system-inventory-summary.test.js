@@ -107,6 +107,24 @@ function createExplainability() {
           recommendation: 'Expand propagation surfaces where needed.'
         }
       ]
+    },
+    policyCoverage: {
+      coverageState: 'watching',
+      coverageScore: 77,
+      coverageRatio: 0.5,
+      coverageLoad: 8,
+      totalSystemCount: 16,
+      canonicalSurfaceCount: 4,
+      canonicalEntrypointCount: 2,
+      bridgeSystemCount: 1,
+      wrapperSystemCount: 1,
+      emergentSystemCount: 0,
+      policyDriftCount: 3,
+      propagationExpansionState: 'drifting',
+      nextAction: 'Attach the canonical propagation plan.',
+      recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
+      summaryText: 'coverage=watching | score=77 | load=8/16 | drift=3 | expansion=drifting',
+      inventoryState: 'watching'
     }
   };
 }
@@ -148,8 +166,12 @@ describe('system inventory summary', () => {
     expect(report.bridgeSystemCount).toBeGreaterThan(0);
     expect(report.wrapperSystemCount).toBeGreaterThan(0);
     expect(report.totalSystemCount).toBeGreaterThanOrEqual(report.canonicalSurfaceCount);
+    expect(report.policyCoverageState).toBe('watching');
+    expect(report.policyCoverageScore).toBe(77);
+    expect(report.policyCoverage.summaryText).toContain('coverage=watching');
     expect(report.summaryText).toContain('canonical=');
     expect(report.summaryText).toContain('emergent=');
+    expect(report.summaryText).toContain('coverage=');
     expect(report.nextAction).toMatch(/canonical|surface/i);
     expect(Array.isArray(report.topSystems)).toBe(true);
     expect(report.topPromotionCandidates[0].role).toBe('emergent');

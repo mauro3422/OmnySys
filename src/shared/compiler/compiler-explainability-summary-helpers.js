@@ -166,6 +166,28 @@ export function compactSurfaceAudit(surfaceAudit = null) {
   return surfaceAudit ? summarizeSurfaceAuditForStatus(surfaceAudit) : null;
 }
 
+export function compactPolicyCoverage(policyCoverage = null) {
+  if (!policyCoverage) return null;
+  return {
+    coverageState: policyCoverage.coverageState || null,
+    coverageScore: policyCoverage.coverageScore || 0,
+    coverageRatio: policyCoverage.coverageRatio || 0,
+    coverageLoad: policyCoverage.coverageLoad || 0,
+    totalSystemCount: policyCoverage.totalSystemCount || 0,
+    canonicalSurfaceCount: policyCoverage.canonicalSurfaceCount || 0,
+    canonicalEntrypointCount: policyCoverage.canonicalEntrypointCount || 0,
+    bridgeSystemCount: policyCoverage.bridgeSystemCount || 0,
+    wrapperSystemCount: policyCoverage.wrapperSystemCount || 0,
+    emergentSystemCount: policyCoverage.emergentSystemCount || 0,
+    policyDriftCount: policyCoverage.policyDriftCount || 0,
+    propagationExpansionState: policyCoverage.propagationExpansionState || null,
+    nextAction: policyCoverage.nextAction || null,
+    recommendation: policyCoverage.recommendation || null,
+    summaryText: policyCoverage.summaryText || null,
+    inventoryState: policyCoverage.inventoryState || null
+  };
+}
+
 export function compactMetadataExtractionCoverage(metadataExtractionCoverage = null) {
   return summarizeMetadataExtractionCoverage(metadataExtractionCoverage);
 }

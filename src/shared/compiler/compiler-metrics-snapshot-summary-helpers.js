@@ -22,6 +22,7 @@ export function buildMetricsSnapshotDaily(snapshot = {}, current = null) {
     normalization: current.folderizationNormalization || null,
     propagation: current.folderizationPropagation || null,
     canonicalPromotion: current.canonicalPromotion || null,
+    policyCoverage: current.policyCoverage || null,
     issueCount: current.issueCount || 0,
     summary: snapshot.summary || current.summaryText || null
   };

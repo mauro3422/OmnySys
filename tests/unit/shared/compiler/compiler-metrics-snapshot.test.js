@@ -110,6 +110,24 @@ describe('compiler-metrics-snapshot', () => {
             }
           ]
         },
+        policyCoverage: {
+          coverageState: 'stale',
+          coverageScore: 0,
+          coverageRatio: 0.5,
+          coverageLoad: 8,
+          totalSystemCount: 16,
+          canonicalSurfaceCount: 4,
+          canonicalEntrypointCount: 2,
+          bridgeSystemCount: 1,
+          wrapperSystemCount: 1,
+          emergentSystemCount: 0,
+          policyDriftCount: 100,
+          propagationExpansionState: 'stale',
+          nextAction: 'Attach the canonical propagation plan.',
+          recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
+          summaryText: 'coverage=stale | score=0 | load=8/16 | drift=100 | expansion=stale',
+          inventoryState: 'watching'
+        },
         startupTelemetry: {
           state: 'expected-slow',
           totalDurationMs: 1321150,
@@ -146,6 +164,10 @@ describe('compiler-metrics-snapshot', () => {
       renameTargetCount: 2,
       recommendedAction: 'execute'
     });
+    expect(compact.daily.policyCoverage).toMatchObject({
+      coverageState: 'stale',
+      coverageScore: 0
+    });
     expect(compact.daily.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       candidateCount: 2
@@ -157,6 +179,10 @@ describe('compiler-metrics-snapshot', () => {
     expect(compact.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       inventoryState: 'ready'
+    });
+    expect(compact.policyCoverage).toMatchObject({
+      coverageState: 'stale',
+      coverageScore: 0
     });
     expect(compact.current.startupTelemetry).toMatchObject({
       state: 'expected-slow',

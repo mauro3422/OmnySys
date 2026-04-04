@@ -86,6 +86,24 @@ export function buildCompilerHealthDashboardFixture() {
             }
           ]
         },
+        policyCoverage: {
+          coverageState: 'stale',
+          coverageScore: 0,
+          coverageRatio: 0.5,
+          coverageLoad: 8,
+          totalSystemCount: 16,
+          canonicalSurfaceCount: 4,
+          canonicalEntrypointCount: 2,
+          bridgeSystemCount: 1,
+          wrapperSystemCount: 1,
+          emergentSystemCount: 0,
+          policyDriftCount: 100,
+          propagationExpansionState: 'stale',
+          nextAction: 'Attach the canonical propagation plan.',
+          recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
+          summaryText: 'coverage=stale | score=0 | load=8/16 | drift=100 | expansion=stale',
+          inventoryState: 'watching'
+        },
         issueCount: 2,
         structuralGroups: 1,
         conceptualGroups: 0,
@@ -193,6 +211,44 @@ export function buildCompilerHealthDashboardFixture() {
         creationGuidance: {
           guidance: 'Reuse the current folderized family'
         }
+      },
+      systemInventory: {
+        policyCoverage: {
+          coverageState: 'watching',
+          coverageScore: 77,
+          coverageRatio: 0.5,
+          coverageLoad: 8,
+          totalSystemCount: 16,
+          canonicalSurfaceCount: 4,
+          canonicalEntrypointCount: 2,
+          bridgeSystemCount: 1,
+          wrapperSystemCount: 1,
+          emergentSystemCount: 0,
+          policyDriftCount: 3,
+          propagationExpansionState: 'stale',
+          nextAction: 'Attach the canonical propagation plan.',
+          recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
+          summaryText: 'coverage=watching | score=77 | load=8/16 | drift=3 | expansion=stale',
+          inventoryState: 'watching'
+        }
+      },
+      policyCoverage: {
+        coverageState: 'watching',
+        coverageScore: 77,
+        coverageRatio: 0.5,
+        coverageLoad: 8,
+        totalSystemCount: 16,
+        canonicalSurfaceCount: 4,
+        canonicalEntrypointCount: 2,
+        bridgeSystemCount: 1,
+        wrapperSystemCount: 1,
+        emergentSystemCount: 0,
+        policyDriftCount: 3,
+        propagationExpansionState: 'stale',
+        nextAction: 'Attach the canonical propagation plan.',
+        recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
+        summaryText: 'coverage=watching | score=77 | load=8/16 | drift=3 | expansion=stale',
+        inventoryState: 'watching'
       },
       metadataExtractionCoverage: {
         summary: {

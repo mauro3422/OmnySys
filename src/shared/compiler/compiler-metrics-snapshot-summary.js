@@ -152,7 +152,8 @@ function summarizeCompactCurrentTelemetry(current = {}) {
     toolTelemetry: summarizeCompactToolTelemetry(current.toolTelemetry),
     startupTelemetry: current.startupTelemetry || null,
     systemInventory: current.systemInventory || null,
-    canonicalPromotion: current.canonicalPromotion || null
+    canonicalPromotion: current.canonicalPromotion || null,
+    policyCoverage: current.policyCoverage || null
   };
 }
 
@@ -238,6 +239,7 @@ function buildCompilerMetricsSnapshotContent(snapshot) {
     normalization: current?.folderizationNormalization ?? null,
     propagation: current?.folderizationPropagation ?? null,
     canonicalPromotion: current?.canonicalPromotion ?? null,
+    policyCoverage: current?.policyCoverage ?? null,
     systemInventory: snapshot.systemInventory ?? snapshot.systemInventoryReport ?? current?.systemInventory ?? null,
     current: summarizeCompactCurrentSnapshot(current),
     trend: summarizeCompactTrend(snapshot.trend),

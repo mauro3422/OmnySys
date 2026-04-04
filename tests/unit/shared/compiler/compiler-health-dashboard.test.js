@@ -36,9 +36,17 @@ describe('compiler-health-dashboard', () => {
       promotionState: 'watching',
       candidateCount: 2
     });
+    expect(dashboard.health.policyCoverage).toMatchObject({
+      coverageState: 'watching',
+      coverageScore: 77
+    });
     expect(dashboard.daily.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       candidateCount: 2
+    });
+    expect(dashboard.daily.policyCoverage).toMatchObject({
+      coverageState: 'watching',
+      coverageScore: 77
     });
     expect(dashboard.toolTelemetry.folderizationPropagation).toMatchObject({
       cacheKey: 'folderization:abc123',
@@ -53,6 +61,10 @@ describe('compiler-health-dashboard', () => {
     expect(dashboard.archive.daily.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       candidateCount: 2
+    });
+    expect(dashboard.archive.daily.policyCoverage).toMatchObject({
+      coverageState: 'watching',
+      coverageScore: 77
     });
     expect(dashboard.archive.lifetime.daysObserved).toBe(12);
     expect(dashboard.archive.lifetime.firstCapturedAt).toBe('2026-03-01T00:00:00.000Z');
@@ -74,6 +86,10 @@ describe('compiler-health-dashboard', () => {
     expect(compact.health.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       candidateCount: 2
+    });
+    expect(compact.health.policyCoverage).toMatchObject({
+      coverageState: 'watching',
+      coverageScore: 77
     });
     expect(compact.daily.canonicalPromotion).toMatchObject({
       promotionState: 'watching',

@@ -29,6 +29,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
   const propagationExpansion = compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
     || (compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? compilerExplainability.driftAssessment.primaryIssue : null);
   const folderizationPropagation = normalized.current?.folderizationPropagation || null;
+  const policyCoverage = compilerExplainability?.policyCoverage || compilerExplainability?.systemInventory?.policyCoverage || null;
   const signalRows = buildSignalRows(trend.deltaSinceBaseline || {});
   const toolTelemetry = {
     ...mapToolTelemetry(current.toolTelemetry),
@@ -47,6 +48,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       startupTelemetry: current.startupTelemetry ? { ...current.startupTelemetry } : null,
       folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
       canonicalPromotion: current.canonicalPromotion ? { ...current.canonicalPromotion } : null,
+      policyCoverage: policyCoverage ? { ...policyCoverage } : null,
       successScore: asNumber(current.successScore, 0),
       issueCount: asNumber(current.issueCount, 0),
       summary: current.summaryText || trend.summary || null
@@ -94,6 +96,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       startupTelemetry: current.startupTelemetry ? { ...current.startupTelemetry } : null,
       folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
       canonicalPromotion: current.canonicalPromotion ? { ...current.canonicalPromotion } : null,
+      policyCoverage: policyCoverage ? { ...policyCoverage } : null,
       propagationExpansionState: propagationExpansion?.state || null,
       propagationExpansionReason: propagationExpansion?.reason || null,
       propagationExpansionRecommendation: propagationExpansion?.recommendation || null,
@@ -159,6 +162,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       startupTelemetry: current.startupTelemetry ? { ...current.startupTelemetry } : null,
       folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
       canonicalPromotion: current.canonicalPromotion ? { ...current.canonicalPromotion } : null,
+      policyCoverage: policyCoverage ? { ...policyCoverage } : null,
       activeAtomsDriftState: current.activeAtomsDriftState || null,
       activeAtomsDriftReason: current.activeAtomsDriftReason || null,
       clientSyncState: current.clientSyncState || null,

@@ -11,7 +11,8 @@ import {
   compactMetadataExtractionCoverage,
   compactSurfaceAudit,
   compactCanonicalPromotion,
-  compactExplainabilityWatcherSummary
+  compactExplainabilityWatcherSummary,
+  compactPolicyCoverage
 } from './compiler-explainability-summary-helpers.js';
 import { compactCompilerContractLayer } from './compiler-explainability-contract-layer.js';
 import { compactPolicySummary } from './compiler-explainability-policy.js';
@@ -38,6 +39,7 @@ export function summarizeCompilerExplainability(explainability) {
     dataGatewayContract: compactDataGatewayContract(explainability.dataGatewayContract),
     folderization: compactFolderization(explainability.folderization),
     canonicalPromotion: compactCanonicalPromotion(explainability.canonicalPromotion),
+    policyCoverage: compactPolicyCoverage(explainability.policyCoverage),
     databaseHealth: explainability.databaseHealth || null
   };
 }

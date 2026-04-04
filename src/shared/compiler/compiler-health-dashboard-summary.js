@@ -35,7 +35,8 @@ function mapHealthSummaryConnectionSignals(current = {}) {
 function mapHealthSummaryFolderizationSignals(current = {}) {
   return {
     folderizationPropagation: current.folderizationPropagation || null,
-    canonicalPromotion: current.canonicalPromotion || null
+    canonicalPromotion: current.canonicalPromotion || null,
+    policyCoverage: current.policyCoverage || null
   };
 }
 
@@ -171,6 +172,7 @@ export function buildHealthPanelNowSummary(now = {}) {
     startupTelemetry: now.startupTelemetry || null,
     activeAtomsDriftState: now.activeAtomsDriftState || null,
     activeAtomsDriftReason: now.activeAtomsDriftReason || null,
+    policyCoverage: now.policyCoverage || null,
     clientSyncState: now.clientSyncState || null,
     clientSyncSeverity: now.clientSyncSeverity || null,
     clientSyncReason: now.clientSyncReason || null,
@@ -195,6 +197,7 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     now.startupTelemetry?.state ? `startup=${now.startupTelemetry.state}` : null,
     now.folderizationPropagation?.decision ? `folderprop=${now.folderizationPropagation.decision}` : null,
     now.canonicalPromotion?.promotionState ? `promotion=${now.canonicalPromotion.promotionState}:${now.canonicalPromotion.candidateCount || 0}` : null,
+    now.policyCoverage?.coverageState ? `coverage=${now.policyCoverage.coverageState}:${now.policyCoverage.coverageScore || 0}` : null,
     now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
     compact.systemInventory ? `systems=${compact.systemInventory.inventoryState || 'watching'}:${compact.systemInventory.totalSystemCount || 0}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,

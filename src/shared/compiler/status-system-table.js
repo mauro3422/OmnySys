@@ -134,6 +134,12 @@ export function buildSystemTableSummary(status = {}) {
         source: 'system inventory'
       },
       {
+        area: 'Aduana',
+        state: status.systemInventory?.policyCoverageState || status.systemInventory?.summary?.policyCoverageState || status.compilerExplainability?.policyCoverage?.coverageState || 'watching',
+        detail: `score=${normalizeCount(status.systemInventory?.policyCoverageScore || status.systemInventory?.summary?.policyCoverageScore || status.compilerExplainability?.policyCoverage?.coverageScore || 0)} | drift=${normalizeCount(status.systemInventory?.policyCoverageDriftCount || status.systemInventory?.summary?.policyCoverageDriftCount || status.compilerExplainability?.policyCoverage?.policyDriftCount || 0)} | expansion=${status.systemInventory?.policyCoveragePropagationState || status.systemInventory?.summary?.policyCoveragePropagationState || status.compilerExplainability?.policyCoverage?.propagationExpansionState || 'n/a'} | coverage=${normalizeCount(status.systemInventory?.policyCoverageRatio || status.systemInventory?.summary?.policyCoverageRatio || status.compilerExplainability?.policyCoverage?.coverageRatio || 0)} | next=${status.systemInventory?.policyCoverage?.nextAction || status.systemInventory?.summary?.nextAction || status.compilerExplainability?.policyCoverage?.nextAction || 'n/a'}`,
+        source: 'system inventory policy coverage'
+      },
+      {
         area: 'Promotion',
         state: status.canonicalPromotion?.promotionState || status.canonicalPromotion?.summary?.promotionState || 'watching',
         detail: `candidates=${normalizeCount(status.canonicalPromotion?.candidateCount || status.canonicalPromotion?.summary?.candidateCount || 0)} | folder=${normalizeCount(status.canonicalPromotion?.folderizedFamilyCount || status.canonicalPromotion?.summary?.folderizedFamilyCount || 0)} | emergent=${normalizeCount(status.canonicalPromotion?.emergentCandidateCount || status.canonicalPromotion?.summary?.emergentCandidateCount || 0)} | canonical=${normalizeCount(status.canonicalPromotion?.canonicalCandidateCount || status.canonicalPromotion?.summary?.canonicalCandidateCount || 0)} | next=${status.canonicalPromotion?.nextAction || status.canonicalPromotion?.summary?.nextAction || 'n/a'}`,

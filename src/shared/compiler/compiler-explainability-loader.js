@@ -1,6 +1,7 @@
 import {
   loadCompilerDiagnosticsSnapshot,
 } from './snapshot.js';
+import { buildCompilerSystemInventorySnapshot } from './system-inventory-summary.js';
 import { summarizeCompilerPolicyDrift } from './policy-conformance-summary.js';
 import { buildFolderizationReportFromRepo } from './folderization-report.js';
 import { getDatabaseHealthSummary } from './database-health-summary.js';
@@ -29,6 +30,18 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
     });
 
     const folderizationReport = buildFolderizationReportFromRepo(repo, folderizationOptions);
+    const systemInventory = buildCompilerSystemInventorySnapshot({
+      projectPath,
+      compilerExplainability: {
+        standardization: snapshot.standardizationReport,
+        compilerContractLayer: snapshot.compilerContractLayer,
+        policySummary,
+        dataGatewayContract: snapshot.dataGatewayContract,
+        metadataExtractionCoverage: snapshot.metadataExtractionCoverage,
+        surfaceAudit: snapshot.surfaceAudit,
+        driftAssessment: snapshot.driftAssessment
+      }
+    });
 
     return {
       policySummary,
@@ -66,7 +79,9 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         recommendation: folderizationReport.recommendation,
         decision: folderizationReport.decision,
         summary: folderizationReport.summary
-      }
+      },
+      systemInventory,
+      policyCoverage: systemInventory.policyCoverage || null
     };
   } catch (error) {
     return {

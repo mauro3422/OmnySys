@@ -167,6 +167,7 @@ export function buildCurrentMetrics({
     clientSyncEvidence: mcpSessionSummary?.clientSyncEvidence || null,
     systemInventory: systemInventory || null,
     canonicalPromotion: canonicalPromotion || null,
+    policyCoverage: systemInventory?.policyCoverage || null,
     startupTelemetry: buildStartupRegressionSummary(startupTelemetry),
     proxyRuntimeTelemetry: proxyRuntimeTelemetry || null,
     bridgeRuntimeTelemetry: bridgeRuntimeTelemetry || null,
@@ -223,6 +224,9 @@ export function buildCurrentMetrics({
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
     current.canonicalPromotion?.promotionState
       ? `promotion=${current.canonicalPromotion.promotionState}:${current.canonicalPromotion.candidateCount || 0}`
+      : null,
+    current.policyCoverage?.coverageState
+      ? `policy=${current.policyCoverage.coverageState}:${current.policyCoverage.coverageScore || 0}`
       : null,
     current.folderizationPropagation?.decision
       ? `propagation=${current.folderizationPropagation.decision}`
