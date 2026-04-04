@@ -44,6 +44,7 @@ export async function aggregatePipelineHealth(tool) {
             standardizationReport,
             compilerContractLayer,
             semanticCanonicality: canonicalSemanticSurface,
+            propagation,
             healthScore
         } = await enrichPipelineHealthWithCompilerGovernance({
             tool,
@@ -84,6 +85,7 @@ export async function aggregatePipelineHealth(tool) {
             compilerContractLayer,
             runtimeTableHealth,
             semanticCanonicality: canonicalSemanticSurface,
+            propagation,
             orphanPipelineFunctions: pipelineOrphanSummary.normalizedOrphans,
             summary: {
                 totalIssues: issues.length,

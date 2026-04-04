@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Split `diagnose-tool-health` into analysis/report helpers, exposed the canonical propagation plan on the tool response, and surfaced `propagation` in `pipeline_health` so both surfaces now publish the shared contract directly.
 - Surfaced the canonical propagation plan in `diagnose-tool-health` and `check-pipeline-integrity` so tool-health and integrity reports now carry the same plan language as folderization, status, and metrics consumers.
 - Split the technical-debt report load path into a dedicated helper so the core report loader stays flatter and easier for the watcher to reason about.
 - Added canonical proxy runtime telemetry so MCP status and health can detect restart/crash thrashing instead of inferring daemon instability from logs alone.
