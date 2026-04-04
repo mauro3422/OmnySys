@@ -1,7 +1,4 @@
-import { randomUUID } from 'crypto';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -9,23 +6,15 @@ import {
   ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   ErrorCode,
-  McpError,
-  isInitializeRequest
+  McpError
 } from '@modelcontextprotocol/sdk/types.js';
-import { applyPagination } from './mcp/core/pagination.js';
-import { executeToolCall } from './mcp/core/initialization/steps/mcp-tool-call-helpers.js';
 import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl } from './mcp/http-session-routing-helpers.js';
-import {
-  buildTransportProvenance,
-  inferTransportOrigin
-} from './mcp/transport-provenance.js';
-
-const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
-const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DELAY_MS || 250);
-const MCP_POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'];
-const MCP_GET_ACCEPT_TYPES = ['text/event-stream'];
-const sharedEventStore = new InMemoryEventStore();
-const staleInitRecoveryInFlight = new Set();
+import { buildJsonRpcErrorResponse } from './mcp/http-session-routing-helpers.js';
+export {
+  executeMcpToolCall,
+  handleMcpRequest
+} from './mcp/http-session-routing-handlers.impl.js';
+export { buildJsonRpcErrorResponse };
 
 const RESOURCE_URIS = {
   status: 'omnysys://status',
@@ -35,6 +24,9 @@ const RESOURCE_URIS = {
   schema: 'omnysys://schema'
 };
 
+const MCP_POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'];
+const MCP_GET_ACCEPT_TYPES = ['text/event-stream'];
+
 function asJsonResource(uri, payload, meta = {}) {
   return {
     uri,
@@ -42,23 +34,6 @@ function asJsonResource(uri, payload, meta = {}) {
     text: JSON.stringify(payload, null, 2),
     _meta: meta
   };
-}
-
-export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {}) {
-  const response = {
-    jsonrpc: '2.0',
-    error: {
-      code,
-      message
-    },
-    id
-  };
-
-  if (data !== undefined) {
-    response.error.data = data;
-  }
-
-  return response;
 }
 
 export function createConditionalJsonMiddleware(logger) {
@@ -301,307 +276,4 @@ export function buildServerForSession({
   };
 
   return sessionServer;
-}
-
-export async function executeMcpToolCall(request, dependencies) {
-  const {
-    initError,
-    core,
-    getLiveToolHandler,
-    refreshToolRegistry,
-    transportContext = null
-  } = dependencies;
-
-  const currentInitError = initError();
-  if (currentInitError) {
-    return {
-      content: [{ type: 'text', text: `OmnySys initialization failed: ${currentInitError.message}` }]
-    };
-  }
-
-  if (!core.initialized) {
-    return {
-      content: [{ type: 'text', text: 'OmnySys is initializing. Retry in a few seconds.' }]
-    };
-  }
-
-  const { name, arguments: args } = request.params;
-  const handler = await getLiveToolHandler(name);
-
-  if (!handler) {
-    throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
-  }
-
-  core.refreshToolRegistry = refreshToolRegistry;
-  const resultWithTelemetry = await executeToolCall(handler, name, core, args || {}, transportContext);
-  const paginatedResult = applyPagination(resultWithTelemetry, args || {});
-
-  return {
-    content: [{ type: 'text', text: JSON.stringify(paginatedResult, null, 2) }]
-  };
-}
-
-async function waitForPersistedSession(sessionManager, sessionId) {
-  for (let attempt = 0; attempt < SESSION_RECOVERY_ATTEMPTS; attempt += 1) {
-    const persistedSession = sessionManager.getSession(sessionId);
-    if (persistedSession) {
-      return persistedSession;
-    }
-
-    if (attempt < SESSION_RECOVERY_ATTEMPTS - 1) {
-      await new Promise((resolve) => setTimeout(resolve, SESSION_RECOVERY_DELAY_MS));
-    }
-  }
-
-  return null;
-}
-
-function buildSessionTransportContext({
-  clientInfo = {},
-  metadata = {},
-  sessionId = null,
-  sessionKind = 'http'
-} = {}) {
-  const origin = inferTransportOrigin({
-    clientInfo,
-    metadata,
-    requestContext: {
-      defaultOrigin: 'native_mcp',
-      isHttpRequest: true,
-      transportMode: metadata.transport_origin === 'stdio_bridge' ? 'stdio' : 'http'
-    }
-  });
-
-  return buildTransportProvenance({
-    origin,
-    source: metadata.transport_origin_source
-      || clientInfo.transport_origin_source
-      || (clientInfo.bridge_recovery ? 'bridge-recovery' : 'http-session'),
-    clientInfo,
-    metadata,
-    sessionId,
-    clientId: clientInfo?.client_id || clientInfo?.original_client_id || clientInfo?.name || clientInfo?.original_name || 'unknown',
-    sessionKind
-  });
-}
-
-export async function handleMcpRequest(req, res, dependencies) {
-  const {
-    logger,
-    sessions,
-    buildSessionServer,
-    getSessionManager
-  } = dependencies;
-
-  let transport;
-  try {
-    const rawSessionId = req.headers['mcp-session-id'];
-    const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
-
-    if (sessionId && sessions.has(sessionId)) {
-      transport = sessions.get(sessionId).transport;
-    } else if (sessionId && !sessions.has(sessionId)) {
-      const isInitRequest = req.method === 'POST' && isInitializeRequest(req.body);
-      const sessionManager = await getSessionManager();
-      const persistedSession = await waitForPersistedSession(sessionManager, sessionId);
-
-      if (persistedSession) {
-        logger.debug(`[SESSION_RECOVERY] Restoring session "${sessionId}" for persistent client.`);
-
-        let sessionServer = null;
-        let resolvedSessionId = sessionId;
-        const transportContext = buildSessionTransportContext({
-          clientInfo: persistedSession.client_info || {},
-          metadata: {
-            ...(persistedSession.session_metadata || {}),
-            transport_origin: persistedSession.transport_origin || persistedSession.session_metadata?.transport_origin,
-            transport_origin_source: persistedSession.session_metadata?.transport_origin_source || 'db-restore',
-            transport_request_phase: 'http-recovered',
-            transport_session_header_present: true,
-            transport_session_state: 'persisted'
-          },
-          sessionId,
-          sessionKind: 'http-recovered'
-        });
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => sessionId,
-          enableJsonResponse: true,
-          eventStore: sharedEventStore,
-          onsessioninitialized: (recoveredId) => {
-            resolvedSessionId = recoveredId;
-            sessions.set(recoveredId, { transport, server: sessionServer, transportContext });
-            logger.info(`MCP HTTP session recovered: ${recoveredId}`);
-          }
-        });
-
-        transport.onclose = async () => {
-          const sid = resolvedSessionId;
-          if (!sid) return;
-          sessions.delete(sid);
-          sessionManager.deleteSession(sid);
-        };
-
-        sessionServer = buildSessionServer(transportContext);
-        await sessionServer.connect(transport);
-      } else if (isInitRequest) {
-        if (shouldSkipStaleInitRecovery(sessionId)) {
-          logger.debug(`[SESSION_RECOVERY] Skipping duplicate stale initialize recovery for sessionId "${sessionId}".`);
-          res.status(404)
-            .set('Mcp-Session-Expired', 'true')
-            .json(buildJsonRpcErrorResponse({
-              code: -32001,
-              message: 'SESSION_EXPIRED: Re-initialize by sending a new POST /mcp without mcp-session-id.',
-              id: req.body?.id ?? null,
-              data: { reason: 'duplicate_stale_initialize' }
-            }));
-          return;
-        }
-
-        logger.debug(`[SESSION_RECOVERY] Re-initializing from stale sessionId "${sessionId}" via initialize request.`);
-
-        let sessionServer = null;
-        let resolvedSessionId = null;
-        const clientInfo = req.body.params?.clientInfo || {};
-        const transportContext = buildSessionTransportContext({
-          clientInfo,
-          metadata: {
-            transport_origin: clientInfo.transport_origin,
-            transport_origin_source: clientInfo.transport_origin_source,
-            transport_request_phase: 'http-reinitialize',
-            transport_session_header_present: true,
-            transport_session_state: 'stale'
-          },
-          sessionId,
-          sessionKind: 'http-reinitialize'
-        });
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => sessionId,
-          enableJsonResponse: true,
-          eventStore: sharedEventStore,
-          onsessioninitialized: (newSessionId) => {
-          resolvedSessionId = sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {
-            transport_origin: transportContext.transport_origin,
-            transport_origin_source: transportContext.transport_origin_source,
-            transport_request_phase: transportContext.transport_metadata?.transport_request_phase || 'http-reinitialize',
-            transport_session_header_present: transportContext.transport_metadata?.transport_session_header_present ?? true,
-            transport_session_state: transportContext.transport_metadata?.transport_session_state || 'stale'
-          });
-            sessions.set(resolvedSessionId, { transport, server: sessionServer, transportContext });
-          }
-        });
-
-        transport.onclose = async () => {
-          const sid = resolvedSessionId || transport.sessionId;
-          if (!sid) return;
-          sessions.delete(sid);
-          sessionManager.deleteSession(sid);
-        };
-
-        sessionServer = buildSessionServer(transportContext);
-        try {
-          await sessionServer.connect(transport);
-        } catch (error) {
-          sessionManager.releasePendingSession(sessionId, req.body.params?.clientInfo);
-          throw error;
-        }
-      } else {
-        logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found. Client must re-initialize.`);
-        res.status(404)
-          .set('Mcp-Session-Expired', 'true')
-          .json(buildJsonRpcErrorResponse({
-            code: -32001,
-            message: 'SESSION_EXPIRED: Re-initialize by sending a new POST /mcp without mcp-session-id.',
-            id: req.body?.id ?? null,
-            data: { reason: 'session_not_found' }
-          }));
-        return;
-      }
-    } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
-      const sessionManager = await getSessionManager();
-      let sessionServer = null;
-      let resolvedSessionId = null;
-
-      const clientInfo = req.body.params?.clientInfo;
-      const transportContext = buildSessionTransportContext({
-        clientInfo,
-        metadata: {
-          transport_origin: clientInfo?.transport_origin,
-          transport_origin_source: clientInfo?.transport_origin_source,
-          transport_request_phase: 'http-initialize',
-          transport_session_header_present: false,
-          transport_session_state: 'fresh'
-        },
-        sessionId: null,
-        sessionKind: 'http-initialize'
-      });
-      const clientId = clientInfo?.client_id || clientInfo?.original_client_id || clientInfo?.name || clientInfo?.original_name || 'unknown';
-      const reservation = sessionManager.reserveSession(clientInfo, randomUUID());
-      const sessionIdToUse = reservation.sessionId;
-      const isNewSession = !reservation.reused;
-
-      if (reservation.reused) {
-        logger.debug(`[DEDUP] Reusing ${reservation.source} session ${sessionIdToUse} for client ${clientId}`);
-      } else {
-        logger.info(`[DEDUP] Creating new session ${sessionIdToUse} for client ${clientId}`);
-      }
-
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => sessionIdToUse,
-        enableJsonResponse: true,
-        eventStore: sharedEventStore,
-        onsessioninitialized: (newSessionId) => {
-          resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {
-            transport_origin: transportContext.transport_origin,
-            transport_origin_source: transportContext.transport_origin_source,
-            transport_request_phase: transportContext.transport_metadata?.transport_request_phase || 'http-initialize',
-            transport_session_header_present: transportContext.transport_metadata?.transport_session_header_present ?? false,
-            transport_session_state: transportContext.transport_metadata?.transport_session_state || 'fresh'
-          });
-          sessions.set(resolvedSessionId, { transport, server: sessionServer, transportContext });
-          if (resolvedSessionId !== newSessionId) {
-            sessions.delete(newSessionId);
-            logger.debug(`[DEDUP] Session ${newSessionId} deduplicated to ${resolvedSessionId}`);
-          }
-          if (isNewSession) {
-            logger.info(`MCP HTTP session initialized: ${resolvedSessionId} (client: ${clientId})`);
-          } else {
-            logger.debug(`MCP HTTP session initialized: ${resolvedSessionId} (client: ${clientId})`);
-          }
-        }
-      });
-
-      transport.onclose = async () => {
-        const sid = resolvedSessionId || transport.sessionId;
-        if (!sid) return;
-        sessions.delete(sid);
-        sessionManager.deleteSession(sid);
-      };
-
-      sessionServer = buildSessionServer(transportContext);
-      try {
-        await sessionServer.connect(transport);
-      } catch (error) {
-        sessionManager.releasePendingSession(sessionIdToUse, clientInfo);
-        throw error;
-      }
-    } else {
-      res.status(400).json(buildJsonRpcErrorResponse({
-        code: -32000,
-        message: 'Bad Request: invalid or missing MCP session',
-        id: req.body?.id ?? null
-      }));
-      return;
-    }
-
-    normalizeMcpRequestHeaders(req, logger);
-    await transport.handleRequest(req, res, req.body);
-  } catch (error) {
-    logger.error(`Error handling MCP request: ${error.message}`);
-    if (!res.headersSent) {
-      res.status(500).json(buildJsonRpcErrorResponse({
-        code: -32603,
-        message: 'Internal server error'
-      }));
-    }
-  }
 }

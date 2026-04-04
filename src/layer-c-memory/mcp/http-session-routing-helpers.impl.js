@@ -1,6 +1,23 @@
 import express from 'express';
 import { summarizeMcpParseContext } from '#shared/compiler/index.js';
 
+export function buildJsonRpcErrorResponse({ code, message, id = null, data } = {}) {
+  const response = {
+    jsonrpc: '2.0',
+    error: {
+      code,
+      message
+    },
+    id
+  };
+
+  if (data !== undefined) {
+    response.error.data = data;
+  }
+
+  return response;
+}
+
 export function createConditionalJsonMiddleware(logger, buildJsonRpcErrorResponse) {
   return (req, res, next) => {
     const method = String(req?.method || '').toUpperCase();

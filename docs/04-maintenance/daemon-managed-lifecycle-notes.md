@@ -107,6 +107,26 @@ needed to restore the session.
 `client_id`. If the same client reconnects within the reuse window, the prior
 session can be re-adopted instead of creating a duplicate connection storm.
 
+The recovery path now also carries explicit transport provenance and handshake
+phase metadata:
+
+- `transport_origin`
+- `transport_origin_source`
+- `transport_request_phase`
+- `transport_session_header_present`
+- `transport_session_state`
+
+That metadata is what lets OmnySys distinguish:
+
+- a fresh HTTP initialize
+- a stale-session reinitialize
+- a recovered persisted session
+- a bridge fallback path
+
+The current lesson is that the daemon can be healthy while the bootstrap
+contract is still wrong. A missing parser branch or a stale session header can
+hide an `initialize` body and make recovery look like an expired session.
+
 ### 5. Controlled restart
 
 The restart boundary already exists:

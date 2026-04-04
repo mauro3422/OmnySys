@@ -362,3 +362,23 @@ Current conclusion:
 - the remaining work is to make provenance explicit in telemetry and notes so
   future debugging can separate "daemon healthy" from "bridge healthy" from
   "fallback HTTP over shell"
+
+---
+
+### 1.1. MCP Session Bootstrap Provenance
+
+| Campo | Valor |
+|-------|-------|
+| **Severidad** | Alta |
+| **Archivo** | `src/layer-c-memory/mcp-http-session-routing.js` |
+| **Causa** | El bootstrap de `POST /mcp` no distinguía bien entre una sesión stale, un initialize frío y una recuperación persistida |
+| **Estado** | ? RESUELTO |
+
+**Fix aplicado**:
+- `POST /mcp` ahora siempre parsea el body, incluso si existe un `mcp-session-id` viejo.
+- Se agregó metadata de handshake para distinguir `http-initialize`, `http-reinitialize` y `http-recovered`.
+- La telemetría de sesión y tool runs ahora guarda `transport_origin`.
+
+**Resultado**:
+- El daemon puede estar sano y aun así la sesión fallar si el contrato de init es ciego.
+- Ahora el contrato de bootstrap queda trazado y recuperable.
