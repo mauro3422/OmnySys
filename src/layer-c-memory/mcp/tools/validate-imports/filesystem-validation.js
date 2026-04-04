@@ -8,6 +8,7 @@
 
 import { getFileAnalysis, getFileExports } from '#layer-c/query/apis/file-api.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
+import { buildPropagationPlan, summarizePropagationPlan } from '#shared/compiler/index.js';
 import { normalizeComparablePath, normalizePath } from '#shared/utils/path-utils.js';
 
 export { normalizeComparablePath };
@@ -44,6 +45,40 @@ function parseJsonArray(value, fallback = []) {
     return Array.isArray(value) ? value : fallback;
 }
 
+function buildValidationPropagationPlan({
+    filePath,
+    importCount = 0,
+    brokenCount = 0,
+    circularCount = 0
+} = {}) {
+    return summarizePropagationPlan(buildPropagationPlan({
+        changeType: 'policy_drift',
+        decision: brokenCount > 0 || circularCount > 0 ? 'review' : 'approve',
+        mode: brokenCount > 0 || circularCount > 0 ? 'alert_and_review' : 'alert_and_recommend',
+        impactedFileCount: 1,
+        validationTargetCount: importCount,
+        candidateCount: brokenCount + circularCount,
+        findingCount: brokenCount + circularCount,
+        ruleCount: brokenCount + circularCount,
+        policyAreaCount: 1,
+        guidance: brokenCount > 0 || circularCount > 0
+            ? 'Attach the canonical propagation plan before surfacing import validation drift.'
+            : 'Keep import validation attached to the canonical propagation contract.',
+        recommendationStrategy: 'validate_imports',
+        focusPath: filePath || null,
+        scopePath: filePath || null,
+        connectedSystems: [
+            { name: 'validate_imports', role: 'verification' },
+            { name: 'watcher', role: 'persistence' },
+            { name: 'technical_debt_report', role: 'consumer' },
+            { name: 'status_panel', role: 'visibility' },
+            { name: 'health_snapshot', role: 'history' },
+            { name: 'compiler_explainability', role: 'explainability' },
+            { name: 'drift_assessment', role: 'governance' }
+        ]
+    }));
+}
+
 async function loadIndexedFileAnalysis(projectPath, filePath, repo = null) {
     const indexedFilePath = normalizePath(filePath, projectPath);
     const indexedRepo = repo || getRepository(projectPath);
@@ -61,7 +96,12 @@ async function loadIndexedFileAnalysis(projectPath, filePath, repo = null) {
                 imports: parseJsonArray(row.imports_json, []),
                 exports: parseJsonArray(row.exports_json, []),
                 atoms,
-                atomCount: atoms.length
+                atomCount: atoms.length,
+                propagation: buildValidationPropagationPlan({
+                    filePath: indexedFilePath,
+                    importCount: parseJsonArray(row.imports_json, []).length,
+                    brokenCount: 0
+                })
             };
         }
     }
@@ -148,7 +188,12 @@ export async function collectDatabaseImportState(projectPath, filePath, repo = n
         broken,
         specifierCount: imports.length,
         compilerIndexed: true,
-        sourceOfTruth: 'database'
+        sourceOfTruth: 'database',
+        propagation: buildValidationPropagationPlan({
+            filePath: indexedFilePath,
+            importCount: imports.length,
+            brokenCount: broken.length
+        })
     };
 }
 
@@ -165,7 +210,8 @@ export async function buildDatabaseOnlyValidation(projectPath, filePath, repo = 
             circularDependencies: [],
             status: state.broken.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
             validationMode: 'database_only',
-            compilerIndexed: state.compilerIndexed
+            compilerIndexed: state.compilerIndexed,
+            propagation: state.propagation
         };
     } catch (error) {
         return {
@@ -183,7 +229,12 @@ export async function buildDatabaseOnlyValidation(projectPath, filePath, repo = 
             circularDependencies: [],
             status: 'HAS_ISSUES',
             validationMode: 'database_only',
-            compilerIndexed: false
+            compilerIndexed: false,
+            propagation: buildValidationPropagationPlan({
+                filePath,
+                importCount: 0,
+                brokenCount: 1
+            })
         };
     }
 }
@@ -218,6 +269,12 @@ export async function collectBrokenImports(fileData, projectPath, filePath, chec
 
 export async function buildIndexedValidationResult(repo, filePath, fileData, broken, unused, circularPaths, projectPath) {
     const indexedImportCount = Array.isArray(fileData?.imports) ? fileData.imports.length : 0;
+    const propagation = buildValidationPropagationPlan({
+        filePath,
+        importCount: indexedImportCount,
+        brokenCount: broken.length,
+        circularCount: circularPaths.length
+    });
 
     return {
         file: filePath,
@@ -228,7 +285,8 @@ export async function buildIndexedValidationResult(repo, filePath, fileData, bro
         circularDependencies: circularPaths,
         status: broken.length === 0 && unused.length === 0 && circularPaths.length === 0 ? 'CLEAN' : 'HAS_ISSUES',
         validationMode: 'database_only',
-        compilerIndexed: true
+        compilerIndexed: true,
+        propagation
     };
 }
 

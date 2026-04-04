@@ -5,7 +5,9 @@ const mocks = vi.hoisted(() => ({
   getFileExports: vi.fn(),
   getFileDependencies: vi.fn(),
   getSystemMapPersistenceCoverage: vi.fn(() => ({ status: 'complete' })),
-  shouldTrustSystemMapDependencies: vi.fn(() => true)
+  shouldTrustSystemMapDependencies: vi.fn(() => true),
+  buildPropagationPlan: vi.fn((input = {}) => ({ ...input })),
+  summarizePropagationPlan: vi.fn((plan = null) => plan)
 }));
 
 vi.mock('#layer-c/query/apis/file-api.js', () => ({
@@ -16,7 +18,9 @@ vi.mock('#layer-c/query/apis/file-api.js', () => ({
 
 vi.mock('#shared/compiler/index.js', () => ({
   getSystemMapPersistenceCoverage: mocks.getSystemMapPersistenceCoverage,
-  shouldTrustSystemMapDependencies: mocks.shouldTrustSystemMapDependencies
+  shouldTrustSystemMapDependencies: mocks.shouldTrustSystemMapDependencies,
+  buildPropagationPlan: mocks.buildPropagationPlan,
+  summarizePropagationPlan: mocks.summarizePropagationPlan
 }));
 
 import { ValidateImportsTool } from '#layer-c/mcp/tools/validate-imports.js';
@@ -92,6 +96,8 @@ describe('DB-only validation', () => {
 
     expect(state.compilerIndexed).toBe(true);
     expect(state.sourceOfTruth).toBe('database');
+    expect(state.propagation).toBeTruthy();
+    expect(state.propagation.changeType).toBe('policy_drift');
     expect(state.broken).toHaveLength(0);
     expect(chain.found).toBe(true);
     expect(chain.originFile).toBe('src/b.js');
@@ -140,6 +146,8 @@ describe('DB-only validation', () => {
     expect(analysis.atomCount).toBe(1);
     expect(analysis.imports).toEqual(['./compiler-metrics-snapshot-helpers.js']);
     expect(analysis.exports).toEqual(['buildCompilerMetricsSnapshot']);
+    expect(analysis.propagation).toBeTruthy();
+    expect(analysis.propagation.changeType).toBe('policy_drift');
   });
 
   it('ValidateImportsTool surfaces circular dependency loader failures as structured errors', async () => {
