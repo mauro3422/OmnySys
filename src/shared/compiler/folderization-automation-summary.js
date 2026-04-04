@@ -16,8 +16,74 @@ function normalizeConnectedSystems(connectedSystems = []) {
         };
       })
       .filter((item) => item?.name),
-    8
+      8
   );
+}
+
+function buildPropagationAdoptionSummary({
+  connectedSystems = [],
+  surfacedSystems = []
+} = {}) {
+  const requiredSystems = normalizeConnectedSystems(connectedSystems);
+  const surfaced = normalizeConnectedSystems(surfacedSystems.length > 0 ? surfacedSystems : connectedSystems);
+  const surfacedSystemNames = surfaced.map((item) => item.name);
+  const surfacedNameSet = new Set(surfacedSystemNames);
+  const adoptedSystems = requiredSystems.filter((item) => surfacedNameSet.has(item.name));
+  const missingSystems = requiredSystems.filter((item) => !surfacedNameSet.has(item.name));
+  const requiredSystemNames = requiredSystems.map((item) => item.name);
+  const adoptedSystemNames = adoptedSystems.map((item) => item.name);
+  const missingSystemNames = missingSystems.map((item) => item.name);
+  const requiredSystemCount = requiredSystems.length;
+  const surfacedSystemCount = adoptedSystems.length;
+  const missingSystemCount = missingSystems.length;
+  const coverageRatio = requiredSystemCount > 0
+    ? Math.round((surfacedSystemCount / requiredSystemCount) * 100) / 100
+    : 1;
+
+  let adoptionState = 'ready';
+  if (requiredSystemCount === 0) {
+    adoptionState = 'ready';
+  } else if (missingSystemCount === 0) {
+    adoptionState = 'ready';
+  } else if (coverageRatio >= 0.75) {
+    adoptionState = 'watching';
+  } else if (coverageRatio > 0) {
+    adoptionState = 'stale';
+  } else {
+    adoptionState = 'blocked';
+  }
+
+  const surfacedLabel = surfacedSystemNames.length > 0
+    ? surfacedSystemNames.join(', ')
+    : 'no surfaced systems';
+  const missingLabel = missingSystemNames.length > 0
+    ? missingSystemNames.join(', ')
+    : 'none';
+
+  return {
+    adoptionState,
+    coverageRatio,
+    requiredSystemCount,
+    surfacedSystemCount,
+    missingSystemCount,
+    requiredSystems,
+    surfacedSystems: surfaced,
+    adoptedSystems,
+    missingSystems,
+    requiredSystemNames,
+    surfacedSystemNames,
+    adoptedSystemNames,
+    missingSystemNames,
+    nextAction: missingSystemCount > 0
+      ? `Update ${missingSystemNames.slice(0, 3).join(', ')} to surface the propagation pattern.`
+      : 'All connected systems already surface the propagation pattern.',
+    reason: requiredSystemCount > 0
+      ? `${surfacedSystemCount}/${requiredSystemCount} connected system(s) already surface the propagation pattern; missing=${missingLabel}.`
+      : 'No connected systems were reported by the propagation plan.',
+    summaryText: `state=${adoptionState} | coverage=${coverageRatio} | required=${requiredSystemCount} | surfaced=${surfacedSystemCount} | missing=${missingSystemCount} | surfacedSystems=${surfacedLabel}`,
+    surfacedSystemLabels: surfacedLabel,
+    missingSystemLabels: missingLabel
+  };
 }
 
 function calculateConfidence({
@@ -50,6 +116,7 @@ function buildAutomationReason({
   policyCoverageState,
   promotionState,
   connectedSystemNames,
+  propagationAdoption,
   driftReason,
   recommendationStrategy
 }) {
@@ -58,11 +125,14 @@ function buildAutomationReason({
   }
 
   if (automationState === 'ready') {
-    return `Folderization can execute because propagation is attached to ${connectedSystemNames.join(', ')} and the normalization plan is safe.`;
+    const connectedLabel = connectedSystemNames.length > 0 ? connectedSystemNames.join(', ') : 'the connected systems';
+    return `Folderization can execute because propagation is attached to ${connectedLabel} and the normalization plan is safe; adoption is aligned across ${propagationAdoption?.surfacedSystemCount || 0} surfaced system(s).`;
   }
 
   if (automationState === 'review') {
-    return `Folderization should be reviewed because normalization is ${normalizationSafetyLevel} and policy coverage is ${policyCoverageState || 'unknown'}.`;
+    return propagationAdoption?.missingSystemCount > 0
+      ? `Folderization should be reviewed because ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} still need the propagation pattern and policy coverage is ${policyCoverageState || 'unknown'}.`
+      : `Folderization should be reviewed because normalization is ${normalizationSafetyLevel} and policy coverage is ${policyCoverageState || 'unknown'}.`;
   }
 
   return driftReason
@@ -102,6 +172,10 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
   const canonicalPromotion = context.canonicalPromotion || context.systemInventory?.canonicalPromotion || null;
   const connectedSystems = normalizeConnectedSystems(propagation.connectedSystems || []);
   const connectedSystemNames = connectedSystems.map((item) => item.name);
+  const propagationAdoption = buildPropagationAdoptionSummary({
+    connectedSystems,
+    surfacedSystems: context.propagationAdoptionTargets || context.surfacedSystems || []
+  });
   const normalizationSafetyLevel = normalization.summary?.safetyLevel || 'none';
   const normalizationAction = normalization.summary?.recommendedAction || 'noop';
   const normalizationTargets = Number(normalization.summary?.renameTargetCount || 0);
@@ -115,7 +189,7 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     ? 'already_folderized'
     : propagationMode === 'blocked' || drift.state === 'blocked' || normalizationSafetyLevel === 'missing'
       ? 'blocked'
-      : normalizationAction === 'execute' && propagationMode === 'move_and_rewrite' && normalizationSafetyLevel === 'safe'
+      : normalizationAction === 'execute' && propagationMode === 'move_and_rewrite' && normalizationSafetyLevel === 'safe' && propagationAdoption.adoptionState === 'ready'
         ? 'ready'
         : 'review';
   const confidence = calculateConfidence({
@@ -137,7 +211,9 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     : automationState === 'already_folderized'
       ? 'Reuse the existing folderized family and only rename within the family if needed.'
       : automationState === 'review'
-        ? 'Review the propagation and normalization plan before execution.'
+        ? (propagationAdoption.missingSystemCount > 0
+          ? `Update ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} to surface the propagation pattern before execution.`
+          : 'Review the propagation and normalization plan before execution.')
         : 'Repair support surfaces before attempting folderization automation.';
   const reason = buildAutomationReason({
     automationState,
@@ -147,6 +223,7 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     policyCoverageState,
     promotionState,
     connectedSystemNames,
+    propagationAdoption,
     driftReason: drift.reason || null,
     recommendationStrategy: propagation.recommendationStrategy || folderizationReport.recommendation?.strategy || null
   });
@@ -172,6 +249,15 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     policyCoverageState,
     promotionState,
     systemInventoryState,
+    propagationAdoption,
+    propagationAdoptionState: propagationAdoption.adoptionState,
+    propagationAdoptionCoverageRatio: propagationAdoption.coverageRatio,
+    propagationAdoptionRequiredSystemCount: propagationAdoption.requiredSystemCount,
+    propagationAdoptionSurfacedSystemCount: propagationAdoption.surfacedSystemCount,
+    propagationAdoptionMissingSystemCount: propagationAdoption.missingSystemCount,
+    propagationAdoptionRequiredSystems: propagationAdoption.requiredSystems,
+    propagationAdoptionSurfacedSystems: propagationAdoption.surfacedSystems,
+    propagationAdoptionMissingSystems: propagationAdoption.missingSystems,
     driftState: drift.state || 'fresh',
     driftScore: Number(drift.score || 0),
     driftReason: drift.reason || null,

@@ -47,4 +47,24 @@ describe('folderization-report', () => {
     });
     expect(report.propagation.cacheKey).toBeTruthy();
   });
+
+  it('detects a repeated-name family even when internal imports are absent', () => {
+    const rows = [
+      buildRow('src/shared/compiler/compiler-metrics-current.js'),
+      buildRow('src/shared/compiler/compiler-metrics-current-helpers.js'),
+      buildRow('src/shared/compiler/compiler-metrics-snapshot.js'),
+      buildRow('src/shared/compiler/compiler-metrics-snapshot-summary.js'),
+      buildRow('src/shared/compiler/compiler-metrics-snapshot-helpers.js')
+    ];
+
+    const report = buildFolderizationReportFromRows(rows, {
+      scopePath: 'src/shared/compiler/compiler-metrics-snapshot.js',
+      focusPath: 'src/shared/compiler/compiler-metrics-snapshot-summary.js'
+    });
+
+    expect(report.candidateReport.totalCandidates).toBeGreaterThan(0);
+    expect(report.summary.candidateCount).toBeGreaterThan(0);
+    expect(report.familyState.totalFamilies).toBeGreaterThan(0);
+    expect(report.creationGuidance.preferredFamilyRoot).toBeTruthy();
+  });
 });

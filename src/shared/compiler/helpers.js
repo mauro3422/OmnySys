@@ -22,6 +22,29 @@ import {
   summarizeCompilerHealthPanel,
   takeSample
 } from './compiler-health-dashboard-utils.js';
+import {
+  DERIVED_SCORE_SIGNALS,
+  PIPELINE_FIELD_COVERAGE_SIGNALS,
+  classifyFieldCoverage,
+  getNetworkCandidates,
+  getNetworkFlaggedCandidates,
+  getSharedStateCandidates,
+  getSignalValue,
+  isProductionCandidate,
+  summarizeFieldCoverageRow
+} from './signal-coverage-helpers.js';
+
+export {
+  DERIVED_SCORE_SIGNALS,
+  PIPELINE_FIELD_COVERAGE_SIGNALS,
+  classifyFieldCoverage,
+  getNetworkCandidates,
+  getNetworkFlaggedCandidates,
+  getSharedStateCandidates,
+  getSignalValue,
+  isProductionCandidate,
+  summarizeFieldCoverageRow
+} from './signal-coverage-helpers.js';
 
 function buildSignalRows(delta = {}) {
   const weights = {

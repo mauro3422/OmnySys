@@ -122,6 +122,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     systemInventory: controlPlaneContracts.systemInventory,
     canonicalPromotion: controlPlaneContracts.canonicalPromotion,
     folderizationAutomation: controlPlaneContracts.folderizationAutomation,
+    folderizationAdoption: controlPlaneContracts.folderizationAdoption,
     cachePolicy,
     toolInventory,
     updateSurface,

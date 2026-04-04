@@ -151,9 +151,15 @@ function summarizeCompactCurrentTelemetry(current = {}) {
     pipelineTimingTelemetry: summarizeCompactPipelineTimingTelemetry(current.pipelineTimingTelemetry),
     toolTelemetry: summarizeCompactToolTelemetry(current.toolTelemetry),
     startupTelemetry: current.startupTelemetry || null,
+    folderizationAutomation: current.folderizationAutomation || null,
+    folderizationAdoption: current.folderizationAutomation?.propagationAdoption || current.folderizationPropagationAdoption || null,
     systemInventory: current.systemInventory || null,
     canonicalPromotion: current.canonicalPromotion || null,
-    policyCoverage: current.policyCoverage || null
+    policyCoverage: current.policyCoverage || null,
+    policyCoverageState: current.policyCoverage?.coverageState || null,
+    propagationExpansionState: current.policyCoverage?.propagationExpansionState || null,
+    propagationExpansionReason: current.policyCoverage?.propagationExpansionReason || null,
+    propagationExpansionRecommendation: current.policyCoverage?.propagationExpansionRecommendation || null
   };
 }
 
@@ -238,6 +244,7 @@ function buildCompilerMetricsSnapshotContent(snapshot) {
     archive,
     normalization: current?.folderizationNormalization ?? null,
     propagation: current?.folderizationPropagation ?? null,
+    folderizationAutomation: current?.folderizationAutomation ?? null,
     canonicalPromotion: current?.canonicalPromotion ?? null,
     policyCoverage: current?.policyCoverage ?? null,
     systemInventory: snapshot.systemInventory ?? snapshot.systemInventoryReport ?? current?.systemInventory ?? null,

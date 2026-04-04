@@ -31,6 +31,10 @@ export function buildSystemTableSummary(status = {}) {
   const controlPlaneContracts = resolveControlPlaneContracts(status);
   const policyCoverage = controlPlaneContracts.policyCoverage || resolvePolicyCoverageSummary(status);
   const folderizationAutomation = controlPlaneContracts.folderizationAutomation || status.compilerExplainability?.folderization?.automation || null;
+  const folderizationAdoption = controlPlaneContracts.folderizationAdoption
+    || folderizationAutomation?.propagationAdoption
+    || status.compilerExplainability?.folderization?.automation?.propagationAdoption
+    || null;
   const structuralGroups = normalizeCount(current.structuralGroups);
   const conceptualGroups = normalizeCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
@@ -162,6 +166,14 @@ export function buildSystemTableSummary(status = {}) {
           ? `mode=${folderizationAutomation.executionMode || 'n/a'} | exec=${folderizationAutomation.shouldExecute ? 'yes' : 'no'} | target=${folderizationAutomation.executionTarget || 'n/a'} | confidence=${normalizeCount(folderizationAutomation.confidence || 0)} | risk=${normalizeCount(folderizationAutomation.riskScore || 0)} | systems=${normalizeCount(folderizationAutomation.connectedSystemCount || 0)} | next=${folderizationAutomation.nextAction || 'n/a'}`
           : 'folderization automation not available',
         source: 'folderization automation plan'
+      },
+      {
+        area: 'Adoption',
+        state: folderizationAdoption?.adoptionState || 'watching',
+        detail: folderizationAdoption
+          ? `required=${normalizeCount(folderizationAdoption.requiredSystemCount || 0)} | surfaced=${normalizeCount(folderizationAdoption.surfacedSystemCount || 0)} | missing=${normalizeCount(folderizationAdoption.missingSystemCount || 0)} | coverage=${normalizeCount(Math.round((folderizationAdoption.coverageRatio || 0) * 100))}% | missingNames=${(folderizationAdoption.missingSystemNames || []).slice(0, 3).join(', ') || 'none'} | next=${folderizationAdoption.nextAction || 'n/a'}`
+          : 'folderization adoption not available',
+        source: 'folderization propagation adoption'
       },
       ...(status.cachePolicy ? [
         {

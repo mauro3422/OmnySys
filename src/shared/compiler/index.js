@@ -375,7 +375,7 @@ export {
 
 export {
   getDatabaseHealthSummary
-} from './summary.js';
+} from './database-health-summary.js';
 
 export {
   getFileUniverseGranularity

@@ -73,6 +73,12 @@ export function resolveControlPlaneContracts(status = {}) {
     healthSnapshot.compilerExplainability?.folderization?.automation,
     metricsSnapshot.compilerExplainability?.folderization?.automation
   );
+  const folderizationAdoption = firstDefined(
+    folderizationAutomation?.propagationAdoption,
+    compilerExplainability.folderization?.automation?.propagationAdoption,
+    healthSnapshot.compilerExplainability?.folderization?.automation?.propagationAdoption,
+    metricsSnapshot.compilerExplainability?.folderization?.automation?.propagationAdoption
+  );
   const propagation = firstDefined(
     metricsSnapshot.propagation,
     metricsSnapshot.current?.folderizationPropagation
@@ -83,6 +89,7 @@ export function resolveControlPlaneContracts(status = {}) {
     canonicalPromotion: canonicalPromotion || null,
     policyCoverage,
     folderizationAutomation: folderizationAutomation || null,
+    folderizationAdoption: folderizationAdoption || null,
     propagation
   };
 }
@@ -100,6 +107,7 @@ export function resolveDashboardControlPlaneContracts(snapshot = null, compilerE
     folderizationPropagation,
     canonicalPromotion,
     policyCoverage,
+    folderizationAdoption: current.folderizationAutomation?.propagationAdoption || null,
     propagationExpansion
   };
 }
@@ -136,4 +144,3 @@ export function summarizeNodeVitals(nodeVitals) {
     cpu: nodeVitals.cpu || null
   };
 }
-

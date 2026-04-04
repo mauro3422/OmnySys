@@ -51,6 +51,12 @@ describe('folderization-automation-summary', () => {
     expect(automation.connectedSystemCount).toBe(3);
     expect(automation.connectedSystemNames).toContain('technical_debt_report');
     expect(automation.nextAction).toContain('Execute folderize_family');
+    expect(automation.propagationAdoption).toMatchObject({
+      adoptionState: 'ready',
+      requiredSystemCount: 3,
+      surfacedSystemCount: 3,
+      missingSystemCount: 0
+    });
   });
 
   it('blocks automation when propagation is blocked', () => {
@@ -83,5 +89,64 @@ describe('folderization-automation-summary', () => {
     expect(automation.executionMode).toBe('analyze');
     expect(automation.executionTarget).toBe('analyze');
     expect(automation.reason).toContain('blocked');
+  });
+
+  it('marks adoption as stale when connected systems are not yet surfaced', () => {
+    const automation = buildFolderizationAutomationSummaryFromReport({
+      decision: 'approve',
+      scopePath: 'src/shared/compiler',
+      focusPath: 'src/shared/compiler',
+      candidateReport: { candidateCount: 4 },
+      drift: { state: 'fresh', score: 5, reason: 'stable support surface' },
+      recommendation: { strategy: 'flat_family_sprawl' },
+      propagation: {
+        changeType: 'folderization',
+        decision: 'approve',
+        mode: 'move_and_rewrite',
+        cacheKey: 'abc123',
+        cacheHit: false,
+        validationTargetCount: 7,
+        recommendationStrategy: 'flat_family_sprawl',
+        connectedSystems: [
+          { name: 'technical_debt_report', role: 'consumer' },
+          { name: 'status_panel', role: 'visibility' },
+          { name: 'compiler_explainability', role: 'explainability' }
+        ]
+      },
+      normalization: {
+        summary: {
+          safetyLevel: 'safe',
+          recommendedAction: 'execute',
+          renameTargetCount: 6,
+          renameTargetDensity: 1.5
+        }
+      }
+    }, {
+      systemInventory: {
+        inventoryState: 'watching',
+        policyCoverage: { coverageState: 'fresh' },
+        canonicalPromotion: { promotionState: 'watching' }
+      },
+      policyCoverage: { coverageState: 'fresh' },
+      canonicalPromotion: { promotionState: 'watching' },
+      propagationAdoptionTargets: [
+        { name: 'compiler_explainability', role: 'explainability' }
+      ]
+    });
+
+    expect(automation.automationState).toBe('review');
+    expect(automation.shouldExecute).toBe(false);
+    expect(automation.propagationAdoption).toMatchObject({
+      adoptionState: 'stale',
+      requiredSystemCount: 3,
+      surfacedSystemCount: 1,
+      missingSystemCount: 2
+    });
+    expect(automation.propagationAdoption.missingSystemNames).toEqual([
+      'technical_debt_report',
+      'status_panel'
+    ]);
+    expect(automation.nextAction).toContain('technical_debt_report');
+    expect(automation.nextAction).toContain('status_panel');
   });
 });

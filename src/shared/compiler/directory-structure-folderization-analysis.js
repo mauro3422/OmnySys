@@ -302,11 +302,16 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
   const densityScore = Math.round(internalDensity * 35);
   const exportScore = Math.round((exportingMembers / Math.max(enrichedMembers.length, 1)) * 15);
   const externalPenalty = Math.round(Math.min(15, externalImportEdges * 1.5));
+  const namingPressure = Math.min(
+    20,
+    Math.max(0, Math.round(enrichedMembers.length * 3 + (familyEvolution?.folderFileCount || 0) * 2))
+  );
   const confidence = Math.max(
     0,
-    Math.min(100, sizeScore + densityScore + exportScore + barrelPresenceScore - externalPenalty)
+    Math.min(100, sizeScore + densityScore + exportScore + barrelPresenceScore + namingPressure - externalPenalty)
   );
   const recommendedFolder = `${group.directory}/${group.familyRoot}`;
+  const hasStrongNameFamily = enrichedMembers.length >= minFileCount && confidence >= 30;
 
   return {
     directory: group.directory,
@@ -329,7 +334,14 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
     confidence,
     // FIX: Relajar condición - antes requería barrelFile O internalImportEdges >= members.length
     // Esto fallaba para familias cohesivas por nombre/patrón pero que no se importan entre sí
-    shouldFolderize: migrationState === 'flat' && enrichedMembers.length >= minFileCount && (Boolean(barrelFile) || internalImportEdges >= 1 || exportingMembers >= 2),
+    shouldFolderize: migrationState === 'flat'
+      && enrichedMembers.length >= minFileCount
+      && (
+        Boolean(barrelFile)
+        || internalImportEdges >= 1
+        || exportingMembers >= 2
+        || hasStrongNameFamily
+      ),
     migrationState,
     familyEvolution: familyEvolution ? {
       rootFileCount: familyEvolution.rootFileCount || 0,

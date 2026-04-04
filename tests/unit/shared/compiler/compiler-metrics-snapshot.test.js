@@ -79,6 +79,44 @@ describe('compiler-metrics-snapshot', () => {
           hasCrossFamilyPropagation: true,
           connectedSystems: ['folderization', 'status']
         },
+        folderizationAutomation: {
+          automationState: 'ready',
+          executionMode: 'execute',
+          shouldExecute: true,
+          executionTarget: 'folderize_family',
+          confidence: 89,
+          riskScore: 11,
+          decision: 'approve',
+          propagationMode: 'move_and_rewrite',
+          propagationCacheHit: true,
+          normalizationSafetyLevel: 'safe',
+          normalizationAction: 'execute',
+          normalizationTargets: 4,
+          normalizationDensity: 1.2,
+          policyCoverageState: 'watching',
+          promotionState: 'ready',
+          systemInventoryState: 'watching',
+          propagationAdoption: {
+            adoptionState: 'ready',
+            coverageRatio: 1,
+            requiredSystemCount: 2,
+            surfacedSystemCount: 2,
+            missingSystemCount: 0,
+            requiredSystemNames: ['folderization', 'status'],
+            surfacedSystemNames: ['folderization', 'status'],
+            missingSystemNames: [],
+            nextAction: 'All connected systems already surface the propagation pattern.',
+            reason: '2/2 connected system(s) already surface the propagation pattern; missing=none.',
+            summaryText: 'state=ready | coverage=1 | required=2 | surfaced=2 | missing=0 | surfacedSystems=folderization, status'
+          },
+          driftState: 'fresh',
+          driftScore: 3,
+          nextAction: 'Execute folderize_family using the propagation plan.',
+          reason: 'Folderization can execute because propagation is attached and the normalization plan is safe; adoption is aligned across 2 surfaced system(s).',
+          connectedSystemCount: 2,
+          connectedSystems: ['folderization', 'status'],
+          connectedSystemNames: ['folderization', 'status']
+        },
         folderizationNormalization: {
           mode: 'plan',
           candidatePath: 'src/shared/compiler/compiler-health-dashboard.js',
@@ -155,6 +193,16 @@ describe('compiler-metrics-snapshot', () => {
       familyRoot: 'compiler-health-dashboard',
       renameTargetCount: 2,
       safetyLevel: 'safe'
+    });
+    expect(compact.current.folderizationAutomation).toMatchObject({
+      automationState: 'ready',
+      executionMode: 'execute',
+      executionTarget: 'folderize_family'
+    });
+    expect(compact.current.folderizationAdoption).toMatchObject({
+      adoptionState: 'ready',
+      requiredSystemCount: 2,
+      surfacedSystemCount: 2
     });
     expect(compact.daily.propagation).toMatchObject({
       cacheKey: 'folderization:abc123',

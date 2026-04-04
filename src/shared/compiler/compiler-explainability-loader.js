@@ -7,6 +7,36 @@ import { buildFolderizationReportFromRepo } from './folderization-report.js';
 import { buildFolderizationAutomationSummaryFromReport } from './folderization-automation-summary.js';
 import { getDatabaseHealthSummary } from './database-health-summary.js';
 
+function buildFolderizationPropagationAdoptionTargets({
+  snapshot,
+  systemInventory,
+  folderizationReport,
+  databaseHealth
+}) {
+  return [
+    { name: 'compiler_explainability', role: 'explainability', source: 'compilerExplainability', available: true },
+    { name: 'compiler_health_dashboard', role: 'dashboard', source: 'health dashboard', available: true },
+    { name: 'compiler_metrics_snapshot', role: 'metrics', source: 'metrics snapshot', available: true },
+    { name: 'status_system_table', role: 'status', source: 'status system table', available: true },
+    { name: 'status_summary_payload', role: 'status', source: 'status summary payload', available: true },
+    { name: 'status_panel', role: 'status', source: 'status panel', available: true },
+    { name: 'technical_debt_report', role: 'debt', source: 'technical debt report', available: true },
+    { name: 'system_inventory', role: 'inventory', source: 'systemInventory', available: Boolean(systemInventory) },
+    { name: 'policy_coverage', role: 'policy', source: 'systemInventory.policyCoverage', available: Boolean(systemInventory?.policyCoverage) },
+    { name: 'canonical_promotion', role: 'promotion', source: 'systemInventory.canonicalPromotion', available: Boolean(systemInventory?.canonicalPromotion) },
+    { name: 'folderization', role: 'folderization', source: 'compilerExplainability.folderization', available: Boolean(folderizationReport) },
+    { name: 'propagation', role: 'propagation', source: 'compilerExplainability.folderization.propagation', available: Boolean(folderizationReport?.propagation) },
+    { name: 'standardization', role: 'governance', source: 'standardizationReport', available: Boolean(snapshot.standardizationReport) },
+    { name: 'compiler_contract_layer', role: 'governance', source: 'compilerContractLayer', available: Boolean(snapshot.compilerContractLayer) },
+    { name: 'data_gateway_contract', role: 'governance', source: 'dataGatewayContract', available: Boolean(snapshot.dataGatewayContract) },
+    { name: 'metadata_extraction_coverage', role: 'coverage', source: 'metadataExtractionCoverage', available: Boolean(snapshot.metadataExtractionCoverage) },
+    { name: 'surface_audit', role: 'audit', source: 'surfaceAudit', available: Boolean(snapshot.surfaceAudit) },
+    { name: 'drift_assessment', role: 'drift', source: 'driftAssessment', available: Boolean(snapshot.driftAssessment) },
+    { name: 'database_health', role: 'health', source: 'databaseHealth', available: Boolean(databaseHealth) },
+    { name: 'metrics_snapshot', role: 'metrics', source: 'compilerExplainability.metricsSnapshot', available: true }
+  ].filter((item) => item.available);
+}
+
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
   try {
     const { scanCompilerPolicyDrift } = await import('./scan.js');
@@ -43,10 +73,17 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         driftAssessment: snapshot.driftAssessment
       }
     });
+    const propagationAdoptionTargets = buildFolderizationPropagationAdoptionTargets({
+      snapshot,
+      systemInventory,
+      folderizationReport,
+      databaseHealth
+    });
     const folderizationAutomation = buildFolderizationAutomationSummaryFromReport(folderizationReport, {
       systemInventory,
       policyCoverage: systemInventory.policyCoverage || null,
-      canonicalPromotion: systemInventory.canonicalPromotion || null
+      canonicalPromotion: systemInventory.canonicalPromotion || null,
+      propagationAdoptionTargets
     });
 
     return {
@@ -76,6 +113,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         namingPatterns: folderizationReport.namingPatterns,
         creationGuidance: folderizationReport.creationGuidance,
         automation: folderizationAutomation,
+        propagationAdoptionTargets,
         namingDebt: {
           familyCount: folderizationReport.naming?.familyCount || 0,
           renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,

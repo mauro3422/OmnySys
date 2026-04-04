@@ -98,7 +98,7 @@ export function compactCreationGuidance(creationGuidance = null) {
   };
 }
 
-export function compactFolderizationAutomation(automation = null) {
+function compactFolderizationAutomationBase(automation = null) {
   if (!automation) return null;
   return {
     automationState: automation.automationState || null,
@@ -113,10 +113,34 @@ export function compactFolderizationAutomation(automation = null) {
     normalizationSafetyLevel: automation.normalizationSafetyLevel || null,
     normalizationAction: automation.normalizationAction || null,
     normalizationTargets: automation.normalizationTargets || 0,
-    normalizationDensity: automation.normalizationDensity || 0,
+    normalizationDensity: automation.normalizationDensity || 0
+  };
+}
+
+function compactPropagationAdoption(adoption = null) {
+  if (!adoption) return null;
+  return {
+    adoptionState: adoption.adoptionState || null,
+    coverageRatio: adoption.coverageRatio || 0,
+    requiredSystemCount: adoption.requiredSystemCount || 0,
+    surfacedSystemCount: adoption.surfacedSystemCount || 0,
+    missingSystemCount: adoption.missingSystemCount || 0,
+    requiredSystemNames: takeSample(adoption.requiredSystemNames || [], 8),
+    surfacedSystemNames: takeSample(adoption.surfacedSystemNames || [], 8),
+    missingSystemNames: takeSample(adoption.missingSystemNames || [], 8),
+    nextAction: adoption.nextAction || null,
+    reason: adoption.reason || null,
+    summaryText: adoption.summaryText || null
+  };
+}
+
+function compactFolderizationAutomationSignals(automation = null) {
+  if (!automation) return null;
+  return {
     policyCoverageState: automation.policyCoverageState || null,
     promotionState: automation.promotionState || null,
     systemInventoryState: automation.systemInventoryState || null,
+    propagationAdoption: compactPropagationAdoption(automation.propagationAdoption || null),
     driftState: automation.driftState || null,
     driftScore: automation.driftScore || 0,
     nextAction: automation.nextAction || null,
@@ -127,7 +151,18 @@ export function compactFolderizationAutomation(automation = null) {
   };
 }
 
-export function compactPropagation(propagation = null) {
+function resolveSummaryField(source, field, fallback = null) {
+  return source?.summary?.[field] ?? source?.[field] ?? fallback;
+}
+
+export function compactFolderizationAutomation(automation = null) {
+  return {
+    ...compactFolderizationAutomationBase(automation),
+    ...compactFolderizationAutomationSignals(automation)
+  };
+}
+
+function compactPropagationBase(propagation = null) {
   if (!propagation) return null;
   return {
     changeType: propagation.changeType || 'folderization',
@@ -140,7 +175,13 @@ export function compactPropagation(propagation = null) {
     rewriteCount: propagation.rewriteCount || 0,
     renameTargetCount: propagation.renameTargetCount || 0,
     validationTargetCount: propagation.validationTargetCount || 0,
-    hasCrossFamilyPropagation: propagation.hasCrossFamilyPropagation || false,
+    hasCrossFamilyPropagation: propagation.hasCrossFamilyPropagation || false
+  };
+}
+
+function compactPropagationSignals(propagation = null) {
+  if (!propagation) return null;
+  return {
     topImpactedFiles: takeSample(propagation.topImpactedFiles || [], 3),
     topCandidates: takeSample(propagation.topCandidates || [], 3),
     candidateCount: propagation.candidateCount || 0,
@@ -152,6 +193,13 @@ export function compactPropagation(propagation = null) {
     scopePath: propagation.scopePath || null,
     focusPath: propagation.focusPath || null,
     connectedSystems: takeSample(propagation.connectedSystems || [], 8)
+  };
+}
+
+export function compactPropagation(propagation = null) {
+  return {
+    ...compactPropagationBase(propagation),
+    ...compactPropagationSignals(propagation)
   };
 }
 
@@ -176,18 +224,31 @@ export function compactFolderization(folderization = null) {
 }
 
 export function compactCanonicalPromotion(canonicalPromotion = null) {
+  return {
+    ...compactCanonicalPromotionBase(canonicalPromotion),
+    ...compactCanonicalPromotionSignals(canonicalPromotion)
+  };
+}
+
+function compactCanonicalPromotionBase(canonicalPromotion = null) {
   if (!canonicalPromotion) return null;
   return {
-    promotionState: canonicalPromotion.summary?.promotionState || canonicalPromotion.promotionState || null,
-    inventoryState: canonicalPromotion.summary?.inventoryState || canonicalPromotion.inventoryState || null,
-    folderizationState: canonicalPromotion.summary?.folderizationState || canonicalPromotion.folderizationState || null,
-    folderizationDecision: canonicalPromotion.summary?.folderizationDecision || canonicalPromotion.folderizationDecision || null,
-    candidateCount: canonicalPromotion.summary?.candidateCount || canonicalPromotion.candidateCount || 0,
-    folderizedFamilyCount: canonicalPromotion.summary?.folderizedFamilyCount || canonicalPromotion.folderizedFamilyCount || 0,
-    emergentCandidateCount: canonicalPromotion.summary?.emergentCandidateCount || canonicalPromotion.emergentCandidateCount || 0,
-    canonicalCandidateCount: canonicalPromotion.summary?.canonicalCandidateCount || canonicalPromotion.canonicalCandidateCount || 0,
-    nextAction: canonicalPromotion.summary?.nextAction || canonicalPromotion.nextAction || null,
-    summaryText: canonicalPromotion.summary?.summaryText || canonicalPromotion.summaryText || null,
+    promotionState: resolveSummaryField(canonicalPromotion, 'promotionState', null),
+    inventoryState: resolveSummaryField(canonicalPromotion, 'inventoryState', null),
+    folderizationState: resolveSummaryField(canonicalPromotion, 'folderizationState', null),
+    folderizationDecision: resolveSummaryField(canonicalPromotion, 'folderizationDecision', null),
+    candidateCount: resolveSummaryField(canonicalPromotion, 'candidateCount', 0),
+    folderizedFamilyCount: resolveSummaryField(canonicalPromotion, 'folderizedFamilyCount', 0),
+    emergentCandidateCount: resolveSummaryField(canonicalPromotion, 'emergentCandidateCount', 0),
+    canonicalCandidateCount: resolveSummaryField(canonicalPromotion, 'canonicalCandidateCount', 0)
+  };
+}
+
+function compactCanonicalPromotionSignals(canonicalPromotion = null) {
+  if (!canonicalPromotion) return null;
+  return {
+    nextAction: resolveSummaryField(canonicalPromotion, 'nextAction', null),
+    summaryText: resolveSummaryField(canonicalPromotion, 'summaryText', null),
     topPromotionTargets: takeSample(canonicalPromotion.topPromotionTargets || [], 5)
   };
 }
@@ -197,24 +258,41 @@ export function compactSurfaceAudit(surfaceAudit = null) {
 }
 
 export function compactPolicyCoverage(policyCoverage = null) {
+  return {
+    ...compactPolicyCoverageBase(policyCoverage),
+    ...compactPolicyCoverageSignals(policyCoverage)
+  };
+}
+
+function compactPolicyCoverageBase(policyCoverage = null) {
   if (!policyCoverage) return null;
   return {
-    coverageState: policyCoverage.coverageState || null,
-    coverageScore: policyCoverage.coverageScore || 0,
-    coverageRatio: policyCoverage.coverageRatio || 0,
-    coverageLoad: policyCoverage.coverageLoad || 0,
-    totalSystemCount: policyCoverage.totalSystemCount || 0,
-    canonicalSurfaceCount: policyCoverage.canonicalSurfaceCount || 0,
-    canonicalEntrypointCount: policyCoverage.canonicalEntrypointCount || 0,
-    bridgeSystemCount: policyCoverage.bridgeSystemCount || 0,
-    wrapperSystemCount: policyCoverage.wrapperSystemCount || 0,
-    emergentSystemCount: policyCoverage.emergentSystemCount || 0,
-    policyDriftCount: policyCoverage.policyDriftCount || 0,
-    propagationExpansionState: policyCoverage.propagationExpansionState || null,
-    nextAction: policyCoverage.nextAction || null,
-    recommendation: policyCoverage.recommendation || null,
-    summaryText: policyCoverage.summaryText || null,
-    inventoryState: policyCoverage.inventoryState || null
+    coverageState: resolveSummaryField(policyCoverage, 'coverageState', null),
+    coverageScore: resolveSummaryField(policyCoverage, 'coverageScore', 0),
+    coverageRatio: resolveSummaryField(policyCoverage, 'coverageRatio', 0),
+    coverageLoad: resolveSummaryField(policyCoverage, 'coverageLoad', 0),
+    totalSystemCount: resolveSummaryField(policyCoverage, 'totalSystemCount', 0),
+    canonicalSurfaceCount: resolveSummaryField(policyCoverage, 'canonicalSurfaceCount', 0),
+    canonicalEntrypointCount: resolveSummaryField(policyCoverage, 'canonicalEntrypointCount', 0),
+    bridgeSystemCount: resolveSummaryField(policyCoverage, 'bridgeSystemCount', 0),
+    wrapperSystemCount: resolveSummaryField(policyCoverage, 'wrapperSystemCount', 0),
+    emergentSystemCount: resolveSummaryField(policyCoverage, 'emergentSystemCount', 0),
+    policyDriftCount: resolveSummaryField(policyCoverage, 'policyDriftCount', 0),
+    propagationExpansionState: resolveSummaryField(policyCoverage, 'propagationExpansionState', null),
+    propagationExpansionReason: resolveSummaryField(policyCoverage, 'propagationExpansionReason', null),
+    propagationExpansionRecommendation: resolveSummaryField(policyCoverage, 'propagationExpansionRecommendation', null)
+  };
+}
+
+function compactPolicyCoverageSignals(policyCoverage = null) {
+  if (!policyCoverage) return null;
+  return {
+    nextAction: resolveSummaryField(policyCoverage, 'nextAction', null),
+    recommendation: resolveSummaryField(policyCoverage, 'recommendation', null),
+    summaryText: resolveSummaryField(policyCoverage, 'summaryText', null),
+    inventoryState: resolveSummaryField(policyCoverage, 'inventoryState', null),
+    topSystems: takeSample(policyCoverage.topSystems || [], 5),
+    topPromotionTargets: takeSample(policyCoverage.topPromotionTargets || [], 5)
   };
 }
 

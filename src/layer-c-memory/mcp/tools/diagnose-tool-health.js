@@ -62,6 +62,10 @@ export async function diagnose_tool_health(args, context) {
       propagationPlan
     });
 
+    if (includeDashboard && report.dashboard) {
+      console.log(report.dashboard);
+    }
+
     // Modo alertsOnly
     if (alertsOnly) {
       return {

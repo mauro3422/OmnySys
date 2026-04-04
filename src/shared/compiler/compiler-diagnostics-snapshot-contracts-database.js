@@ -4,7 +4,7 @@ import { getMetadataSurfaceParity } from './metadata-surface-parity.js';
 import { getMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
 import { summarizeContractTaxonomy } from './contract-taxonomy/index.js';
-import { getDatabaseHealthSummary } from './summary.js';
+import { getDatabaseHealthSummary } from './database-health-summary.js';
 import { getPhase2PendingFiles } from './compiler-runtime-metrics/index.js';
 
 export function getCompilerDiagnosticsDatabaseSurfaces(db) {

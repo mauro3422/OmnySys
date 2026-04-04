@@ -168,12 +168,14 @@ export function buildCurrentMetrics({
     systemInventory: systemInventory || null,
     canonicalPromotion: canonicalPromotion || null,
     policyCoverage: systemInventory?.policyCoverage || null,
+    folderizationAutomation: compilerExplainability?.folderization?.automation || null,
     startupTelemetry: buildStartupRegressionSummary(startupTelemetry),
     proxyRuntimeTelemetry: proxyRuntimeTelemetry || null,
     bridgeRuntimeTelemetry: bridgeRuntimeTelemetry || null,
     folderizationDecision: folderization?.decision || null,
     folderizationNormalization: compactFolderizationNormalization(folderization?.normalization || null),
     folderizationPropagation: compactFolderizationPropagation(folderization?.propagation || null),
+    folderizationPropagationAdoption: compilerExplainability?.folderization?.automation?.propagationAdoption || null,
     driftState: behavior.driftState,
     driftScore: behavior.driftScore,
     stabilityScore: behavior.stabilityScore,
@@ -209,6 +211,9 @@ export function buildCurrentMetrics({
       : null,
     current.folderizationNormalization?.recommendedAction
       ? `normalize=${current.folderizationNormalization.recommendedAction}:${current.folderizationNormalization.renameTargetCount}`
+      : null,
+    current.folderizationAutomation?.propagationAdoption?.adoptionState
+      ? `adoption=${current.folderizationAutomation.propagationAdoption.adoptionState}:${current.folderizationAutomation.propagationAdoption.missingSystemCount || 0}`
       : null,
     current.proxyRuntimeTelemetry?.state
       ? `proxy=${current.proxyRuntimeTelemetry.state}`

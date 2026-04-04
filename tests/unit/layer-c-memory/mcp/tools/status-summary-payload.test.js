@@ -154,7 +154,20 @@ describe('status summary payload', () => {
               { name: 'status_panel', role: 'visibility' },
               { name: 'compiler_explainability', role: 'explainability' }
             ],
-            connectedSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability']
+            connectedSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability'],
+            propagationAdoption: {
+              adoptionState: 'ready',
+              coverageRatio: 1,
+              requiredSystemCount: 3,
+              surfacedSystemCount: 3,
+              missingSystemCount: 0,
+              requiredSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability'],
+              surfacedSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability'],
+              missingSystemNames: [],
+              nextAction: 'All connected systems already surface the propagation pattern.',
+              reason: '3/3 connected system(s) already surface the propagation pattern; missing=none.',
+              summaryText: 'state=ready | coverage=1 | required=3 | surfaced=3 | missing=0 | surfacedSystems=technical_debt_report, status_panel, compiler_explainability'
+            }
           }
         }
       }
@@ -187,6 +200,11 @@ describe('status summary payload', () => {
       automationState: 'ready',
       executionMode: 'execute',
       executionTarget: 'folderize_family'
+    });
+    expect(payload.folderizationAdoption).toMatchObject({
+      adoptionState: 'ready',
+      requiredSystemCount: 3,
+      surfacedSystemCount: 3
     });
     expect(payload.proxyRuntimeTelemetry).toMatchObject({
       state: 'stable',
@@ -256,6 +274,18 @@ describe('status summary payload', () => {
     expect(automationRow.detail).toContain('target=folderize_family');
     expect(automationRow.detail).toContain('systems=3');
 
+    const adoptionRow = payload.systemTable.rows.find((row) => row.area === 'Adoption');
+    expect(adoptionRow).toMatchObject({
+      area: 'Adoption',
+      state: 'ready',
+      source: 'folderization propagation adoption'
+    });
+    expect(adoptionRow.detail).toContain('required=3');
+    expect(adoptionRow.detail).toContain('surfaced=3');
+    expect(adoptionRow.detail).toContain('missing=0');
+    expect(adoptionRow.detail).toContain('coverage=100');
+    expect(adoptionRow.detail).toContain('missingNames=none');
+
     expect(payload.systemTable.rows.map((row) => row.area)).toEqual([
       'Daemon',
       'Database',
@@ -274,6 +304,7 @@ describe('status summary payload', () => {
       'Aduana',
       'Promotion',
       'Automation',
+      'Adoption',
       'Cache',
       'Watcher',
       'Errors'

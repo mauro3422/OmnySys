@@ -234,6 +234,7 @@ function buildFolderizationPropagationSummary({
   const rewriteCount = Number(importImpact?.rewriteCount || 0);
   const renameTargetCount = Number(naming?.renameTargetCount || 0);
   const validationTargetCount = moveTargetCount + impactedFileCount + (focusPlan?.candidate?.barrelFile ? 1 : 0);
+  const candidateCount = Number(candidateReport?.totalCandidates || candidateReport?.candidateCount || 0);
   const cacheKey = buildPropagationCacheKey({
     changeType: 'folderization',
     scopePath: creationGuidance?.scopePath || null,
@@ -254,7 +255,7 @@ function buildFolderizationPropagationSummary({
     hasCrossFamilyPropagation: impactedFileCount > 0 || rewriteCount > 0,
     topImpactedFiles,
     topCandidates,
-    candidateCount: Number(candidateReport?.candidateCount || 0),
+    candidateCount,
     flatFamilies: Number(familyState?.stateCounts?.flat || 0),
     mixedFamilies: Number(familyState?.stateCounts?.mixed || 0),
     alreadyFolderizedFamilies: Number(familyState?.stateCounts?.already_folderized || 0),
@@ -292,7 +293,7 @@ function buildFolderizationPropagationSummary({
     hasCrossFamilyPropagation: impactedFileCount > 0 || rewriteCount > 0,
     topImpactedFiles,
     topCandidates,
-    candidateCount: Number(candidateReport?.candidateCount || 0),
+    candidateCount,
     flatFamilies: Number(familyState?.stateCounts?.flat || 0),
     mixedFamilies: Number(familyState?.stateCounts?.mixed || 0),
     alreadyFolderizedFamilies: Number(familyState?.stateCounts?.already_folderized || 0),
@@ -318,7 +319,7 @@ function buildFolderizationSummary({
   propagation
 }) {
   return {
-    candidateCount: candidateReport?.candidateCount || 0,
+    candidateCount: candidateReport?.totalCandidates || candidateReport?.candidateCount || 0,
     flatFamilies: familyState?.stateCounts?.flat || 0,
     mixedFamilies: familyState?.stateCounts?.mixed || 0,
     alreadyFolderizedFamilies: familyState?.stateCounts?.already_folderized || 0,
