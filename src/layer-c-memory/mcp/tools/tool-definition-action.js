@@ -61,7 +61,9 @@ export const actionToolDefinitions = [
       type: 'object',
       properties: {
         candidatePath: { type: 'string', description: 'Ruta de referencia para identificar la familia folderizada dentro de la DB' },
+        mode: { type: 'string', enum: ['analyze', 'plan', 'execute'], default: 'plan', description: 'Modo de operación: analyze devuelve solo la evaluación, plan devuelve el plan seguro y execute aplica la normalización.' },
         execute: { type: 'boolean', default: false, description: 'Si es true, aplica los renombres. Si es false, solo devuelve el plan.' },
+        propagation: { type: 'object', description: 'Contrato de propagación canónico asociado a la normalización/renombre de la familia.', properties: { source: { type: 'string', default: 'shared/compiler/folderization-normalizer' }, contract: { type: 'string', default: 'buildFolderizationNormalizationPlanFromRepo' } } },
         validateAfterMove: { type: 'boolean', default: true, description: 'Si es true, valida imports luego de renombrar la familia.' }
       },
       required: ['candidatePath']
@@ -74,7 +76,9 @@ export const actionToolDefinitions = [
       type: 'object',
       properties: {
         candidatePath: { type: 'string', description: 'Ruta de referencia para identificar la familia folderizada dentro de la DB' },
+        mode: { type: 'string', enum: ['analyze', 'plan', 'execute'], default: 'plan', description: 'Modo de operación: analyze devuelve solo la evaluación, plan devuelve el plan seguro y execute aplica la normalización.' },
         execute: { type: 'boolean', default: false, description: 'Si es true, aplica los renombres. Si es false, solo devuelve el plan.' },
+        propagation: { type: 'object', description: 'Contrato de propagación canónico asociado a la normalización de nombres de la familia.', properties: { source: { type: 'string', default: 'shared/compiler/folderization-normalizer' }, contract: { type: 'string', default: 'buildFolderizationNormalizationPlanFromRepo' } } },
         validateAfterMove: { type: 'boolean', default: true, description: 'Si es true, valida imports luego de renombrar la familia.' }
       },
       required: ['candidatePath']

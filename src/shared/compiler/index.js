@@ -421,6 +421,11 @@ export {
 } from './directory-structure-folderization-naming.js';
 
 export {
+  buildFolderizationNormalizationPlanFromRows,
+  buildFolderizationNormalizationPlanFromRepo
+} from './folderization-normalizer.js';
+
+export {
   normalizeDerivedRiskLevel
 } from './risk-level.js';
 

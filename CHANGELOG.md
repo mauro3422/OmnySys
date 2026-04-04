@@ -4,6 +4,8 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added a safe folderized-name normalizer that plans naming debt from the canonical folderization report and only executes via the existing rename flow when the plan is explicitly safe.
+- Exposed propagation contract metadata on the folderized rename/normalization tool definitions so the watcher sees the naming surface as a canonical contract instead of an ad-hoc local policy.
 - Surfaced `propagation` directly in `status-server-details`, `get-system-inventory-report`, and `get-canonical-promotion-report` so the public control-plane surfaces expose the shared contract instead of burying it in nested snapshot payloads.
 - Split `diagnose-tool-health` into analysis/rules/core helpers and moved the canonical promotion report orchestration into a runner helper to keep the public tool files flatter and watcher-friendly.
 - Split `diagnose-tool-health` into analysis/report helpers, exposed the canonical propagation plan on the tool response, and surfaced `propagation` in `pipeline_health` so both surfaces now publish the shared contract directly.
