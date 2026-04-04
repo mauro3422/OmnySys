@@ -9,6 +9,21 @@ import {
 } from './compiler-health-dashboard.js';
 import { takeSample } from './sample-helpers.js';
 
+function firstDefined(...values) {
+  for (const value of values) {
+    if (value !== undefined && value !== null && value !== '') {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function toCoveragePercent(value) {
+  const normalized = Number(value) || 0;
+  return Math.max(0, Math.min(100, Math.round(normalized <= 1 ? normalized * 100 : normalized)));
+}
+
 export function compactDatabaseHealth(databaseHealth) {
   if (!databaseHealth || typeof databaseHealth !== 'object') return databaseHealth;
 
@@ -177,6 +192,32 @@ export function compactWatcherSummary(watcher) {
   };
 }
 
+export function resolvePolicyCoverageSummary(status = {}) {
+  const systemInventory = status.systemInventory || {};
+  const inventorySummary = systemInventory.summary || {};
+  const compilerExplainability = status.compilerExplainability || {};
+  const policyCoverage = firstDefined(
+    systemInventory.policyCoverage,
+    inventorySummary.policyCoverage,
+    compilerExplainability.policyCoverage
+  );
+
+  if (!policyCoverage) {
+    return null;
+  }
+
+  return {
+    state: firstDefined(systemInventory.policyCoverageState, inventorySummary.policyCoverageState, policyCoverage.coverageState, 'watching'),
+    score: normalizeCount(firstDefined(systemInventory.policyCoverageScore, inventorySummary.policyCoverageScore, policyCoverage.coverageScore, 0)),
+    drift: normalizeCount(firstDefined(systemInventory.policyCoverageDriftCount, inventorySummary.policyCoverageDriftCount, policyCoverage.policyDriftCount, 0)),
+    expansion: firstDefined(systemInventory.policyCoveragePropagationState, inventorySummary.policyCoveragePropagationState, policyCoverage.propagationExpansionState, 'n/a'),
+    coverageRatio: Number(firstDefined(systemInventory.policyCoverageRatio, inventorySummary.policyCoverageRatio, policyCoverage.coverageRatio, 0)) || 0,
+    coveragePercent: toCoveragePercent(firstDefined(systemInventory.policyCoverageRatio, inventorySummary.policyCoverageRatio, policyCoverage.coverageRatio, 0)),
+    nextAction: firstDefined(systemInventory.policyCoverage?.nextAction, inventorySummary.nextAction, policyCoverage.nextAction, 'n/a'),
+    policyCoverage
+  };
+}
+
 function compactInventorySnapshot(snapshot = {}) {
   return {
     totalTools: snapshot.summary?.totalTools || 0,
@@ -231,6 +272,7 @@ export default {
   compactCompilerHealthPanelSummary,
   compactWatcherSummary,
   compactToolInventory,
+  resolvePolicyCoverageSummary,
   summarizeNodeVitals,
   takeSample
 };

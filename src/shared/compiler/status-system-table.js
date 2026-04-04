@@ -4,7 +4,7 @@
 
 import { normalizeCount } from './contract-helpers.js';
 import { buildUpdateSurfaceSummary } from './update-surface-summary.js';
-import { compactWatcherSummary, compactToolInventory } from './status-summary-helpers.js';
+import { compactWatcherSummary, compactToolInventory, resolvePolicyCoverageSummary } from './status-summary-helpers.js';
 
 export function buildSystemTableSummary(status = {}) {
   if (!status || typeof status !== 'object') {
@@ -23,6 +23,7 @@ export function buildSystemTableSummary(status = {}) {
   const updateSurface = buildUpdateSurfaceSummary(status);
   const propagationExpansion = status.compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
     || (status.compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? status.compilerExplainability.driftAssessment.primaryIssue : null);
+  const policyCoverage = resolvePolicyCoverageSummary(status);
   const structuralGroups = normalizeCount(current.structuralGroups);
   const conceptualGroups = normalizeCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
@@ -135,8 +136,10 @@ export function buildSystemTableSummary(status = {}) {
       },
       {
         area: 'Aduana',
-        state: status.systemInventory?.policyCoverageState || status.systemInventory?.summary?.policyCoverageState || status.compilerExplainability?.policyCoverage?.coverageState || 'watching',
-        detail: `score=${normalizeCount(status.systemInventory?.policyCoverageScore || status.systemInventory?.summary?.policyCoverageScore || status.compilerExplainability?.policyCoverage?.coverageScore || 0)} | drift=${normalizeCount(status.systemInventory?.policyCoverageDriftCount || status.systemInventory?.summary?.policyCoverageDriftCount || status.compilerExplainability?.policyCoverage?.policyDriftCount || 0)} | expansion=${status.systemInventory?.policyCoveragePropagationState || status.systemInventory?.summary?.policyCoveragePropagationState || status.compilerExplainability?.policyCoverage?.propagationExpansionState || 'n/a'} | coverage=${normalizeCount(status.systemInventory?.policyCoverageRatio || status.systemInventory?.summary?.policyCoverageRatio || status.compilerExplainability?.policyCoverage?.coverageRatio || 0)} | next=${status.systemInventory?.policyCoverage?.nextAction || status.systemInventory?.summary?.nextAction || status.compilerExplainability?.policyCoverage?.nextAction || 'n/a'}`,
+        state: policyCoverage?.state || 'watching',
+        detail: policyCoverage
+          ? `score=${policyCoverage.score} | drift=${policyCoverage.drift} | expansion=${policyCoverage.expansion} | coverage=${policyCoverage.coveragePercent} | next=${policyCoverage.nextAction}`
+          : 'policy coverage gate not loaded',
         source: 'system inventory policy coverage'
       },
       {

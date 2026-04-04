@@ -83,6 +83,14 @@ describe('status summary payload', () => {
         bridgeSystemCount: 1,
         wrapperSystemCount: 1,
         legacySystemCount: 0,
+        policyCoverage: {
+          coverageState: 'watching',
+          coverageScore: 77,
+          coverageRatio: 0.5,
+          policyDriftCount: 3,
+          propagationExpansionState: 'stale',
+          nextAction: 'Attach the canonical propagation plan.'
+        },
         nextAction: 'Promote runtime boundary checks into a canonical API.'
       },
       canonicalPromotion: {
@@ -178,6 +186,17 @@ describe('status summary payload', () => {
     expect(systemsRow.detail).toContain('emergent=2');
     expect(systemsRow.detail).toContain('bridge=1');
 
+    const aduanaRow = payload.systemTable.rows.find((row) => row.area === 'Aduana');
+    expect(aduanaRow).toMatchObject({
+      area: 'Aduana',
+      state: 'watching',
+      source: 'system inventory policy coverage'
+    });
+    expect(aduanaRow.detail).toContain('score=77');
+    expect(aduanaRow.detail).toContain('drift=3');
+    expect(aduanaRow.detail).toContain('expansion=stale');
+    expect(aduanaRow.detail).toContain('coverage=50');
+
     const promotionRow = payload.systemTable.rows.find((row) => row.area === 'Promotion');
     expect(promotionRow).toMatchObject({
       area: 'Promotion',
@@ -203,6 +222,7 @@ describe('status summary payload', () => {
       'Sessions',
       'Tools',
       'Systems',
+      'Aduana',
       'Promotion',
       'Cache',
       'Watcher',

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-
 import { buildSystemTableSummary } from '../../../../../src/shared/compiler/status-system-table.js';
 
 describe('status system table', () => {
@@ -94,6 +93,16 @@ describe('status system table', () => {
             reason: '2 propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.',
             recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
           }
+        },
+        policyCoverage: {
+          coverageState: 'stale',
+          coverageScore: 0,
+          coverageRatio: 0.5,
+          policyDriftCount: 100,
+          propagationExpansionState: 'stale',
+          nextAction: 'Attach the canonical propagation plan.',
+          summaryText: 'coverage=stale | score=0 | load=8/16 | drift=100 | expansion=stale',
+          inventoryState: 'watching'
         }
       },
       watcher: {
@@ -245,7 +254,16 @@ describe('status system table', () => {
     expect(bridgeRow.detail).toContain('expired=1');
     expect(bridgeRow.detail).toContain('retryable=2');
     expect(bridgeRow.detail).toContain('last=bridge-recovery-needed');
-
+    const aduanaRow = summary.rows.find((row) => row.area === 'Aduana');
+    expect(aduanaRow).toMatchObject({
+      area: 'Aduana',
+      state: 'stale',
+      source: 'system inventory policy coverage'
+    });
+    expect(aduanaRow.detail).toContain('score=0');
+    expect(aduanaRow.detail).toContain('drift=100');
+    expect(aduanaRow.detail).toContain('expansion=stale');
+    expect(aduanaRow.detail).toContain('coverage=50');
     const areas = summary.rows.map((row) => row.area);
     expect(areas).toEqual([
       'Daemon',
@@ -262,12 +280,12 @@ describe('status system table', () => {
       'Sessions',
       'Tools',
       'Systems',
+      'Aduana',
       'Promotion',
       'Cache',
       'Watcher',
       'Errors'
     ]);
-
     const errorsRow = summary.rows.find((row) => row.area === 'Errors');
     expect(errorsRow).toMatchObject({
       area: 'Errors',
