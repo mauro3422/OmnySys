@@ -141,6 +141,7 @@ export function buildTechnicalDebtReportResult({
     migrationPlans: folderizationReport.migrationPlans?.candidates || [],
     focusPlan: folderizationReport.migrationPlans?.focusCandidate || null,
     naming: folderizationReport.naming,
+    normalization: folderizationReport.normalization || null,
     namingPatterns: folderizationReport.namingPatterns,
     creationGuidance: folderizationReport.creationGuidance,
     propagation: folderizationReport.propagation || null,
@@ -156,6 +157,7 @@ export function buildTechnicalDebtReportResult({
     summary: folderizationReport.summary
   };
   const propagation = folderization.propagation || null;
+  const normalization = folderization.normalization || null;
 
   const debtScore = calculateTechnicalDebtScore({
     structuralGroups: structural.totalGroups,
@@ -166,6 +168,7 @@ export function buildTechnicalDebtReportResult({
     mixedFamilies: folderization.familyState?.stateCounts?.mixed || 0,
     namingFamilies: folderization.naming?.familyCount || 0,
     namingTargets: folderization.naming?.renameTargetCount || 0,
+    normalizationTargets: normalization?.summary?.renameTargetCount || 0,
     namingPatternFamilies: folderization.namingPatterns?.totalFamilies || 0
   });
 
@@ -177,6 +180,7 @@ export function buildTechnicalDebtReportResult({
     folderizationFamilyState: folderization.familyState,
     folderizationNaming: folderization.naming,
     folderizationNamingPatterns: folderization.namingPatterns,
+    folderizationNormalization: normalization,
     folderizationCreationGuidance: folderization.creationGuidance
   });
 
@@ -188,6 +192,7 @@ export function buildTechnicalDebtReportResult({
     conceptual,
     pipelineOrphans,
     folderization,
+    normalization,
     propagation,
     debtScore,
     priorityActions,

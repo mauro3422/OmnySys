@@ -79,6 +79,18 @@ describe('compiler-metrics-snapshot', () => {
           hasCrossFamilyPropagation: true,
           connectedSystems: ['folderization', 'status']
         },
+        folderizationNormalization: {
+          mode: 'plan',
+          candidatePath: 'src/shared/compiler/compiler-health-dashboard.js',
+          familyRoot: 'compiler-health-dashboard',
+          directory: 'src/shared/compiler',
+          familyCount: 4,
+          renameTargetCount: 2,
+          renameTargetDensity: 0.5,
+          safetyLevel: 'safe',
+          recommendedAction: 'execute',
+          candidatePaths: ['src/shared/compiler/compiler-health-dashboard.js']
+        },
         canonicalPromotion: {
           promotionState: 'watching',
           inventoryState: 'ready',
@@ -120,9 +132,19 @@ describe('compiler-metrics-snapshot', () => {
       decision: 'approve',
       mode: 'family'
     });
+    expect(compact.current.folderizationNormalization).toMatchObject({
+      candidatePath: 'src/shared/compiler/compiler-health-dashboard.js',
+      familyRoot: 'compiler-health-dashboard',
+      renameTargetCount: 2,
+      safetyLevel: 'safe'
+    });
     expect(compact.daily.propagation).toMatchObject({
       cacheKey: 'folderization:abc123',
       decision: 'approve'
+    });
+    expect(compact.daily.normalization).toMatchObject({
+      renameTargetCount: 2,
+      recommendedAction: 'execute'
     });
     expect(compact.daily.canonicalPromotion).toMatchObject({
       promotionState: 'watching',

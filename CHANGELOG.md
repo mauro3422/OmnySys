@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added normalization summary to folderization, compiler metrics, technical debt, and explainability snapshots so naming debt now surfaces as an actionable metric instead of staying hidden inside folderized-family analysis.
 - Added a safe folderized-name normalizer that plans naming debt from the canonical folderization report and only executes via the existing rename flow when the plan is explicitly safe.
 - Exposed propagation contract metadata on the folderized rename/normalization tool definitions so the watcher sees the naming surface as a canonical contract instead of an ad-hoc local policy.
 - Surfaced `propagation` directly in `status-server-details`, `get-system-inventory-report`, and `get-canonical-promotion-report` so the public control-plane surfaces expose the shared contract instead of burying it in nested snapshot payloads.

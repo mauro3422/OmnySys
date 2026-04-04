@@ -9,6 +9,10 @@ import {
   buildMetricsSnapshotLifetime
 } from './compiler-metrics-snapshot-summary-helpers.js';
 
+function valueOr(value, fallback) {
+  return value ?? fallback;
+}
+
 function summarizeCompactPipelineTimingTelemetry(telemetry = null) {
   if (!telemetry) {
     return null;
@@ -77,67 +81,68 @@ export function summarizeCompactToolTelemetry(toolTelemetry = null) {
 
 function summarizeCompactCurrentScores(current = {}) {
   return {
-    globalHealthScore: current.globalHealthScore || 0,
-    globalHealthGrade: current.globalHealthGrade || current.healthGrade || 'F',
-    healthScore: current.healthScore || 0,
-    healthGrade: current.healthGrade || 'F',
-    reliabilityScore: current.reliabilityScore || 0,
-    reliabilityGrade: current.reliabilityGrade || 'F',
-    reliabilityState: current.reliabilityState || null,
-    successScore: current.successScore || 0,
-    successThreshold: current.successThreshold || 0,
-    mvpReady: current.mvpReady || false,
-    behaviorState: current.behaviorState || null,
-    readinessReason: current.readinessReason || null,
-    summaryText: current.summaryText || null
+    globalHealthScore: valueOr(current.globalHealthScore, 0),
+    globalHealthGrade: valueOr(current.globalHealthGrade, valueOr(current.healthGrade, 'F')),
+    healthScore: valueOr(current.healthScore, 0),
+    healthGrade: valueOr(current.healthGrade, 'F'),
+    reliabilityScore: valueOr(current.reliabilityScore, 0),
+    reliabilityGrade: valueOr(current.reliabilityGrade, 'F'),
+    reliabilityState: valueOr(current.reliabilityState, null),
+    successScore: valueOr(current.successScore, 0),
+    successThreshold: valueOr(current.successThreshold, 0),
+    mvpReady: valueOr(current.mvpReady, false),
+    behaviorState: valueOr(current.behaviorState, null),
+    readinessReason: valueOr(current.readinessReason, null),
+    summaryText: valueOr(current.summaryText, null)
   };
 }
 
 function summarizeCompactCurrentStructure(current = {}) {
   return {
-    issueCount: current.issueCount || 0,
-    structuralGroups: current.structuralGroups || 0,
-    conceptualGroups: current.conceptualGroups || 0,
-    conceptualRawGroups: current.conceptualRawGroups || 0,
-    pipelineOrphans: current.pipelineOrphans || 0,
-    folderizationCandidateCount: current.folderizationCandidateCount || 0,
-    flatFamilies: current.flatFamilies || 0,
-    mixedFamilies: current.mixedFamilies || 0,
-    alreadyFolderizedFamilies: current.alreadyFolderizedFamilies || 0,
-    namingFamilies: current.namingFamilies || 0,
-    namingTargets: current.namingTargets || 0,
-    namingDebt: current.namingDebt || 0,
-    folderizationPropagation: current.folderizationPropagation || null
+    issueCount: valueOr(current.issueCount, 0),
+    structuralGroups: valueOr(current.structuralGroups, 0),
+    conceptualGroups: valueOr(current.conceptualGroups, 0),
+    conceptualRawGroups: valueOr(current.conceptualRawGroups, 0),
+    pipelineOrphans: valueOr(current.pipelineOrphans, 0),
+    folderizationCandidateCount: valueOr(current.folderizationCandidateCount, 0),
+    flatFamilies: valueOr(current.flatFamilies, 0),
+    mixedFamilies: valueOr(current.mixedFamilies, 0),
+    alreadyFolderizedFamilies: valueOr(current.alreadyFolderizedFamilies, 0),
+    namingFamilies: valueOr(current.namingFamilies, 0),
+    namingTargets: valueOr(current.namingTargets, 0),
+    namingDebt: valueOr(current.namingDebt, 0),
+    folderizationNormalization: valueOr(current.folderizationNormalization, null),
+    folderizationPropagation: valueOr(current.folderizationPropagation, null)
   };
 }
 
 function summarizeCompactCurrentCoverage(current = {}) {
   return {
-    liveCoverageRatio: current.liveCoverageRatio || 0,
-    metadataCoveragePct: current.metadataCoveragePct || 0,
-    metadataFieldCoveragePct: current.metadataFieldCoveragePct || 0,
-    dataGatewayTrustworthy: current.dataGatewayTrustworthy || false,
-    dataGatewayState: current.dataGatewayState || null,
-    activeAtoms: current.activeAtoms || 0,
-    zeroAtomFileCount: current.zeroAtomFileCount || 0,
-    callLinks: current.callLinks || 0,
-    semanticLinks: current.semanticLinks || 0,
-    watcherAlertCount: current.watcherAlertCount || 0,
-    recentWarningCount: current.recentWarningCount || 0,
-    recentErrorCount: current.recentErrorCount || 0,
-    phase2PendingFiles: current.phase2PendingFiles || 0
+    liveCoverageRatio: valueOr(current.liveCoverageRatio, 0),
+    metadataCoveragePct: valueOr(current.metadataCoveragePct, 0),
+    metadataFieldCoveragePct: valueOr(current.metadataFieldCoveragePct, 0),
+    dataGatewayTrustworthy: valueOr(current.dataGatewayTrustworthy, false),
+    dataGatewayState: valueOr(current.dataGatewayState, null),
+    activeAtoms: valueOr(current.activeAtoms, 0),
+    zeroAtomFileCount: valueOr(current.zeroAtomFileCount, 0),
+    callLinks: valueOr(current.callLinks, 0),
+    semanticLinks: valueOr(current.semanticLinks, 0),
+    watcherAlertCount: valueOr(current.watcherAlertCount, 0),
+    recentWarningCount: valueOr(current.recentWarningCount, 0),
+    recentErrorCount: valueOr(current.recentErrorCount, 0),
+    phase2PendingFiles: valueOr(current.phase2PendingFiles, 0)
   };
 }
 
 function summarizeCompactCurrentConnections(current = {}) {
   return {
-    mcpSessionSummary: current.mcpSessionSummary || null,
-    databaseTrustworthy: current.databaseTrustworthy || false,
-    clientSyncState: current.clientSyncState || null,
-    clientSyncSeverity: current.clientSyncSeverity || null,
-    clientSyncReason: current.clientSyncReason || null,
-    clientSyncRecommendation: current.clientSyncRecommendation || null,
-    healthArchive: current.healthArchive || null
+    mcpSessionSummary: valueOr(current.mcpSessionSummary, null),
+    databaseTrustworthy: valueOr(current.databaseTrustworthy, false),
+    clientSyncState: valueOr(current.clientSyncState, null),
+    clientSyncSeverity: valueOr(current.clientSyncSeverity, null),
+    clientSyncReason: valueOr(current.clientSyncReason, null),
+    clientSyncRecommendation: valueOr(current.clientSyncRecommendation, null),
+    healthArchive: valueOr(current.healthArchive, null)
   };
 }
 
@@ -218,13 +223,9 @@ export function summarizeCompactHistory(history = null) {
   };
 }
 
-export function summarizeCompilerMetricsSnapshot(snapshot = null) {
-  if (!snapshot || typeof snapshot !== 'object') {
-    return null;
-  }
-
-  const archiveSource = snapshot.healthArchive || snapshot.current?.healthArchive || null;
-  const current = snapshot.current || null;
+function buildCompilerMetricsSnapshotContent(snapshot) {
+  const current = snapshot.current ?? null;
+  const archiveSource = snapshot.healthArchive ?? current?.healthArchive ?? null;
   const daily = buildMetricsSnapshotDaily(snapshot, current);
   const lifetime = buildMetricsSnapshotLifetime(archiveSource);
   const archive = archiveSource ? { daily, lifetime } : null;
@@ -234,16 +235,25 @@ export function summarizeCompilerMetricsSnapshot(snapshot = null) {
     daily,
     lifetime,
     archive,
-    propagation: current?.folderizationPropagation || null,
-    canonicalPromotion: current?.canonicalPromotion || null,
-    systemInventory: snapshot.systemInventory || snapshot.systemInventoryReport || current?.systemInventory || null,
-    current: summarizeCompactCurrentSnapshot(snapshot.current),
+    normalization: current?.folderizationNormalization ?? null,
+    propagation: current?.folderizationPropagation ?? null,
+    canonicalPromotion: current?.canonicalPromotion ?? null,
+    systemInventory: snapshot.systemInventory ?? snapshot.systemInventoryReport ?? current?.systemInventory ?? null,
+    current: summarizeCompactCurrentSnapshot(current),
     trend: summarizeCompactTrend(snapshot.trend),
     history: summarizeCompactHistory(snapshot.history),
     healthArchive: archiveSource,
-    metricDictionary: snapshot.metricDictionary || null,
-    summary: snapshot.summary || null
+    metricDictionary: snapshot.metricDictionary ?? null,
+    summary: snapshot.summary ?? null
   };
+}
+
+export function summarizeCompilerMetricsSnapshot(snapshot = null) {
+  if (!snapshot || typeof snapshot !== 'object') {
+    return null;
+  }
+
+  return buildCompilerMetricsSnapshotContent(snapshot);
 }
 
 export default {

@@ -18,6 +18,10 @@ import {
   findBestFolderizedFamilyForPaths
 } from './directory-structure-folderization-naming.js';
 import {
+  buildFolderizationNormalizationPlanFromRepo,
+  buildFolderizationNormalizationPlanFromRows
+} from './folderization-normalizer.js';
+import {
   buildPropagationCacheKey,
   buildPropagationPlan,
   getPropagationPlanCacheEntry,
@@ -306,6 +310,7 @@ function buildFolderizationSummary({
   migrationPlans,
   naming,
   namingPatterns,
+  normalization,
   creationGuidance,
   decision,
   recommendation,
@@ -319,6 +324,10 @@ function buildFolderizationSummary({
     alreadyFolderizedFamilies: familyState?.stateCounts?.already_folderized || 0,
     namingFamilies: naming?.familyCount || 0,
     namingTargets: naming?.renameTargetCount || 0,
+    normalizationTargets: normalization?.summary?.renameTargetCount || 0,
+    normalizationAction: normalization?.summary?.recommendedAction || 'noop',
+    normalizationSafetyLevel: normalization?.summary?.safetyLevel || 'none',
+    normalizationDensity: normalization?.summary?.renameTargetDensity || 0,
     namingPatternCounts: namingPatterns?.patternCounts || {},
     guidanceScopePath: creationGuidance?.scopePath || null,
     guidanceFocusPath: creationGuidance?.focusPath || null,
@@ -495,6 +504,15 @@ function buildFolderizationReport({
     scopePath,
     focusPath
   });
+  const normalization = buildFolderizationNormalizationPlanFromRows(rows, [
+    focusPath,
+    scopePath,
+    naming?.topFamilies?.[0]?.renameTargets?.[0]?.from || null,
+    naming?.topFamilies?.[0]?.directory || null
+  ].filter(Boolean), {
+    mode: 'plan',
+    candidatePath: focusPath || scopePath || naming?.topFamilies?.[0]?.directory || null
+  });
   const recommendation = buildFolderizationRecommendation({
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || (candidateList.length > 0 ? 'review' : 'reject'),
     candidate: focusCandidate,
@@ -526,6 +544,7 @@ function buildFolderizationReport({
     migrationPlans,
     naming,
     namingPatterns,
+    normalization,
     creationGuidance,
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     recommendation,
@@ -540,6 +559,7 @@ function buildFolderizationReport({
     migrationPlans,
     naming,
     namingPatterns: namingPatterns || null,
+    normalization,
     creationGuidance,
     propagation,
     scopePath: creationGuidance.scopePath || null,
@@ -607,6 +627,55 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
       familyState: { totalFamilies: 0, stateCounts: { flat: 0, mixed: 0, already_folderized: 0 }, topFamilies: [] },
       migrationPlans: { candidateCount: 0, focusCandidate: null, candidates: [] },
       naming: { familyCount: 0, renameTargetCount: 0, topFamilies: [] },
+      normalization: {
+        success: false,
+        mode: 'plan',
+        candidatePath: null,
+        candidatePaths: [],
+        analysis: {
+          naming: {
+            familyCount: 0,
+            renameTargetCount: 0,
+            topFamilies: [],
+            patternSummary: {
+              totalFamilies: 0,
+              totalTargets: 0,
+              patternCounts: {},
+              topFamilyPatterns: [],
+              topRecommendedStems: []
+            }
+          },
+          safety: {
+            level: 'none',
+            density: 0,
+            reasons: []
+          },
+          recommendation: {
+            action: 'noop',
+            reason: 'No folderization normalization plan available.'
+          }
+        },
+        plan: null,
+        summary: {
+          candidatePath: null,
+          candidatePaths: [],
+          familyRoot: null,
+          directory: null,
+          familyCount: 0,
+          renameTargetCount: 0,
+          renameTargetDensity: 0,
+          safetyLevel: 'none',
+          recommendedAction: 'noop',
+          topFamilyRenameTargetCount: 0,
+          patternSummary: {
+            totalFamilies: 0,
+            totalTargets: 0,
+            patternCounts: {},
+            topFamilyPatterns: [],
+            topRecommendedStems: []
+          }
+        }
+      },
       namingPatterns: { totalFamilies: 0, totalTargets: 0, patternCounts: {}, topFamilyPatterns: [], topRecommendedStems: [] },
       creationGuidance: {
         mode: 'role_pattern_guided',
@@ -658,6 +727,10 @@ export function buildFolderizationReportFromRepo(repo, options = {}) {
         alreadyFolderizedFamilies: 0,
         namingFamilies: 0,
         namingTargets: 0,
+        normalizationTargets: 0,
+        normalizationAction: 'noop',
+        normalizationSafetyLevel: 'none',
+        normalizationDensity: 0,
         namingPatternCounts: {},
         guidanceScopePath: null,
         guidanceFocusPath: null,

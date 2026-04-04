@@ -66,6 +66,7 @@ export function buildTechnicalDebtPriorityActions(data) {
         folderizationFamilyState = null,
         folderizationNaming = null,
         folderizationNamingPatterns = null,
+        folderizationNormalization = null,
         folderizationCreationGuidance = null
     } = data;
 
@@ -166,6 +167,18 @@ export function buildTechnicalDebtPriorityActions(data) {
             action: `Reduce ${folderizationNaming.renameTargetCount} remaining naming target(s) across ${folderizationNaming.familyCount} folderized families`,
             impact: `Naming debt remains concentrated in already-folderized helper surfaces`,
             urgencyScore: folderizationNaming.renameTargetCount + folderizationNaming.familyCount
+        });
+    }
+
+    const normalizationSummary = folderizationNormalization?.summary || folderizationNormalization || null;
+    if (normalizationSummary?.renameTargetCount > 0) {
+        const safetyLevel = normalizationSummary.safetyLevel || folderizationNormalization?.analysis?.safety?.level || 'none';
+        actions.push({
+            priority: safetyLevel === 'safe' ? 'high' : 'medium',
+            type: 'folderization_naming_normalizer',
+            action: `Review normalization for ${normalizationSummary.renameTargetCount} folderized naming target(s) across ${normalizationSummary.familyCount || 0} family/families`,
+            impact: `Safety=${safetyLevel}, density=${normalizationSummary.renameTargetDensity || 0}, recommended=${normalizationSummary.recommendedAction || folderizationNormalization?.analysis?.recommendation?.action || 'noop'}`,
+            urgencyScore: normalizationSummary.renameTargetCount * 2 + (safetyLevel === 'safe' ? 10 : 0)
         });
     }
 

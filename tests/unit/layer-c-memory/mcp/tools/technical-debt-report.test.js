@@ -137,6 +137,27 @@ beforeEach(() => {
     familyState: { stateCounts: { flat: 1, mixed: 0, already_folderized: 0 } },
     migrationPlans: { candidates: [], focusCandidate: null },
     naming: { familyCount: 1, renameTargetCount: 1 },
+    normalization: {
+      success: true,
+      mode: 'plan',
+      candidatePath: 'src/shared/compiler/compiler-health-dashboard.js',
+      analysis: {
+        safety: { level: 'safe' },
+        recommendation: { action: 'execute' }
+      },
+      summary: {
+        candidatePath: 'src/shared/compiler/compiler-health-dashboard.js',
+        familyRoot: 'compiler-health-dashboard',
+        directory: 'src/shared/compiler',
+        familyCount: 1,
+        renameTargetCount: 1,
+        renameTargetDensity: 1,
+        safetyLevel: 'safe',
+        recommendedAction: 'execute',
+        topFamilyRenameTargetCount: 1,
+        patternSummary: {}
+      }
+    },
     namingPatterns: { totalFamilies: 1, totalTargets: 1, patternCounts: {} },
     creationGuidance: { guidance: 'Use the nearest folderized family' },
     recommendation: { message: 'Review folderization signals after more helpers are extracted' },
@@ -239,6 +260,33 @@ describe('technical_debt_report', () => {
                 recommendationStrategy: null
               },
               naming: { familyCount: 1496, renameTargetCount: 1549, topFamilies: [{ directory: 'src/shared/compiler', familyRoot: 'compiler-explainability', renameTargetCount: 3, fileCount: 3, renameTargets: [] }] },
+              normalization: {
+                success: true,
+                mode: 'plan',
+                candidatePath: 'src/shared/compiler/compiler-explainability.js',
+                analysis: {
+                  safety: { level: 'safe' },
+                  recommendation: { action: 'execute' }
+                },
+                summary: {
+                  candidatePath: 'src/shared/compiler/compiler-explainability.js',
+                  familyRoot: 'compiler-explainability',
+                  directory: 'src/shared/compiler',
+                  familyCount: 1496,
+                  renameTargetCount: 1549,
+                  renameTargetDensity: 1.04,
+                  safetyLevel: 'safe',
+                  recommendedAction: 'execute',
+                  topFamilyRenameTargetCount: 3,
+                  patternSummary: {
+                    totalFamilies: 1496,
+                    totalTargets: 1549,
+                    patternCounts: { shortened: 126 },
+                    topFamilyPatterns: [],
+                    topRecommendedStems: []
+                  }
+                }
+              },
               namingPatterns: { totalFamilies: 1496, totalTargets: 1549, patternCounts: { shortened: 126 }, topFamilyPatterns: [], topRecommendedStems: [] },
               creationGuidance: { guidance: 'Reuse the closest canonical family.' },
               recommendation: { message: 'Use the folderization snapshot only after live-row reconciliation stabilizes.' },
@@ -250,6 +298,10 @@ describe('technical_debt_report', () => {
                 alreadyFolderizedFamilies: 0,
                 namingFamilies: 1496,
                 namingTargets: 1549,
+                normalizationTargets: 1549,
+                normalizationAction: 'execute',
+                normalizationSafetyLevel: 'safe',
+                normalizationDensity: 1.04,
                 namingPatternCounts: { shortened: 126 },
                 recommendationStrategy: null,
                 propagationMoveTargets: 0,
@@ -271,9 +323,12 @@ describe('technical_debt_report', () => {
     expect(mocks.buildFolderizationReportFromRepo).not.toHaveBeenCalled();
     expect(result.folderization.naming.familyCount).toBe(1496);
     expect(result.folderization.naming.renameTargetCount).toBe(1549);
+    expect(result.folderization.normalization.summary.renameTargetCount).toBe(1549);
     expect(result.folderization.summary.namingTargets).toBe(1549);
+    expect(result.folderization.summary.normalizationTargets).toBe(1549);
     expect(result.folderization.propagation.renameTargetCount).toBe(1549);
     expect(result.propagation.renameTargetCount).toBe(1549);
     expect(result.priorityActions.some((item) => item.type === 'folderization_naming_debt')).toBe(true);
+    expect(result.priorityActions.some((item) => item.type === 'folderization_naming_normalizer')).toBe(true);
   });
 });

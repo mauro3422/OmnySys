@@ -49,6 +49,26 @@ function compactFolderizationPropagation(propagation = null) {
   };
 }
 
+function compactFolderizationNormalization(normalization = null) {
+  if (!normalization) {
+    return null;
+  }
+
+  const summary = normalization.summary || normalization;
+  return {
+    mode: normalization.mode || 'plan',
+    candidatePath: normalization.candidatePath || null,
+    familyRoot: summary.familyRoot || null,
+    directory: summary.directory || null,
+    familyCount: asNumber(summary.familyCount, 0),
+    renameTargetCount: asNumber(summary.renameTargetCount, 0),
+    renameTargetDensity: asNumber(summary.renameTargetDensity, 0),
+    safetyLevel: summary.safetyLevel || normalization.analysis?.safety?.level || 'none',
+    recommendedAction: summary.recommendedAction || normalization.analysis?.recommendation?.action || 'noop',
+    candidatePaths: Array.isArray(normalization.candidatePaths) ? normalization.candidatePaths.slice(0, 8) : []
+  };
+}
+
 export function buildCurrentMetrics({
   projectPath,
   scopePath,
@@ -151,6 +171,7 @@ export function buildCurrentMetrics({
     proxyRuntimeTelemetry: proxyRuntimeTelemetry || null,
     bridgeRuntimeTelemetry: bridgeRuntimeTelemetry || null,
     folderizationDecision: folderization?.decision || null,
+    folderizationNormalization: compactFolderizationNormalization(folderization?.normalization || null),
     folderizationPropagation: compactFolderizationPropagation(folderization?.propagation || null),
     driftState: behavior.driftState,
     driftScore: behavior.driftScore,
@@ -184,6 +205,9 @@ export function buildCurrentMetrics({
       : 'tools=0',
     current.startupTelemetry?.state
       ? `startup=${current.startupTelemetry.state}:${Math.round(current.startupTelemetry.totalDurationMs || 0)}ms`
+      : null,
+    current.folderizationNormalization?.recommendedAction
+      ? `normalize=${current.folderizationNormalization.recommendedAction}:${current.folderizationNormalization.renameTargetCount}`
       : null,
     current.proxyRuntimeTelemetry?.state
       ? `proxy=${current.proxyRuntimeTelemetry.state}`
