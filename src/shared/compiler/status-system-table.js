@@ -4,7 +4,12 @@
 
 import { normalizeCount } from './contract-helpers.js';
 import { buildUpdateSurfaceSummary } from './update-surface-summary.js';
-import { compactWatcherSummary, compactToolInventory, resolvePolicyCoverageSummary } from './status-summary-helpers.js';
+import {
+  compactWatcherSummary,
+  compactToolInventory,
+  resolveControlPlaneContracts,
+  resolvePolicyCoverageSummary
+} from './status-summary-helpers.js';
 
 export function buildSystemTableSummary(status = {}) {
   if (!status || typeof status !== 'object') {
@@ -23,7 +28,8 @@ export function buildSystemTableSummary(status = {}) {
   const updateSurface = buildUpdateSurfaceSummary(status);
   const propagationExpansion = status.compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
     || (status.compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? status.compilerExplainability.driftAssessment.primaryIssue : null);
-  const policyCoverage = resolvePolicyCoverageSummary(status);
+  const controlPlaneContracts = resolveControlPlaneContracts(status);
+  const policyCoverage = controlPlaneContracts.policyCoverage || resolvePolicyCoverageSummary(status);
   const structuralGroups = normalizeCount(current.structuralGroups);
   const conceptualGroups = normalizeCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
@@ -130,8 +136,8 @@ export function buildSystemTableSummary(status = {}) {
       },
       {
         area: 'Systems',
-        state: status.systemInventory?.inventoryState || status.systemInventory?.summary?.inventoryState || 'watching',
-        detail: `canonical=${normalizeCount((status.systemInventory?.canonicalSurfaceCount || status.systemInventory?.summary?.canonicalSurfaceCount || 0) + (status.systemInventory?.canonicalEntrypointCount || status.systemInventory?.summary?.canonicalEntrypointCount || 0))} | emergent=${normalizeCount(status.systemInventory?.emergentSystemCount || status.systemInventory?.summary?.emergentSystemCount)} | bridge=${normalizeCount(status.systemInventory?.bridgeSystemCount || status.systemInventory?.summary?.bridgeSystemCount)} | wrapper=${normalizeCount(status.systemInventory?.wrapperSystemCount || status.systemInventory?.summary?.wrapperSystemCount)} | audit=${status.systemInventory?.surfaceAuditTrustworthy === true ? 'ok' : 'watching'} | gateway=${status.systemInventory?.dataGatewayTrustworthy === true ? 'ok' : 'watching'} | meta=${normalizeCount(status.systemInventory?.metadataCoveragePct || status.systemInventory?.summary?.metadataCoveragePct)}% | next=${status.systemInventory?.nextAction || status.systemInventory?.summary?.nextAction || 'n/a'}`,
+        state: controlPlaneContracts.systemInventory?.inventoryState || controlPlaneContracts.systemInventory?.summary?.inventoryState || 'watching',
+        detail: `canonical=${normalizeCount((controlPlaneContracts.systemInventory?.canonicalSurfaceCount || controlPlaneContracts.systemInventory?.summary?.canonicalSurfaceCount || 0) + (controlPlaneContracts.systemInventory?.canonicalEntrypointCount || controlPlaneContracts.systemInventory?.summary?.canonicalEntrypointCount || 0))} | emergent=${normalizeCount(controlPlaneContracts.systemInventory?.emergentSystemCount || controlPlaneContracts.systemInventory?.summary?.emergentSystemCount)} | bridge=${normalizeCount(controlPlaneContracts.systemInventory?.bridgeSystemCount || controlPlaneContracts.systemInventory?.summary?.bridgeSystemCount)} | wrapper=${normalizeCount(controlPlaneContracts.systemInventory?.wrapperSystemCount || controlPlaneContracts.systemInventory?.summary?.wrapperSystemCount)} | audit=${controlPlaneContracts.systemInventory?.surfaceAuditTrustworthy === true ? 'ok' : 'watching'} | gateway=${controlPlaneContracts.systemInventory?.dataGatewayTrustworthy === true ? 'ok' : 'watching'} | meta=${normalizeCount(controlPlaneContracts.systemInventory?.metadataCoveragePct || controlPlaneContracts.systemInventory?.summary?.metadataCoveragePct)}% | next=${controlPlaneContracts.systemInventory?.nextAction || controlPlaneContracts.systemInventory?.summary?.nextAction || 'n/a'}`,
         source: 'system inventory'
       },
       {
@@ -144,8 +150,8 @@ export function buildSystemTableSummary(status = {}) {
       },
       {
         area: 'Promotion',
-        state: status.canonicalPromotion?.promotionState || status.canonicalPromotion?.summary?.promotionState || 'watching',
-        detail: `candidates=${normalizeCount(status.canonicalPromotion?.candidateCount || status.canonicalPromotion?.summary?.candidateCount || 0)} | folder=${normalizeCount(status.canonicalPromotion?.folderizedFamilyCount || status.canonicalPromotion?.summary?.folderizedFamilyCount || 0)} | emergent=${normalizeCount(status.canonicalPromotion?.emergentCandidateCount || status.canonicalPromotion?.summary?.emergentCandidateCount || 0)} | canonical=${normalizeCount(status.canonicalPromotion?.canonicalCandidateCount || status.canonicalPromotion?.summary?.canonicalCandidateCount || 0)} | next=${status.canonicalPromotion?.nextAction || status.canonicalPromotion?.summary?.nextAction || 'n/a'}`,
+        state: controlPlaneContracts.canonicalPromotion?.promotionState || controlPlaneContracts.canonicalPromotion?.summary?.promotionState || 'watching',
+        detail: `candidates=${normalizeCount(controlPlaneContracts.canonicalPromotion?.candidateCount || controlPlaneContracts.canonicalPromotion?.summary?.candidateCount || 0)} | folder=${normalizeCount(controlPlaneContracts.canonicalPromotion?.folderizedFamilyCount || controlPlaneContracts.canonicalPromotion?.summary?.folderizedFamilyCount || 0)} | emergent=${normalizeCount(controlPlaneContracts.canonicalPromotion?.emergentCandidateCount || controlPlaneContracts.canonicalPromotion?.summary?.emergentCandidateCount || 0)} | canonical=${normalizeCount(controlPlaneContracts.canonicalPromotion?.canonicalCandidateCount || controlPlaneContracts.canonicalPromotion?.summary?.canonicalCandidateCount || 0)} | next=${controlPlaneContracts.canonicalPromotion?.nextAction || controlPlaneContracts.canonicalPromotion?.summary?.nextAction || 'n/a'}`,
         source: 'canonical promotion'
       },
       ...(status.cachePolicy ? [

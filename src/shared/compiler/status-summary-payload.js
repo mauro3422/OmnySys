@@ -9,6 +9,7 @@ import {
   compactRepositoryDiagnostics,
   compactWatcherSummary,
   compactToolInventory,
+  resolveControlPlaneContracts,
   summarizeNodeVitals,
   takeSample
 } from './status-summary-helpers.js';
@@ -29,8 +30,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
   const healthSnapshot = compactCompilerHealthDashboardSummary(status.healthSnapshot);
   const healthPanel = compactCompilerHealthPanelSummary(status.healthPanel);
   const toolInventory = compactToolInventory(status.toolInventory);
-  const systemInventory = status.systemInventory || status.healthSnapshot?.systemInventory || status.metricsSnapshot?.systemInventory || null;
-  const canonicalPromotion = status.canonicalPromotion || status.healthSnapshot?.canonicalPromotion || status.metricsSnapshot?.canonicalPromotion || null;
+  const controlPlaneContracts = resolveControlPlaneContracts(status);
   const updateSurface = buildUpdateSurfaceSummary(status);
   const cachePolicy = buildCachePolicySummary({
     recentErrors,
@@ -115,12 +115,12 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     telemetryProvenance: status.telemetryProvenance || null,
     compilerExplainability,
     metricsSnapshot,
-    propagation,
+    propagation: controlPlaneContracts.propagation || propagation,
     healthSnapshot,
     healthPanel,
     systemTable,
-    systemInventory,
-    canonicalPromotion,
+    systemInventory: controlPlaneContracts.systemInventory,
+    canonicalPromotion: controlPlaneContracts.canonicalPromotion,
     cachePolicy,
     toolInventory,
     updateSurface,

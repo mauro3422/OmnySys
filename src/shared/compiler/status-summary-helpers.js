@@ -218,6 +218,55 @@ export function resolvePolicyCoverageSummary(status = {}) {
   };
 }
 
+export function resolveControlPlaneContracts(status = {}) {
+  const metricsSnapshot = status.metricsSnapshot || {};
+  const healthSnapshot = status.healthSnapshot || {};
+  const compilerExplainability = status.compilerExplainability || {};
+  const systemInventory = firstDefined(
+    status.systemInventory,
+    healthSnapshot.systemInventory,
+    metricsSnapshot.systemInventory
+  );
+  const canonicalPromotion = firstDefined(
+    status.canonicalPromotion,
+    healthSnapshot.canonicalPromotion,
+    metricsSnapshot.canonicalPromotion
+  );
+  const policyCoverage = resolvePolicyCoverageSummary({
+    ...status,
+    systemInventory: systemInventory || status.systemInventory,
+    compilerExplainability
+  });
+  const propagation = firstDefined(
+    metricsSnapshot.propagation,
+    metricsSnapshot.current?.folderizationPropagation
+  );
+
+  return {
+    systemInventory: systemInventory || null,
+    canonicalPromotion: canonicalPromotion || null,
+    policyCoverage,
+    propagation
+  };
+}
+
+export function resolveDashboardControlPlaneContracts(snapshot = null, compilerExplainability = null) {
+  const normalizedSnapshot = snapshot && typeof snapshot === 'object' ? snapshot : {};
+  const current = normalizedSnapshot.current || {};
+  const folderizationPropagation = current.folderizationPropagation || null;
+  const canonicalPromotion = current.canonicalPromotion || null;
+  const policyCoverage = compilerExplainability?.policyCoverage || compilerExplainability?.systemInventory?.policyCoverage || null;
+  const propagationExpansion = compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
+    || (compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? compilerExplainability.driftAssessment.primaryIssue : null);
+
+  return {
+    folderizationPropagation,
+    canonicalPromotion,
+    policyCoverage,
+    propagationExpansion
+  };
+}
+
 function compactInventorySnapshot(snapshot = {}) {
   return {
     totalTools: snapshot.summary?.totalTools || 0,
@@ -273,6 +322,8 @@ export default {
   compactWatcherSummary,
   compactToolInventory,
   resolvePolicyCoverageSummary,
+  resolveControlPlaneContracts,
+  resolveDashboardControlPlaneContracts,
   summarizeNodeVitals,
   takeSample
 };

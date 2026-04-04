@@ -18,6 +18,7 @@ import {
   summarizeCompilerHealthPanel as summarizeCompilerHealthPanelDetails,
   takeSample
 } from './compiler-health-dashboard-helpers.js';
+import { resolveDashboardControlPlaneContracts } from './status-summary-helpers.js';
 
 export function buildCompilerHealthDashboard(snapshot = null, compilerExplainability = null, options = {}) {
   const normalized = normalizeSnapshot(snapshot);
@@ -26,10 +27,10 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
   const history = normalized.history || {};
   const watcherAlerts = Array.isArray(options.watcherAlerts) ? options.watcherAlerts : [];
   const recentErrors = options.recentErrors || null;
-  const propagationExpansion = compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
-    || (compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? compilerExplainability.driftAssessment.primaryIssue : null);
-  const folderizationPropagation = normalized.current?.folderizationPropagation || null;
-  const policyCoverage = compilerExplainability?.policyCoverage || compilerExplainability?.systemInventory?.policyCoverage || null;
+  const controlPlaneContracts = resolveDashboardControlPlaneContracts(normalized, compilerExplainability);
+  const folderizationPropagation = controlPlaneContracts.folderizationPropagation;
+  const policyCoverage = controlPlaneContracts.policyCoverage;
+  const propagationExpansion = controlPlaneContracts.propagationExpansion;
   const signalRows = buildSignalRows(trend.deltaSinceBaseline || {});
   const toolTelemetry = {
     ...mapToolTelemetry(current.toolTelemetry),
