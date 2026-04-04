@@ -1,185 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildStatusSummaryPayload } from '../../../../../src/shared/compiler/status-summary-payload.js';
+import { buildStatusSummaryPayloadFixture } from './status-summary-payload.fixture.js';
 
 describe('status summary payload', () => {
   it('exposes the update surface alongside the system table', () => {
-    const payload = buildStatusSummaryPayload({
-      initialized: true,
-      telemetryMode: 'full',
-      project: 'C:/Dev/OmnySystem',
-      repository: {
-        status: {
-          dbOpen: true,
-          journal: {
-            queued: 0
-          }
-        },
-        integrity: {
-          healthy: true
-        }
-      },
-      databaseHealth: {
-        healthy: true,
-        healthScore: 100,
-        grade: 'A+',
-        summary: 'Database projections are aligned'
-      },
-      metadata: {
-        liveFileCount: 2456,
-        phase2PendingFiles: 0,
-        phase2CompletedFiles: 2456
-      },
-      watcher: {
-        isRunning: true,
-        pendingChanges: 0,
-        failedChanges: 0,
-        lastChangeOrigin: 'src/example.js'
-      },
-      cache: {
-        files: 2456,
-        status: 'aligned'
-      },
-      background: {
-        graphCoverage: {
-          dependenciesTotal: 3
-        }
-      },
-      metricsSnapshot: {
-        current: {
-          behaviorState: 'ready',
-          structuralGroups: 0,
-          conceptualGroups: 0,
-          pipelineOrphans: 0,
-          namingDebt: 0,
-          driftState: 'fresh',
-          driftScore: 0,
-          metadataCoveragePct: 79,
-          integrationCoveragePct: 68,
-          folderizationPropagation: {
-            changeType: 'folderization',
-            cacheKey: 'folderization:abc123',
-            cacheHit: true,
-            decision: 'approve',
-            mode: 'family',
-            impactedFileCount: 4,
-            rewriteCount: 3,
-            renameTargetCount: 2,
-            validationTargetCount: 5,
-            hasCrossFamilyPropagation: true,
-            connectedSystems: ['folderization', 'status']
-          },
-          readinessReason: 'ready'
-        }
-      },
-      toolInventory: {
-        totalTools: 40,
-        dominantCategory: 'action',
-        concentration: 50
-      },
-      systemInventory: {
-        inventoryState: 'watching',
-        canonicalSurfaceCount: 12,
-        canonicalEntrypointCount: 4,
-        emergentSystemCount: 2,
-        bridgeSystemCount: 1,
-        wrapperSystemCount: 1,
-        legacySystemCount: 0,
-        policyCoverage: {
-          coverageState: 'watching',
-          coverageScore: 77,
-          coverageRatio: 0.5,
-          policyDriftCount: 3,
-          propagationExpansionState: 'stale',
-          nextAction: 'Attach the canonical propagation plan.'
-        },
-        nextAction: 'Promote runtime boundary checks into a canonical API.'
-      },
-      canonicalPromotion: {
-        promotionState: 'ready',
-        candidateCount: 3,
-        folderizedFamilyCount: 1,
-        emergentCandidateCount: 2,
-        canonicalCandidateCount: 0,
-        nextAction: 'Promote the strongest emergent surface into a canonical API.'
-      },
-      mcpSessions: {
-        totalPersistentActive: 2,
-        totalPersistent: 4,
-        uniqueClients: 2,
-        clientSyncState: 'watchful'
-      },
-      proxyRuntimeTelemetry: {
-        state: 'stable',
-        restartCount: 0,
-        crashCount: 0,
-        unexpectedExitCount: 0,
-        cleanExitCount: 1,
-        lastEventType: 'worker-exit-clean'
-      },
-      bridgeRuntimeTelemetry: {
-        state: 'watchful',
-        connectCount: 2,
-        reconnectCount: 1,
-        transportClosedCount: 1,
-        sessionExpiredCount: 0,
-        retryableErrorCount: 1,
-        stdioCloseCount: 0,
-        lastEventType: 'transport-closed'
-      },
-      compilerExplainability: {
-        folderization: {
-          automation: {
-            automationState: 'ready',
-            executionMode: 'execute',
-            shouldExecute: true,
-            executionTarget: 'folderize_family',
-            confidence: 89,
-            riskScore: 11,
-            decision: 'approve',
-            propagationMode: 'move_and_rewrite',
-            propagationCacheHit: true,
-            normalizationSafetyLevel: 'safe',
-            normalizationAction: 'execute',
-            normalizationTargets: 4,
-            normalizationDensity: 1.2,
-            policyCoverageState: 'watching',
-            promotionState: 'ready',
-            systemInventoryState: 'watching',
-            driftState: 'fresh',
-            driftScore: 3,
-            nextAction: 'Execute folderize_family using the propagation plan.',
-            reason: 'Folderization can execute because propagation is attached and the normalization plan is safe.',
-            connectedSystemCount: 3,
-            connectedSystems: [
-              { name: 'technical_debt_report', role: 'consumer' },
-              { name: 'status_panel', role: 'visibility' },
-              { name: 'compiler_explainability', role: 'explainability' }
-            ],
-            connectedSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability'],
-            propagationAdoption: {
-              adoptionState: 'ready',
-              coverageRatio: 1,
-              requiredSystemCount: 3,
-              surfacedSystemCount: 3,
-              missingSystemCount: 0,
-              requiredSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability'],
-              surfacedSystemNames: ['technical_debt_report', 'status_panel', 'compiler_explainability'],
-              missingSystemNames: [],
-              nextAction: 'All connected systems already surface the propagation pattern.',
-              reason: '3/3 connected system(s) already surface the propagation pattern; missing=none.',
-              summaryText: 'state=ready | coverage=1 | required=3 | surfaced=3 | missing=0 | surfacedSystems=technical_debt_report, status_panel, compiler_explainability'
-            }
-          }
-        }
-      }
-    }, {
-      summary: {
-        total: 0,
-        warnings: 0,
-        errors: 0
-      }
-    });
+    const { status, recentErrors } = buildStatusSummaryPayloadFixture();
+    const payload = buildStatusSummaryPayload(status, recentErrors);
 
     expect(payload).toHaveProperty('updateSurface');
     expect(payload).toHaveProperty('systemInventory');
@@ -243,8 +70,8 @@ describe('status summary payload', () => {
     expect(systemsRow.detail).toContain('canonical=16');
     expect(systemsRow.detail).toContain('emergent=2');
     expect(systemsRow.detail).toContain('bridge=1');
-    expect(systemsRow.detail).toContain('meta=0%');
-    expect(systemsRow.detail).toContain('integration=0%');
+    expect(systemsRow.detail).toContain('meta=79%');
+    expect(systemsRow.detail).toContain('integration=68%');
 
     const aduanaRow = payload.systemTable.rows.find((row) => row.area === 'Aduana');
     expect(aduanaRow).toMatchObject({
