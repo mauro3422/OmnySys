@@ -53,6 +53,39 @@ function countRecentEvents(events = [], eventType, windowMs = 10 * 60 * 1000) {
   }).length;
 }
 
+function classifyProxyRuntimeState({
+  recentCrashCount = 0,
+  recentPlannedRestartCount = 0,
+  recentRecoverySignals = 0,
+  workerPid = null,
+  cleanExitCount = 0
+} = {}) {
+  if (recentCrashCount > 0 || recentPlannedRestartCount > 2 || recentCrashCount + recentPlannedRestartCount > 3) {
+    return 'thrashing';
+  }
+
+  if (recentRecoverySignals > 0) {
+    return 'watchful';
+  }
+
+  if (workerPid || cleanExitCount > 0) {
+    return 'stable';
+  }
+
+  return 'watchful';
+}
+
+function buildProxyRuntimeSummaryText({
+  state,
+  restartCount = 0,
+  crashCount = 0,
+  unexpectedExitCount = 0,
+  cleanExitCount = 0,
+  workerPid = null
+} = {}) {
+  return `${state} | restarts=${restartCount} | crashes=${crashCount} | exits=${unexpectedExitCount} | clean=${cleanExitCount}${workerPid ? ` | worker=${workerPid}` : ''}`;
+}
+
 export function summarizeProxyRuntimeTelemetry(telemetry = null) {
   if (!telemetry || typeof telemetry !== 'object') {
     return {
@@ -78,14 +111,13 @@ export function summarizeProxyRuntimeTelemetry(telemetry = null) {
   const recentPlannedRestartCount = countRecentEvents(events, 'worker-exit-planned-restart');
   const recentUnexpectedExitCount = countRecentEvents(events, 'worker-exit-unexpected');
   const recentRecoverySignals = recentRestartCount + recentCrashCount + recentPlannedRestartCount + recentUnexpectedExitCount;
-
-  const state = recentCrashCount > 0 || recentPlannedRestartCount > 2 || recentRestartCount > 3
-    ? 'thrashing'
-    : recentRecoverySignals > 0
-      ? 'watchful'
-      : workerPid || cleanExitCount > 0
-        ? 'stable'
-        : 'watchful';
+  const state = classifyProxyRuntimeState({
+    recentCrashCount,
+    recentPlannedRestartCount,
+    recentRecoverySignals,
+    workerPid,
+    cleanExitCount
+  });
 
   const lastEvent = events[events.length - 1] || null;
   const lastEventAgeMs = lastEvent?.at ? Math.max(0, Date.now() - Date.parse(lastEvent.at)) : null;
@@ -95,7 +127,14 @@ export function summarizeProxyRuntimeTelemetry(telemetry = null) {
     port: telemetry.port || null,
     pid: telemetry.pid || null,
     state,
-    summary: `${state} | restarts=${restartCount} | crashes=${crashCount} | exits=${unexpectedExitCount} | clean=${cleanExitCount}${workerPid ? ` | worker=${workerPid}` : ''}`,
+    summary: buildProxyRuntimeSummaryText({
+      state,
+      restartCount,
+      crashCount,
+      unexpectedExitCount,
+      cleanExitCount,
+      workerPid
+    }),
     recommendation: state === 'thrashing'
       ? 'Investigate rapid worker exits and restart loops before trusting bootstrap snapshots.'
       : 'Keep proxy restart telemetry persisted so regressions are visible in status.',

@@ -1,5 +1,7 @@
 import {
-    loadCompilerDiagnosticsSnapshot
+    buildPropagationPlan,
+    loadCompilerDiagnosticsSnapshot,
+    summarizePropagationPlan
 } from '../../../../../shared/compiler/index.js';
 
 export async function enrichPipelineHealthWithCompilerGovernance({
@@ -51,6 +53,30 @@ export async function enrichPipelineHealthWithCompilerGovernance({
     }
 
     const governanceMetrics = compilerContractLayer.apiGovernance.governanceMetrics || {};
+    const propagation = buildPropagationPlan({
+        changeType: 'policy_drift',
+        decision: compilerContractLayer.summary.healthy === false ? 'review' : 'approve',
+        mode: compilerContractLayer.summary.healthy === false ? 'alert_and_review' : 'alert_and_recommend',
+        candidateCount: compilerContractLayer.apiGovernance.currentCreationCandidates?.length || 0,
+        findingCount: (governanceMetrics.canonicalWrapperFindings || 0)
+            + (governanceMetrics.canonicalBypassFindings || 0)
+            + (governanceMetrics.parallelCanonicalSurfaceFindings || 0)
+            + (compilerContractLayer.summary.failedInvariantCount || 0)
+            + (tableCounts.compiler_policy_high || 0),
+        ruleCount: tableCounts.compiler_policy_high || 0,
+        policyAreaCount: 1,
+        connectedSystems: [
+            'pipeline_health',
+            'status_panel',
+            'health_snapshot',
+            'compiler_explainability',
+            'cache_policy',
+            'drift_assessment'
+        ],
+        recommendationStrategy: compilerContractLayer.summary.healthy === false
+            ? 'attach_propagation_and_fix_contract_drift'
+            : 'keep_propagation_attached'
+    });
     tableCounts.compiler_canonical_wrapper_findings = governanceMetrics.canonicalWrapperFindings || 0;
     tableCounts.compiler_canonical_bypass_findings = governanceMetrics.canonicalBypassFindings || 0;
     tableCounts.compiler_parallel_surface_findings = governanceMetrics.parallelCanonicalSurfaceFindings || 0;
@@ -98,6 +124,7 @@ export async function enrichPipelineHealthWithCompilerGovernance({
         standardizationReport,
         compilerContractLayer,
         semanticCanonicality: canonicalSemanticSurface,
+        propagation: summarizePropagationPlan(propagation),
         healthScore: Math.max(0, Math.floor((compilerHealthScore * 0.7) + (governanceScore * 0.3)))
     };
 }
