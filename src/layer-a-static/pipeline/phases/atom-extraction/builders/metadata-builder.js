@@ -149,6 +149,8 @@ export function buildAtomMetadata({
     }
   }
 
+  const derivedScores = buildDerivedScores(complexity, linesOfCode, cg, se, errorFlow, ph, functionInfo);
+
   return {
     id: functionInfo.id || `${filePath}::${functionInfo.fullName || functionInfo.name}`,
     name: functionInfo.name,
@@ -196,7 +198,12 @@ export function buildAtomMetadata({
     },
 
     ...buildDataFlowFields(dataFlowV2),
-    derived: buildDerivedScores(complexity, cg, se, errorFlow, ph, functionInfo),
+    derived: derivedScores,
+    fragilityScore: derivedScores.fragilityScore,
+    cohesionScore: derivedScores.cohesionScore,
+    couplingScore: derivedScores.couplingScore,
+    testabilityScore: derivedScores.testabilityScore,
+    changeRisk: derivedScores.changeRisk,
     semanticDomain: semanticDomain || null,
 
     sharedStateAccess: treeSitter?.sharedStateAccess || [],

@@ -13,7 +13,7 @@ function buildFolderizationPropagationAdoptionTargets({
   folderizationReport,
   databaseHealth
 }) {
-  return [
+  const exposedSurfaces = [
     { name: 'compiler_explainability', role: 'explainability', source: 'compilerExplainability', available: true },
     { name: 'compiler_health_dashboard', role: 'dashboard', source: 'health dashboard', available: true },
     { name: 'compiler_metrics_snapshot', role: 'metrics', source: 'metrics snapshot', available: true },
@@ -35,6 +35,15 @@ function buildFolderizationPropagationAdoptionTargets({
     { name: 'database_health', role: 'health', source: 'databaseHealth', available: Boolean(databaseHealth) },
     { name: 'metrics_snapshot', role: 'metrics', source: 'compilerExplainability.metricsSnapshot', available: true }
   ].filter((item) => item.available);
+
+  const inventoryTopSystems = Array.isArray(systemInventory?.topSystems)
+    ? systemInventory.topSystems.map((item) => ({
+      name: item?.name || item?.surface || item?.entrypoint || item?.id || null,
+      role: item?.role || item?.kind || 'inventory'
+    })).filter((item) => item.name)
+    : [];
+
+  return [...exposedSurfaces, ...inventoryTopSystems];
 }
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
@@ -79,11 +88,13 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       folderizationReport,
       databaseHealth
     });
+    const propagationAdoptionRequiredSystems = Array.isArray(systemInventory?.topSystems) ? systemInventory.topSystems : [];
     const folderizationAutomation = buildFolderizationAutomationSummaryFromReport(folderizationReport, {
       systemInventory,
       policyCoverage: systemInventory.policyCoverage || null,
       canonicalPromotion: systemInventory.canonicalPromotion || null,
-      propagationAdoptionTargets
+      propagationAdoptionTargets,
+      propagationAdoptionRequiredSystems
     });
 
     return {
@@ -114,6 +125,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         creationGuidance: folderizationReport.creationGuidance,
         automation: folderizationAutomation,
         propagationAdoptionTargets,
+        propagationAdoptionRequiredSystems,
         namingDebt: {
           familyCount: folderizationReport.naming?.familyCount || 0,
           renameTargetCount: folderizationReport.naming?.renameTargetCount || 0,

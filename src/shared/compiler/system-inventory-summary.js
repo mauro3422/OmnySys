@@ -112,6 +112,10 @@ export function buildCompilerSystemInventorySnapshot({
   ).slice(0, limit);
 
   const tooling = buildToolingSection(toolInventory);
+  const inventorySignals = compilerExplainability?.inventorySignals || null;
+  const integrationCoveragePct = inventorySignals?.total
+    ? Math.min(100, Math.round(((inventorySignals.total - (inventorySignals.byType?.unknown || 0)) / inventorySignals.total) * 100))
+    : 0;
   const policyCoverage = compilerExplainability?.policyCoverage || buildCompilerPolicyCoverageSummary({
     inventory: {
       summary: {
@@ -149,6 +153,7 @@ export function buildCompilerSystemInventorySnapshot({
     surfaceAuditTrustworthy: surfaceAudit?.summary?.trustworthy === true,
     dataGatewayTrustworthy: compilerExplainability?.dataGatewayContract?.summary?.trustworthy === true,
     metadataCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0),
+    integrationCoveragePct,
     propagationExpansionState:
       driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state
       || driftAssessment?.primaryIssue?.state
@@ -216,6 +221,7 @@ export function buildCompilerSystemInventoryReport(inventory = null) {
     surfaceAuditTrustworthy: summary.surfaceAuditTrustworthy === true,
     dataGatewayTrustworthy: summary.dataGatewayTrustworthy === true,
     metadataCoveragePct: summary.metadataCoveragePct || 0,
+    integrationCoveragePct: summary.integrationCoveragePct || 0,
     propagationExpansionState: summary.propagationExpansionState || null,
     dominantToolCategory: summary.dominantToolCategory || null,
     dominantToolSubgroup: summary.dominantToolSubgroup || null,
@@ -228,6 +234,7 @@ export function buildCompilerSystemInventoryReport(inventory = null) {
     policyCoverageRatio: summary.policyCoverageRatio || 0,
     policyCoverageDriftCount: summary.policyCoverageDriftCount || 0,
     policyCoveragePropagationState: summary.policyCoveragePropagationState || null,
+    kindCounts: summary.kindCounts || {},
     nextAction: summary.nextAction || null,
     summaryText: summary.summaryText || null,
     topSystems: Array.isArray(summary.topSystems) ? summary.topSystems.slice(0, 8) : [],

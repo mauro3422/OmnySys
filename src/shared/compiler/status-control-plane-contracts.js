@@ -90,6 +90,7 @@ export function resolveControlPlaneContracts(status = {}) {
     policyCoverage,
     folderizationAutomation: folderizationAutomation || null,
     folderizationAdoption: folderizationAdoption || null,
+    integrationCoveragePct: Number(systemInventory?.integrationCoveragePct || systemInventory?.summary?.integrationCoveragePct || 0) || 0,
     propagation
   };
 }
@@ -108,6 +109,7 @@ export function resolveDashboardControlPlaneContracts(snapshot = null, compilerE
     canonicalPromotion,
     policyCoverage,
     folderizationAdoption: current.folderizationAutomation?.propagationAdoption || null,
+    integrationCoveragePct: Number(compilerExplainability?.systemInventory?.integrationCoveragePct || compilerExplainability?.systemInventory?.summary?.integrationCoveragePct || 0) || 0,
     propagationExpansion
   };
 }

@@ -59,13 +59,14 @@ export async function loadExistingMap(absoluteRootPath, incremental, verbose) {
  */
 export async function saveAtoms(absoluteRootPath, singleFile, atoms) {
     try {
-        const atomsWithId = atoms.map(atom => ({
+        const atomList = Array.isArray(atoms) ? atoms : [];
+        const atomsWithId = atomList.map(atom => ({
             ...atom,
             id: atom.id || `${singleFile}::${atom.name}`,
             file_path: singleFile
         }));
 
-        const isDeepScan = atoms.some(a => a.isPhase2Complete);
+        const isDeepScan = atomList.some(a => a.isPhase2Complete);
         const result = await runRepositoryMutation(
             absoluteRootPath,
             {
@@ -79,7 +80,7 @@ export async function saveAtoms(absoluteRootPath, singleFile, atoms) {
                     }
 
                     repo.saveMany(atomsWithId);
-                    logger.debug(`💾 Saved ${atoms.length} atoms to SQLite for ${singleFile}`);
+                    logger.debug(`💾 Saved ${atomList.length} atoms to SQLite for ${singleFile}`);
                     return true;
                 }
             },
@@ -99,16 +100,28 @@ export async function saveAtoms(absoluteRootPath, singleFile, atoms) {
  */
 export async function saveFileResult(absoluteRootPath, singleFile, fileAnalysis, fileHash, existingMap, incremental, verbose) {
     try {
+        const safeFileAnalysis = fileAnalysis || {
+            totalAtoms: 0,
+            imports: [],
+            exports: [],
+            moduleName: null
+        };
+
         const result = await runRepositoryMutation(
             absoluteRootPath,
             {
                 key: `single-file-summary:${singleFile}`,
                 label: `saveFileResult:${singleFile}`,
                 durability: REPOSITORY_MUTATION_DURABILITY.DURABLE,
-                metadata: { filePath: singleFile, atomCount: fileAnalysis.totalAtoms || 0 },
+                metadata: { filePath: singleFile, atomCount: safeFileAnalysis.totalAtoms || 0 },
                 run: async (repo) => {
-                    saveFileSummariesBatch(repo, [buildFileSummaryEntry(singleFile, fileAnalysis, fileHash, absoluteRootPath)]);
-                    await syncIncrementalSystemMapSurface(repo, fileAnalysis, Date.now());
+                    if (!repo?.db || typeof repo.db.prepare !== 'function') {
+                        if (verbose) logger.info(`  ℹ️  SQLite unavailable, skipped file metadata save for ${singleFile}\n`);
+                        return true;
+                    }
+
+                    saveFileSummariesBatch(repo, [buildFileSummaryEntry(singleFile, safeFileAnalysis, fileHash, absoluteRootPath)]);
+                    await syncIncrementalSystemMapSurface(repo, safeFileAnalysis, Date.now());
                     if (verbose) logger.info(`  ✓ Saved file metadata to SQLite\n`);
                     return true;
                 }

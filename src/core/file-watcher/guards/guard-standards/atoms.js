@@ -7,12 +7,20 @@ const LOW_SIGNAL_PATTERNS = [
     /^(then|catch|map|filter|some|reduce)_callback$/i
 ];
 
+const METADATA_GUARD_EXEMPT_PATHS = [
+    /(?:^|\/)shared\/compiler\//i,
+    /(?:^|\/)pipeline\/phases\/atom-extraction\/builders\//i,
+    /(?:^|\/)core\/file-watcher\/guards\//i
+];
+
 export function isValidGuardTarget(atom) {
     if (!atom) return false;
 
     const validTypes = ['function', 'method', 'arrow', 'class'];
     if (!validTypes.includes(atom.type)) return false;
     if (atom.isDeadCode || atom.isRemoved) return false;
+    const filePath = String(atom.filePath || atom.path || atom.file || '').replace(/\\/g, '/');
+    if (METADATA_GUARD_EXEMPT_PATHS.some((pattern) => pattern.test(filePath))) return false;
     if (isLowSignalName(atom.name)) return false;
 
     return true;

@@ -1,164 +1,12 @@
 import { buildFolderizationReportFromRepo, buildFolderizationReportFromRows } from './folderization-report.js';
-import { takeSample } from './sample-helpers.js';
-
-function normalizeConnectedSystems(connectedSystems = []) {
-  return takeSample(
-    (Array.isArray(connectedSystems) ? connectedSystems : [])
-      .map((item) => {
-        if (!item) return null;
-        if (typeof item === 'string') {
-          return { name: item, role: 'consumer' };
-        }
-
-        return {
-          name: item.name || item.system || item.role || null,
-          role: item.role || item.type || 'consumer'
-        };
-      })
-      .filter((item) => item?.name),
-      8
-  );
-}
-
-function buildPropagationAdoptionSummary({
-  connectedSystems = [],
-  surfacedSystems = []
-} = {}) {
-  const requiredSystems = normalizeConnectedSystems(connectedSystems);
-  const surfaced = normalizeConnectedSystems(surfacedSystems.length > 0 ? surfacedSystems : connectedSystems);
-  const surfacedSystemNames = surfaced.map((item) => item.name);
-  const surfacedNameSet = new Set(surfacedSystemNames);
-  const adoptedSystems = requiredSystems.filter((item) => surfacedNameSet.has(item.name));
-  const missingSystems = requiredSystems.filter((item) => !surfacedNameSet.has(item.name));
-  const requiredSystemNames = requiredSystems.map((item) => item.name);
-  const adoptedSystemNames = adoptedSystems.map((item) => item.name);
-  const missingSystemNames = missingSystems.map((item) => item.name);
-  const requiredSystemCount = requiredSystems.length;
-  const surfacedSystemCount = adoptedSystems.length;
-  const missingSystemCount = missingSystems.length;
-  const coverageRatio = requiredSystemCount > 0
-    ? Math.round((surfacedSystemCount / requiredSystemCount) * 100) / 100
-    : 1;
-
-  let adoptionState = 'ready';
-  if (requiredSystemCount === 0) {
-    adoptionState = 'ready';
-  } else if (missingSystemCount === 0) {
-    adoptionState = 'ready';
-  } else if (coverageRatio >= 0.75) {
-    adoptionState = 'watching';
-  } else if (coverageRatio > 0) {
-    adoptionState = 'stale';
-  } else {
-    adoptionState = 'blocked';
-  }
-
-  const surfacedLabel = surfacedSystemNames.length > 0
-    ? surfacedSystemNames.join(', ')
-    : 'no surfaced systems';
-  const missingLabel = missingSystemNames.length > 0
-    ? missingSystemNames.join(', ')
-    : 'none';
-
-  return {
-    adoptionState,
-    coverageRatio,
-    requiredSystemCount,
-    surfacedSystemCount,
-    missingSystemCount,
-    requiredSystems,
-    surfacedSystems: surfaced,
-    adoptedSystems,
-    missingSystems,
-    requiredSystemNames,
-    surfacedSystemNames,
-    adoptedSystemNames,
-    missingSystemNames,
-    nextAction: missingSystemCount > 0
-      ? `Update ${missingSystemNames.slice(0, 3).join(', ')} to surface the propagation pattern.`
-      : 'All connected systems already surface the propagation pattern.',
-    reason: requiredSystemCount > 0
-      ? `${surfacedSystemCount}/${requiredSystemCount} connected system(s) already surface the propagation pattern; missing=${missingLabel}.`
-      : 'No connected systems were reported by the propagation plan.',
-    summaryText: `state=${adoptionState} | coverage=${coverageRatio} | required=${requiredSystemCount} | surfaced=${surfacedSystemCount} | missing=${missingSystemCount} | surfacedSystems=${surfacedLabel}`,
-    surfacedSystemLabels: surfacedLabel,
-    missingSystemLabels: missingLabel
-  };
-}
-
-function calculateConfidence({
-  automationState,
-  normalizationSafetyLevel,
-  policyCoverageState,
-  promotionState,
-  connectedSystemCount
-}) {
-  if (automationState === 'already_folderized') {
-    return 100;
-  }
-
-  if (automationState === 'ready') {
-    return Math.min(100, 82 + Math.min(connectedSystemCount, 8) + (normalizationSafetyLevel === 'safe' ? 5 : 0));
-  }
-
-  if (automationState === 'review') {
-    return Math.max(20, 58 - (normalizationSafetyLevel === 'risky' ? 10 : 0) - (policyCoverageState === 'stale' ? 5 : 0) - (promotionState === 'watching' ? 5 : 0));
-  }
-
-  return Math.max(0, 20 - (normalizationSafetyLevel === 'missing' ? 10 : 0));
-}
-
-function buildAutomationReason({
-  automationState,
-  decision,
-  propagationMode,
-  normalizationSafetyLevel,
-  policyCoverageState,
-  promotionState,
-  connectedSystemNames,
-  propagationAdoption,
-  driftReason,
-  recommendationStrategy
-}) {
-  if (automationState === 'already_folderized') {
-    return 'Reuse the existing folderized family and normalize names only if the family is already stable.';
-  }
-
-  if (automationState === 'ready') {
-    const connectedLabel = connectedSystemNames.length > 0 ? connectedSystemNames.join(', ') : 'the connected systems';
-    return `Folderization can execute because propagation is attached to ${connectedLabel} and the normalization plan is safe; adoption is aligned across ${propagationAdoption?.surfacedSystemCount || 0} surfaced system(s).`;
-  }
-
-  if (automationState === 'review') {
-    return propagationAdoption?.missingSystemCount > 0
-      ? `Folderization should be reviewed because ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} still need the propagation pattern and policy coverage is ${policyCoverageState || 'unknown'}.`
-      : `Folderization should be reviewed because normalization is ${normalizationSafetyLevel} and policy coverage is ${policyCoverageState || 'unknown'}.`;
-  }
-
-  return driftReason
-    ? `Folderization is blocked: ${driftReason}`
-    : `Folderization is blocked because propagation=${propagationMode || 'blocked'} and recommendation=${recommendationStrategy || 'n/a'}.`;
-}
-
-function buildExecutionTarget({
-  decision,
-  automationState,
-  normalizationSafetyLevel
-}) {
-  if (decision === 'already_folderized') {
-    return 'rename_folderized_family';
-  }
-
-  if (automationState === 'ready' && normalizationSafetyLevel === 'safe') {
-    return 'folderize_family';
-  }
-
-  if (decision === 'review') {
-    return 'plan';
-  }
-
-  return 'analyze';
-}
+import {
+  normalizeConnectedSystems,
+  normalizeInventorySystems,
+  buildPropagationAdoptionSummary,
+  calculateConfidence,
+  buildAutomationReason,
+  buildExecutionTarget
+} from './folderization-automation-utils.js';
 
 export function buildFolderizationAutomationSummaryFromReport(folderizationReport = null, context = {}) {
   if (!folderizationReport || typeof folderizationReport !== 'object') {
@@ -174,6 +22,7 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
   const connectedSystemNames = connectedSystems.map((item) => item.name);
   const propagationAdoption = buildPropagationAdoptionSummary({
     connectedSystems,
+    requiredSystems: context.propagationAdoptionRequiredSystems || context.requiredSystems || [],
     surfacedSystems: context.propagationAdoptionTargets || context.surfacedSystems || []
   });
   const normalizationSafetyLevel = normalization.summary?.safetyLevel || 'none';

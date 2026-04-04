@@ -26,6 +26,31 @@ export function buildHotReloadConformanceContext({ filename, server }) {
   };
 }
 
+
+function recordInventorySignal(server, filename, moduleInfo, policy) {
+  if (!server) return;
+
+  const sharedState = server.sharedState || (server.sharedState = {});
+  const inventorySignals = sharedState.inventorySignals || (sharedState.inventorySignals = {
+    total: 0,
+    byType: {},
+    byRole: {},
+    recent: []
+  });
+
+  const surfaceName = String(filename || '').replace(/\\/g, '/').split('/').pop() || filename || 'unknown';
+  const type = moduleInfo?.type || policy?.reason || 'unknown';
+  const role = String(filename || '').includes('compiler') ? 'compiler' : String(filename || '').includes('mcp') ? 'mcp' : 'system';
+
+  inventorySignals.total += 1;
+  inventorySignals.byType[type] = (inventorySignals.byType[type] || 0) + 1;
+  inventorySignals.byRole[role] = (inventorySignals.byRole[role] || 0) + 1;
+  inventorySignals.recent = [
+    { surface: surfaceName, filePath: filename, type, role, kind: moduleInfo?.kind || null, at: new Date().toISOString() },
+    ...(Array.isArray(inventorySignals.recent) ? inventorySignals.recent : [])
+  ].slice(0, 12);
+}
+
 export function dispatchReloadableChange({
   eventType,
   filename,
@@ -48,7 +73,7 @@ export function dispatchReloadableChange({
     case RuntimeChangeAction.REINDEX:
       return applyReindexChange({ eventType, filename, server, moduleInfo, policy: resolvedPolicy, runtimeContext });
     default:
-      return applyRuntimeReloadChange({ eventType, filename, moduleInfo, reloadHandler });
+      return applyRuntimeReloadChange({ eventType, filename, server, moduleInfo, policy: resolvedPolicy, reloadHandler });
   }
 }
 
@@ -61,6 +86,7 @@ function applyRefreshChange({
   reloadHandler,
   runtimeContext
 }) {
+  recordInventorySignal(server, filename, moduleInfo, policy);
   logger.info(`â™»ï¸ Refresh-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
   server?.emit?.('hot-reload:refresh-requested', {
     file: filename,
@@ -73,6 +99,7 @@ function applyRefreshChange({
 }
 
 function applyRestartChange({ filename, server, policy }) {
+  recordInventorySignal(server, filename, null, policy);
   logger.warn(`ðŸš¨ Runtime restart required: ${filename} (${policy.reason})`);
   queueRuntimeRestart(server, {
     filename,
@@ -89,6 +116,7 @@ function applyReindexChange({
   policy,
   runtimeContext
 }) {
+  recordInventorySignal(server, filename, moduleInfo, policy);
   logger.info(`â™»ï¸ Reindex-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
   server?.emit?.('hot-reload:reindex-requested', {
     file: filename,
@@ -109,7 +137,8 @@ function applyReindexChange({
   }
 }
 
-function applyRuntimeReloadChange({ eventType, filename, moduleInfo, reloadHandler }) {
+function applyRuntimeReloadChange({ eventType, filename, server, moduleInfo, policy, reloadHandler }) {
+  recordInventorySignal(server, filename, moduleInfo, policy);
   logger.info(`â™»ï¸ Runtime change detected: ${filename} (${moduleInfo?.type || 'reloadable surface'}/${eventType})`);
   reloadHandler.applyModuleReload(filename, moduleInfo);
 }

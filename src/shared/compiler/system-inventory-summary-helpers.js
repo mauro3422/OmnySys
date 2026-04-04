@@ -41,6 +41,54 @@ export function scoreForRole(role = 'legacy', trusted = true, healthy = true) {
   return clampScore(base - trustPenalty - healthPenalty);
 }
 
+export function inferSystemKind(surface = {}) {
+  const surfaceText = [
+    surface.kind,
+    surface.role,
+    surface.status,
+    surface.surface,
+    surface.entrypoint,
+    surface.domain,
+    surface.scope,
+    surface.summary,
+    surface.backingSurface,
+    surface.source
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+    .join(' ');
+
+  if (surface.sourceOfTruth === true || surface.status === 'canonical') {
+    return 'canonical_like';
+  }
+
+  if (surfaceText.includes('db') || surfaceText.includes('sqlite') || surfaceText.includes('storage') || surfaceText.includes('persistence')) {
+    return 'db_like';
+  }
+
+  if (surfaceText.includes('api') || surfaceText.includes('endpoint') || surfaceText.includes('route') || surfaceText.includes('tool')) {
+    return 'api_like';
+  }
+
+  if (surfaceText.includes('guard') || surfaceText.includes('policy') || surfaceText.includes('drift') || surfaceText.includes('validation') || surfaceText.includes('watcher')) {
+    return 'guard_like';
+  }
+
+  if (surfaceText.includes('bridge') || surfaceText.includes('wrapper') || surfaceText.includes('proxy') || surfaceText.includes('adaptor') || surfaceText.includes('adapter')) {
+    return 'bridge_like';
+  }
+
+  if (surfaceText.includes('metric') || surfaceText.includes('health') || surfaceText.includes('status') || surfaceText.includes('dashboard') || surfaceText.includes('snapshot')) {
+    return 'observability_like';
+  }
+
+  if (surfaceText.includes('inventory') || surfaceText.includes('contract') || surfaceText.includes('promotion') || surfaceText.includes('folderization')) {
+    return 'governance_like';
+  }
+
+  return 'unknown';
+}
+
 export function deriveRoleFromSurface(surface = {}) {
   if (surface.sourceOfTruth === true || surface.status === 'canonical') {
     return 'canonical';
@@ -70,6 +118,7 @@ export function buildSurfaceInventoryEntry(surface = {}, { kind = 'surface', rol
     role: resolvedRole,
     status: surface.status || resolvedRole,
     canonicalStatus: surface.sourceOfTruth === true ? 'canonical' : resolvedRole,
+    systemKind: inferSystemKind(surface),
     sourceOfTruth: surface.sourceOfTruth === true,
     surface: surface.surface || surface.id || entrypoint || null,
     entrypoint: entrypoint || surface.entrypoint || null,
@@ -106,6 +155,7 @@ export function buildCandidateEntry(candidate = {}, role = 'emergent') {
     status: candidate.status || 'emergent',
     canonicalStatus: role,
     sourceOfTruth: false,
+    systemKind: inferSystemKind(candidate),
     surface: candidate.surface || candidate.id || candidate.key || null,
     domain: candidate.domain || candidate.area || null,
     scope: candidate.scope || null,
@@ -178,6 +228,10 @@ export function buildInventoryState(summary = {}) {
     return 'watching';
   }
 
+  if ((summary.integrationCoveragePct || 0) > 0 && (summary.integrationCoveragePct || 0) < 80) {
+    return 'watching';
+  }
+
   if ((summary.emergentSystemCount || 0) > 0 || (summary.wrapperSystemCount || 0) > 0 || (summary.bridgeSystemCount || 0) > 0) {
     return 'watching';
   }
@@ -212,6 +266,11 @@ export function buildInventorySummary({
   const topPromotionCandidates = sortByCentrality(emergentSystems).slice(0, 5);
   const toolHubCategory = tooling.dominantCategory || null;
   const toolHubSubgroup = tooling.dominantSubgroup || null;
+  const kindCounts = allSystems.reduce((acc, entry) => {
+    const kind = entry?.systemKind || 'unknown';
+    acc[kind] = (acc[kind] || 0) + 1;
+    return acc;
+  }, {});
   const summary = {
     totalSystemCount: allSystems.length,
     canonicalSurfaceCount: canonicalSurfaces.filter((entry) => entry.role === 'canonical' || entry.sourceOfTruth === true).length,
@@ -242,6 +301,7 @@ export function buildInventorySummary({
     policyCoverageRatio: asNumber(policyCoverage?.coverageRatio, 0),
     policyCoverageDriftCount: asNumber(policyCoverage?.policyDriftCount, 0),
     policyCoveragePropagationState: policyCoverage?.propagationExpansionState || null,
+    kindCounts,
     nextAction:
       topPromotionCandidates[0]?.recommendedAction
       || signals.nextAction

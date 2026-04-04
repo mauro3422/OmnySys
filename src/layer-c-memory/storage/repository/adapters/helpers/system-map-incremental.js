@@ -9,18 +9,20 @@ function normalizeStoredPath(value) {
     .replace(/^\/+/, '');
 }
 
-function loadExistingSystemFileSnapshot(db, filePath) {
+function loadSystemFileRow(db, filePath) {
   if (!db?.prepare) {
-    return {};
+    return null;
   }
 
-  const row = db.prepare(`
+  return db.prepare(`
     SELECT *
     FROM system_files
     WHERE path = ?
       AND (is_removed IS NULL OR is_removed = 0)
-  `).get(normalizeStoredPath(filePath));
+  `).get(normalizeStoredPath(filePath)) || null;
+}
 
+function parseSystemFileSnapshot(row, filePath) {
   if (!row) {
     return {};
   }
@@ -45,6 +47,10 @@ function loadExistingSystemFileSnapshot(db, filePath) {
     isRemoved: Number(row.is_removed) || 0,
     updatedAt: row.updated_at || null
   };
+}
+
+function loadExistingSystemFileSnapshot(db, filePath) {
+  return parseSystemFileSnapshot(loadSystemFileRow(db, filePath), filePath);
 }
 
 function extractImportTarget(importEntry) {
@@ -191,10 +197,11 @@ export async function syncIncrementalSystemMapSurface(repo, fileAnalysis, now = 
   const sourcePath = normalizeStoredPath(fileAnalysis.filePath);
   const existingSnapshot = loadExistingSystemFileSnapshot(repo.db, sourcePath);
   const { dependencyRows, dependencyTargets } = buildDependencyRows(sourcePath, fileAnalysis.imports || [], now);
+  const existingDependsOn = Array.isArray(existingSnapshot.dependsOn) ? existingSnapshot.dependsOn : [];
   const touchedPaths = Array.from(new Set([
     sourcePath,
     ...dependencyTargets,
-    ...existingSnapshot.dependsOn.map(normalizeStoredPath)
+    ...existingDependsOn.map(normalizeStoredPath)
   ].filter(Boolean)));
   const usedByForSource = loadUsedBySources(repo.db, sourcePath);
   const sourcePayload = buildSystemFilePayload(

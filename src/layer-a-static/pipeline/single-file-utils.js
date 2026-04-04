@@ -119,12 +119,17 @@ export function markAtomAsRemoved(atom) {
  * Construye el objeto final de analisis del archivo que sera persistido
  */
 export function buildFileAnalysis(singleFile, parsedFile, resolvedImports, staticConnections, advancedConnections, metadata, atoms) {
+    const importList = Array.isArray(resolvedImports) ? resolvedImports : [];
+    const staticAll = Array.isArray(staticConnections?.all) ? staticConnections.all : [];
+    const advancedAll = Array.isArray(advancedConnections?.all) ? advancedConnections.all : [];
+    const atomList = Array.isArray(atoms) ? atoms : [];
+    const safeMetadata = metadata || {};
     return {
         filePath: singleFile,
         fileName: path.basename(singleFile),
         ext: path.extname(singleFile),
         moduleName: deriveModuleName(singleFile),
-        imports: resolvedImports.map(imp => ({
+        imports: importList.map(imp => ({
             source: imp.source,
             resolvedPath: imp.resolved,
             type: imp.type,
@@ -133,14 +138,14 @@ export function buildFileAnalysis(singleFile, parsedFile, resolvedImports, stati
         exports: parsedFile.exports || [],
         definitions: parsedFile.definitions || [],
         semanticConnections: [
-            ...staticConnections.all.map(conn => ({
+            ...staticAll.map(conn => ({
                 target: conn.targetFile,
                 type: conn.via,
                 key: conn.key || conn.event,
                 confidence: conn.confidence,
                 detectedBy: 'static-extractor'
             })),
-            ...advancedConnections.all.map(conn => ({
+            ...advancedAll.map(conn => ({
                 target: conn.targetFile,
                 type: conn.via,
                 channelName: conn.channelName,
@@ -149,14 +154,14 @@ export function buildFileAnalysis(singleFile, parsedFile, resolvedImports, stati
             }))
         ],
         metadata: {
-            jsdocContracts: metadata.jsdoc || { all: [] },
-            asyncPatterns: metadata.async || { all: [] },
-            errorHandling: metadata.errors || { all: [] },
-            buildTimeDeps: metadata.build || { envVars: [] }
+            jsdocContracts: safeMetadata.jsdoc || { all: [] },
+            asyncPatterns: safeMetadata.async || { all: [] },
+            errorHandling: safeMetadata.errors || { all: [] },
+            buildTimeDeps: safeMetadata.build || { envVars: [] }
         },
-        atoms,
-        totalAtoms: atoms.length,
-        atomsByType: atoms.reduce((acc, atom) => {
+        atoms: atomList,
+        totalAtoms: atomList.length,
+        atomsByType: atomList.reduce((acc, atom) => {
             acc[atom.type] = (acc[atom.type] || 0) + 1;
             return acc;
         }, {}),

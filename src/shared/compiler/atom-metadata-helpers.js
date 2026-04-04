@@ -113,13 +113,26 @@ export function summarizeScopeTypes(sharedStateAccess = []) {
   };
 }
 
-export function buildDerivedScores(complexity, cg, se, errorFlow, ph, functionInfo) {
+export function buildDerivedScores(complexity, linesOfCode, cg, se, errorFlow, ph, functionInfo) {
+  const cohesionScore = computeCohesionScore(complexity, linesOfCode);
   return {
     fragilityScore: computeFragilityScore(complexity, cg, errorFlow, ph),
+    cohesionScore,
     testabilityScore: computeTestabilityScore(complexity, se, ph, functionInfo),
     couplingScore: (cg.externalCalls?.length || 0) + (cg.internalCalls?.length || 0),
     changeRisk: computeBaseChangeRisk(complexity, functionInfo.isExported)
   };
+}
+
+function computeCohesionScore(complexity, linesOfCode) {
+  const safeLines = Math.max(0, Number(linesOfCode) || 0);
+  if (safeLines === 0) {
+    return 1;
+  }
+
+  const ratio = complexity / safeLines;
+  const cohesion = Math.max(0, Math.min(1, 1 - (ratio * 2)));
+  return Math.round(cohesion * 100) / 100;
 }
 
 function computeFragilityScore(complexity, callGraph, errorFlow, performanceHints) {

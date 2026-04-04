@@ -8,6 +8,7 @@ import { loadExistingMap, saveAtoms, saveFileResult } from './single-file-db.js'
 import { resolveFileImports, detectConnections, buildFileAnalysis } from './single-file-utils.js';
 import { extractMetadataSurface } from './metadata-gateway.js';
 import { calculateContentHash } from './incremental-analysis-utils.js';
+import { persistGraphMetrics } from '#layer-c/storage/enrichment/index.js';
 
 const logger = createLogger('OmnySys:single:file');
 
@@ -66,6 +67,10 @@ export async function analyzeSingleFile(absoluteRootPath, singleFile, options = 
         ctx.staticConnections, ctx.advancedConnections, ctx.metadata, ctx.atoms
       );
       await saveFileResult(ctx.absoluteRootPath, ctx.singleFile, ctx.fileAnalysis, ctx.fileHash, ctx.existingMap, incremental, ctx.verbose);
+      const atomIds = Array.isArray(ctx.atoms) ? ctx.atoms.map((atom) => atom.id).filter(Boolean) : [];
+      if (atomIds.length > 0) {
+        await persistGraphMetrics(ctx.absoluteRootPath, atomIds);
+      }
     });
 
   try {
