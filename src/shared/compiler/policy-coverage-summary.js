@@ -27,6 +27,8 @@ export function buildCompilerPolicyCoverageSummary({
 } = {}) {
   const summary = inventory?.summary || inventory || {};
   const policyDriftCount = asNumber(summary.policyDriftCount, 0);
+  const metadataCoveragePct = clampScore(summary.metadataCoveragePct);
+  const integrationCoveragePct = clampScore(summary.integrationCoveragePct);
   const propagationExpansionState = normalizeText(summary.propagationExpansionState, null)
     || normalizeText(explainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state, null)
     || normalizeText(explainability?.driftAssessment?.primaryIssue?.state, null);
@@ -37,11 +39,18 @@ export function buildCompilerPolicyCoverageSummary({
   const emergentSystemCount = asNumber(summary.emergentSystemCount, 0);
   const totalSystemCount = asNumber(summary.totalSystemCount, 0);
   const coverageLoad = canonicalSurfaceCount + canonicalEntrypointCount + bridgeSystemCount + wrapperSystemCount;
-  const driftPressure = policyDriftCount + (propagationExpansionState === 'stale' ? 20 : 0);
+  const signalPressure =
+    (metadataCoveragePct > 0 && metadataCoveragePct < 80 ? 10 : 0) +
+    (integrationCoveragePct > 0 && integrationCoveragePct < 80 ? 10 : 0);
+  const driftPressure = policyDriftCount + (propagationExpansionState === 'stale' ? 20 : 0) + signalPressure;
   const coverageScore = clampScore(100 - driftPressure);
   const coverageState = driftPressure > 0 ? (driftPressure >= 75 ? 'stale' : 'watching') : 'fresh';
   const nextAction = normalizeText(summary.nextAction, null)
     || 'Attach the canonical propagation plan to watcher, status, metrics and report surfaces before adding new local policy branches.';
+  const signalSummary = [
+    metadataCoveragePct ? `meta=${metadataCoveragePct}%` : null,
+    integrationCoveragePct ? `integration=${integrationCoveragePct}%` : null
+  ].filter(Boolean).join(' | ') || 'signals=unknown';
 
   return {
     policyDriftCount,
@@ -60,7 +69,7 @@ export function buildCompilerPolicyCoverageSummary({
     recommendation: coverageState === 'fresh'
       ? 'Keep the canonical propagation contract attached to all status and reporting surfaces.'
       : 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
-    summaryText: `coverage=${coverageState} | score=${coverageScore} | load=${coverageLoad}/${totalSystemCount} | drift=${policyDriftCount} | expansion=${propagationExpansionState || 'unknown'}`,
+    summaryText: `coverage=${coverageState} | score=${coverageScore} | load=${coverageLoad}/${totalSystemCount} | drift=${policyDriftCount} | expansion=${propagationExpansionState || 'unknown'} | ${signalSummary}`,
     inventoryState: normalizeText(summary.inventoryState, null)
   };
 }

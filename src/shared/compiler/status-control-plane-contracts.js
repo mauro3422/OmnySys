@@ -27,6 +27,20 @@ export function resolvePolicyCoverageSummary(status = {}) {
   const systemInventory = status.systemInventory || {};
   const inventorySummary = systemInventory.summary || {};
   const compilerExplainability = status.compilerExplainability || {};
+  const integrationCoveragePct = Number(firstDefined(
+    systemInventory.integrationCoveragePct,
+    inventorySummary.integrationCoveragePct,
+    compilerExplainability.systemInventory?.integrationCoveragePct,
+    compilerExplainability.systemInventory?.summary?.integrationCoveragePct,
+    0
+  )) || 0;
+  const metadataCoveragePct = Number(firstDefined(
+    systemInventory.metadataCoveragePct,
+    inventorySummary.metadataCoveragePct,
+    compilerExplainability.systemInventory?.metadataCoveragePct,
+    compilerExplainability.systemInventory?.summary?.metadataCoveragePct,
+    0
+  )) || 0;
   const policyCoverage = firstDefined(
     systemInventory.policyCoverage,
     inventorySummary.policyCoverage,
@@ -45,6 +59,8 @@ export function resolvePolicyCoverageSummary(status = {}) {
     coverageRatio: Number(firstDefined(systemInventory.policyCoverageRatio, inventorySummary.policyCoverageRatio, policyCoverage.coverageRatio, 0)) || 0,
     coveragePercent: toCoveragePercent(firstDefined(systemInventory.policyCoverageRatio, inventorySummary.policyCoverageRatio, policyCoverage.coverageRatio, 0)),
     nextAction: firstDefined(systemInventory.policyCoverage?.nextAction, inventorySummary.nextAction, policyCoverage.nextAction, 'n/a'),
+    integrationCoveragePct,
+    metadataCoveragePct,
     policyCoverage
   };
 }

@@ -149,7 +149,7 @@ export function buildSystemTableSummary(status = {}) {
         area: 'Aduana',
         state: policyCoverage?.state || 'watching',
         detail: policyCoverage
-          ? `score=${policyCoverage.score} | drift=${policyCoverage.drift} | expansion=${policyCoverage.expansion} | coverage=${policyCoverage.coveragePercent} | integration=${normalizeCount(controlPlaneContracts.integrationCoveragePct || 0)}% | next=${policyCoverage.nextAction}`
+          ? `score=${policyCoverage.score} | drift=${policyCoverage.drift} | expansion=${policyCoverage.expansion} | coverage=${policyCoverage.coveragePercent} | integration=${normalizeCount(policyCoverage.integrationCoveragePct || controlPlaneContracts.integrationCoveragePct || 0)}% | meta=${normalizeCount(policyCoverage.metadataCoveragePct || 0)}% | next=${policyCoverage.nextAction}`
           : 'policy coverage gate not loaded',
         source: 'system inventory policy coverage'
       },

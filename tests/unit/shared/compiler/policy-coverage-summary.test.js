@@ -28,4 +28,27 @@ describe('policy-coverage-summary', () => {
     expect(summary.summaryText).toContain('coverage=stale');
     expect(summary.summaryText).toContain('drift=100');
   });
+
+  it('includes metadata and integration coverage in the summary signal text', () => {
+    const summary = buildCompilerPolicyCoverageSummary({
+      inventory: {
+        summary: {
+          totalSystemCount: 4,
+          canonicalSurfaceCount: 2,
+          canonicalEntrypointCount: 1,
+          bridgeSystemCount: 1,
+          wrapperSystemCount: 0,
+          emergentSystemCount: 0,
+          policyDriftCount: 0,
+          propagationExpansionState: 'fresh',
+          metadataCoveragePct: 72,
+          integrationCoveragePct: 68
+        }
+      }
+    });
+
+    expect(summary.coverageState).toBe('watching');
+    expect(summary.summaryText).toContain('meta=72%');
+    expect(summary.summaryText).toContain('integration=68%');
+  });
 });
