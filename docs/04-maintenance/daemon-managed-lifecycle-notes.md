@@ -162,6 +162,46 @@ This is the right place to keep future lifecycle automation.
   `Reconnecting...`, the likely fault is the client/app-server bridge, not the
   daemon.
 
+## Current Finding - Transport Provenance Drift
+
+The latest live checks show the daemon, schema, pipeline integrity, and tool
+registry are all healthy. The persistent bug is therefore not a daemon outage.
+It is a transport/provenance problem.
+
+What we now believe:
+
+- A successful shell command that talks to `http://127.0.0.1:9999/mcp` is a
+  fallback diagnostic path, not proof that the native MCP bridge is healthy.
+- A live daemon can still be perfectly healthy while the client-facing bridge
+  is degraded, stale, or reusing a broken session.
+- The user-facing symptom can therefore look like "MCP is broken" even when the
+  runtime is fine.
+
+What the telemetry currently says:
+
+- `get_server_status()` is healthy and the runtime code is fresh.
+- `get_schema()` reports a healthy, synchronized database schema.
+- `check_pipeline_integrity()` passes all checks.
+- `get_tool_inventory_report()` shows a coherent tool catalog.
+- The remaining drift is in policy/propagation surfaces and in transport
+  provenance clarity.
+
+What we still do not know with certainty:
+
+- whether the native MCP bridge is consistently being used or silently falling
+  back to HTTP shell calls
+- whether a stale session bucket is being reused after reconnect
+- whether the client-side transport selection is hiding the native bridge
+  failure behind a working daemon
+
+Action item:
+
+- Record transport origin explicitly in telemetry and maintenance notes:
+  `native_mcp`, `stdio_bridge`, `http_direct`, `shell_http_fallback`.
+- Treat shell-based MCP access as a diagnostic fallback only.
+- Keep the distinction between "daemon healthy" and "client bridge healthy"
+  visible in future notes and dashboards.
+
 ## MCP Resources For Discovery
 
 The daemon now exposes a small read-only resource surface in addition to the

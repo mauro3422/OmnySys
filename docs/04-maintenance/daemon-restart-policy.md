@@ -192,3 +192,13 @@ Restart implication:
 - `clearCacheOnly` should not be treated as sufficient validation for HTTP
   transport/router changes; those require a real worker reload before the live
   endpoint behavior is considered updated
+
+Additional guardrail:
+
+- A shell command that reaches the MCP HTTP endpoint is only a fallback
+  transport path. It does not prove that the native MCP bridge is healthy.
+- If the daemon is healthy but the client surface still reconnects or falls
+  back to shell-driven access, treat that as transport provenance drift, not as
+  a daemon crash.
+- Future telemetry should expose the call origin explicitly so we can separate:
+  native MCP, stdio bridge, direct HTTP, and shell HTTP fallback.

@@ -321,3 +321,44 @@ Interpretation:
   handshake compatibility
 - maintenance work in `docs/04-maintenance` should keep both dimensions in
   scope
+
+## Maintenance Note - 2026-04-04
+
+### Transport provenance drift around MCP access
+
+Current observation:
+
+- the daemon is healthy
+- schema, tool inventory, and pipeline integrity are healthy
+- the remaining confusion is not "daemon down"
+- the remaining confusion is whether the client is using the native MCP path
+  or falling back to shell-driven HTTP access
+
+What this looks like in practice:
+
+- a shell command can successfully talk to the MCP HTTP daemon
+- that proves reachability, but not native bridge health
+- the UI can therefore look like it is using MCP normally when it is actually
+  using a fallback transport path
+
+What we still need to capture better:
+
+- `native_mcp`
+- `stdio_bridge`
+- `http_direct`
+- `shell_http_fallback`
+
+Why this matters:
+
+- the reconnect bug is not just "session lost"
+- it also includes transport provenance drift
+- if we cannot tell which path was used, we cannot quickly diagnose whether the
+  bridge, the session cache, or the shell fallback is the true problem
+
+Current conclusion:
+
+- the bug persists
+- the daemon is not the part failing
+- the remaining work is to make provenance explicit in telemetry and notes so
+  future debugging can separate "daemon healthy" from "bridge healthy" from
+  "fallback HTTP over shell"
