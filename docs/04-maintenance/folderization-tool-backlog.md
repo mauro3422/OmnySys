@@ -14,6 +14,8 @@ Status: open
 - Naming normalization should recognize barrels, helpers, and short role stems as separate policy shapes instead of one flat rename bucket.
 - Cross-system duplication should be compared by family fingerprints, not only by file stem or raw folderization state.
 - Folderization health should feed a historical metrics snapshot so progress can be compared across runs instead of only being reported as a point-in-time state.
+- The new folderization automation planner is analysis-first by design; it still needs a safe execution bridge if we want one-click folderize/rename behavior from the planner itself.
+- The automation planner now exposes propagation and connected-system metadata, but the large dashboard/snapshot builder cluster still needs deeper consolidation before we can treat automation as low-risk by default.
 
 ## Follow-Up Work
 
@@ -25,6 +27,7 @@ Status: open
 - Add a DB-first family reuse signal so the tool can recommend an existing folder, helper barrel, or nearby family before creating a new surface.
 - Split naming guidance into explicit policies for helpers, barrels, and collision avoidance.
 - Add a family fingerprint comparison layer so the tool can detect duplication between systems, not just within a single family.
+- If we later allow direct execution from the automation planner, gate it behind the existing rename flow and revalidation path instead of adding a second mutator.
 
 ## Working Notes
 

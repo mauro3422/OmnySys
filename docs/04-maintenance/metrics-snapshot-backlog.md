@@ -19,6 +19,8 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Tool executions should be measured as causal repair events, so the system can track how often a watcher alert or runtime error was followed by a successful tool run that improved the snapshot.
 - The snapshot should expose a success threshold and a behavioral readiness score so the project can answer "is the MVP healthy enough?" instead of only "is it healthy today?".
 - A compact health dashboard should sit on top of the snapshot so one call can show current health, trend, tool success, top regressors, and MVP readiness.
+- Folderization automation should surface as a first-class snapshot signal so we can track when a folderization move is merely planned versus safe to execute.
+- The remaining duplicate builder cluster around dashboard/snapshot assembly should be tracked as a high-value debt item because it keeps control-plane summaries wide even after contract resolution has been centralized.
 
 ## Metrics To Persist
 
@@ -61,6 +63,7 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Persist compatibility-shim telemetry so the system can tell when a reconnect was saved by request normalization instead of assuming the client was healthy.
 - Add a direct metric for `extractDataFlow` parse failures so malformed test/factory snippets stop being invisible performance debt.
 - Add an MVP readiness dashboard that explains why the system is or is not above the success threshold.
+- Add a compact `folderizationAutomation` trend line so future snapshots can answer whether automation confidence is rising, blocked, or still review-only.
 
 ## Working Notes
 
