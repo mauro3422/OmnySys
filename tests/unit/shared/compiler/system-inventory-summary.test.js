@@ -108,7 +108,7 @@ function createExplainability() {
         }
       ]
     },
-    policyCoverage: {
+      policyCoverage: {
       coverageState: 'watching',
       coverageScore: 77,
       coverageRatio: 0.5,
@@ -125,6 +125,20 @@ function createExplainability() {
       recommendation: 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
       summaryText: 'coverage=watching | score=77 | load=8/16 | drift=3 | expansion=drifting',
       inventoryState: 'watching'
+    },
+    inventorySignals: {
+      total: 10,
+      byType: {
+        canonical_like: 6,
+        bridge_like: 2,
+        unknown: 2
+      },
+      byRole: {
+        canonical: 6,
+        bridge: 2,
+        wrapper: 2
+      },
+      recent: []
     }
   };
 }
@@ -172,6 +186,8 @@ describe('system inventory summary', () => {
     expect(report.summaryText).toContain('canonical=');
     expect(report.summaryText).toContain('emergent=');
     expect(report.summaryText).toContain('coverage=');
+    expect(report.integrationCoveragePct).toBe(80);
+    expect(report.summaryText).toContain('integration=80%');
     expect(report.nextAction).toMatch(/canonical|surface/i);
     expect(Array.isArray(report.topSystems)).toBe(true);
     expect(report.topPromotionCandidates[0].role).toBe('emergent');

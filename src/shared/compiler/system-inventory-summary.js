@@ -216,6 +216,7 @@ export function buildCompilerSystemInventoryReport(inventory = null) {
     missingCanonicalApiCount: summary.missingCanonicalApiCount || 0,
     missingCanonicalSurfaceCount: summary.missingCanonicalSurfaceCount || 0,
     policyDriftCount: summary.policyDriftCount || 0,
+    integrationCoveragePct: summary.integrationCoveragePct || 0,
     contractWrapperFindings: summary.contractWrapperFindings || 0,
     contractParallelSurfaceFindings: summary.contractParallelSurfaceFindings || 0,
     surfaceAuditTrustworthy: summary.surfaceAuditTrustworthy === true,

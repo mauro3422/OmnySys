@@ -79,7 +79,8 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         dataGatewayContract: snapshot.dataGatewayContract,
         metadataExtractionCoverage: snapshot.metadataExtractionCoverage,
         surfaceAudit: snapshot.surfaceAudit,
-        driftAssessment: snapshot.driftAssessment
+        driftAssessment: snapshot.driftAssessment,
+        inventorySignals: sharedState.inventorySignals || null
       }
     });
     const propagationAdoptionTargets = buildFolderizationPropagationAdoptionTargets({
@@ -115,6 +116,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       databaseHealth,
       driftAssessment: snapshot.driftAssessment,
       surfaceAudit: snapshot.surfaceAudit,
+      inventorySignals: sharedState.inventorySignals || null,
       folderization: {
         candidateReport: folderizationReport.candidateReport,
         familyState: folderizationReport.familyState,

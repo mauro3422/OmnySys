@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Bridged `sharedState.inventorySignals` into the compiler explainability and inventory summaries so `integrationCoveragePct` now flows into the inventory state and public report instead of staying stuck at zero.
 - Surfaced derived atom scores as top-level metadata in the single-file analysis path, persisted graph metrics after the fast path, and relaxed metadata-completeness guard targeting so compiler infrastructure helpers stop being treated as production surfaces.
 - Added a folderization automation planner that reuses propagation, normalization, policy coverage, canonical promotion, and connected-system metadata so the system can decide when a folderization move is safe to execute.
 - Centralized the control-plane contract resolution for status payloads and the compiler health dashboard so inventory, promotion, propagation, and policy coverage now come from shared helpers instead of repeated fallback chains.
