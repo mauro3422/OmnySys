@@ -54,6 +54,8 @@ describe('status summary payload', () => {
           namingDebt: 0,
           driftState: 'fresh',
           driftScore: 0,
+          metadataCoveragePct: 79,
+          integrationCoveragePct: 68,
           folderizationPropagation: {
             changeType: 'folderization',
             cacheKey: 'folderization:abc123',
@@ -241,6 +243,8 @@ describe('status summary payload', () => {
     expect(systemsRow.detail).toContain('canonical=16');
     expect(systemsRow.detail).toContain('emergent=2');
     expect(systemsRow.detail).toContain('bridge=1');
+    expect(systemsRow.detail).toContain('meta=0%');
+    expect(systemsRow.detail).toContain('integration=0%');
 
     const aduanaRow = payload.systemTable.rows.find((row) => row.area === 'Aduana');
     expect(aduanaRow).toMatchObject({

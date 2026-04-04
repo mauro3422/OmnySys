@@ -213,6 +213,8 @@ export function buildCompilerHealthDashboardFixture() {
         }
       },
       systemInventory: {
+        integrationCoveragePct: 68,
+        metadataCoveragePct: 79,
         policyCoverage: {
           coverageState: 'watching',
           coverageScore: 77,
@@ -253,6 +255,15 @@ export function buildCompilerHealthDashboardFixture() {
       metadataExtractionCoverage: {
         summary: {
           nextAction: 'Fill missing metadata fields'
+        }
+      },
+      inventorySignals: {
+        total: 5,
+        byType: {
+          canonical: 2,
+          bridge: 1,
+          wrapper: 1,
+          unknown: 1
         }
       }
     },

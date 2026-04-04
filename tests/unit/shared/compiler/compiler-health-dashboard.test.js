@@ -40,6 +40,8 @@ describe('compiler-health-dashboard', () => {
       coverageState: 'watching',
       coverageScore: 77
     });
+    expect(dashboard.health.metadataCoveragePct).toBe(79);
+    expect(dashboard.health.integrationCoveragePct).toBe(68);
     expect(dashboard.daily.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       candidateCount: 2
@@ -91,6 +93,8 @@ describe('compiler-health-dashboard', () => {
       coverageState: 'watching',
       coverageScore: 77
     });
+    expect(compact.health.metadataCoveragePct).toBe(79);
+    expect(compact.health.integrationCoveragePct).toBe(68);
     expect(compact.daily.canonicalPromotion).toMatchObject({
       promotionState: 'watching',
       candidateCount: 2

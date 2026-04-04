@@ -164,6 +164,8 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null,
       canonicalPromotion: current.canonicalPromotion ? { ...current.canonicalPromotion } : null,
       policyCoverage: policyCoverage ? { ...policyCoverage } : null,
+      metadataCoveragePct: asNumber(current.metadataCoveragePct, 0),
+      integrationCoveragePct: asNumber(controlPlaneContracts.integrationCoveragePct, 0),
       activeAtomsDriftState: current.activeAtomsDriftState || null,
       activeAtomsDriftReason: current.activeAtomsDriftReason || null,
       clientSyncState: current.clientSyncState || null,
@@ -208,6 +210,7 @@ export function buildCompilerHealthDashboard(snapshot = null, compilerExplainabi
       recentErrorCount: asNumber(current.recentErrorCount, 0),
       phase2PendingFiles: asNumber(current.phase2PendingFiles, 0),
       metadataCoveragePct: asNumber(current.metadataCoveragePct, 0),
+      integrationCoveragePct: asNumber(controlPlaneContracts.integrationCoveragePct, 0),
       metadataFieldCoveragePct: asNumber(current.metadataFieldCoveragePct, 0),
       dataGatewayTrustworthy: current.dataGatewayTrustworthy === true,
       pipelineTimingTelemetry
