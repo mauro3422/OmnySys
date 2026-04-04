@@ -1,9 +1,10 @@
 import { GraphQueryTool } from '../core/shared/base-tools/graph-query-tool.js';
-import { getFileAnalysis, getFileDependencies } from '../../query/apis/file-api.js';
+import { getFileDependencies } from '../../query/apis/file-api.js';
 import { getSystemMapPersistenceCoverage, shouldTrustSystemMapDependencies } from '../../../shared/compiler/index.js';
 import {
     buildIndexedValidationResult,
     collectBrokenImports,
+    loadIndexedFileAnalysis,
     normalizeComparablePath
 } from './validate-imports/filesystem-validation.js';
 
@@ -16,21 +17,13 @@ function hasDirectImportEvidence(fileData, targetPath) {
     });
 }
 
-async function loadFileAnalysis(projectPath, filePath) {
-    try {
-        return await getFileAnalysis(projectPath, filePath);
-    } catch (error) {
-        throw new Error(`Failed to analyze ${filePath}: ${error?.message || error}`);
-    }
-}
-
-async function filterCyclesByDirectImportEvidence(projectPath, cycles = []) {
+async function filterCyclesByDirectImportEvidence(projectPath, cycles = [], repo = null) {
     const fileMemo = new Map();
 
     async function getCachedFileAnalysis(filePath) {
         try {
             if (!fileMemo.has(filePath)) {
-                fileMemo.set(filePath, await loadFileAnalysis(projectPath, filePath));
+                fileMemo.set(filePath, await loadIndexedFileAnalysis(projectPath, filePath, repo));
             }
             return fileMemo.get(filePath);
         } catch (error) {
@@ -141,7 +134,7 @@ async function computeCircularDependencies(repo, projectPath, filePath, checkCir
 
         const graph = await buildCircularDependencyGraph(projectPath, filePath);
         const cycles = collectCyclesFromGraph(graph, filePath);
-        const verifiedCycles = await filterCyclesByDirectImportEvidence(projectPath, cycles);
+        const verifiedCycles = await filterCyclesByDirectImportEvidence(projectPath, cycles, repo);
         return Array.from(new Set(verifiedCycles.map((cycle) => cycle.join(' -> '))));
     } catch (error) {
         throw new Error(`Failed to compute circular dependencies for ${filePath}: ${error?.message || error}`);
@@ -161,13 +154,13 @@ export class ValidateImportsTool extends GraphQueryTool {
         }
 
         try {
-            const fileData = await loadFileAnalysis(this.projectPath, filePath);
+            const fileData = await loadIndexedFileAnalysis(this.projectPath, filePath, this.repo);
 
             if (!fileData) {
                 return this.formatError('NOT_FOUND', `File ${filePath} not found in the canonical DB index. Run 'omny up' or analysis to index it first.`);
             }
 
-            const broken = await collectBrokenImports(fileData, this.projectPath, filePath, checkBroken);
+            const broken = await collectBrokenImports(fileData, this.projectPath, filePath, checkBroken, this.repo);
             const unused = checkUnused
                 ? (fileData?.imports || []).filter((entry) => entry?.unused === true)
                 : [];

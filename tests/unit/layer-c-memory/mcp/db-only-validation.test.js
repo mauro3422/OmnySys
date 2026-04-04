@@ -22,7 +22,8 @@ vi.mock('#shared/compiler/index.js', () => ({
 import { ValidateImportsTool } from '#layer-c/mcp/tools/validate-imports.js';
 import { validateAllExports, traceExportChain } from '#layer-c/mcp/tools/validate-exports-chain.js';
 import {
-  collectDatabaseImportState
+  collectDatabaseImportState,
+  loadIndexedFileAnalysis
 } from '#layer-c/mcp/tools/validate-imports/filesystem-validation.js';
 
 describe('DB-only validation', () => {
@@ -95,6 +96,50 @@ describe('DB-only validation', () => {
     expect(chain.found).toBe(true);
     expect(chain.originFile).toBe('src/b.js');
     expect(mocks.getFileExports).toHaveBeenCalledWith('/proj', 'src/b.js');
+  });
+
+  it('loadIndexedFileAnalysis queries canonical DB paths with file extensions intact', async () => {
+    const fileRow = {
+      imports_json: '["./compiler-metrics-snapshot-helpers.js"]',
+      exports_json: '["buildCompilerMetricsSnapshot"]'
+    };
+    const atoms = [{ id: 1 }];
+    const repo = {
+      initialized: true,
+      db: {
+        open: true,
+        prepare: vi.fn((sql) => {
+          if (sql.includes('FROM files')) {
+            return {
+              get: vi.fn((path) => (path === 'src/shared/compiler/compiler-metrics-snapshot.js' ? fileRow : null))
+            };
+          }
+
+          if (sql.includes('FROM atoms')) {
+            return {
+              all: vi.fn((path) => (path === 'src/shared/compiler/compiler-metrics-snapshot.js' ? atoms : []))
+            };
+          }
+
+          throw new Error(`Unexpected SQL: ${sql}`);
+        })
+      }
+    };
+
+    const analysis = await loadIndexedFileAnalysis(
+      '/proj',
+      'src/shared/compiler/compiler-metrics-snapshot.js',
+      repo
+    );
+
+    expect(analysis).not.toBeNull();
+    expect(repo.db.prepare).toHaveBeenCalledWith('SELECT * FROM files WHERE path = ? AND is_removed = 0');
+    expect(repo.db.prepare).toHaveBeenCalledWith('SELECT * FROM atoms WHERE file_path = ? AND is_removed = 0');
+    expect(analysis.file).toBe('src/shared/compiler/compiler-metrics-snapshot.js');
+    expect(analysis.path).toBe('src/shared/compiler/compiler-metrics-snapshot.js');
+    expect(analysis.atomCount).toBe(1);
+    expect(analysis.imports).toEqual(['./compiler-metrics-snapshot-helpers.js']);
+    expect(analysis.exports).toEqual(['buildCompilerMetricsSnapshot']);
   });
 
   it('ValidateImportsTool surfaces circular dependency loader failures as structured errors', async () => {
