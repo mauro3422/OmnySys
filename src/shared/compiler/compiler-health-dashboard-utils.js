@@ -16,7 +16,7 @@ import {
   mapTrendSummary,
   summarizeCompilerHealthDashboard,
   summarizeCompilerHealthPanel
-} from './compiler-health-dashboard-summary.js';
+} from './summary.js';
 
 export { asNumber, mapArchiveSummary };
 export { takeSample };

@@ -6,7 +6,7 @@ import { normalizeCount } from './contract-helpers.js';
 import {
   summarizeCompilerHealthDashboard,
   summarizeCompilerHealthPanel
-} from './compiler-health-dashboard.js';
+} from './dashboard.js';
 import { takeSample } from './sample-helpers.js';
 
 function firstDefined(...values) {

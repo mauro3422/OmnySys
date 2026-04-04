@@ -1,126 +1,240 @@
-import { toNumber } from './core-utils.js';
+/**
+ * @fileoverview Helper mappers for compiler health dashboards.
+ *
+ * Keeps the main dashboard module focused on orchestration rather than
+ * repeated normalization and section assembly.
+ */
+
 import {
-  getAtomCode,
-  getAtomPurpose,
-  isAsyncAtom,
-  getSharedStateAccess,
-  hasNetworkCalls,
-  matchesAny
-} from './atom-utils.js';
+  asNumber,
+  buildHealthPanelNowSummary,
+  buildHealthPanelOneLine,
+  mapArchiveSummary,
+  mapHealthSummary,
+  mapHistorySummary,
+  mapMetricsSummary,
+  mapPipelineTimingTelemetry,
+  mapRecentErrorsSummary,
+  mapSessionsSummary,
+  mapToolTelemetry,
+  normalizeSnapshot,
+  summarizeCompilerHealthDashboard,
+  summarizeCompilerHealthPanel,
+  takeSample
+} from './compiler-health-dashboard-utils.js';
 
-const TEST_FILE_PATTERNS = /(^|\/)(tests?|__tests__|fixtures)\//i;
-const EXCLUDED_PURPOSES = new Set(['TEST_HELPER', 'ANALYSIS_SCRIPT']);
+function buildSignalRows(delta = {}) {
+  const weights = {
+    healthScore: 1,
+    issueCount: -1,
+    structuralGroups: -3,
+    conceptualGroups: -3,
+    pipelineOrphans: -5,
+    namingTargets: -0.15,
+    namingDebt: -0.15,
+    flatFamilies: -0.5,
+    liveCoverageRatio: 100,
+    recentErrorCount: -5,
+    recentWarningCount: -1,
+    watcherAlertCount: -2,
+    phase2PendingFiles: -1,
+    alreadyFolderizedFamilies: 0.5
+  };
 
-export const DERIVED_SCORE_SIGNALS = [
-  { name: 'fragility', camelKey: 'fragilityScore', snakeKey: 'fragility_score' },
-  { name: 'coupling', camelKey: 'couplingScore', snakeKey: 'coupling_score' },
-  { name: 'cohesion', camelKey: 'cohesionScore', snakeKey: 'cohesion_score' },
-  { name: 'importance', camelKey: 'importanceScore', snakeKey: 'importance_score' },
-  { name: 'centrality', camelKey: 'centralityScore', snakeKey: 'centrality_score' }
-];
+  return Object.entries(weights)
+    .map(([metric, weight]) => {
+      const deltaValue = asNumber(delta?.[metric], 0);
+      const impact = Number((deltaValue * weight).toFixed(2));
 
-export const PIPELINE_FIELD_COVERAGE_SIGNALS = [
-  { field: 'fragility_score', description: 'Fragility scores never populated', minWarningCoverage: 5 },
-  { field: 'coupling_score', description: 'Coupling scores never populated', minWarningCoverage: 5 },
-  { field: 'cohesion_score', description: 'Cohesion scores never populated', minWarningCoverage: 5 },
-  { field: 'centrality_score', description: 'persistGraphMetrics() not connected', minWarningCoverage: 5 },
-  { field: 'age_days', description: 'Git integration missing for age_days', minWarningCoverage: 5 },
-  { field: 'change_frequency', description: 'Git integration missing for change_frequency', minWarningCoverage: 5 },
-  { field: 'has_network_calls', description: 'Network call detector coverage appears low', minWarningCoverage: 1 }
-];
-
-const NETWORK_PATTERNS = [
-  /fetch\s*\(/,
-  /axios\./,
-  /http\.(get|post|put|delete)/,
-  /\.request\s*\(/,
-  /new\s+XMLHttpRequest/,
-  /WebSocket\s*\(/,
-  /prisma\./,
-  /mongoose\./,
-  /sequelize\./
-];
-
-const SHARED_STATE_PATTERNS = [
-  /process\.env/,
-  /localStorage/,
-  /sessionStorage/,
-  /globalThis\./,
-  /\bglobal\./,
-  /\bwindow\./,
-  /\bdocument\./
-];
-
-export function isProductionCandidate(atom = {}, filePath = '') {
-  if (!atom || TEST_FILE_PATTERNS.test(filePath)) return false;
-  const atomType = atom.atomType || atom.atom_type || '';
-  if (!atomType || atomType === 'testCallback') return false;
-  return !EXCLUDED_PURPOSES.has(getAtomPurpose(atom));
+      return {
+        metric,
+        delta: Number(deltaValue.toFixed(2)),
+        impact,
+        direction: impact > 0 ? 'improvement' : impact < 0 ? 'regression' : 'flat',
+        magnitude: Math.abs(impact)
+      };
+    })
+    .filter((row) => row.impact !== 0)
+    .sort((left, right) => right.magnitude - left.magnitude);
 }
 
-export function getSignalValue(atom, signal) {
-  return toNumber(atom?.[signal?.camelKey] ?? atom?.[signal?.snakeKey]);
+function buildRecommendations(snapshot = {}, compilerExplainability = {}) {
+  const recommendations = [];
+  const push = (value, source) => {
+    if (!value || recommendations.some((item) => item.value === value)) {
+      return;
+    }
+
+    recommendations.push({ source, value });
+  };
+
+  push(compilerExplainability?.databaseHealth?.summary?.nextAction, 'databaseHealth');
+  push(compilerExplainability?.compilerContractLayer?.summary?.nextAction, 'compilerContractLayer');
+  push(compilerExplainability?.metadataExtractionCoverage?.summary?.nextAction, 'metadataExtractionCoverage');
+  push(compilerExplainability?.dataGatewayContract?.summary?.nextAction, 'dataGatewayContract');
+  push(
+    compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.recommendation
+      || compilerExplainability?.driftAssessment?.primaryIssue?.recommendation,
+    'propagationExpansion'
+  );
+  push(
+    compilerExplainability?.systemInventory?.summary?.summaryText
+      || compilerExplainability?.systemInventory?.summary?.nextAction
+      || compilerExplainability?.systemInventory?.summaryText
+      || compilerExplainability?.systemInventory?.nextAction,
+    'systemInventory'
+  );
+  push(
+    compilerExplainability?.canonicalPromotion?.summary?.summaryText
+      || compilerExplainability?.canonicalPromotion?.summary?.nextAction
+      || compilerExplainability?.canonicalPromotion?.summaryText
+      || compilerExplainability?.canonicalPromotion?.nextAction,
+    'canonicalPromotion'
+  );
+  push(snapshot?.current?.startupTelemetry?.recommendation, 'startupTelemetry');
+  push(compilerExplainability?.folderization?.creationGuidance?.guidance, 'folderization');
+  push(snapshot?.current?.clientSyncRecommendation, 'clientSync');
+  push(snapshot?.current?.pipelineTimingTelemetry?.summary, 'pipelineTiming');
+  push(snapshot?.trend?.summary, 'trend');
+  push(snapshot?.current?.readinessReason, 'readiness');
+
+  return recommendations;
 }
 
-export function summarizeFieldCoverageRow(row = {}, signalName, options = {}) {
-  const signal = DERIVED_SCORE_SIGNALS.find((candidate) => candidate.name === signalName);
-  if (!signal) {
-    return null;
-  }
+function buildHealthPanelHeadline(now = {}, compact = {}) {
+  return `${now.globalHealthGrade || now.healthGrade || 'F'} ${Math.round(now.globalHealthScore || now.healthScore || 0)}/${Math.round(now.successThreshold || 0)} ${now.mvpReady ? 'ready' : now.behaviorState || 'unknown'}`;
+}
 
-  const {
-    minWarningCoverage = 5,
-    description = `${signalName} coverage is missing`,
-    descriptionSuffix = ''
-  } = options;
-
-  const total = toNumber(row.total);
-  const nonZeroCount = toNumber(row[`${signal.name}_nonzero`]);
-  const classification = classifyFieldCoverage({
-    total,
-    nonZeroCount,
-    minWarningCoverage,
-    description,
-    descriptionSuffix
-  });
+function buildHealthPanelSelections(compact = {}) {
+  const topRegressors = takeSample(compact.regressors || [], 3);
+  const topImprovements = takeSample(compact.improvements || [], 3);
+  const topRecommendations = takeSample(compact.recommendations || [], 3);
 
   return {
-    signal: signal.name,
-    total,
-    nonZeroCount,
-    coveragePct: total > 0 ? Math.round((nonZeroCount / total) * 100) : 0,
-    classification
+    topRegressors,
+    topImprovements,
+    topRecommendations,
+    regressors: topRegressors,
+    improvements: topImprovements,
+    recommendations: topRecommendations,
+    nextAction: topRecommendations[0]?.value || null
   };
 }
 
-export function classifyFieldCoverage({ total = 0, nonZeroCount = 0, minWarningCoverage = 5, description = '', descriptionSuffix = '' }) {
-  const safeTotal = toNumber(total);
-  if (safeTotal === 0) return null;
+function buildHealthPanelSnapshots(compact = {}) {
+  const lifetime = compact.lifetime || compact.archive || null;
 
-  const coveragePct = Math.round((toNumber(nonZeroCount) / safeTotal) * 100);
-  if (coveragePct === 0) return { level: 'issue', coveragePct, issue: `${description}${descriptionSuffix}` };
-  if (coveragePct < minWarningCoverage) {
-    return { level: 'warning', coveragePct, issue: `Very low coverage — ${description}${descriptionSuffix}` };
+  return {
+    daily: compact.daily || null,
+    lifetime,
+    archive: compact.archive || null,
+    oneLine: buildHealthPanelOneLine(compact.health || {}, compact, compact.performance || {}, compact.toolTelemetry || {}, lifetime)
+  };
+}
+
+function buildHealthPanelContext(compact = {}) {
+  const now = compact.health || {};
+  const selections = buildHealthPanelSelections(compact);
+  const snapshots = buildHealthPanelSnapshots(compact);
+
+  return {
+    now,
+    selections,
+    snapshots,
+    nextAction:
+      selections.nextAction
+      || now.clientSyncRecommendation
+      || now.readinessReason
+      || compact.summary
+      || null
+  };
+}
+
+export function buildCompilerHealthPanel(dashboard = null) {
+  const compact = summarizeCompilerHealthDashboard(dashboard);
+  if (!compact) {
+    return null;
   }
-  return { level: 'ok', coveragePct, issue: null };
+
+  const context = buildHealthPanelContext(compact);
+  const now = context.now;
+  const tools = compact.toolTelemetry || {};
+  const perf = compact.performance || {};
+
+  return {
+    projectPath: compact.projectPath,
+    scopePath: compact.scopePath,
+    focusPath: compact.focusPath,
+    snapshotKind: compact.snapshotKind,
+    captureSource: compact.captureSource,
+    capturedAt: compact.capturedAt,
+    daily: context.snapshots.daily,
+    lifetime: context.snapshots.lifetime,
+    status: compact.status,
+    headline: buildHealthPanelHeadline(now, compact),
+    now: buildHealthPanelNowSummary(now),
+    trend: compact.trend || null,
+    performance: perf || null,
+    metrics: compact.metrics || null,
+    sessions: compact.sessions || null,
+    toolTelemetry: tools || null,
+    systemInventory: compact.systemInventory || null,
+    canonicalPromotion: compact.canonicalPromotion || null,
+    metricDictionary: compact.metricDictionary || null,
+    archive: context.snapshots.archive || null,
+    pipelineTimingTelemetry: compact.pipelineTimingTelemetry || null,
+    regressors: context.selections.regressors,
+    improvements: context.selections.improvements,
+    recommendations: context.selections.recommendations,
+    topRegressors: context.selections.topRegressors,
+    topImprovements: context.selections.topImprovements,
+    topRecommendations: context.selections.topRecommendations,
+    nextAction: context.nextAction,
+    watcherAlerts: takeSample(compact.watcherAlerts || [], 3),
+    recentErrors: compact.recentErrors || null,
+    history: compact.history || null,
+    summary: compact.summary || null,
+    oneLine: context.snapshots.oneLine
+  };
 }
 
-export function getNetworkCandidates(candidates) {
-  return candidates.filter((atom) => {
-    const purpose = getAtomPurpose(atom);
-    return isAsyncAtom(atom)
-      || purpose === 'NETWORK_HANDLER'
-      || purpose === 'SERVER_HANDLER'
-      || matchesAny(NETWORK_PATTERNS, getAtomCode(atom));
-  });
-}
+export {
+  asNumber,
+  buildHealthPanelNowSummary,
+  buildHealthPanelOneLine,
+  buildRecommendations,
+  buildSignalRows,
+  mapArchiveSummary,
+  mapHealthSummary,
+  mapHistorySummary,
+  mapMetricsSummary,
+  mapPipelineTimingTelemetry,
+  mapRecentErrorsSummary,
+  mapSessionsSummary,
+  mapToolTelemetry,
+  normalizeSnapshot,
+  summarizeCompilerHealthDashboard,
+  summarizeCompilerHealthPanel,
+  takeSample
+};
 
-export function getSharedStateCandidates(candidates) {
-  return candidates.filter((atom) =>
-    getSharedStateAccess(atom).length > 0 || matchesAny(SHARED_STATE_PATTERNS, getAtomCode(atom))
-  );
-}
-
-export function getNetworkFlaggedCandidates(candidates) {
-  return candidates.filter((atom) => hasNetworkCalls(atom));
-}
+export default {
+  asNumber,
+  buildHealthPanelNowSummary,
+  buildHealthPanelOneLine,
+  buildRecommendations,
+  buildSignalRows,
+  mapArchiveSummary,
+  mapHealthSummary,
+  mapHistorySummary,
+  mapMetricsSummary,
+  mapPipelineTimingTelemetry,
+  mapRecentErrorsSummary,
+  mapSessionsSummary,
+  mapToolTelemetry,
+  normalizeSnapshot,
+  summarizeCompilerHealthDashboard,
+  buildCompilerHealthPanel,
+  summarizeCompilerHealthPanel,
+  takeSample
+};

@@ -17,7 +17,7 @@ import {
   summarizeCompilerHealthDashboard as summarizeCompilerHealthDashboardDetails,
   summarizeCompilerHealthPanel as summarizeCompilerHealthPanelDetails,
   takeSample
-} from './compiler-health-dashboard-helpers.js';
+} from './helpers.js';
 import { resolveDashboardControlPlaneContracts } from './status-summary-helpers.js';
 
 export function buildCompilerHealthDashboard(snapshot = null, compilerExplainability = null, options = {}) {

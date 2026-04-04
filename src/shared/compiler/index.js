@@ -185,7 +185,7 @@ export {
   summarizeCompilerHealthDashboard,
   buildCompilerHealthPanel,
   summarizeCompilerHealthPanel
-} from './compiler-health-dashboard.js';
+} from './dashboard.js';
 
 export {
   buildUpdateSurfaceSummary

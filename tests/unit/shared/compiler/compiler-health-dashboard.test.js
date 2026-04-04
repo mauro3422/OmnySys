@@ -5,7 +5,7 @@ import {
   buildCompilerHealthPanel,
   summarizeCompilerHealthDashboard,
   summarizeCompilerHealthPanel
-} from '../../../../src/shared/compiler/compiler-health-dashboard.js';
+} from '../../../../src/shared/compiler/dashboard.js';
 import { buildCompilerHealthDashboardFixture } from './compiler-health-dashboard-fixtures.js';
 
 describe('compiler-health-dashboard', () => {
