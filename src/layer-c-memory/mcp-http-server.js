@@ -94,6 +94,17 @@ async function getRuntimeResourceSnapshot() {
   const runtimeSessions = sessionManager?.getAllSessions?.(true) || [];
   const allSessions = sessionManager?.getAllSessions?.(false) || [];
   const dedupStats = sessionManager?.getDedupStats?.() || null;
+  const transportOriginCounts = runtimeSessions.reduce((acc, session) => {
+    const origin = String(
+      session?.transport_origin
+      || session?.session_metadata?.transport_origin
+      || session?.session_metadata?.transportOrigin
+      || session?.client_info?.transport_origin
+      || 'unknown'
+    ).trim() || 'unknown';
+    acc[origin] = (acc[origin] || 0) + 1;
+    return acc;
+  }, {});
 
   let background = null;
   try {
@@ -123,7 +134,8 @@ async function getRuntimeResourceSnapshot() {
     runtimeSessions: sessions.size,
     persistedActiveSessions: runtimeSessions.length,
     persistedTotalSessions: allSessions.length,
-    dedupStats
+    dedupStats,
+    transportOriginCounts
   };
 
   return {
@@ -217,19 +229,21 @@ core.sessions = sessions;
 let initError = null;
 let shutdownInProgress = false;
 
-const executeLiveMcpToolCall = (request) => executeMcpToolCall(request, {
+const executeLiveMcpToolCall = (request, sessionContext = {}) => executeMcpToolCall(request, {
   initError: () => initError,
   core,
   projectPath,
   getLiveToolHandler,
-  refreshToolRegistry: refreshLiveToolRegistry
+  refreshToolRegistry: refreshLiveToolRegistry,
+  transportContext: sessionContext.transportContext || null
 });
 
-const buildSessionServer = () => buildServerForSession({
+const buildSessionServer = (transportContext = null) => buildServerForSession({
   logger,
   getLiveToolDefinitions,
   executeMcpToolCall: executeLiveMcpToolCall,
-  getRuntimeResourceSnapshot
+  getRuntimeResourceSnapshot,
+  transportContext
 });
 
 const getSessionManager = async () => {

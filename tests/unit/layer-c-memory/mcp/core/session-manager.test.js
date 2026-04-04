@@ -188,7 +188,8 @@ describe('SessionManager', () => {
     expect(manager.statements.upsert.run).not.toHaveBeenCalled();
     expect(manager.activeSessions.get('codex')).toMatchObject({
       id: 'fresh-session',
-      client_id: 'codex'
+      client_id: 'codex',
+      transport_origin: 'stdio_bridge'
     });
   });
 

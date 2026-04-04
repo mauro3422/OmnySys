@@ -10,6 +10,10 @@ import {
   updateCachedSessionActivity,
   upsertActiveSessionCache
 } from './session-manager-helpers.js';
+import {
+  inferTransportOrigin,
+  normalizeTransportOrigin
+} from '../transport-provenance.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 
@@ -270,6 +274,30 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
   try {
     const clientId = extractClientId(clientInfo);
     const forceFreshSession = isFreshSessionRequest(clientInfo);
+    const transportOrigin = inferTransportOrigin({
+      clientInfo,
+      metadata,
+      requestContext: { defaultOrigin: 'native_mcp' }
+    });
+    const sessionMetadata = {
+      ...metadata,
+      transport_origin: normalizeTransportOrigin(
+        metadata.transport_origin || transportOrigin,
+        transportOrigin
+      ),
+      transport_origin_source: metadata.transport_origin_source
+        || clientInfo?.transport_origin_source
+        || (metadata.transport_origin || clientInfo?.transport_origin
+          ? 'explicit'
+          : 'inferred')
+    };
+    const normalizedClientInfo = clientInfo && typeof clientInfo === 'object'
+      ? {
+          ...clientInfo,
+          transport_origin: sessionMetadata.transport_origin,
+          transport_origin_source: sessionMetadata.transport_origin_source
+        }
+      : clientInfo;
     this.releasePendingSession(sessionId, clientInfo);
 
     if (!forceFreshSession) {
@@ -294,8 +322,9 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
         () => this.statements.upsert.run(
           sessionId,
           clientId,
-          JSON.stringify(clientInfo),
-          JSON.stringify(metadata),
+          sessionMetadata.transport_origin,
+          JSON.stringify(normalizedClientInfo),
+          JSON.stringify(sessionMetadata),
           createdAt,
           now,
           1
@@ -306,7 +335,7 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
 
     upsertActiveSessionCache(
       this.activeSessions,
-      createActiveSessionRecord(sessionId, clientId, clientInfo, metadata, createdAt, now)
+      createActiveSessionRecord(sessionId, clientId, normalizedClientInfo, sessionMetadata, createdAt, now)
     );
 
     if (forceFreshSession && clientId !== 'unknown') {

@@ -46,7 +46,10 @@ export function buildTelemetryProvenance({
   runtimeRestartMode = 'manual',
   pendingRuntimeRestartFiles = [],
   liveRowSync = null,
-  watcherLifecycle = null
+  watcherLifecycle = null,
+  transportOrigin = 'unknown',
+  transportOriginSource = null,
+  transportContext = null
 } = {}) {
   const pendingFiles = Array.isArray(pendingRuntimeRestartFiles) ? pendingRuntimeRestartFiles : [];
   const settling = Number(phase2PendingFiles || 0) > 0;
@@ -59,6 +62,9 @@ export function buildTelemetryProvenance({
 
   return {
     source,
+    transportOrigin,
+    transportOriginSource,
+    transportContext,
     freshness: {
       phase2Settling: settling,
       runtimeRestartMode,

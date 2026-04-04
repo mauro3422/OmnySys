@@ -75,6 +75,16 @@ export function collectSessionDbSnapshot(sessionDb) {
       clientId: row.client_id,
       count: asNumber(row.count)
     }));
+    const transportOriginCounts = db.prepare(`
+      SELECT COALESCE(transport_origin, 'unknown') AS transport_origin, COUNT(*) AS count
+      FROM mcp_sessions
+      GROUP BY COALESCE(transport_origin, 'unknown')
+      ORDER BY count DESC, transport_origin ASC
+    `).all().reduce((acc, row) => {
+      const origin = String(row.transport_origin || 'unknown').trim() || 'unknown';
+      acc[origin] = asNumber(row.count);
+      return acc;
+    }, {});
 
     return {
       available: true,
@@ -89,7 +99,8 @@ export function collectSessionDbSnapshot(sessionDb) {
       latestUpdatedAt: latestSessionRow?.updated_at || null,
       latestUpdatedAtAgeMs: getAgeMs(latestSessionRow?.updated_at),
       latestActiveUpdatedAt: latestActiveSessionRow?.updated_at || null,
-      latestActiveUpdatedAtAgeMs: getAgeMs(latestActiveSessionRow?.updated_at)
+      latestActiveUpdatedAtAgeMs: getAgeMs(latestActiveSessionRow?.updated_at),
+      transportOriginCounts
     };
   } catch {
     return null;

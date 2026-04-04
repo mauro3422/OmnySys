@@ -20,15 +20,20 @@ import {
   evaluateToolRunTelemetry,
   persistToolRunTelemetry
 } from '../../../../../shared/compiler/index.js';
+import {
+  buildTransportProvenance,
+  normalizeTransportOrigin
+} from '../../../transport-provenance.js';
 
 const logger = createLogger('OmnySys:mcp:tool-telemetry');
 
-export function buildToolExecutionContext(server) {
+export function buildToolExecutionContext(server, transportContext = null) {
   return {
     orchestrator: server.orchestrator,
     cache: server.cache,
     projectPath: server.projectPath,
     sessionDb: server.projectPath ? getRepository(server.projectPath)?.db || null : null,
+    transportContext,
     debugFlags: {
       bugMode: isBugModeEnabled(),
       toolTrace: isToolTraceEnabled(),
@@ -106,12 +111,26 @@ async function captureToolMetricsSnapshot(server, recentErrors, args, captureSou
   return summarizeCompilerMetricsSnapshot(snapshot);
 }
 
-export function buildToolCallProvenance(name, server, recentErrors) {
+export function buildToolCallProvenance(name, server, recentErrors, transportContext = null) {
+  const transportOrigin = normalizeTransportOrigin(transportContext?.origin, 'unknown');
+  const transportProvenance = buildTransportProvenance({
+    origin: transportOrigin,
+    source: transportContext?.source || 'inferred',
+    clientInfo: transportContext?.clientInfo || null,
+    metadata: transportContext?.metadata || null,
+    sessionId: transportContext?.sessionId || null,
+    clientId: transportContext?.clientId || null,
+    sessionKind: transportContext?.sessionKind || null
+  });
+
   return buildTelemetryProvenance({
     source: name,
     phase2PendingFiles: server.orchestrator?.phase2Pending || 0,
     runtimeRestartMode: server.runtimeRestartMode || 'manual',
     pendingRuntimeRestartFiles: Array.from(server._pendingHotReloadRestartFiles || []),
+    transportOrigin,
+    transportOriginSource: transportContext?.source || null,
+    transportContext: transportProvenance,
     watcherLifecycle: {
       total: recentErrors.watcherAlerts?.length || 0,
       byStatus: {
@@ -134,7 +153,7 @@ export function buildToolCallResult(rawResult, recentErrors, provenance) {
   };
 }
 
-export async function executeToolCall(handler, name, server, args = {}) {
+export async function executeToolCall(handler, name, server, args = {}, transportContext = null) {
   const startedAt = new Date().toISOString();
   const telemetryScope = resolveTelemetryScope(args);
   const beforeNotifications = await collectToolRecentErrors(server, { clearLoggerBuffer: true }).catch(() => ({
@@ -150,7 +169,7 @@ export async function executeToolCall(handler, name, server, args = {}) {
   let toolError = null;
 
   try {
-    rawResult = await handler(args, buildToolExecutionContext(server));
+    rawResult = await handler(args, buildToolExecutionContext(server, transportContext));
   } catch (error) {
     toolError = error;
     rawResult = {
@@ -174,6 +193,7 @@ export async function executeToolCall(handler, name, server, args = {}) {
     scopePath: telemetryScope.scopePath,
     focusPath: telemetryScope.focusPath,
     captureSource: 'mcp.tool',
+    transportOrigin: normalizeTransportOrigin(transportContext?.origin, 'unknown'),
     startedAt,
     endedAt,
     success: toolError === null,
@@ -205,13 +225,14 @@ export async function executeToolCall(handler, name, server, args = {}) {
   }
 
   const recentErrors = afterNotifications;
-  const provenance = buildToolCallProvenance(name, server, recentErrors);
+  const provenance = buildToolCallProvenance(name, server, recentErrors, transportContext);
   const resultWithTelemetry = buildToolCallResult(rawResult, recentErrors, provenance);
   return {
     ...resultWithTelemetry,
     _toolTelemetry: {
       persisted: telemetryPersistence.persisted,
       persistenceError: telemetryPersistence.error,
+      transportOrigin: telemetry.transportOrigin,
       repairStatus: telemetry.repairStatus,
       repairScore: telemetry.repairScore,
       successThresholdMet: telemetry.successThresholdMet,

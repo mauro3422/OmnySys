@@ -15,6 +15,10 @@ import {
 import { applyPagination } from './mcp/core/pagination.js';
 import { executeToolCall } from './mcp/core/initialization/steps/mcp-tool-call-helpers.js';
 import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl } from './mcp/http-session-routing-helpers.js';
+import {
+  buildTransportProvenance,
+  inferTransportOrigin
+} from './mcp/transport-provenance.js';
 
 const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
 const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DELAY_MS || 250);
@@ -151,7 +155,8 @@ export function buildServerForSession({
   logger,
   getLiveToolDefinitions,
   executeMcpToolCall,
-  getRuntimeResourceSnapshot
+  getRuntimeResourceSnapshot,
+  transportContext = null
 }) {
   const sessionServer = new Server(
     { name: 'omnysys', version: '3.0.0' },
@@ -288,7 +293,7 @@ export function buildServerForSession({
   });
 
   sessionServer.setRequestHandler(CallToolRequestSchema, async (request) => (
-    executeMcpToolCall(request)
+    executeMcpToolCall(request, { transportContext })
   ));
 
   sessionServer.onerror = (error) => {
@@ -303,7 +308,8 @@ export async function executeMcpToolCall(request, dependencies) {
     initError,
     core,
     getLiveToolHandler,
-    refreshToolRegistry
+    refreshToolRegistry,
+    transportContext = null
   } = dependencies;
 
   const currentInitError = initError();
@@ -327,7 +333,7 @@ export async function executeMcpToolCall(request, dependencies) {
   }
 
   core.refreshToolRegistry = refreshToolRegistry;
-  const resultWithTelemetry = await executeToolCall(handler, name, core, args || {});
+  const resultWithTelemetry = await executeToolCall(handler, name, core, args || {}, transportContext);
   const paginatedResult = applyPagination(resultWithTelemetry, args || {});
 
   return {
@@ -348,6 +354,35 @@ async function waitForPersistedSession(sessionManager, sessionId) {
   }
 
   return null;
+}
+
+function buildSessionTransportContext({
+  clientInfo = {},
+  metadata = {},
+  sessionId = null,
+  sessionKind = 'http'
+} = {}) {
+  const origin = inferTransportOrigin({
+    clientInfo,
+    metadata,
+    requestContext: {
+      defaultOrigin: 'native_mcp',
+      isHttpRequest: true,
+      transportMode: metadata.transport_origin === 'stdio_bridge' ? 'stdio' : 'http'
+    }
+  });
+
+  return buildTransportProvenance({
+    origin,
+    source: metadata.transport_origin_source
+      || clientInfo.transport_origin_source
+      || (clientInfo.bridge_recovery ? 'bridge-recovery' : 'http-session'),
+    clientInfo,
+    metadata,
+    sessionId,
+    clientId: clientInfo?.client_id || clientInfo?.original_client_id || clientInfo?.name || clientInfo?.original_name || 'unknown',
+    sessionKind
+  });
 }
 
 export async function handleMcpRequest(req, res, dependencies) {
@@ -375,13 +410,23 @@ export async function handleMcpRequest(req, res, dependencies) {
 
         let sessionServer = null;
         let resolvedSessionId = sessionId;
+        const transportContext = buildSessionTransportContext({
+          clientInfo: persistedSession.client_info || {},
+          metadata: {
+            ...(persistedSession.session_metadata || {}),
+            transport_origin: persistedSession.transport_origin || persistedSession.session_metadata?.transport_origin,
+            transport_origin_source: persistedSession.session_metadata?.transport_origin_source || 'db-restore'
+          },
+          sessionId,
+          sessionKind: 'http-recovered'
+        });
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => sessionId,
           enableJsonResponse: true,
           eventStore: sharedEventStore,
           onsessioninitialized: (recoveredId) => {
             resolvedSessionId = recoveredId;
-            sessions.set(recoveredId, { transport, server: sessionServer });
+            sessions.set(recoveredId, { transport, server: sessionServer, transportContext });
             logger.info(`MCP HTTP session recovered: ${recoveredId}`);
           }
         });
@@ -393,7 +438,7 @@ export async function handleMcpRequest(req, res, dependencies) {
           sessionManager.deleteSession(sid);
         };
 
-        sessionServer = buildSessionServer();
+        sessionServer = buildSessionServer(transportContext);
         await sessionServer.connect(transport);
       } else if (isInitRequest) {
         if (shouldSkipStaleInitRecovery(sessionId)) {
@@ -413,13 +458,23 @@ export async function handleMcpRequest(req, res, dependencies) {
 
         let sessionServer = null;
         let resolvedSessionId = null;
+        const clientInfo = req.body.params?.clientInfo || {};
+        const transportContext = buildSessionTransportContext({
+          clientInfo,
+          metadata: { transport_origin: clientInfo.transport_origin, transport_origin_source: clientInfo.transport_origin_source },
+          sessionId,
+          sessionKind: 'http-reinitialize'
+        });
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => sessionId,
           enableJsonResponse: true,
           eventStore: sharedEventStore,
           onsessioninitialized: (newSessionId) => {
-            resolvedSessionId = sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {});
-            sessions.set(resolvedSessionId, { transport, server: sessionServer });
+            resolvedSessionId = sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {
+              transport_origin: transportContext.transport_origin,
+              transport_origin_source: transportContext.transport_origin_source
+            });
+            sessions.set(resolvedSessionId, { transport, server: sessionServer, transportContext });
           }
         });
 
@@ -430,7 +485,7 @@ export async function handleMcpRequest(req, res, dependencies) {
           sessionManager.deleteSession(sid);
         };
 
-        sessionServer = buildSessionServer();
+        sessionServer = buildSessionServer(transportContext);
         try {
           await sessionServer.connect(transport);
         } catch (error) {
@@ -455,6 +510,15 @@ export async function handleMcpRequest(req, res, dependencies) {
       let resolvedSessionId = null;
 
       const clientInfo = req.body.params?.clientInfo;
+      const transportContext = buildSessionTransportContext({
+        clientInfo,
+        metadata: {
+          transport_origin: clientInfo?.transport_origin,
+          transport_origin_source: clientInfo?.transport_origin_source
+        },
+        sessionId: null,
+        sessionKind: 'http-initialize'
+      });
       const clientId = clientInfo?.client_id || clientInfo?.original_client_id || clientInfo?.name || clientInfo?.original_name || 'unknown';
       const reservation = sessionManager.reserveSession(clientInfo, randomUUID());
       const sessionIdToUse = reservation.sessionId;
@@ -471,8 +535,11 @@ export async function handleMcpRequest(req, res, dependencies) {
         enableJsonResponse: true,
         eventStore: sharedEventStore,
         onsessioninitialized: (newSessionId) => {
-          resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {});
-          sessions.set(resolvedSessionId, { transport, server: sessionServer });
+          resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {
+            transport_origin: transportContext.transport_origin,
+            transport_origin_source: transportContext.transport_origin_source
+          });
+          sessions.set(resolvedSessionId, { transport, server: sessionServer, transportContext });
           if (resolvedSessionId !== newSessionId) {
             sessions.delete(newSessionId);
             logger.debug(`[DEDUP] Session ${newSessionId} deduplicated to ${resolvedSessionId}`);
@@ -492,7 +559,7 @@ export async function handleMcpRequest(req, res, dependencies) {
         sessionManager.deleteSession(sid);
       };
 
-      sessionServer = buildSessionServer();
+      sessionServer = buildSessionServer(transportContext);
       try {
         await sessionServer.connect(transport);
       } catch (error) {

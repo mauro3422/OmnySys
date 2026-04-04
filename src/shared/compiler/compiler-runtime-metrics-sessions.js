@@ -90,7 +90,8 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     sessionSyncGraceMs,
     recentErrors
   });
-  return buildMcpSessionMetricsResult({
+  return {
+    ...buildMcpSessionMetricsResult({
     hasRuntimeSessionCount,
     runtimeSessionCount,
     totalPersistent,
@@ -107,5 +108,7 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     multiClientChurn,
     persistenceState,
     clientSync
-  });
+    }),
+    transportOriginCounts: sessionDbSnapshot?.transportOriginCounts || {}
+  };
 }

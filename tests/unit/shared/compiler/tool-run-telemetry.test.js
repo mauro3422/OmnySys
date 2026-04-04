@@ -79,6 +79,7 @@ describe('tool-run-telemetry', () => {
     const telemetry = evaluateToolRunTelemetry({
       projectPath: 'C:/Dev/OmnySystem',
       toolName: 'mcp_omnysystem_atomic_edit',
+      transportOrigin: 'stdio_bridge',
       startedAt: '2026-03-30T09:59:00.000Z',
       endedAt: '2026-03-30T10:00:00.000Z',
       success: true,
@@ -112,6 +113,7 @@ describe('tool-run-telemetry', () => {
     });
 
     expect(telemetry.repairStatus).toBe('repaired');
+    expect(telemetry.transportOrigin).toBe('stdio_bridge');
     expect(telemetry.deltas.alertClearance).toBe(4);
     expect(telemetry.deltas.errorClearance).toBe(2);
     expect(telemetry.repairScore).toBeGreaterThan(0);
@@ -157,6 +159,7 @@ describe('tool-run-telemetry', () => {
       projectPath: 'C:/Dev/OmnySystem',
       toolName: 'mcp_omnysystem_get_metrics_snapshot',
       captureSource: 'mcp.tool',
+      transportOrigin: 'native_mcp',
       startedAt: '2026-03-30T09:59:00.000Z',
       endedAt: '2026-03-30T10:00:00.000Z',
       durationMs: 60000,
@@ -201,6 +204,7 @@ describe('tool-run-telemetry', () => {
     });
 
     expect(capturedParams).toBeTruthy();
+    expect(capturedParams.transport_origin).toBe('native_mcp');
     expect(JSON.parse(capturedParams.before_snapshot_json).current.watcherAlertCount).toBe(5);
     expect(JSON.parse(capturedParams.after_notifications_json).watcherSummary.totalAlerts).toBe(1);
     expect(JSON.parse(capturedParams.delta_json).bigintValue).toBe(3);

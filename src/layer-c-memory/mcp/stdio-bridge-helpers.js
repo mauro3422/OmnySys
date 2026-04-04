@@ -1,4 +1,5 @@
 import { runAsyncBoundary } from '../../shared/compiler/index.js';
+import { normalizeTransportOrigin } from './transport-provenance.js';
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
 const BRIDGE_CLIENT_ID = String(process.env.OMNYSYS_CLIENT_ID || '').trim();
 const BRIDGE_CLIENT_NAME = String(process.env.OMNYSYS_CLIENT_NAME || '').trim();
@@ -63,6 +64,13 @@ function buildCanonicalClientInfo(base, canonicalName, canonicalId, canonicalVer
     if (BRIDGE_CLIENT_ID && originalClientId && originalClientId !== canonicalId) {
         normalized.original_client_id = originalClientId;
     }
+
+    if (!normalized.transport_origin) {
+        normalized.transport_origin = normalizeTransportOrigin('stdio_bridge', 'stdio_bridge');
+    } else {
+        normalized.transport_origin = normalizeTransportOrigin(normalized.transport_origin, 'stdio_bridge');
+    }
+    normalized.transport_origin_source = normalized.transport_origin_source || 'stdio_bridge';
 
     return normalized;
 }

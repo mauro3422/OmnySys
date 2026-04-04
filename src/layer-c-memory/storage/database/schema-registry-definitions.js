@@ -384,6 +384,7 @@ export const TABLE_DEFINITIONS = {
     columns: [
       { name: 'id', type: 'TEXT', pk: true, nullable: false, description: 'ID de la sesión (UUID)' },
       { name: 'client_id', type: 'TEXT', nullable: true, description: 'Identificador del cliente', addedIn: 'v3.0.1-dedup' },
+      { name: 'transport_origin', type: 'TEXT', nullable: true, description: 'Origen del transporte MCP' },
       { name: 'client_info_json', type: 'TEXT', nullable: true, description: 'Información del cliente' },
       { name: 'session_metadata_json', type: 'TEXT', nullable: true, description: 'Metadata de la sesión' },
       { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' },
@@ -406,6 +407,7 @@ export const TABLE_DEFINITIONS = {
       { name: 'scope_path', type: 'TEXT', nullable: true, description: 'Scope contextual' },
       { name: 'focus_path', type: 'TEXT', nullable: true, description: 'Focus contextual' },
       { name: 'capture_source', type: 'TEXT', nullable: true, description: 'Origen: mcp.tool' },
+      { name: 'transport_origin', type: 'TEXT', nullable: true, description: 'Origen del transporte MCP' },
       { name: 'started_at', type: 'TEXT', nullable: false, description: 'Timestamp de inicio' },
       { name: 'ended_at', type: 'TEXT', nullable: false, description: 'Timestamp de fin' },
       { name: 'duration_ms', type: 'REAL', default: 0, description: 'Duración total' },

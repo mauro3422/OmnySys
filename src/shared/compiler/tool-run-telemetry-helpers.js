@@ -546,6 +546,7 @@ function buildToolRunPersistenceArgs(run = {}) {
     scope_path: run.scopePath || null,
     focus_path: run.focusPath || null,
     capture_source: run.captureSource || 'mcp.tool',
+    transport_origin: run.transportOrigin || 'unknown',
     started_at: run.startedAt || new Date().toISOString(),
     ended_at: run.endedAt || new Date().toISOString(),
     duration_ms: asNumber(run.durationMs, 0),

@@ -1,3 +1,5 @@
+import { normalizeTransportOrigin } from '../transport-provenance.js';
+
 function normalizeClientIdentityValue(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -43,8 +45,8 @@ export function createSessionStatements(db) {
   return {
     upsert: db.prepare(`
       INSERT OR REPLACE INTO mcp_sessions (
-        id, client_id, client_info_json, session_metadata_json, created_at, updated_at, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        id, client_id, transport_origin, client_info_json, session_metadata_json, created_at, updated_at, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `),
     get: db.prepare('SELECT * FROM mcp_sessions WHERE id = ?'),
     getByClientId: db.prepare('SELECT * FROM mcp_sessions WHERE client_id = ? ORDER BY updated_at DESC LIMIT 1'),
@@ -65,15 +67,22 @@ export function hydrateSessionRow(row) {
 
   return {
     ...row,
+    transport_origin: normalizeTransportOrigin(row.transport_origin, 'unknown'),
     client_info: row.client_info_json ? JSON.parse(row.client_info_json) : {},
     session_metadata: row.session_metadata_json ? JSON.parse(row.session_metadata_json) : {}
   };
 }
 
 export function createActiveSessionRecord(sessionId, clientId, clientInfo, metadata, createdAt, updatedAt) {
+  const transportOrigin = normalizeTransportOrigin(
+    metadata?.transport_origin || clientInfo?.transport_origin,
+    'unknown'
+  );
+
   return {
     id: sessionId,
     client_id: clientId,
+    transport_origin: transportOrigin,
     client_info: clientInfo,
     session_metadata: metadata,
     created_at: createdAt,
