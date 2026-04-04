@@ -28,6 +28,36 @@ beforeEach(() => {
 });
 
 describe('createConditionalJsonMiddleware', () => {
+  it('still parses POST requests that carry a session id so stale initialize bodies can be inspected', () => {
+    const logger = createLogger();
+    const middleware = createConditionalJsonMiddleware(logger);
+    const req = {
+      headers: {
+        'mcp-session-id': 'stale-session',
+        'content-type': 'application/json'
+      },
+      method: 'POST',
+      path: '/mcp'
+    };
+    const res = createResponse();
+    const next = vi.fn();
+
+    mocks.expressJson.mockReturnValueOnce((request, response, callback) => {
+      request.body = {
+        jsonrpc: '2.0',
+        method: 'initialize'
+      };
+      callback();
+    });
+
+    middleware(req, res, next);
+
+    expect(mocks.expressJson).toHaveBeenCalledWith(expect.objectContaining({
+      verify: expect.any(Function)
+    }));
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
   it('returns a parse error when express.json reports malformed JSON', () => {
     const logger = createLogger();
     const middleware = createConditionalJsonMiddleware(logger);

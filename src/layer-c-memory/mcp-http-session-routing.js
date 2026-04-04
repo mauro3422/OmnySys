@@ -415,7 +415,10 @@ export async function handleMcpRequest(req, res, dependencies) {
           metadata: {
             ...(persistedSession.session_metadata || {}),
             transport_origin: persistedSession.transport_origin || persistedSession.session_metadata?.transport_origin,
-            transport_origin_source: persistedSession.session_metadata?.transport_origin_source || 'db-restore'
+            transport_origin_source: persistedSession.session_metadata?.transport_origin_source || 'db-restore',
+            transport_request_phase: 'http-recovered',
+            transport_session_header_present: true,
+            transport_session_state: 'persisted'
           },
           sessionId,
           sessionKind: 'http-recovered'
@@ -461,7 +464,13 @@ export async function handleMcpRequest(req, res, dependencies) {
         const clientInfo = req.body.params?.clientInfo || {};
         const transportContext = buildSessionTransportContext({
           clientInfo,
-          metadata: { transport_origin: clientInfo.transport_origin, transport_origin_source: clientInfo.transport_origin_source },
+          metadata: {
+            transport_origin: clientInfo.transport_origin,
+            transport_origin_source: clientInfo.transport_origin_source,
+            transport_request_phase: 'http-reinitialize',
+            transport_session_header_present: true,
+            transport_session_state: 'stale'
+          },
           sessionId,
           sessionKind: 'http-reinitialize'
         });
@@ -470,10 +479,13 @@ export async function handleMcpRequest(req, res, dependencies) {
           enableJsonResponse: true,
           eventStore: sharedEventStore,
           onsessioninitialized: (newSessionId) => {
-            resolvedSessionId = sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {
-              transport_origin: transportContext.transport_origin,
-              transport_origin_source: transportContext.transport_origin_source
-            });
+          resolvedSessionId = sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {
+            transport_origin: transportContext.transport_origin,
+            transport_origin_source: transportContext.transport_origin_source,
+            transport_request_phase: transportContext.transport_metadata?.transport_request_phase || 'http-reinitialize',
+            transport_session_header_present: transportContext.transport_metadata?.transport_session_header_present ?? true,
+            transport_session_state: transportContext.transport_metadata?.transport_session_state || 'stale'
+          });
             sessions.set(resolvedSessionId, { transport, server: sessionServer, transportContext });
           }
         });
@@ -514,7 +526,10 @@ export async function handleMcpRequest(req, res, dependencies) {
         clientInfo,
         metadata: {
           transport_origin: clientInfo?.transport_origin,
-          transport_origin_source: clientInfo?.transport_origin_source
+          transport_origin_source: clientInfo?.transport_origin_source,
+          transport_request_phase: 'http-initialize',
+          transport_session_header_present: false,
+          transport_session_state: 'fresh'
         },
         sessionId: null,
         sessionKind: 'http-initialize'
@@ -537,7 +552,10 @@ export async function handleMcpRequest(req, res, dependencies) {
         onsessioninitialized: (newSessionId) => {
           resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {
             transport_origin: transportContext.transport_origin,
-            transport_origin_source: transportContext.transport_origin_source
+            transport_origin_source: transportContext.transport_origin_source,
+            transport_request_phase: transportContext.transport_metadata?.transport_request_phase || 'http-initialize',
+            transport_session_header_present: transportContext.transport_metadata?.transport_session_header_present ?? false,
+            transport_session_state: transportContext.transport_metadata?.transport_session_state || 'fresh'
           });
           sessions.set(resolvedSessionId, { transport, server: sessionServer, transportContext });
           if (resolvedSessionId !== newSessionId) {

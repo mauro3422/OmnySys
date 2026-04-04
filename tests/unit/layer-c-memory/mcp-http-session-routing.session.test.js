@@ -82,7 +82,8 @@ vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 }));
 
 vi.mock('../../../src/layer-c-memory/mcp/core/pagination.js', () => ({
-  applyPagination: mocks.applyPagination
+  applyPagination: mocks.applyPagination,
+  PAGINATION_SCHEMA: {}
 }));
 
 vi.mock('../../../src/layer-c-memory/mcp/core/recent-notifications.js', () => ({
@@ -317,7 +318,13 @@ describe('handleMcpRequest', () => {
     });
 
     expect(sessionManager.reserveSession).toHaveBeenCalledWith({ name: 'Claude' }, expect.any(String));
-    expect(sessionManager.saveSession).toHaveBeenCalledWith('transport-session', { name: 'Claude' }, {});
+    expect(sessionManager.saveSession).toHaveBeenCalledWith('transport-session', { name: 'Claude' }, {
+      transport_origin: 'http_direct',
+      transport_origin_source: 'http-session',
+      transport_request_phase: 'http-initialize',
+      transport_session_header_present: false,
+      transport_session_state: 'fresh'
+    });
     expect(sessions.has('deduped-session')).toBe(true);
     expect(sessions.has('transport-session')).toBe(false);
 

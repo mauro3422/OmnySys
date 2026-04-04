@@ -3,7 +3,8 @@ import { summarizeMcpParseContext } from '#shared/compiler/index.js';
 
 export function createConditionalJsonMiddleware(logger, buildJsonRpcErrorResponse) {
   return (req, res, next) => {
-    if (req.headers['mcp-session-id']) {
+    const method = String(req?.method || '').toUpperCase();
+    if (method !== 'POST') {
       return next();
     }
 

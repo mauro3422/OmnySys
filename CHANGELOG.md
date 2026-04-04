@@ -4,6 +4,7 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Fixed the MCP HTTP bootstrap contract so `POST /mcp` still parses the JSON body even when a stale `mcp-session-id` is present, allowing initialize/reinitialize requests to recover from expired sessions instead of falling into a false `SESSION_EXPIRED` path.
 - Bridged `sharedState.inventorySignals` into the compiler explainability and inventory summaries so `integrationCoveragePct` now flows into the inventory state and public report instead of staying stuck at zero.
 - Surfaced derived atom scores as top-level metadata in the single-file analysis path, persisted graph metrics after the fast path, and relaxed metadata-completeness guard targeting so compiler infrastructure helpers stop being treated as production surfaces.
 - Added a folderization automation planner that reuses propagation, normalization, policy coverage, canonical promotion, and connected-system metadata so the system can decide when a folderization move is safe to execute.
