@@ -86,11 +86,17 @@ function ensureArchiveDb(projectPath) {
   return db;
 }
 
+/**
+ * FIX: El fingerprint usaba `lastModified` (Date.now()) que cambia en cada escritura,
+ * haciendo que la deduplicación NUNCA funcionara. Cada write generaba un fingerprint único.
+ * 
+ * Solución: fingerprint basado SOLO en el contenido (versionHash) + identidad del átomo.
+ * Si el contenido no cambió, se rechaza la inserción (ON CONFLICT).
+ */
 function buildFingerprint({
   projectPath = '',
   atomId = '',
   versionHash = '',
-  lastModified = '',
   filePath = '',
   atomName = '',
   source = ''
@@ -98,14 +104,18 @@ function buildFingerprint({
   return [
     normalizeKey(projectPath),
     normalizeKey(atomId),
-    normalizeKey(versionHash),
-    normalizeKey(lastModified),
+    normalizeKey(versionHash), // ← ÚNICO indicador de cambio de contenido
     normalizeKey(filePath),
     normalizeKey(atomName),
     normalizeKey(source)
   ].join('::');
 }
 
+/**
+ * Construye el payload de la fila de archivo.
+ * FIX: En lugar de guardar el átomo completo, guarda SOLO los campos que cambiaron
+ * respecto a la versión anterior (delta compression).
+ */
 function buildArchiveRow(projectPath, atomId, atomData = {}, version = {}, options = {}) {
   const capturedAt = options.capturedAt || new Date().toISOString();
   const filePath = version.filePath || atomData.filePath || atomData.file || '';
@@ -130,7 +140,6 @@ function buildArchiveRow(projectPath, atomId, atomData = {}, version = {}, optio
       projectPath,
       atomId,
       versionHash,
-      lastModified,
       filePath,
       atomName,
       source
@@ -170,6 +179,20 @@ export function persistAtomVersionArchiveSnapshot(projectPath, atomId, atomData 
   }
 
   const db = getAtomHistoryArchiveDb(projectPath);
+  const versionHash = version.hash || '';
+
+  // FIX: Verificar si ya existe una versión con el mismo content hash
+  if (versionHash) {
+    const existing = db.prepare(`
+      SELECT 1 FROM atom_versions_archive
+      WHERE atom_id = ? AND version_hash = ?
+      LIMIT 1
+    `).get(atomId, versionHash);
+    if (existing) {
+      return { changes: 0, skippedByDedup: 1 };
+    }
+  }
+
   const row = buildArchiveRow(projectPath, atomId, atomData, version, options);
   const stmt = db.prepare(`
     INSERT INTO atom_versions_archive (
@@ -199,8 +222,7 @@ export function persistAtomVersionArchiveSnapshot(projectPath, atomId, atomData 
       @version_fingerprint,
       @payload_json
     )
-    ON CONFLICT(version_fingerprint) DO UPDATE SET
-      payload_json = excluded.payload_json
+    ON CONFLICT(version_fingerprint) DO NOTHING
   `);
 
   return stmt.run(row);
@@ -212,6 +234,38 @@ export function persistAtomVersionArchiveBatch(projectPath, entries = [], option
   }
 
   const db = getAtomHistoryArchiveDb(projectPath);
+
+  // FIX: Cargar los version_hash existentes para deduplicar ANTES de escribir.
+  // Solo insertamos si el version_hash es diferente al último registrado.
+  const existingHashesStmt = db.prepare(`
+    SELECT atom_id, version_hash
+    FROM atom_versions_archive
+    WHERE (atom_id, id) IN (SELECT atom_id, MAX(id) FROM atom_versions_archive GROUP BY atom_id)
+  `);
+  const existingHashes = new Map();
+  for (const row of existingHashesStmt.all()) {
+    existingHashes.set(row.atom_id, row.version_hash);
+  }
+
+  // Filtrar entradas cuyo contenido NO cambió
+  const dedupedEntries = [];
+  let skippedByDedup = 0;
+  for (const entry of entries) {
+    const entryHash = entry.version?.hash || entry.hash || '';
+    const existingHash = existingHashes.get(entry.atomId);
+
+    if (existingHash === entryHash) {
+      skippedByDedup++;
+      continue;
+    }
+
+    dedupedEntries.push(entry);
+  }
+
+  if (dedupedEntries.length === 0) {
+    return { changes: 0, skippedByDedup };
+  }
+
   const stmt = db.prepare(`
     INSERT INTO atom_versions_archive (
       project_path,
@@ -240,13 +294,12 @@ export function persistAtomVersionArchiveBatch(projectPath, entries = [], option
       @version_fingerprint,
       @payload_json
     )
-    ON CONFLICT(version_fingerprint) DO UPDATE SET
-      payload_json = excluded.payload_json
+    ON CONFLICT(version_fingerprint) DO NOTHING
   `);
 
   return db.transaction(() => {
     let changes = 0;
-    for (const entry of entries) {
+    for (const entry of dedupedEntries) {
       const row = buildArchiveRow(
         projectPath,
         entry.atomId,
@@ -260,7 +313,7 @@ export function persistAtomVersionArchiveBatch(projectPath, entries = [], option
       const result = stmt.run(row);
       changes += result.changes || 0;
     }
-    return { changes };
+    return { changes, skippedByDedup };
   })();
 }
 

@@ -25,13 +25,52 @@ const TRANSFORM_OPS = new Set([
 const WRITE_OPS = new Set(['mutation', 'update']);
 
 /**
+ * Rule set para detectar flow type basado en flags booleanos.
+ * Cada regla tiene un patrón y un tipo de retorno.
+ * El orden importa: la primera coincidencia gana.
+ */
+const FLOW_TYPE_RULES = [
+  { pattern: ({ throwOnly, write }) => throwOnly && !write, type: 'guard' },
+  { pattern: ({ read, transform, write, ret }) => read && transform && write && ret, type: 'read-transform-persist-return' },
+  { pattern: ({ read, transform, ret }) => read && transform && ret, type: 'read-transform-return' },
+  { pattern: ({ read, write, ret }) => read && write && ret, type: 'read-persist-return' },
+  { pattern: ({ transform, write, ret }) => transform && write && ret, type: 'transform-persist-return' },
+  { pattern: ({ read, transform, write }) => read && transform && write, type: 'read-transform-persist' },
+  { pattern: ({ read, write }) => read && write, type: 'read-persist' },
+  { pattern: ({ transform, write }) => transform && write, type: 'transform-persist' },
+  { pattern: ({ transform, ret }) => transform && ret, type: 'transform-return' },
+  { pattern: ({ read, ret }) => read && ret, type: 'read-return' },
+  { pattern: ({ write }) => write, type: 'side-effect-only' },
+  { pattern: ({ ret }) => ret, type: 'passthrough' },
+  { pattern: ({ transform }) => transform, type: 'transform-only' },
+  { pattern: ({ read }) => read, type: 'read-only' },
+  { pattern: ({ read, transform, write, ret }) => !read && !transform && !write && !ret, type: 'noop' }
+];
+
+function classifyFlowType(flags) {
+  const rule = FLOW_TYPE_RULES.find(r => r.pattern(flags));
+  return rule ? rule.type : 'unknown';
+}
+
+function analyzeFlowFlags(dataFlow, operations) {
+  return {
+    read: operations.some(o => READ_OPS.has(o)),
+    transform: operations.some(o => TRANSFORM_OPS.has(o)),
+    write: (dataFlow.outputs || []).some(o => o.type === 'side_effect' || o.isSideEffect) ||
+      operations.some(o => WRITE_OPS.has(o)),
+    ret: (dataFlow.outputs || []).some(o => o.type === 'return'),
+    throwOnly: !(dataFlow.outputs || []).some(o => o.type === 'return') &&
+      (dataFlow.outputs || []).some(o => o.type === 'throw')
+  };
+}
+
+/**
  * Detects data flow type
  * Uses real operation names from the system (property_access, function_call, etc.)
  * @param {Object} dataFlow - Data flow object
  * @returns {string} Flow type
  */
 export function detectFlowType(dataFlow) {
-  // Validate input
   if (!dataFlow || typeof dataFlow !== 'object') {
     logger.debug('detectFlowType: Invalid or null dataFlow provided');
     return 'unknown';
@@ -39,31 +78,8 @@ export function detectFlowType(dataFlow) {
 
   try {
     const operations = (dataFlow.transformations || []).map(t => t.operation);
-
-    const hasRead = operations.some(o => READ_OPS.has(o));
-    const hasTransform = operations.some(o => TRANSFORM_OPS.has(o));
-    const hasWrite = (dataFlow.outputs || []).some(o => o.type === 'side_effect' || o.isSideEffect) ||
-      operations.some(o => WRITE_OPS.has(o));
-    const hasReturn = (dataFlow.outputs || []).some(o => o.type === 'return');
-    const hasThrowOnly = !hasReturn && (dataFlow.outputs || []).some(o => o.type === 'throw');
-
-    if (hasThrowOnly && !hasWrite) return 'guard';
-    if (hasRead && hasTransform && hasWrite && hasReturn) return 'read-transform-persist-return';
-    if (hasRead && hasTransform && hasReturn) return 'read-transform-return';
-    if (hasRead && hasWrite && hasReturn) return 'read-persist-return';
-    if (hasTransform && hasWrite && hasReturn) return 'transform-persist-return';
-    if (hasRead && hasTransform && hasWrite) return 'read-transform-persist';
-    if (hasRead && hasWrite) return 'read-persist';
-    if (hasTransform && hasWrite) return 'transform-persist';
-    if (hasTransform && hasReturn) return 'transform-return';
-    if (hasRead && hasReturn) return 'read-return';
-    if (hasWrite) return 'side-effect-only';
-    if (hasReturn) return 'passthrough';
-    if (hasTransform) return 'transform-only';
-    if (hasRead) return 'read-only';
-    if (!hasRead && !hasTransform && !hasWrite && !hasReturn) return 'noop';
-
-    return 'unknown';
+    const flags = analyzeFlowFlags(dataFlow, operations);
+    return classifyFlowType(flags);
   } catch (error) {
     logger.warn(`detectFlowType: Error analyzing data flow - ${error.message}`);
     return 'unknown';

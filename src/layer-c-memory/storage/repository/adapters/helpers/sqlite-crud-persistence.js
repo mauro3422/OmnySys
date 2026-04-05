@@ -27,10 +27,45 @@ export function softDeleteRelatedCallRelations(adapter, atomIds = [], now = new 
   return result?.changes || 0;
 }
 
+// Phase 2 enriched fields that must be preserved when Phase 1 overwrites
+const PHASE2_FIELDS = [
+  'dna_json', 'data_flow_json', 'error_flow_json', 'performance_json',
+  'temporal_json', 'shared_state_json', 'event_emitters_json',
+  'event_listeners_json', 'derived_json'
+];
+
+/**
+ * Preserva campos Phase 2 existentes cuando el nuevo átomo no los tiene.
+ * Evita que Phase 1 overwrittee el enriquecimiento de Phase 2 con nulls.
+ */
+function mergePhase2Fields(adapter, atom) {
+  const existingRow = adapter.statements.getById.get(atom.id);
+  if (!existingRow) return atom;
+
+  for (const field of PHASE2_FIELDS) {
+    const camelField = field.replace(/_([a-z])/g, g => g[1].toUpperCase());
+    const newValue = atom[camelField] || atom[field.replace('_json', '')];
+    const existingValue = existingRow[field];
+
+    // Solo preserva si el existente tiene datos y el nuevo NO
+    if (existingValue && existingValue !== 'null' && existingValue !== null &&
+        (!newValue || newValue === 'null' || newValue === null)) {
+      atom[camelField] = existingValue.startsWith('{') || existingValue.startsWith('[')
+        ? JSON.parse(existingValue)
+        : existingValue;
+    }
+  }
+
+  return atom;
+}
+
 export function saveAtomRecord(adapter, atom) {
   atom.filePath = adapter._normalize(atom.file || atom.filePath);
   atom.file = atom.filePath;
   atom.id = `${atom.filePath}::${atom.name}`;
+
+  // PRESERVAR Phase 2: fusiona campos enriquecidos existentes si el nuevo átomo no los tiene
+  mergePhase2Fields(adapter, atom);
 
   const normalizedId = atom.id;
   const now = new Date().toISOString();
