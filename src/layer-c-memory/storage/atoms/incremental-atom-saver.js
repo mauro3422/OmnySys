@@ -174,11 +174,31 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
   }
 }
 
+/**
+ * Carga los átomos COMPLETOS existentes de un archivo desde la tabla `atoms`.
+ * Esto es necesario para archivar la versión ANTERIOR antes de reemplazarla.
+ */
+function loadExistingAtomsForFile(repo, filePath) {
+  const rows = repo.db.prepare(`
+    SELECT * FROM atoms WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
+  `).all(filePath);
+
+  const byId = new Map();
+  for (const row of rows) {
+    const atomId = row.id || `${row.file_path}::${row.name}`;
+    byId.set(atomId, row);
+  }
+
+  return byId;
+}
+
 async function saveAtomsIncrementalInternal(repo, rootPath, normalizedPath, atoms, options, startTime, results) {
   const existingVersions = loadExistingVersionRowsForFile(repo.db, normalizedPath);
+  const existingAtoms = loadExistingAtomsForFile(repo, normalizedPath);
 
   const atomsToSave = [];
   const versionsToSave = [];
+  const atomsWithChanges = [];
 
   for (const atom of atoms) {
     if (!atom.name) continue;
@@ -198,10 +218,35 @@ async function saveAtomsIncrementalInternal(repo, rootPath, normalizedPath, atom
       continue;
     }
 
+    // ARCHIVAR versión ANTERIOR antes de reemplazar (preservar linaje)
+    if (!changeDetection.isNew && existingAtoms.has(atomId)) {
+      const existingAtom = existingAtoms.get(atomId);
+      const { rowToAtom } = await import('../repository/adapters/helpers/converters.js');
+      const oldAtom = rowToAtom(existingAtom);
+
+      try {
+        persistAtomVersionArchiveBatch(rootPath, [{
+          atomId,
+          atomData: oldAtom,
+          version: {
+            hash: existingRow?.hash || 'unknown',
+            fieldHashes: existingRow?.field_hashes_json ? JSON.parse(existingRow.field_hashes_json) : {},
+            lastModified: existingRow?.last_modified || Date.now(),
+            filePath: normalizedPath,
+            atomName: atom.name
+          },
+          source: 'file-watcher-pre-update'
+        }], { source: 'file-watcher-pre-update' });
+      } catch (error) {
+        logger.warn(`Failed to archive pre-update atom ${atomId}: ${error.message}`);
+      }
+    }
+
     // Metadata update for record keeping
     const finalAtom = buildIncrementalAtomMetadata(atom, rootPath, options);
 
     atomsToSave.push(finalAtom);
+    atomsWithChanges.push(finalAtom);
 
     if (changeDetection.isNew) results.created++;
     else {
@@ -229,7 +274,8 @@ async function saveAtomsIncrementalInternal(repo, rootPath, normalizedPath, atom
     success: true,
     ...results,
     duration: Date.now() - startTime,
-    atomsProcessed: atoms.length
+    atomsProcessed: atoms.length,
+    archived: atomsWithChanges.length - results.created
   };
 }
 
