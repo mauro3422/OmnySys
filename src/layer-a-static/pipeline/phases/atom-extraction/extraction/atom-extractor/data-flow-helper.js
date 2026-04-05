@@ -8,13 +8,23 @@ import { logger } from '#utils/logger.js';
 import Parser from 'tree-sitter';
 import TypeScript from 'tree-sitter-typescript';
 
+// Cache parser to avoid creating 20k+ parser instances
+let cachedParser = null;
+
+function getParser() {
+  if (!cachedParser) {
+    cachedParser = new Parser();
+    cachedParser.setLanguage(TypeScript.tsx);
+  }
+  return cachedParser;
+}
+
 /**
  * Parse code string into a Tree-sitter node for data flow extraction
  */
-function parseCodeToNode(code, filePath) {
+function parseCodeToNode(code) {
   try {
-    const parser = new Parser();
-    parser.setLanguage(TypeScript.tsx);
+    const parser = getParser();
     const tree = parser.parse(code);
     if (tree.rootNode.hasError) return null;
     return tree.rootNode;
@@ -35,7 +45,7 @@ export function extractDataFlowSafe(functionInfo, functionCode, filePath) {
     // Prefer the AST node from the parser; fallback to parsing the code ourselves
     let input = functionInfo.node;
     if (!input && functionCode) {
-      input = parseCodeToNode(functionCode, filePath);
+      input = parseCodeToNode(functionCode);
     }
 
     if (input) {
