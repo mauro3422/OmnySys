@@ -12,7 +12,7 @@ const logger = createLogger('OmnySys:PipelineIntegrityDetector');
 export async function checkScanToAtomCoverage(detector) {
     try {
         const db = detector.repo.db;
-        const scannedFiles = db.prepare(`
+        const manifestFiles = db.prepare(`
             SELECT COUNT(DISTINCT path) as count
             FROM compiler_scanned_files
         `).get().count;
@@ -24,8 +24,8 @@ export async function checkScanToAtomCoverage(detector) {
             WHERE COALESCE(is_removed, 0) = 0
         `).get().count;
         const fileUniverseGranularity = getFileUniverseGranularity({
-            scannedFileTotal: scannedFiles,
-            manifestFileTotal: scannedFiles,
+            scannedFileTotal: liveIndexedFiles || manifestFiles,
+            manifestFileTotal: manifestFiles,
             liveFileCount: liveIndexedFiles
         });
 
@@ -46,7 +46,7 @@ export async function checkScanToAtomCoverage(detector) {
             fileUniverseGranularity.healthy === true,
             fileUniverseGranularity.healthy === true ? 'low' : 'high',
             {
-                scannedFiles,
+                scannedFiles: manifestFiles,
                 liveFileRows,
                 filesWithAtoms: liveIndexedFiles,
                 liveIndexedFiles,

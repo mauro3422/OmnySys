@@ -19,12 +19,12 @@ export function collectFileUniverseMetrics(db) {
     };
   }
 
-  const scannedFileTotal = db.prepare('SELECT COUNT(*) as n FROM compiler_scanned_files').get()?.n || 0;
+  const manifestFileTotal = db.prepare('SELECT COUNT(*) as n FROM compiler_scanned_files').get()?.n || 0;
   const liveFileCount = getLiveFileTotal(db);
 
   const summary = getFileUniverseGranularity({
-    scannedFileTotal,
-    manifestFileTotal: scannedFileTotal,
+    scannedFileTotal: liveFileCount || manifestFileTotal,
+    manifestFileTotal,
     liveFileCount
   });
 

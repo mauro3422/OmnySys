@@ -80,6 +80,7 @@ function isCanonicalGatewayModule(normalizedPath = '') {
 function isGovernanceDiagnosticModule(normalizedPath = '') {
   const diagnosticSuffixes = [
     '/core/file-watcher/guards/pipeline-orphan/reporting-payload.js',
+    '/core/meta-detector/pipeline-integrity-detector/data-checks.js',
     '/layer-c-memory/mcp/core/governance-alerts.js',
     '/layer-c-memory/mcp/tools/detect-db-access.js',
     '/layer-c-memory/mcp/tools/handlers/pipeline-health-domain/metadata-health.js',

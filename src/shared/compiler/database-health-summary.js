@@ -57,7 +57,7 @@ export function getDatabaseHealthSummary(db, options = {}) {
     semanticSurfaceGranularity: semanticSurface
   });
   const fileUniverse = getFileUniverseGranularity({
-    scannedFileTotal: counts.scannedFiles,
+    scannedFileTotal: counts.activeFiles || counts.scannedFiles,
     manifestFileTotal: counts.scannedFiles,
     liveFileCount: counts.activeFiles
   });

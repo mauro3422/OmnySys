@@ -130,6 +130,16 @@ export const RULE_GUIDANCE = {
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'getFileUniverseGranularity'),
     recommendedReplacement: 'Explain scanner/manifest/live-index differences through the canonical file-universe contract before treating zero-atom files as missing index coverage.'
   },
+  data_gateway_contract: {
+    existingCanonicalEntryPoint: 'buildDataGatewayContract',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js', 'buildDataGatewayContract'),
+    recommendedReplacement: 'Route freshness, coverage and drift checks through the canonical data gateway contract before letting tools interpret DB projections or support tables independently.'
+  },
+  runtime_boundary_surfaces: {
+    existingCanonicalEntryPoint: 'runAsyncBoundary',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js', 'runAsyncBoundary'),
+    recommendedReplacement: 'Use the canonical async boundary helper instead of inline try/catch with manual retry logic. For envelope-style results, use executeWithBoundary.'
+  },
   mirror_atom_detected: {
     existingCanonicalEntryPoint: 'canonical-concept-reuse-guard',
     recommendedImport: null,
