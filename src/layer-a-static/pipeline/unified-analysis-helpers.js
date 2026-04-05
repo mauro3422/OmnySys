@@ -232,7 +232,12 @@ function writeFileHashBatch(repo, hashEntries) {
 }
 async function persistPendingWorkerWrites(repo, pendingWrites) {
     if (pendingWrites.atoms.length > 0) {
-        repo.saveManyBulk(pendingWrites.atoms, 500);
+        const total = pendingWrites.atoms.length;
+        const batchSize = 500;
+        const batches = Math.ceil(total / batchSize);
+        logger.info(`  Persisting ${total} atoms in ${batches} batches...`);
+        repo.saveManyBulk(pendingWrites.atoms, batchSize);
+        logger.info(`  ✓ Atoms persisted`);
     }
 
     if (pendingWrites.summaries.length > 0) {
