@@ -188,12 +188,12 @@ export const adminToolDefinitions = [
   },
   {
     name: 'mcp_omnysystem_restart_server',
-    description: 'Restarts the OmnySys server to load updated code. clearCacheOnly=true for fastest option (no reindex). reindexOnly=true to force Layer A without clearing DB. clearCache+reanalyze=true for full wipe+reindex.',
+    description: 'Restarts the OmnySys server to load updated code. clearCacheOnly=true for fastest option (no reindex). reindexOnly=true forces Layer A without clearing DB and is the closest thing to a resume/continue path. clearCache+reanalyze=true performs a destructive full wipe + full reindex from scratch and does not resume prior progress.',
     inputSchema: {
       type: 'object',
       properties: {
         clearCache: { type: 'boolean', default: false, description: 'Clear in-memory cache before restarting' },
-        reanalyze: { type: 'boolean', default: false, description: 'Delete DB + force full reindex (use with clearCache:true)' },
+        reanalyze: { type: 'boolean', default: false, description: 'Delete DB + force full reindex from scratch. Does not resume prior progress. Use with clearCache:true.' },
         clearCacheOnly: { type: 'boolean', default: false, description: 'FAST: Only flush in-memory cache + refresh tool registry. No reindex.' },
         reindexOnly: { type: 'boolean', default: false, description: 'Force Layer A re-analysis without clearing the DB or restarting the process.' }
       }

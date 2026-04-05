@@ -9,7 +9,9 @@ import { getCompilerHistoryDbPath } from '../../../../src/shared/compiler/compil
 import {
   loadCompilerHealthArchiveHistory,
   loadCompilerHealthArchiveSummary,
+  loadCompilerMetricsArchiveHistory,
   persistCompilerHealthArchiveSnapshot,
+  persistCompilerMetricsArchiveSnapshot,
   shutdownCompilerHealthArchiveStorage
 } from '../../../../src/shared/compiler/compiler-health-archive.js';
 
@@ -113,5 +115,56 @@ describe('compiler health archive', () => {
     expect(summary?.snapshotsRecorded).toBe(2);
     expect(summary?.averageHealthScore).toBe(92.5);
     expect(summary?.latestHealthScore).toBe(95);
+  });
+
+  it('persists metrics history inside the archive DB and survives main-db cleanup', () => {
+    const projectPath = mkdtempSync(join(tmpdir(), 'omnysys-metrics-archive-'));
+    projectRoots.push(projectPath);
+
+    const mainDbDir = join(projectPath, '.omnysysdata');
+    mkdirSync(mainDbDir, { recursive: true });
+    writeFileSync(join(mainDbDir, 'omnysys.db'), 'main-db-placeholder');
+
+    const dayOne = buildSnapshot(
+      projectPath,
+      '2026-01-01T08:00:00.000Z',
+      88,
+      'metrics day one'
+    );
+    dayOne.current.metadataCoveragePct = 72;
+    dayOne.current.integrationCoveragePct = 64;
+    dayOne.current.folderizationCandidateCount = 4;
+
+    const dayTwo = buildSnapshot(
+      projectPath,
+      '2026-01-02T08:00:00.000Z',
+      91,
+      'metrics day two'
+    );
+    dayTwo.current.metadataCoveragePct = 85;
+    dayTwo.current.integrationCoveragePct = 78;
+    dayTwo.current.folderizationCandidateCount = 6;
+
+    persistCompilerMetricsArchiveSnapshot(projectPath, dayOne);
+    persistCompilerMetricsArchiveSnapshot(projectPath, dayTwo);
+
+    rmSync(join(mainDbDir, 'omnysys.db'), { force: true });
+    rmSync(join(mainDbDir, 'omnysys.db-wal'), { force: true });
+    rmSync(join(mainDbDir, 'omnysys.db-shm'), { force: true });
+    rmSync(join(mainDbDir, 'index.json'), { force: true });
+    rmSync(join(mainDbDir, 'atom-versions.json'), { force: true });
+
+    const history = loadCompilerMetricsArchiveHistory(projectPath, {
+      snapshotKind: 'status',
+      limit: 10,
+      compareDays: 3
+    });
+
+    expect(history.entries).toHaveLength(2);
+    expect(history.latest?.captured_at).toBe('2026-01-02T08:00:00.000Z');
+    expect(history.previous?.captured_at).toBe('2026-01-01T08:00:00.000Z');
+    expect(history.latest?.active_atoms).toBe(100);
+    expect(history.latest?.snapshot_fingerprint).toBeTruthy();
+    expect(history.latest?.summary_text).toBe('metrics day two');
   });
 });

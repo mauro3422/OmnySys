@@ -64,6 +64,7 @@ function mapHealthSummarySignals(current = {}) {
     ...mapHealthSummaryConnectionSignals(current),
     ...mapHealthSummaryFolderizationSignals(current),
     ...mapHealthSummaryPropagationSignals(current),
+    historyStores: current.historyStores || current.systemInventory?.historyStores || null,
     healthArchive: current.healthArchive || null
   };
 }
@@ -89,6 +90,7 @@ export function mapTrendSummary(trend = {}) {
 }
 
 export function mapMetricsSummary(current = {}, pipelineTimingTelemetry = null) {
+  const historyStores = current.historyStores || current.systemInventory?.historyStores || null;
   return {
     issueCount: asNumber(current.issueCount, 0),
     structuralGroups: asNumber(current.structuralGroups, 0),
@@ -113,6 +115,11 @@ export function mapMetricsSummary(current = {}, pipelineTimingTelemetry = null) 
     metadataCoveragePct: asNumber(current.metadataCoveragePct, 0),
     metadataFieldCoveragePct: asNumber(current.metadataFieldCoveragePct, 0),
     dataGatewayTrustworthy: current.dataGatewayTrustworthy === true,
+    historyStoreState: historyStores?.state || null,
+    historyStoreCount: asNumber(historyStores?.totalStores, 0),
+    historyStoreReadyCount: asNumber(historyStores?.readyStoreCount, 0),
+    historyStoreMissingCount: asNumber(historyStores?.missingStoreCount, 0),
+    historyStores,
     systemInventory: current.systemInventory || null,
     canonicalPromotion: current.canonicalPromotion || null,
     pipelineTimingTelemetry
@@ -156,6 +163,7 @@ export function mapHistorySummary(history = {}) {
 }
 
 export function buildHealthPanelNowSummary(now = {}) {
+  const historyStores = now.historyStores || now.systemInventory?.historyStores || null;
   return {
     globalHealthScore: now.globalHealthScore || now.healthScore || 0,
     globalHealthGrade: now.globalHealthGrade || now.healthGrade || 'F',
@@ -186,6 +194,11 @@ export function buildHealthPanelNowSummary(now = {}) {
     propagationExpansionState: now.propagationExpansionState || null,
     propagationExpansionReason: now.propagationExpansionReason || null,
     propagationExpansionRecommendation: now.propagationExpansionRecommendation || null,
+    historyStoreState: historyStores?.state || null,
+    historyStoreCount: asNumber(historyStores?.totalStores, 0),
+    historyStoreReadyCount: asNumber(historyStores?.readyStoreCount, 0),
+    historyStoreMissingCount: asNumber(historyStores?.missingStoreCount, 0),
+    historyStores,
     activeAtomsDelta: asNumber(now.activeAtomsDelta, 0),
     activeAtomsDeltaPct: asNumber(now.activeAtomsDeltaPct, 0)
   };
@@ -204,6 +217,7 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     now.policyCoverage?.coverageState ? `coverage=${now.policyCoverage.coverageState}:${now.policyCoverage.coverageScore || 0}` : null,
     now.metadataCoveragePct ? `meta=${Math.round(now.metadataCoveragePct)}%` : null,
     now.integrationCoveragePct ? `integration=${Math.round(now.integrationCoveragePct)}%` : null,
+    now.historyStoreState ? `history=${now.historyStoreState}:${now.historyStoreReadyCount || 0}/${now.historyStoreCount || 0}` : null,
     now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
     compact.systemInventory ? `systems=${compact.systemInventory.inventoryState || 'watching'}:${compact.systemInventory.totalSystemCount || 0}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,

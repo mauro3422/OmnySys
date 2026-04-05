@@ -12,6 +12,7 @@ import {
   buildAtomChangeDetection,
   buildVersionPayload,
 } from './atom-version-manager-helpers.js';
+import { persistAtomVersionArchiveBatch } from '../../../shared/compiler/atom-history-archive.js';
 import { createLogger } from '#utils/logger.js';
 import {
   REPOSITORY_MUTATION_DURABILITY,
@@ -37,6 +38,7 @@ function buildIncrementalAtomMetadata(atom, rootPath, options) {
 function buildVersionSaveEntry(atomId, atom) {
   return {
     atomId,
+    atomData: atom,
     ...buildVersionPayload(atom)
   };
 }
@@ -216,6 +218,11 @@ async function saveAtomsIncrementalInternal(repo, rootPath, normalizedPath, atom
 
   if (versionsToSave.length > 0) {
     saveAtomVersionsBatch(repo.db, versionsToSave);
+    try {
+      persistAtomVersionArchiveBatch(rootPath, versionsToSave, { source: 'incremental-atom-saver' });
+    } catch (error) {
+      logger.warn(`Atom version archive persistence failed for ${normalizedPath}: ${error.message}`);
+    }
   }
 
   return {

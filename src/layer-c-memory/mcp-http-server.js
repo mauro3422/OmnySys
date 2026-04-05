@@ -56,7 +56,8 @@ import {
   buildServerForSession,
   createConditionalJsonMiddleware,
   executeMcpToolCall,
-  handleMcpRequest
+  handleMcpRequest,
+  normalizeMcpRequestHeaders
 } from './mcp-http-session-routing.js';
 import { buildInventoryReport, buildInventorySnapshot } from './mcp/tools/list-tools.js';
 
@@ -257,7 +258,8 @@ const handleHttpMcpRequest = (req, res) => handleMcpRequest(req, res, {
   logger,
   sessions,
   buildSessionServer,
-  getSessionManager
+  getSessionManager,
+  normalizeMcpRequestHeaders
 });
 
 app.all('/mcp', conditionalJson, handleHttpMcpRequest);

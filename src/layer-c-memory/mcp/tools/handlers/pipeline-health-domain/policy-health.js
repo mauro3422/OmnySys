@@ -12,7 +12,7 @@ export async function scanCompilerPolicyHealth(projectPath) {
     }
 
     try {
-        const policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
+        const policyFindings = await scanCompilerPolicyDrift(projectPath, { limit: 1000 });
         const policySummary = summarizeCompilerPolicyDrift(policyFindings);
         const issues = [];
         const warnings = [];

@@ -6,6 +6,7 @@ export function summarizeCompilerPolicyDrift(findings = []) {
     total: normalizedFindings.length,
     high: 0,
     medium: 0,
+    active: 0,
     byPolicyArea: {},
     byRule: {}
   };
@@ -18,6 +19,8 @@ export function summarizeCompilerPolicyDrift(findings = []) {
     summary.byPolicyArea[policyArea] = (summary.byPolicyArea[policyArea] || 0) + 1;
     summary.byRule[rule] = (summary.byRule[rule] || 0) + 1;
   }
+
+  summary.active = summary.high + summary.medium;
 
   return summary;
 }

@@ -41,7 +41,7 @@ export async function get_schema(args, context) {
         return buildAtomsSchemaResult(projectPath, { atomType, sampleSize, focusField });
 
       case 'database':
-        return buildDatabaseSchemaResult({ includeSQL });
+        return buildDatabaseSchemaResult({ includeSQL, projectPath });
 
       case 'registry':
         return buildRegistrySchemaResult();

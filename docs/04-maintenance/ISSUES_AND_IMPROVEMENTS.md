@@ -414,3 +414,20 @@ Current conclusion:
 - El customs gate puede estar watching aunque el runtime siga en A+.
 
 
+### 6. Atom Evolution History
+
+| Campo | Valor |
+|-------|-------|
+| **Severidad** | Media |
+| **Estado** | ✅ RESUELTO |
+
+**Fix aplicado**:
+- `atom_versions` sigue siendo la tabla operativa viva.
+- Cada version update now archives into `.omnysysdata/atom-history.db`.
+- `get_atom_history` can blend git history with persisted atom evolution history.
+- `mcp_omnysystem_get_atom_evolution_report` compone details + DNA + data flow + impact + history + schema context in one canonical MCP surface.
+- `reanalyze` cleanup preserves `atom-history.db` so long-term atom evolution survives wipes.
+
+**Impacto**:
+- The project can now keep long-lived atom evolution history separate from the operational SQLite DB.
+- This reduces the risk of losing meaningful historical signal during destructive reindex flows.

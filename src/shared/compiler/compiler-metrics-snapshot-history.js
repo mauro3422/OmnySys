@@ -1,5 +1,8 @@
 import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
-import { loadCompilerHealthArchiveHistory } from './compiler-health-archive.js';
+import {
+  loadCompilerHealthArchiveHistory,
+  loadCompilerMetricsArchiveHistory
+} from './compiler-health-archive.js';
 import { summarizeHistoryRow } from './compiler-metrics-current.js';
 import { asNumber } from './core-utils.js';
 
@@ -143,11 +146,21 @@ export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
           compareDays
         })
       : { entries: [], latest: null, previous: null, baseline: null };
+    const metricsArchiveHistory = projectPath
+      ? loadCompilerMetricsArchiveHistory(projectPath, {
+          snapshotKind,
+          scopePath: normalizedScope,
+          focusPath: normalizedFocus,
+          limit,
+          compareDays
+        })
+      : { entries: [], latest: null, previous: null, baseline: null };
     const shouldMergeArchive = Boolean(projectPath) && rows.length === 0;
-    const mergedRows = shouldMergeArchive ? mergeHistoryRows(rows, archiveHistory.entries).slice(0, limit) : rows;
-    const archiveBaseline = shouldMergeArchive ? archiveHistory.baseline || null : null;
-    const archivePrevious = shouldMergeArchive ? archiveHistory.previous || null : null;
-    const archiveLatest = shouldMergeArchive ? archiveHistory.latest || null : null;
+    const mergedArchiveRows = mergeHistoryRows(archiveHistory.entries, metricsArchiveHistory.entries);
+    const mergedRows = shouldMergeArchive ? mergeHistoryRows(rows, mergedArchiveRows).slice(0, limit) : rows;
+    const archiveBaseline = shouldMergeArchive ? metricsArchiveHistory.baseline || archiveHistory.baseline || null : null;
+    const archivePrevious = shouldMergeArchive ? metricsArchiveHistory.previous || archiveHistory.previous || null : null;
+    const archiveLatest = shouldMergeArchive ? metricsArchiveHistory.latest || archiveHistory.latest || null : null;
     const mergedBaseline = baselineRow
       || (shouldMergeArchive ? mergedRows.find((row) => String(row.captured_at || '') <= baselineCutoff) || archiveBaseline : null)
       || null;

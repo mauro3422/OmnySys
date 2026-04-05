@@ -8,6 +8,7 @@
 
 export const TOOL_NAMES = [
   'mcp_omnysystem_query_graph',
+  'mcp_omnysystem_get_atom_evolution_report',
   'mcp_omnysystem_traverse_graph',
   'mcp_omnysystem_aggregate_metrics',
   'mcp_omnysystem_atomic_edit',

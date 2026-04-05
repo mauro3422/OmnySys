@@ -1,9 +1,11 @@
 import fs from 'fs/promises';
+import { existsSync, statSync } from 'fs';
 import path from 'path';
 import { normalizeFilePath } from './path-normalization.js';
 
 const DATA_DIR = '.omnysysdata';
 const HEALTH_HISTORY_DB = 'health-history.db';
+const ATOM_HISTORY_DB = 'atom-history.db';
 const SCANNED_FILE_MANIFEST_TABLE = 'compiler_scanned_files';
 
 export function getCompilerDataDir(rootPath) {
@@ -16,6 +18,60 @@ export function getCompilerHistoryDir(rootPath) {
 
 export function getCompilerHistoryDbPath(rootPath) {
   return path.join(getCompilerHistoryDir(rootPath), HEALTH_HISTORY_DB);
+}
+
+export function getAtomHistoryDbPath(rootPath) {
+  return path.join(getCompilerHistoryDir(rootPath), ATOM_HISTORY_DB);
+}
+
+function buildStorageFileSummary(filePath, label) {
+  const exists = existsSync(filePath);
+  let sizeBytes = 0;
+  let modifiedAt = null;
+
+  if (exists) {
+    try {
+      const stats = statSync(filePath);
+      sizeBytes = stats.size || 0;
+      modifiedAt = stats.mtime instanceof Date ? stats.mtime.toISOString() : null;
+    } catch {
+      sizeBytes = 0;
+      modifiedAt = null;
+    }
+  }
+
+  return {
+    label,
+    path: filePath,
+    exists,
+    state: exists ? 'ready' : 'missing',
+    sizeBytes,
+    modifiedAt
+  };
+}
+
+export function buildCompilerHistoricalStorageSummary(rootPath = process.cwd()) {
+  const projectPath = path.resolve(rootPath || process.cwd());
+  const archiveDir = getCompilerHistoryDir(projectPath);
+  const stores = [
+    buildStorageFileSummary(getCompilerHistoryDbPath(projectPath), 'health-history.db'),
+    buildStorageFileSummary(getAtomHistoryDbPath(projectPath), 'atom-history.db')
+  ];
+
+  const readyStoreCount = stores.filter((store) => store.exists).length;
+  const missingStoreCount = stores.length - readyStoreCount;
+  const state = missingStoreCount === 0 ? 'ready' : readyStoreCount > 0 ? 'watching' : 'missing';
+
+  return {
+    projectPath,
+    archiveDir,
+    totalStores: stores.length,
+    readyStoreCount,
+    missingStoreCount,
+    state,
+    summaryText: `health=${stores[0]?.state || 'missing'} | atom=${stores[1]?.state || 'missing'} | ready=${readyStoreCount}/${stores.length}`,
+    stores
+  };
 }
 
 export function getMetadataJsonPath(dataPath, filePath) {

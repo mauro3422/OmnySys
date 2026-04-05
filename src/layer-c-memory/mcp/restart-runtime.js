@@ -30,6 +30,10 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
     logger.info('Restarting OmnySys server...');
     clearPendingHotReloadRestart(server);
 
+    if (reanalyze) {
+      logger.warn('reanalyze=true is a destructive full wipe + full reindex. It does not resume prior progress. Use reindexOnly to preserve the DB and continue from the current state.');
+    }
+
     if (refreshOnly) return await handleRefreshOnly(server, cache, refreshToolRegistry);
     if (softReload) return await handleSoftReload(server, orchestrator, cache, refreshToolRegistry);
     if (clearCacheOnly) return await handleClearCacheOnly(cache, refreshToolRegistry);
@@ -173,7 +177,7 @@ async function handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindex
     logger.info('Clearing local cache before restart...');
     await purgeRuntimeCache(cache, null);
     if (reanalyze) {
-      logger.info('reanalyze=true: delegating data cleanup to proxy to avoid Windows file locks.');
+      logger.warn('reanalyze=true: delegating data cleanup to proxy for a destructive full wipe + full reindex. This is not a resume path.');
     }
   }
 
@@ -207,7 +211,7 @@ async function clearStandaloneCache(cache, reanalyze, server, result) {
   await purgeRuntimeCache(cache, null);
 
   if (reanalyze) {
-    logger.info('Deleting previous analysis (full reindex)...');
+    logger.warn('Deleting previous analysis for reanalyze=true. This resets progress and starts a full reindex from scratch.');
     const fs = await import('fs/promises');
     const path = await import('path');
     const dataDir = path.join(server.projectPath, '.omnysysdata');
@@ -215,7 +219,7 @@ async function clearStandaloneCache(cache, reanalyze, server, result) {
     try {
       const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm'];
       const legacyFiles = ['index.json', 'atom-versions.json'];
-      const preservedFiles = new Set(['health-history.db']);
+      const preservedFiles = new Set(['health-history.db', 'atom-history.db']);
       for (const file of dbFiles) {
         if (preservedFiles.has(file)) continue;
         await fs.unlink(path.join(dataDir, file)).catch(() => {});

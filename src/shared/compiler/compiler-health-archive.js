@@ -72,6 +72,57 @@ function buildArchiveSchemaSql() {
 
     CREATE INDEX IF NOT EXISTS idx_health_archive_fingerprint
       ON compiler_health_daily_snapshots(snapshot_fingerprint);
+
+    CREATE TABLE IF NOT EXISTS compiler_metrics_daily_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_path TEXT NOT NULL,
+      snapshot_kind TEXT NOT NULL,
+      scope_path TEXT,
+      focus_path TEXT,
+      scope_key TEXT NOT NULL,
+      focus_key TEXT NOT NULL,
+      captured_day TEXT NOT NULL,
+      captured_at TEXT NOT NULL,
+      health_score REAL NOT NULL DEFAULT 0,
+      issue_count INTEGER NOT NULL DEFAULT 0,
+      structural_groups INTEGER NOT NULL DEFAULT 0,
+      conceptual_groups INTEGER NOT NULL DEFAULT 0,
+      pipeline_orphans INTEGER NOT NULL DEFAULT 0,
+      naming_targets INTEGER NOT NULL DEFAULT 0,
+      live_coverage_ratio REAL NOT NULL DEFAULT 0,
+      active_atoms INTEGER NOT NULL DEFAULT 0,
+      recent_warning_count INTEGER NOT NULL DEFAULT 0,
+      recent_error_count INTEGER NOT NULL DEFAULT 0,
+      phase2_pending_files INTEGER NOT NULL DEFAULT 0,
+      drift_state TEXT,
+      drift_score REAL NOT NULL DEFAULT 0,
+      stability_score REAL NOT NULL DEFAULT 0,
+      success_score REAL NOT NULL DEFAULT 0,
+      behavior_state TEXT,
+      readiness_reason TEXT,
+      metadata_coverage_pct REAL NOT NULL DEFAULT 0,
+      integration_coverage_pct REAL NOT NULL DEFAULT 0,
+      folderization_candidate_count INTEGER NOT NULL DEFAULT 0,
+      call_links INTEGER NOT NULL DEFAULT 0,
+      semantic_links INTEGER NOT NULL DEFAULT 0,
+      watcher_alert_count INTEGER NOT NULL DEFAULT 0,
+      client_sync_state TEXT,
+      client_sync_severity TEXT,
+      summary_text TEXT,
+      snapshot_fingerprint TEXT NOT NULL,
+      payload_json TEXT,
+      trend_json TEXT,
+      UNIQUE(project_path, snapshot_kind, scope_key, focus_key, captured_day)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_metrics_archive_project_kind_day
+      ON compiler_metrics_daily_snapshots(project_path, snapshot_kind, captured_day DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_metrics_archive_scope
+      ON compiler_metrics_daily_snapshots(project_path, scope_key, focus_key);
+
+    CREATE INDEX IF NOT EXISTS idx_metrics_archive_fingerprint
+      ON compiler_metrics_daily_snapshots(snapshot_fingerprint);
   `;
 }
 
@@ -138,6 +189,55 @@ function buildArchivePersistenceArgs(snapshot = null) {
     stability_score: asNumber(current.stabilityScore, 0),
     success_score: asNumber(current.successScore, 0),
     behavior_state: current.behaviorState || null,
+    client_sync_state: current.clientSyncState || null,
+    client_sync_severity: current.clientSyncSeverity || null,
+    summary_text: snapshot?.summary || current.summaryText || null,
+    snapshot_fingerprint: current.snapshotFingerprint || '',
+    payload_json: safeJsonStringify({
+      current,
+      trend: snapshot?.trend || {},
+      history: snapshot?.history || {},
+      metricDictionary: snapshot?.metricDictionary || null,
+      summary: snapshot?.summary || null
+    }),
+    trend_json: safeJsonStringify(snapshot?.trend || {})
+  };
+}
+
+function buildMetricsArchivePersistenceArgs(snapshot = null) {
+  const current = snapshot?.current || {};
+  return {
+    project_path: snapshot?.projectPath || null,
+    snapshot_kind: snapshot?.snapshotKind || 'status',
+    scope_path: snapshot?.scopePath || null,
+    focus_path: snapshot?.focusPath || null,
+    scope_key: normalizeKey(snapshot?.scopePath || current.scopePath || ''),
+    focus_key: normalizeKey(snapshot?.focusPath || current.focusPath || ''),
+    captured_day: normalizeCapturedDay(current.capturedAt),
+    captured_at: current.capturedAt || new Date().toISOString(),
+    health_score: asNumber(current.globalHealthScore ?? current.healthScore, 0),
+    issue_count: asNumber(current.issueCount, 0),
+    structural_groups: asNumber(current.structuralGroups, 0),
+    conceptual_groups: asNumber(current.conceptualGroups, 0),
+    pipeline_orphans: asNumber(current.pipelineOrphans, 0),
+    naming_targets: asNumber(current.namingTargets, 0),
+    live_coverage_ratio: asNumber(current.liveCoverageRatio, 0),
+    active_atoms: asNumber(current.activeAtoms, 0),
+    recent_warning_count: asNumber(current.recentWarningCount, 0),
+    recent_error_count: asNumber(current.recentErrorCount, 0),
+    phase2_pending_files: asNumber(current.phase2PendingFiles, 0),
+    drift_state: current.driftState || null,
+    drift_score: asNumber(current.driftScore, 0),
+    stability_score: asNumber(current.stabilityScore, 0),
+    success_score: asNumber(current.successScore, 0),
+    behavior_state: current.behaviorState || null,
+    readiness_reason: current.readinessReason || null,
+    metadata_coverage_pct: asNumber(current.metadataCoveragePct, 0),
+    integration_coverage_pct: asNumber(current.integrationCoveragePct, 0),
+    folderization_candidate_count: asNumber(current.folderizationCandidateCount, 0),
+    call_links: asNumber(current.callLinks, 0),
+    semantic_links: asNumber(current.semanticLinks, 0),
+    watcher_alert_count: asNumber(current.watcherAlertCount, 0),
     client_sync_state: current.clientSyncState || null,
     client_sync_severity: current.clientSyncSeverity || null,
     summary_text: snapshot?.summary || current.summaryText || null,
@@ -281,6 +381,129 @@ export function persistCompilerHealthArchiveSnapshot(projectPath, snapshot = nul
   `);
 
   return stmt.run(buildArchivePersistenceArgs(snapshot));
+}
+
+export function persistCompilerMetricsArchiveSnapshot(projectPath, snapshot = null) {
+  if (!projectPath || !snapshot) {
+    return null;
+  }
+
+  const db = getCompilerHealthArchiveDb(projectPath);
+  const stmt = db.prepare(`
+    INSERT INTO compiler_metrics_daily_snapshots (
+      project_path,
+      snapshot_kind,
+      scope_path,
+      focus_path,
+      scope_key,
+      focus_key,
+      captured_day,
+      captured_at,
+      health_score,
+      issue_count,
+      structural_groups,
+      conceptual_groups,
+      pipeline_orphans,
+      naming_targets,
+      live_coverage_ratio,
+      active_atoms,
+      recent_warning_count,
+      recent_error_count,
+      phase2_pending_files,
+      drift_state,
+      drift_score,
+      stability_score,
+      success_score,
+      behavior_state,
+      readiness_reason,
+      metadata_coverage_pct,
+      integration_coverage_pct,
+      folderization_candidate_count,
+      call_links,
+      semantic_links,
+      watcher_alert_count,
+      client_sync_state,
+      client_sync_severity,
+      summary_text,
+      snapshot_fingerprint,
+      payload_json,
+      trend_json
+    ) VALUES (
+      @project_path,
+      @snapshot_kind,
+      @scope_path,
+      @focus_path,
+      @scope_key,
+      @focus_key,
+      @captured_day,
+      @captured_at,
+      @health_score,
+      @issue_count,
+      @structural_groups,
+      @conceptual_groups,
+      @pipeline_orphans,
+      @naming_targets,
+      @live_coverage_ratio,
+      @active_atoms,
+      @recent_warning_count,
+      @recent_error_count,
+      @phase2_pending_files,
+      @drift_state,
+      @drift_score,
+      @stability_score,
+      @success_score,
+      @behavior_state,
+      @readiness_reason,
+      @metadata_coverage_pct,
+      @integration_coverage_pct,
+      @folderization_candidate_count,
+      @call_links,
+      @semantic_links,
+      @watcher_alert_count,
+      @client_sync_state,
+      @client_sync_severity,
+      @summary_text,
+      @snapshot_fingerprint,
+      @payload_json,
+      @trend_json
+    )
+    ON CONFLICT(project_path, snapshot_kind, scope_key, focus_key, captured_day)
+    DO UPDATE SET
+      scope_path = excluded.scope_path,
+      focus_path = excluded.focus_path,
+      captured_at = excluded.captured_at,
+      health_score = excluded.health_score,
+      issue_count = excluded.issue_count,
+      structural_groups = excluded.structural_groups,
+      conceptual_groups = excluded.conceptual_groups,
+      pipeline_orphans = excluded.pipeline_orphans,
+      naming_targets = excluded.naming_targets,
+      live_coverage_ratio = excluded.live_coverage_ratio,
+      active_atoms = excluded.active_atoms,
+      recent_warning_count = excluded.recent_warning_count,
+      recent_error_count = excluded.recent_error_count,
+      phase2_pending_files = excluded.phase2_pending_files,
+      drift_state = excluded.drift_state,
+      drift_score = excluded.drift_score,
+      stability_score = excluded.stability_score,
+      success_score = excluded.success_score,
+      behavior_state = excluded.behavior_state,
+      readiness_reason = excluded.readiness_reason,
+      metadata_coverage_pct = excluded.metadata_coverage_pct,
+      integration_coverage_pct = excluded.integration_coverage_pct,
+      folderization_candidate_count = excluded.folderization_candidate_count,
+      call_links = excluded.call_links,
+      semantic_links = excluded.semantic_links,
+      watcher_alert_count = excluded.watcher_alert_count,
+      client_sync_state = excluded.client_sync_state,
+      client_sync_severity = excluded.client_sync_severity,
+      summary_text = excluded.summary_text,
+      snapshot_fingerprint = excluded.snapshot_fingerprint,
+      payload_json = excluded.payload_json,
+      trend_json = excluded.trend_json
+  `);
+
+  return stmt.run(buildMetricsArchivePersistenceArgs(snapshot));
 }
 
 function buildArchiveHistoryFilterSql({ projectPath, snapshotKind, scopePath, focusPath }) {
@@ -524,11 +747,108 @@ export function loadCompilerHealthArchiveSummary(projectPath, options = {}) {
   }
 }
 
+export function loadCompilerMetricsArchiveHistory(projectPath, options = {}) {
+  if (!projectPath) {
+    return { entries: [], latest: null, previous: null, baseline: null };
+  }
+
+  const db = getCompilerHealthArchiveDb(projectPath);
+  if (!db?.prepare) {
+    return { entries: [], latest: null, previous: null, baseline: null };
+  }
+
+  const {
+    snapshotKind = 'status',
+    scopePath = null,
+    focusPath = null,
+    limit = 12,
+    compareDays = 3
+  } = options;
+
+  try {
+    const rows = db.prepare(`
+      SELECT
+        captured_at,
+        health_score,
+        issue_count,
+        structural_groups,
+        conceptual_groups,
+        pipeline_orphans,
+        naming_targets,
+        live_coverage_ratio,
+        active_atoms,
+        recent_warning_count,
+        recent_error_count,
+        phase2_pending_files,
+        drift_state,
+        drift_score,
+        stability_score,
+        success_score,
+        behavior_state,
+        readiness_reason,
+        summary_text,
+        snapshot_fingerprint
+      FROM compiler_metrics_daily_snapshots
+      WHERE project_path = ?
+        AND snapshot_kind = ?
+        AND IFNULL(scope_key, '') = IFNULL(?, '')
+        AND IFNULL(focus_key, '') = IFNULL(?, '')
+      ORDER BY captured_at DESC
+      LIMIT ?
+    `).all(projectPath, snapshotKind, normalizeKey(scopePath), normalizeKey(focusPath), limit) || [];
+
+    const baselineCutoff = new Date(Date.now() - (compareDays * 24 * 60 * 60 * 1000)).toISOString();
+    const baselineRow = db.prepare(`
+      SELECT
+        captured_at,
+        health_score,
+        issue_count,
+        structural_groups,
+        conceptual_groups,
+        pipeline_orphans,
+        naming_targets,
+        live_coverage_ratio,
+        active_atoms,
+        recent_warning_count,
+        recent_error_count,
+        phase2_pending_files,
+        drift_state,
+        drift_score,
+        stability_score,
+        success_score,
+        behavior_state,
+        readiness_reason,
+        summary_text,
+        snapshot_fingerprint
+      FROM compiler_metrics_daily_snapshots
+      WHERE project_path = ?
+        AND snapshot_kind = ?
+        AND IFNULL(scope_key, '') = IFNULL(?, '')
+        AND IFNULL(focus_key, '') = IFNULL(?, '')
+        AND captured_at <= ?
+      ORDER BY captured_at DESC
+      LIMIT 1
+    `).get(projectPath, snapshotKind, normalizeKey(scopePath), normalizeKey(focusPath), baselineCutoff) || null;
+
+    return {
+      entries: rows,
+      latest: rows[0] || null,
+      previous: rows[1] || null,
+      baseline: baselineRow
+    };
+  } catch (error) {
+    logger.debug(`[HealthArchive] Metrics history load skipped: ${error.message}`);
+    return { entries: [], latest: null, previous: null, baseline: null };
+  }
+}
+
 export default {
   getCompilerHealthArchiveDb,
   closeCompilerHealthArchiveDb,
   shutdownCompilerHealthArchiveStorage,
   persistCompilerHealthArchiveSnapshot,
+  persistCompilerMetricsArchiveSnapshot,
   loadCompilerHealthArchiveHistory,
-  loadCompilerHealthArchiveSummary
+  loadCompilerHealthArchiveSummary,
+  loadCompilerMetricsArchiveHistory
 };

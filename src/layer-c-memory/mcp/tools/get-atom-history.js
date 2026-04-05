@@ -1,8 +1,9 @@
 
 import { SemanticQueryTool } from './semantic/semantic-query-tool.js';
-import { GitTerminalBridge } from '../../../shared/utils/git-terminal-bridge.js';
-import path from 'path';
-import fs from 'fs';
+import {
+    collectAtomHistory,
+    summarizeAtomHistory
+} from './atom-history-helpers.js';
 
 /**
  * mcp_omnysystem_get_atom_history
@@ -27,43 +28,50 @@ export class GetAtomHistoryTool extends SemanticQueryTool {
             return this.formatError('MISSING_PARAMS', 'symbolName and filePath are required');
         }
 
-        const rootPath = this.projectPath || process.cwd();
-        const bridge = new GitTerminalBridge(rootPath, this.logger);
+        const historyBundle = await collectAtomHistory({
+            projectPath: this.projectPath || process.cwd(),
+            filePath,
+            symbolName,
+            limit
+        }, {
+            logger: this.logger
+        });
 
-        // Resolve absolute and relative paths consistently
-        const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(rootPath, filePath);
-
-        if (!fs.existsSync(absolutePath)) {
-            return this.formatError('NOT_FOUND', `File not found: ${filePath}`);
+        if (!historyBundle.ok) {
+            return this.formatError('NOT_FOUND', historyBundle.error);
         }
 
-        const relativePath = bridge.getRelativePath(absolutePath);
-
         try {
-            this.logger.info(`[History] Tracing symbol '${symbolName}' in ${relativePath}`);
-
-            // Core logic delegated to bridge
-            const history = await bridge.getSymbolHistory(symbolName, relativePath, limit);
+            this.logger.info(`[History] Tracing symbol '${symbolName}' in ${historyBundle.relativePath}`);
 
             // Transformation - Output Coherence (Strict derivation args -> history -> response)
             const response = {
-                correlationId: `${relativePath}#${symbolName}`,
-                input: { symbolName, filePath: relativePath, limit },
+                correlationId: `${historyBundle.relativePath}#${symbolName}`,
+                input: { symbolName, filePath: historyBundle.relativePath, limit },
                 results: {
                     symbol: symbolName,
-                    file: relativePath,
-                    versionCount: history.length,
-                    versions: history.map(v => ({
+                    file: historyBundle.relativePath,
+                    versionCount: historyBundle.history.length,
+                    archiveVersionCount: historyBundle.archiveHistory.length,
+                    versions: historyBundle.history.map(v => ({
                         commit: v.hash.substring(0, 7),
                         author: v.author,
                         date: v.date,
                         summary: v.subject,
                         snippet: v.codeSnippet // Coherence: proving we found the actual code
+                    })),
+                    archiveVersions: historyBundle.archiveHistory.map((row) => ({
+                        versionHash: row.version_hash,
+                        atomId: row.atom_id,
+                        atomName: row.atom_name,
+                        filePath: row.file_path,
+                        capturedAt: row.captured_at,
+                        source: row.source,
+                        fieldHashes: JSON.parse(row.field_hashes_json || '{}')
                     }))
                 },
                 metadata: {
-                    engine: 'git-log-L',
-                    coherenceScore: history.length > 0 ? 1.0 : 0.5,
+                    ...historyBundle.metadata,
                     timestamp: new Date().toISOString()
                 }
             };
@@ -71,30 +79,7 @@ export class GetAtomHistoryTool extends SemanticQueryTool {
             return this.formatSuccess(response);
 
         } catch (error) {
-            this.logger.warn(`[History] git log -L failed for ${symbolName}: ${error.message}. Trying file fallback.`);
-
-            try {
-                // Fallback logic
-                const fileHistory = await bridge.getFileHistory(relativePath, limit);
-
-                return this.formatSuccess({
-                    correlationId: `${relativePath}#${symbolName}`,
-                    input: { symbolName, filePath: relativePath, limit },
-                    note: 'Fallback file-level history used (symbol-specific tracking failed)',
-                    results: {
-                        symbol: symbolName,
-                        file: relativePath,
-                        versionCount: fileHistory.length,
-                        versions: fileHistory
-                    },
-                    metadata: {
-                        engine: 'git-log-file',
-                        timestamp: new Date().toISOString()
-                    }
-                });
-            } catch (fallbackError) {
-                return this.formatError('HISTORY_FAILED', `Git operations failed: ${fallbackError.message}`);
-            }
+            return this.formatError('HISTORY_FAILED', `History formatting failed: ${error.message}`);
         }
     }
 }

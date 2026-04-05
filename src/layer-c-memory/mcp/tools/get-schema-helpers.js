@@ -5,6 +5,7 @@ import {
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
 } from '../../../shared/compiler/index.js';
+import { buildCompilerHistoricalStorageSummary } from '../../../shared/compiler/compiler-persistence-paths.js';
 import { getDatabase } from '../../storage/database/connection.js';
 import {
   getRegisteredTables,
@@ -317,7 +318,7 @@ function getDatabaseSchemaStatus() {
       tables: report.tables,
       missingColumns: report.missingColumns,
       extraColumns: report.extraColumns,
-      recommendations: buildSchemaRecommendations(report, missingTables)
+      recommendations: buildSchemaRecommendations(report, missingTables, historicalStores)
     };
   } catch (error) {
     return {
@@ -328,7 +329,7 @@ function getDatabaseSchemaStatus() {
   }
 }
 
-function buildSchemaRecommendations(report, missingTables) {
+function buildSchemaRecommendations(report, missingTables, historicalStores = null) {
   const recommendations = [];
   if (missingTables > 0) {
     recommendations.push({ severity: 'high', message: `Missing ${missingTables} table(s). Run restart_server({ clearCache: true }) to recreate.`, action: 'restart_server' });
@@ -338,6 +339,13 @@ function buildSchemaRecommendations(report, missingTables) {
   }
   if (report.extraColumns.length > 0) {
     recommendations.push({ severity: 'low', message: `${report.extraColumns.reduce((sum, item) => sum + item.columns.length, 0)} extra column(s) detected (drift). Consider updating schema-registry.js`, action: 'update_registry' });
+  }
+  if (historicalStores?.missingStoreCount > 0) {
+    recommendations.push({
+      severity: historicalStores.readyStoreCount > 0 ? 'medium' : 'high',
+      message: `${historicalStores.missingStoreCount} historical store(s) are missing. Preserve health-history.db and atom-history.db so lifecycle data survives reanalyze.`,
+      action: 'preserve_history_stores'
+    });
   }
   if (recommendations.length === 0) {
     recommendations.push({ severity: 'info', message: 'Schema is healthy and synchronized with registry.', action: 'none' });
@@ -377,19 +385,29 @@ export async function buildAtomsSchemaResult(projectPath, { atomType, sampleSize
   };
 }
 
-export function buildDatabaseSchemaResult({ includeSQL }) {
+export function buildDatabaseSchemaResult({ includeSQL, projectPath = process.cwd() } = {}) {
   const db = getDatabase();
   const liveRowSync = db ? ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 }) : null;
   const status = getDatabaseSchemaStatus();
+  const historicalStores = buildCompilerHistoricalStorageSummary(projectPath);
 
   if (!status.success) {
-    return { ...status, schemaType: 'database' };
+    return { ...status, schemaType: 'database', historicalStores };
   }
 
   const result = {
     schemaType: 'database',
     ...status,
-    liveRowSync
+    liveRowSync,
+    historicalStores
+  };
+
+  result.summary = {
+    ...result.summary,
+    historicalStoreCount: historicalStores.totalStores,
+    historicalStoreReadyCount: historicalStores.readyStoreCount,
+    historicalStoreMissingCount: historicalStores.missingStoreCount,
+    historicalStoreState: historicalStores.state
   };
 
   if (includeSQL) {

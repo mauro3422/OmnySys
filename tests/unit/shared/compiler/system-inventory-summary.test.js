@@ -109,10 +109,10 @@ function createExplainability() {
       ]
     },
       policyCoverage: {
-      coverageState: 'watching',
-      coverageScore: 77,
-      coverageRatio: 0.5,
-      coverageLoad: 8,
+        coverageState: 'watching',
+        coverageScore: 77,
+        coverageRatio: 0.5,
+        coverageLoad: 8,
       totalSystemCount: 16,
       canonicalSurfaceCount: 4,
       canonicalEntrypointCount: 2,
@@ -126,22 +126,34 @@ function createExplainability() {
       summaryText: 'coverage=watching | score=77 | load=8/16 | drift=3 | expansion=drifting',
       inventoryState: 'watching'
     },
-    inventorySignals: {
-      total: 10,
-      byType: {
-        canonical_like: 6,
-        bridge_like: 2,
-        unknown: 2
+      inventorySignals: {
+        total: 10,
+        byType: {
+          canonical_like: 6,
+          bridge_like: 2,
+          unknown: 2
+        },
+        byRole: {
+          canonical: 6,
+          bridge: 2,
+          wrapper: 2
+        },
+        recent: []
       },
-      byRole: {
-        canonical: 6,
-        bridge: 2,
-        wrapper: 2
-      },
-      recent: []
-    }
-  };
-}
+      historyStores: {
+        archiveDir: '.omnysysdata',
+        totalStores: 2,
+        readyStoreCount: 2,
+        missingStoreCount: 0,
+        state: 'ready',
+        summaryText: 'health=ready | atom=ready | ready=2/2',
+        stores: [
+          { label: 'health-history.db', state: 'ready', exists: true, sizeBytes: 2048 },
+          { label: 'atom-history.db', state: 'ready', exists: true, sizeBytes: 4096 }
+        ]
+      }
+    };
+  }
 
 describe('system inventory summary', () => {
   it('builds a canonical inventory report with emergent and bridge systems', () => {
@@ -151,6 +163,7 @@ describe('system inventory summary', () => {
       scopePath: 'src/shared/compiler',
       focusPath: 'src/shared/compiler/status-system-table.js',
       compilerExplainability: explainability,
+      historyStores: explainability.historyStores,
       toolInventory: {
         totalTools: 40,
         dominantCategory: 'action',
@@ -188,6 +201,9 @@ describe('system inventory summary', () => {
     expect(report.summaryText).toContain('coverage=');
     expect(report.integrationCoveragePct).toBe(80);
     expect(report.summaryText).toContain('integration=80%');
+    expect(report.historyStoreState).toBe('ready');
+    expect(report.historyStoreCount).toBe(2);
+    expect(report.summaryText).toContain('history=2/2');
     expect(report.nextAction).toMatch(/canonical|surface/i);
     expect(Array.isArray(report.topSystems)).toBe(true);
     expect(report.topPromotionCandidates[0].role).toBe('emergent');

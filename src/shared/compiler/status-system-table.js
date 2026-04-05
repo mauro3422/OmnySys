@@ -35,6 +35,7 @@ export function buildSystemTableSummary(status = {}) {
     || folderizationAutomation?.propagationAdoption
     || status.compilerExplainability?.folderization?.automation?.propagationAdoption
     || null;
+  const historyStores = controlPlaneContracts.historyStores || status.compilerExplainability?.systemInventory?.historyStores || status.compilerExplainability?.systemInventory?.summary?.historyStores || null;
   const structuralGroups = normalizeCount(current.structuralGroups);
   const conceptualGroups = normalizeCount(current.conceptualGroups);
   const totalDuplicates = structuralGroups + conceptualGroups;
@@ -72,6 +73,14 @@ export function buildSystemTableSummary(status = {}) {
             ? `lifetime ${lifetime.snapshotsRecorded || 0} snaps`
             : 'snapshot persistence not loaded',
         source: '.omnysysdata/health-history.db'
+      },
+      {
+        area: 'History',
+        state: historyStores?.state || 'watching',
+        detail: historyStores
+          ? `archive=${historyStores.archiveDir || '.omnysysdata'} | ready=${normalizeCount(historyStores.readyStoreCount || 0)}/${normalizeCount(historyStores.totalStores || 0)} | ${historyStores.stores?.map((store) => `${store.label}:${store.state}${store.sizeBytes ? `:${Math.round(store.sizeBytes / 1024)}kb` : ''}`).join(' | ') || 'no stores'}`
+          : 'historical storage summary not loaded',
+        source: '.omnysysdata/health-history.db + .omnysysdata/atom-history.db'
       },
       {
         area: 'Update',

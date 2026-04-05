@@ -459,7 +459,11 @@ export async function handleMcpRequest(req, res, dependencies) {
       return;
     }
 
-    normalizeMcpRequestHeaders(req, logger);
+    if (typeof normalizeMcpRequestHeaders === 'function') {
+      normalizeMcpRequestHeaders(req, logger);
+    } else {
+      logger?.debug?.('[MCP COMPAT] normalizeMcpRequestHeaders helper unavailable; continuing without header normalization.');
+    }
     await transport.handleRequest(req, res, req.body);
   } catch (error) {
     logger.error(`Error handling MCP request: ${error.message}`);

@@ -160,6 +160,19 @@ describe('extractDataFlow — graceful degradation', () => {
     expect(() => extractDataFlow(undefined)).not.toThrow();
   });
 
+  test('silencia fallos de parseo para archivos de soporte de tests', () => {
+    const result = extractDataFlow('this is not valid javascript !!!@@@###', {
+      filePath: 'tests/unit/layer-a-static/extractors/__factories__/data-flow-test.factory.js'
+    });
+
+    expect(result).toBeDefined();
+    expect(result.error).toBeUndefined();
+    expect(result.inputs).toEqual([]);
+    expect(result.outputs).toEqual([]);
+    expect(result.transformations).toEqual([]);
+    expect(result._meta?.parseWarningSuppressed).toBe(true);
+  });
+
 });
 
 // ─── Tests: Estructura del resultado ─────────────────────────────────────────

@@ -149,7 +149,7 @@ export function extractAllMetadata(filePath, code) {
 
     // Advanced metadata
     sideEffects: extractSideEffects(code),
-    dataFlow: extractDataFlow(code),
+    dataFlow: extractDataFlow(code, { filePath }),
     typeInference: extractTypeInference(code),
     temporal: extractTemporalPatterns(code),
     depDepth: extractDependencyDepth(code),

@@ -61,6 +61,16 @@ describe('status summary payload', () => {
     expect(updateRow.detail).toContain('deps=3');
     expect(updateRow.detail).toContain('integrity=ok');
 
+    const historyRow = payload.systemTable.rows.find((row) => row.area === 'History');
+    expect(historyRow).toMatchObject({
+      area: 'History',
+      state: 'ready',
+      source: '.omnysysdata/health-history.db + .omnysysdata/atom-history.db'
+    });
+    expect(historyRow.detail).toContain('ready=2/2');
+    expect(historyRow.detail).toContain('health-history.db:ready:2kb');
+    expect(historyRow.detail).toContain('atom-history.db:ready:4kb');
+
     const systemsRow = payload.systemTable.rows.find((row) => row.area === 'Systems');
     expect(systemsRow).toMatchObject({
       area: 'Systems',
@@ -121,6 +131,7 @@ describe('status summary payload', () => {
       'Daemon',
       'Database',
       'Snapshots',
+      'History',
       'Update',
       'Startup',
       'Proxy',

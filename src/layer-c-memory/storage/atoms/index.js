@@ -19,3 +19,12 @@ export {
   createVersionManager,
   calculateFieldHashes 
 } from './atom-version-manager.js';
+
+export {
+  getAtomHistoryArchiveDb,
+  closeAtomHistoryArchiveDb,
+  shutdownAtomHistoryArchiveStorage,
+  persistAtomVersionArchiveSnapshot,
+  persistAtomVersionArchiveBatch,
+  loadAtomVersionArchiveHistory
+} from '../../../shared/compiler/atom-history-archive.js';

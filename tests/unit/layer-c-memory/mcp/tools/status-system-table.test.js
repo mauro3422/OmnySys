@@ -86,6 +86,20 @@ describe('status system table', () => {
         lastEventType: 'bridge-recovery-needed'
       },
       compilerExplainability: {
+        systemInventory: {
+          historyStores: {
+            archiveDir: '.omnysysdata',
+            totalStores: 2,
+            readyStoreCount: 2,
+            missingStoreCount: 0,
+            state: 'ready',
+            summaryText: 'health=ready | atom=ready | ready=2/2',
+            stores: [
+              { label: 'health-history.db', state: 'ready', exists: true, sizeBytes: 2048 },
+              { label: 'atom-history.db', state: 'ready', exists: true, sizeBytes: 4096 }
+            ]
+          }
+        },
         folderization: {
           automation: {
             automationState: 'ready',
@@ -296,6 +310,16 @@ describe('status system table', () => {
     expect(startupRow.detail).toContain('total=1321150ms');
     expect(startupRow.detail).toContain('budget=over-budget');
 
+    const historyRow = summary.rows.find((row) => row.area === 'History');
+    expect(historyRow).toMatchObject({
+      area: 'History',
+      state: 'ready',
+      source: '.omnysysdata/health-history.db + .omnysysdata/atom-history.db'
+    });
+    expect(historyRow.detail).toContain('ready=2/2');
+    expect(historyRow.detail).toContain('health-history.db:ready:2kb');
+    expect(historyRow.detail).toContain('atom-history.db:ready:4kb');
+
     const proxyRow = summary.rows.find((row) => row.area === 'Proxy');
     expect(proxyRow).toMatchObject({
       area: 'Proxy',
@@ -335,6 +359,7 @@ describe('status system table', () => {
       'Daemon',
       'Database',
       'Snapshots',
+      'History',
       'Update',
       'Startup',
       'Proxy',

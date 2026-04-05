@@ -25,7 +25,8 @@ import {
 } from './compiler-metrics-snapshot-helpers.js';
 import {
   loadCompilerHealthArchiveSummary,
-  persistCompilerHealthArchiveSnapshot
+  persistCompilerHealthArchiveSnapshot,
+  persistCompilerMetricsArchiveSnapshot
 } from './compiler-health-archive.js';
 import { summarizeCompilerMetricsSnapshot } from './compiler-metrics-snapshot-summary.js';
 
@@ -182,6 +183,7 @@ export function buildCompilerMetricsSnapshot(options = {}) {
   if (persist && projectPath) {
     try {
       persistCompilerHealthArchiveSnapshot(projectPath, snapshot);
+      persistCompilerMetricsArchiveSnapshot(projectPath, snapshot);
     } catch {
       // The archive is advisory too. Reindex/reanalyze must never depend on it.
     }

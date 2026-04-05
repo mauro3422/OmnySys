@@ -30,6 +30,26 @@ import { PatternIndexManager } from './utils/managers/index.js';
 
 const logger = createLogger('OmnySys:data-flow');
 
+function normalizeFilePath(filePath = '') {
+  return String(filePath || '').replace(/\\/g, '/');
+}
+
+function isSupportOrTestFile(filePath = '') {
+  const normalized = normalizeFilePath(filePath);
+  if (!normalized) {
+    return false;
+  }
+
+  return /(^|\/)(__tests__?|tests?|test|fixtures|__factories__|factories|harness|__mocks__|mocks)(\/|$)/i.test(normalized)
+    || /\.(test|spec)\.[cm]?[jt]sx?$/i.test(normalized);
+}
+
+function shouldSuppressParseFailure(targetFilePath, options = {}) {
+  if (options.suppressParseWarnings === true) return true;
+  if (options.suppressParseWarnings === false) return false;
+  return isSupportOrTestFile(targetFilePath);
+}
+
 function createEmptyDataFlowResult() {
   return {
     inputs: [],
@@ -138,6 +158,20 @@ export function extractDataFlow(codeOrNode, options = {}) {
     if (!node && code) {
       const parsed = parseCodeToNode(code, targetFilePath);
       if (parsed.error) {
+        if (shouldSuppressParseFailure(targetFilePath, options)) {
+          logger.debug(`Synchronous parse failed in extractDataFlow for ${targetFilePath} (suppressed): ${parsed.error}`);
+          return {
+            ...createEmptyDataFlowResult(),
+            filePath: targetFilePath,
+            _meta: {
+              extractedAt: new Date().toISOString(),
+              version: '1.0.0',
+              parseWarning: parsed.error,
+              parseWarningSuppressed: true
+            }
+          };
+        }
+
         logger.warn(`Synchronous parse failed in extractDataFlow for ${targetFilePath}: ${parsed.error}`);
         return { error: parsed.error, filePath: targetFilePath };
       }

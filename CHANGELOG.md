@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Added durable historical storage surfaces for compiler evolution by separating `health-history.db` and `atom-history.db` from the operational SQLite DB, then surfacing them through system inventory, status, database schema, and the canonical atom evolution report.
+- Added `mcp_omnysystem_get_atom_evolution_report` as a canonical MCP query that composes atom details, DNA, data flow, impact, Git history, persisted atom archive history, and schema context into one report.
+- Made `get_schema(type: "database")`, the control-plane contracts, and the status table expose historical store readiness so long-lived memory is visible alongside live DB health instead of being hidden behind the runtime database.
 - Fixed the MCP HTTP bootstrap contract so `POST /mcp` still parses the JSON body even when a stale `mcp-session-id` is present, allowing initialize/reinitialize requests to recover from expired sessions instead of falling into a false `SESSION_EXPIRED` path.
 - Bridged `sharedState.inventorySignals` into the compiler explainability and inventory summaries so `integrationCoveragePct` now flows into the inventory state and public report instead of staying stuck at zero.
 - Surfaced derived atom scores as top-level metadata in the single-file analysis path, persisted graph metrics after the fast path, and relaxed metadata-completeness guard targeting so compiler infrastructure helpers stop being treated as production surfaces.

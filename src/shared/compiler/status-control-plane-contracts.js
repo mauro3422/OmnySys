@@ -107,7 +107,13 @@ export function resolveControlPlaneContracts(status = {}) {
     folderizationAutomation: folderizationAutomation || null,
     folderizationAdoption: folderizationAdoption || null,
     integrationCoveragePct: Number(systemInventory?.integrationCoveragePct || systemInventory?.summary?.integrationCoveragePct || 0) || 0,
-    propagation
+    propagation,
+    historyStores: firstDefined(
+      systemInventory?.historyStores,
+      systemInventory?.summary?.historyStores,
+      healthSnapshot.systemInventory?.historyStores,
+      metricsSnapshot.systemInventory?.historyStores
+    )
   };
 }
 
@@ -126,7 +132,8 @@ export function resolveDashboardControlPlaneContracts(snapshot = null, compilerE
     policyCoverage,
     folderizationAdoption: current.folderizationAutomation?.propagationAdoption || null,
     integrationCoveragePct: Number(compilerExplainability?.systemInventory?.integrationCoveragePct || compilerExplainability?.systemInventory?.summary?.integrationCoveragePct || 0) || 0,
-    propagationExpansion
+    propagationExpansion,
+    historyStores: compilerExplainability?.systemInventory?.historyStores || compilerExplainability?.systemInventory?.summary?.historyStores || null
   };
 }
 

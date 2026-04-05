@@ -9,6 +9,7 @@ import { statsPool } from '../../../shared/utils/stats-pool.js';
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import { persistAtomVersionArchiveSnapshot } from '../../../shared/compiler/atom-history-archive.js';
 import {
   buildAtomChangeDetection,
   loadFieldHashes,
@@ -86,7 +87,13 @@ export class AtomVersionManager {
   */
   async trackAtomVersion(atomId, atomData) {
     return runAtomVersionOperation(this, `track atom version for ${atomId}`, async (db) => {
-      return trackAtomVersionWithDb(db, atomId, atomData);
+      const version = trackAtomVersionWithDb(db, atomId, atomData);
+      try {
+        persistAtomVersionArchiveSnapshot(this.rootPath, atomId, atomData, version, { source: 'atom-version-manager' });
+      } catch (error) {
+        logger.warn(`Atom version archive persistence failed for ${atomId}: ${error.message}`);
+      }
+      return version;
     });
   }
 

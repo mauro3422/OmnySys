@@ -267,7 +267,7 @@ function spawnWorker(extraArgs = []) {
                         }
                     }
                     const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
-                    const preservedFiles = new Set(['health-history.db']);
+                    const preservedFiles = new Set(['health-history.db', 'atom-history.db']);
                     for (const file of dbFiles) {
                         if (preservedFiles.has(file)) continue;
                         const filePath = path.join(dataDir, file);

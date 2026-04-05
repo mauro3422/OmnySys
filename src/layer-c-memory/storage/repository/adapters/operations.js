@@ -111,7 +111,7 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
   _initHandlers() {
     this.atomHandler = new AtomBulkHandler(this.db, this._logger);
     this.relationHandler = new RelationBulkHandler(this.db, this._logger);
-    this.eventHandler = new EventBulkHandler(this.db, this._logger);
+    this.eventHandler = new EventBulkHandler(this.db, this._logger, this.projectPath);
   }
 
   initialize(projectPath) {

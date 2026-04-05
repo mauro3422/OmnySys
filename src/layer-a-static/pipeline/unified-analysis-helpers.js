@@ -6,6 +6,7 @@ import { Worker } from 'worker_threads';
 import { saveFileSummariesBatch } from './file-summary-storage.js';
 
 const logger = createLogger('OmnySys:Pipeline:Unified');
+const DEFAULT_WORKER_TIMEOUT_MS = Number(process.env.OMNYSYS_UNIFIED_WORKER_TIMEOUT_MS || 240000);
 
 function getWorkerCount(totalFiles, existingHashCount = 0, extractionDepth = 'structural') {
     const numCPUs = os.cpus().length;
@@ -62,6 +63,14 @@ function handleWorkerDone(msg, workerIndex, parsedFiles, pendingWrites, totalsRe
     }
 }
 
+function buildBalancedWorkerChunks(files, workerCount) {
+    const chunks = Array.from({ length: workerCount }, () => []);
+    files.forEach((file, index) => {
+        chunks[index % workerCount].push(file);
+    });
+    return chunks.filter((chunk) => chunk.length > 0);
+}
+
 function createWorkerPromise(workerIndex, chunk, workerContext) {
     const {
         workerScriptPath,
@@ -70,6 +79,7 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
         gitStats,
         batchTimer,
         verbose,
+        workerCount,
         totalFiles,
         filesSkippedRef,
         parsedFiles,
@@ -78,7 +88,38 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
     } = workerContext;
 
     return new Promise((resolve, reject) => {
-        const worker = new Worker(workerScriptPath, {
+        const workerStartedAt = Date.now();
+        let worker = null;
+        let watchdog = null;
+        let lastProgressAt = workerStartedAt;
+        let settled = false;
+
+        const cleanup = () => {
+            if (watchdog) {
+                clearInterval(watchdog);
+                watchdog = null;
+            }
+        };
+
+        const settleResolve = () => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve();
+        };
+
+        const settleReject = (error) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            reject(error);
+        };
+
+        if (verbose) {
+            logger.info(`  Worker ${workerIndex + 1}/${workerCount} started with ${chunk.length} file(s)`);
+        }
+
+        worker = new Worker(workerScriptPath, {
             workerData: {
                 files: chunk,
                 absoluteRootPath,
@@ -89,13 +130,18 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
 
         worker.on('message', (msg) => {
             if (msg.type === 'PROGRESS') {
+                lastProgressAt = Date.now();
                 handleWorkerProgress(msg, batchTimer, verbose, totalFiles, filesSkippedRef);
                 return;
             }
 
             if (msg.type === 'DONE') {
                 handleWorkerDone(msg, workerIndex, parsedFiles, pendingWrites, totalsRef);
-                resolve();
+                if (verbose) {
+                    const elapsedMs = Date.now() - workerStartedAt;
+                    logger.info(`  Worker ${workerIndex + 1}/${workerCount} completed in ${elapsedMs}ms (${msg.extractedCount || 0} atoms)`);
+                }
+                settleResolve();
                 return;
             }
 
@@ -104,24 +150,50 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
             }
         });
 
-        worker.on('error', reject);
-        worker.on('exit', (code) => {
-            if (code !== 0) {
-                reject(new Error(`Worker ${workerIndex + 1} stopped with exit code ${code}`));
+        watchdog = setInterval(async () => {
+            if (settled || !worker) return;
+
+            const idleMs = Date.now() - lastProgressAt;
+            if (idleMs < DEFAULT_WORKER_TIMEOUT_MS) {
+                return;
             }
+
+            logger.warn(`Worker ${workerIndex + 1}/${workerCount} idle for ${idleMs}ms on ${chunk.length} file(s); terminating`);
+            try {
+                await worker.terminate();
+            } catch (error) {
+                logger.warn(`Worker ${workerIndex + 1}/${workerCount} terminate failed: ${error.message}`);
+            }
+            settleReject(new Error(`Worker ${workerIndex + 1} timed out after ${Math.round(idleMs / 1000)}s without progress`));
+        }, Math.min(30000, Math.max(5000, Math.floor(DEFAULT_WORKER_TIMEOUT_MS / 4))));
+
+        worker.on('error', (error) => {
+            settleReject(error);
+        });
+        worker.on('exit', (code) => {
+            cleanup();
+            if (settled) {
+                return;
+            }
+            if (code !== 0) {
+                settleReject(new Error(`Worker ${workerIndex + 1} stopped with exit code ${code}`));
+                return;
+            }
+            settleResolve();
         });
     });
 }
 
 async function executeWorkerPool(files, workerCount, workerContext) {
-    const chunkSize = Math.ceil(files.length / workerCount);
     const workerPromises = [];
+    const balancedChunks = buildBalancedWorkerChunks(files, workerCount);
 
-    for (let i = 0; i < workerCount; i += 1) {
-        const start = i * chunkSize;
-        const end = start + chunkSize;
-        const chunk = files.slice(start, end);
-        if (chunk.length === 0) continue;
+    if (workerContext.verbose) {
+        logger.info(`  Balanced worker distribution: ${balancedChunks.map((chunk) => chunk.length).join(', ')}`);
+    }
+
+    for (let i = 0; i < balancedChunks.length; i += 1) {
+        const chunk = balancedChunks[i];
         workerPromises.push(createWorkerPromise(i, chunk, workerContext));
     }
 
@@ -279,6 +351,7 @@ export async function runUnifiedAnalysisPipeline({
         gitStats,
         batchTimer,
         verbose,
+        workerCount,
         totalFiles,
         filesSkippedRef,
         parsedFiles,

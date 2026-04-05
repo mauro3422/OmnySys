@@ -136,6 +136,20 @@ The restart boundary already exists:
 - In proxy mode it can request a real worker restart while the parent proxy
   stays alive.
 
+Important semantics:
+
+- `clearCacheOnly=true` is the fastest maintenance path.
+- `reindexOnly=true` preserves the DB and is the closest thing to a resume or
+  continue path.
+- `clearCache+reanalyze=true` is **not** a resume path. It deletes the prior
+  analysis and starts a destructive full reindex from scratch.
+- Historical health and compiler metrics snapshots are archived separately in
+  `health-history.db`, so the evolution history survives operational wipes.
+- Atom version history is archived separately in `atom-history.db`, so
+  per-atom evolution survives operational wipes even if `omnysys.db` is reset.
+- The canonical MCP query surface for atom evolution is `mcp_omnysystem_get_atom_evolution_report`,
+  which composes atom details, DNA, data flow, impact, Git history, archive history, and schema context.
+
 This is the right place to keep future lifecycle automation.
 
 ## Client Map

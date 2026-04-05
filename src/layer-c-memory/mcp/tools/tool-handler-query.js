@@ -1,4 +1,5 @@
 import { query_graph } from './query-graph.js';
+import { get_atom_evolution_report } from './get-atom-evolution-report.js';
 import { traverse_graph } from './traverse-graph.js';
 import { impact_atomic } from './impact-atomic.js';
 import { aggregate_metrics } from './aggregate-metrics.js';
@@ -7,6 +8,7 @@ import { check_pipeline_integrity } from './check-pipeline-integrity.js';
 
 export const queryToolHandlers = {
   mcp_omnysystem_query_graph: query_graph,
+  mcp_omnysystem_get_atom_evolution_report: get_atom_evolution_report,
   mcp_omnysystem_traverse_graph: traverse_graph,
   mcp_omnysystem_impact_atomic: impact_atomic,
   mcp_omnysystem_aggregate_metrics: aggregate_metrics,

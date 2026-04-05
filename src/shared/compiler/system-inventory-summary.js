@@ -8,6 +8,7 @@
  */
 
 import { asNumber } from './core-utils.js';
+import { buildCompilerHistoricalStorageSummary } from './compiler-persistence-paths.js';
 import { buildCompilerPolicyCoverageSummary } from './policy-coverage-summary.js';
 import {
   buildCandidateEntry,
@@ -26,6 +27,7 @@ export function buildCompilerSystemInventorySnapshot({
   focusPath = null,
   compilerExplainability = null,
   toolInventory = null,
+  historyStores = null,
   limit = 10
 } = {}) {
   const standardization = compilerExplainability?.standardization || null;
@@ -33,6 +35,7 @@ export function buildCompilerSystemInventorySnapshot({
   const driftAssessment = compilerExplainability?.driftAssessment || null;
   const policySummary = compilerExplainability?.policySummary || null;
   const surfaceAudit = compilerExplainability?.surfaceAudit || null;
+  const resolvedHistoryStores = historyStores || buildCompilerHistoricalStorageSummary(projectPath);
   const canonicalSurfaces = Array.isArray(contractLayer?.surfaces) ? contractLayer.surfaces : [];
   const canonicalEntrypoints = Array.isArray(contractLayer?.canonicalEntrypoints) ? contractLayer.canonicalEntrypoints : [];
   const missingCanonicalApis = Array.isArray(standardization?.missingCanonicalApis) ? standardization.missingCanonicalApis : [];
@@ -113,6 +116,11 @@ export function buildCompilerSystemInventorySnapshot({
 
   const tooling = buildToolingSection(toolInventory);
   const inventorySignals = compilerExplainability?.inventorySignals || null;
+  const policyFindingCount = asNumber(policySummary?.total, 0);
+  const policyDriftCount = asNumber(
+    policySummary?.active ?? (asNumber(policySummary?.high, 0) + asNumber(policySummary?.medium, 0)) ?? policyFindingCount,
+    0
+  );
   const integrationCoveragePct = inventorySignals?.total
     ? Math.min(100, Math.round(((inventorySignals.total - (inventorySignals.byType?.unknown || 0)) / inventorySignals.total) * 100))
     : 0;
@@ -127,7 +135,8 @@ export function buildCompilerSystemInventorySnapshot({
         bridgeSystemCount: bridgeSystems.length,
         wrapperSystemCount: wrapperSystems.length,
         legacySystemCount: legacySystems.length,
-        policyDriftCount: asNumber(policySummary?.total, 0),
+        policyFindingCount,
+        policyDriftCount,
         propagationExpansionState:
           driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state
           || driftAssessment?.primaryIssue?.state
@@ -144,7 +153,8 @@ export function buildCompilerSystemInventorySnapshot({
     }
   });
   const signals = {
-    policyDriftCount: asNumber(policySummary?.total, 0),
+    policyFindingCount,
+    policyDriftCount,
     standardizationGapCount: asNumber(standardization?.summary?.adoptionGapCount, 0),
     missingCanonicalApiCount: asNumber(standardization?.summary?.missingCanonicalApiCount, 0),
     missingCanonicalSurfaceCount: asNumber(standardization?.summary?.missingCanonicalSurfaceCount, 0),
@@ -174,7 +184,8 @@ export function buildCompilerSystemInventorySnapshot({
     legacySystems,
     tooling,
     signals,
-    policyCoverage
+    policyCoverage,
+    historyStores: resolvedHistoryStores
   });
 
   return {
@@ -190,6 +201,7 @@ export function buildCompilerSystemInventorySnapshot({
     legacySystems,
     tooling,
     policyCoverage,
+    historyStores: resolvedHistoryStores,
     signals,
     summary
   };
@@ -236,12 +248,18 @@ export function buildCompilerSystemInventoryReport(inventory = null) {
     policyCoverageDriftCount: summary.policyCoverageDriftCount || 0,
     policyCoveragePropagationState: summary.policyCoveragePropagationState || null,
     kindCounts: summary.kindCounts || {},
+    historyStoreState: summary.historyStoreState || null,
+    historyStoreCount: summary.historyStoreCount || 0,
+    historyStoreReadyCount: summary.historyStoreReadyCount || 0,
+    historyStoreMissingCount: summary.historyStoreMissingCount || 0,
+    historyStores: summary.historyStores || null,
     nextAction: summary.nextAction || null,
     summaryText: summary.summaryText || null,
     topSystems: Array.isArray(summary.topSystems) ? summary.topSystems.slice(0, 8) : [],
     topPromotionCandidates: Array.isArray(summary.topPromotionCandidates) ? summary.topPromotionCandidates.slice(0, 5) : [],
     tooling: inventory.tooling || null,
-    policyCoverage: inventory.policyCoverage || null
+    policyCoverage: inventory.policyCoverage || null,
+    historyStores: summary.historyStores || null
   };
 }
 

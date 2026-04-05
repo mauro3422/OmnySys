@@ -62,6 +62,18 @@ export function buildStatusSummaryPayloadFixture() {
       legacySystemCount: 0,
       metadataCoveragePct: 79,
       integrationCoveragePct: 68,
+      historyStores: {
+        archiveDir: '.omnysysdata',
+        totalStores: 2,
+        readyStoreCount: 2,
+        missingStoreCount: 0,
+        state: 'ready',
+        summaryText: 'health=ready | atom=ready | ready=2/2',
+        stores: [
+          { label: 'health-history.db', state: 'ready', exists: true, sizeBytes: 2048 },
+          { label: 'atom-history.db', state: 'ready', exists: true, sizeBytes: 4096 }
+        ]
+      },
       policyCoverage: {
         coverageState: 'watching',
         coverageScore: 77,
@@ -107,7 +119,19 @@ export function buildStatusSummaryPayloadFixture() {
     compilerExplainability: {
       systemInventory: {
         integrationCoveragePct: 68,
-        metadataCoveragePct: 79
+        metadataCoveragePct: 79,
+        historyStores: {
+          archiveDir: '.omnysysdata',
+          totalStores: 2,
+          readyStoreCount: 2,
+          missingStoreCount: 0,
+          state: 'ready',
+          summaryText: 'health=ready | atom=ready | ready=2/2',
+          stores: [
+            { label: 'health-history.db', state: 'ready', exists: true, sizeBytes: 2048 },
+            { label: 'atom-history.db', state: 'ready', exists: true, sizeBytes: 4096 }
+          ]
+        }
       },
       folderization: {
         automation: {

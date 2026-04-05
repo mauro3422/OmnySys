@@ -49,7 +49,7 @@ function buildFolderizationPropagationAdoptionTargets({
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
   try {
     const { scanCompilerPolicyDrift } = await import('./scan.js');
-    const findings = await scanCompilerPolicyDrift(projectPath, { limit: 100 });
+    const findings = await scanCompilerPolicyDrift(projectPath, { limit: 1000 });
     const policySummary = summarizeCompilerPolicyDrift(findings);
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(projectPath);
