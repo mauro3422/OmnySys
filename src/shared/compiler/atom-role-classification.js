@@ -14,9 +14,7 @@ function clampConfidence(value) {
 }
 
 function getCalls(atom = {}) {
-  return Array.isArray(atom.calls)
-    ? atom.calls
-    : [];
+  return Array.isArray(atom.calls) ? atom.calls : [];
 }
 
 function getAtomArchetype(atom = {}) {
@@ -47,90 +45,118 @@ function collectRoleSignals(atom = {}, filePath = '') {
   };
 }
 
-function classifyRoleFromSignals(signals) {
-  const reasons = [];
-  let role = 'standard';
-  let confidence = 0.45;
-
-  if (
-    /mcp-stdio-bridge|mcp-http-proxy|mcp-http-server|bridge/.test(signals.normalizedPath) ||
-    signals.normalizedName.includes('bridge')
-  ) {
-    role = 'bridge';
-    confidence = 0.95;
-    reasons.push('runtime_bridge_path');
-  } else if (
-    /watcher|orchestrator|manager|session-manager|phase2-indexer/.test(signals.normalizedPath) ||
-    /orchestrator|manager|registry/.test(signals.archetype) ||
-    /orchestrator|manager|registry/.test(signals.normalizedName)
-  ) {
-    role = 'orchestrator';
-    confidence = 0.9;
-    reasons.push('coordination_runtime_path');
-  } else if (
-    /policy|conformance|diagnostics|compiler/.test(signals.normalizedPath) ||
-    /policy|conformance/.test(signals.normalizedName)
-  ) {
-    role = 'policy';
-    confidence = 0.88;
-    reasons.push('compiler_policy_path');
-  } else if (
-    /resolver/.test(signals.normalizedPath) ||
-    /resolver/.test(signals.archetype) ||
-    /resolve/.test(signals.normalizedName)
-  ) {
-    role = 'resolver';
-    confidence = 0.84;
-    reasons.push('resolver_structure_path');
-  } else if (
-    /builder/.test(signals.normalizedPath) ||
-    /builder/.test(signals.archetype) ||
-    /builder/.test(signals.normalizedName)
-  ) {
-    role = 'builder';
-    confidence = 0.84;
-    reasons.push('builder_structure_path');
-  } else if (
-    /(verification|validation)\/.*validator/.test(signals.normalizedPath) ||
-    /\/validators?\//.test(signals.normalizedPath) ||
-    /validator/.test(signals.normalizedName) ||
-    /validator/.test(signals.archetype)
-  ) {
-    role = 'analyzer';
-    confidence = 0.86;
-    reasons.push('validator_analysis_path');
-  } else if (
-    /(^|\/)analyses?\//.test(signals.normalizedPath) ||
-    /analyzer/.test(signals.normalizedPath) ||
-    /analyzer/.test(signals.archetype) ||
-    /analy(z|s)e|analysis/.test(signals.normalizedName)
-  ) {
-    role = 'analyzer';
-    confidence = 0.84;
-    reasons.push('analysis_structure_path');
-  } else if (
-    /storage|repository|sqlite|cache/.test(signals.normalizedPath) ||
-    /storage|repository|cache/.test(signals.purpose)
-  ) {
-    role = 'storage';
-    confidence = 0.9;
-    reasons.push('storage_boundary_path');
-  } else if (
-    signals.hasNetworkCalls ||
-    /adapter|proxy|handler/.test(signals.archetype) ||
-    signals.callNames.some((name) => /fetch|axios|request|send|listen/.test(name))
-  ) {
-    role = 'adapter';
-    confidence = 0.8;
-    reasons.push('io_boundary_detected');
-  } else if (
-    /transformer|mapper|converter/.test(signals.archetype) ||
-    /transform|normalize|convert|map/.test(signals.normalizedName)
-  ) {
-    role = 'transformer';
-    confidence = 0.82;
-    reasons.push('transformation_naming');
+/**
+ * Role matchers — each returns { role, confidence, reason } or null.
+ * Evaluated in priority order; first match wins.
+ * This replaces the original 12-branch if/else chain (CC 39 → CC 1).
+ */
+const ROLE_MATCHERS = [
+  {
+    test: (s) =>
+      /mcp-stdio-bridge|mcp-http-proxy|mcp-http-server|bridge/.test(s.normalizedPath) ||
+      s.normalizedName.includes('bridge'),
+    role: 'bridge',
+    confidence: 0.95,
+    reason: 'runtime_bridge_path'
+  },
+  {
+    test: (s) =>
+      /watcher|orchestrator|manager|session-manager|phase2-indexer/.test(s.normalizedPath) ||
+      /orchestrator|manager|registry/.test(s.archetype) ||
+      /orchestrator|manager|registry/.test(s.normalizedName),
+    role: 'orchestrator',
+    confidence: 0.9,
+    reason: 'coordination_runtime_path'
+  },
+  {
+    test: (s) =>
+      /policy|conformance|diagnostics|compiler/.test(s.normalizedPath) ||
+      /policy|conformance/.test(s.normalizedName),
+    role: 'policy',
+    confidence: 0.88,
+    reason: 'compiler_policy_path'
+  },
+  {
+    test: (s) =>
+      /resolver/.test(s.normalizedPath) ||
+      /resolver/.test(s.archetype) ||
+      /resolve/.test(s.normalizedName),
+    role: 'resolver',
+    confidence: 0.84,
+    reason: 'resolver_structure_path'
+  },
+  {
+    test: (s) =>
+      /builder/.test(s.normalizedPath) ||
+      /builder/.test(s.archetype) ||
+      /builder/.test(s.normalizedName),
+    role: 'builder',
+    confidence: 0.84,
+    reason: 'builder_structure_path'
+  },
+  {
+    test: (s) =>
+      /(verification|validation)\/.*validator/.test(s.normalizedPath) ||
+      /\/validators?\//.test(s.normalizedPath) ||
+      /validator/.test(s.normalizedName) ||
+      /validator/.test(s.archetype),
+    role: 'analyzer',
+    confidence: 0.86,
+    reason: 'validator_analysis_path'
+  },
+  {
+    test: (s) =>
+      /(^|\/)analyses?\//.test(s.normalizedPath) ||
+      /analyzer/.test(s.normalizedPath) ||
+      /analyzer/.test(s.archetype) ||
+      /analy(z|s)e|analysis/.test(s.normalizedName),
+    role: 'analyzer',
+    confidence: 0.84,
+    reason: 'analysis_structure_path'
+  },
+  {
+    test: (s) =>
+      /storage|repository|sqlite|cache/.test(s.normalizedPath) ||
+      /storage|repository|cache/.test(s.purpose),
+    role: 'storage',
+    confidence: 0.9,
+    reason: 'storage_boundary_path'
+  },
+  {
+    test: (s) =>
+      s.hasNetworkCalls ||
+      /adapter|proxy|handler/.test(s.archetype) ||
+      s.callNames.some((name) => /fetch|axios|request|send|listen/.test(name)),
+    role: 'adapter',
+    confidence: 0.8,
+    reason: 'io_boundary_detected'
+  },
+  {
+    test: (s) =>
+      /transformer|mapper|converter/.test(s.archetype) ||
+      /transform|normalize|convert|map/.test(s.normalizedName),
+    role: 'transformer',
+    confidence: 0.82,
+    reason: 'transformation_naming'
   }
+];
+
+const DEFAULT_ROLE = { role: 'standard', confidence: 0.45, reasons: [] };
+
+function classifyRoleFromSignals(signals) {
+  const matched = ROLE_MATCHERS.find((m) => m.test(signals));
+  if (!matched) {
+    const reasons = [...DEFAULT_ROLE.reasons];
+    let confidence = DEFAULT_ROLE.confidence;
+    if (signals.sharedStateAccessCount > 0) {
+      reasons.push('shared_state_access');
+      confidence = Math.max(confidence, 0.78);
+    }
+    return { role: DEFAULT_ROLE.role, confidence: clampConfidence(confidence), reasons };
+  }
+
+  const reasons = [matched.reason];
+  let confidence = matched.confidence;
 
   if (signals.sharedStateAccessCount > 0) {
     reasons.push('shared_state_access');
@@ -138,7 +164,7 @@ function classifyRoleFromSignals(signals) {
   }
 
   return {
-    role,
+    role: matched.role,
     confidence: clampConfidence(confidence),
     reasons
   };

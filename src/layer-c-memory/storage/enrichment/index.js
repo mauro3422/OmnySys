@@ -91,9 +91,12 @@ function isTransientSqliteAvailabilityError(error) {
  * @returns {Object} { propagationScore, impactLevel }
  */
 function calculatePropagationScore(inDegree, outDegree) {
-  const score = (inDegree * 0.6) + (outDegree * 0.4);
-  const impactLevel = score > 10 ? 'HIGH' : score > 5 ? 'MEDIUM' : 'LOW';
-  
+  // Normalizar a 0-1: inDegree típicamente 0-15, outDegree 0-10
+  const normalizedIn = Math.min(inDegree / 10, 1);
+  const normalizedOut = Math.min(outDegree / 10, 1);
+  const score = (normalizedIn * 0.6) + (normalizedOut * 0.4);
+  const impactLevel = score > 0.7 ? 'HIGH' : score > 0.4 ? 'MEDIUM' : 'LOW';
+
   return {
     propagationScore: parseFloat(score.toFixed(3)),
     impactLevel
@@ -107,18 +110,23 @@ function calculatePropagationScore(inDegree, outDegree) {
  * @returns {Object} { riskScore, riskLevel, prediction }
  */
 function predictBreakingRisk(centrality, fragilityScore = 0.3) {
-  const riskScore = (centrality.inDegree * 0.5) + (centrality.outDegree * 0.3) + (fragilityScore * 0.2);
+  // Normalizar degrees a 0-1 usando log-scale para evitar que valores
+  // absolutos dominen (inDegree puede ser 15+, necesitamos un score 0-1)
+  const normalizedIn = Math.min(centrality.inDegree / 10, 1);
+  const normalizedOut = Math.min(centrality.outDegree / 10, 1);
+
+  const riskScore = (normalizedIn * 0.5) + (normalizedOut * 0.3) + (fragilityScore * 0.2);
   let riskLevel = 'LOW';
   let prediction = 'Cambios seguros';
-  
+
   if (riskScore > 0.7) {
     riskLevel = 'HIGH';
-    prediction = 'Alto riesgo: muchos dependents';
+    prediction = 'Alto riesgo: muchos dependientes + fragilidad';
   } else if (riskScore > 0.4) {
     riskLevel = 'MEDIUM';
-    prediction = 'Riesgo moderado';
+    prediction = 'Riesgo moderado: verificar dependientes';
   }
-  
+
   return {
     riskScore: parseFloat(riskScore.toFixed(3)),
     riskLevel,

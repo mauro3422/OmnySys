@@ -27,6 +27,7 @@ export function buildCompilerPolicyCoverageSummary({
 } = {}) {
   const summary = inventory?.summary || inventory || {};
   const policyDriftCount = asNumber(summary.policyDriftCount, 0);
+  const totalSystemCount = asNumber(summary.totalSystemCount, 0);
   const metadataCoveragePct = clampScore(summary.metadataCoveragePct);
   const integrationCoveragePct = clampScore(summary.integrationCoveragePct);
   const propagationExpansionState = normalizeText(summary.propagationExpansionState, null)
@@ -37,12 +38,19 @@ export function buildCompilerPolicyCoverageSummary({
   const bridgeSystemCount = asNumber(summary.bridgeSystemCount, 0);
   const wrapperSystemCount = asNumber(summary.wrapperSystemCount, 0);
   const emergentSystemCount = asNumber(summary.emergentSystemCount, 0);
-  const totalSystemCount = asNumber(summary.totalSystemCount, 0);
   const coverageLoad = canonicalSurfaceCount + canonicalEntrypointCount + bridgeSystemCount + wrapperSystemCount;
+
+  // Normalize drift pressure: raw drift count would dwarf the score.
+  // Use drift-per-system ratio scaled to 0-40 range (40 = 1 drift per system).
+  const driftPerSystem = totalSystemCount > 0 ? policyDriftCount / totalSystemCount : 0;
+  const normalizedDriftPressure = Math.min(Math.round(driftPerSystem * 40), 40);
+
   const signalPressure =
     (metadataCoveragePct > 0 && metadataCoveragePct < 80 ? 10 : 0) +
     (integrationCoveragePct > 0 && integrationCoveragePct < 80 ? 10 : 0);
-  const driftPressure = policyDriftCount + (propagationExpansionState === 'stale' ? 20 : 0) + signalPressure;
+  const driftPressure = normalizedDriftPressure
+    + (propagationExpansionState === 'stale' ? 20 : 0)
+    + signalPressure;
   const coverageScore = clampScore(100 - driftPressure);
   const coverageState = driftPressure > 0 ? (driftPressure >= 75 ? 'stale' : 'watching') : 'fresh';
   const nextAction = normalizeText(summary.nextAction, null)

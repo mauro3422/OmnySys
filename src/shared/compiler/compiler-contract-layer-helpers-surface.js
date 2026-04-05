@@ -157,7 +157,7 @@ export function buildSurfaceInventory({
       summary: systemMapPersistenceCoverage?.summary || 'System map projection mirrors the canonical relation surfaces.',
       evidence: {
         healthy: systemMapPersistenceCoverage?.healthy !== false,
-        liveAtoms: normalizeCount(systemMapPersistenceCoverage?.liveAtoms)
+        liveAtoms: normalizeCount(systemMapPersistenceCoverage?.liveAtomFiles)
       }
     })
   ];

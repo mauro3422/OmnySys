@@ -77,7 +77,10 @@ export function getSystemMapPersistenceCoverage(db) {
     mirroredImportCoverageRatio,
     dependencySourceCoverageRatio,
     healthy: issues.length === 0,
-    issues
+    issues,
+    summary: issues.length > 0
+      ? `System map has ${systemFilesTotal} rows for ${activeFiles} active files, ${fileDependenciesTotal} dependencies. Issues: ${issues.join('; ')}`
+      : `System map coverage is healthy: ${systemFilesTotal} files tracked, ${fileDependenciesTotal} dependencies, ${dependencySourceCoverageRatio * 100}% import coverage.`
   };
 }
 

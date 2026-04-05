@@ -9,10 +9,12 @@ import {
     clearLegacyAliases,
     upsertTomlTable,
     stripBom,
-    normalizeSlashes
+    normalizeSlashes,
+    getHealthUrl
 } from './utils.js';
 import {
     buildBridgePath,
+    buildBridgeEnv,
     buildCodexProjectTableName,
     buildCodexTableBody,
     removeTomlTable
@@ -186,11 +188,16 @@ export async function applyQwenConfig(url, projectPath) {
     const nodeCommand = getNodeCommand();
     const env = buildBridgeEnv(url, projectPath);
 
+    // Global config: omit OMNYSYS_PROJECT_PATH so the bridge auto-detects
+    // the workspace via process.cwd() (inherited from the IDE)
+    const globalEnv = { ...env };
+    delete globalEnv.OMNYSYS_PROJECT_PATH;
+
     const globalServers = ensureMcpServersContainer(config);
     globalServers[SERVER_KEY] = {
         command: nodeCommand,
         args: [bridgePath],
-        env
+        env: globalEnv
     };
     clearLegacyAliases(globalServers);
 

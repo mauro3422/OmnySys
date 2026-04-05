@@ -10,11 +10,11 @@ export function buildBridgePath() {
 export function buildBridgeEnv(url, projectPath) {
     return {
         OMNYSYS_DAEMON_URL: url,
-        OMNYS_HEALTH_URL: getHealthUrl(),
-        OMNYS_AUTO_START: '1',
-        OMNYS_PROJECT_PATH: normalizeSlashes(projectPath),
-        OMNYS_CLIENT_ID: 'codex',
-        OMNYS_CLIENT_NAME: 'codex'
+        OMNYSYS_HEALTH_URL: getHealthUrl(),
+        OMNYSYS_AUTO_START: '1',
+        OMNYSYS_PROJECT_PATH: normalizeSlashes(projectPath),
+        OMNYSYS_CLIENT_ID: 'codex',
+        OMNYSYS_CLIENT_NAME: 'codex'
     };
 }
 
@@ -25,8 +25,8 @@ export function buildCodexTableBody(url, projectPath) {
     const env = buildBridgeEnv(url, normalizedProjectPath);
     const envEntries = [
         ['OMNYSYS_DAEMON_URL', env.OMNYSYS_DAEMON_URL],
-        ['OMNYSYS_HEALTH_URL', env.OMNYS_HEALTH_URL],
-        ['OMNYSYS_AUTO_START', env.OMNYS_AUTO_START],
+        ['OMNYSYS_HEALTH_URL', env.OMNYSYS_HEALTH_URL],
+        ['OMNYSYS_AUTO_START', env.OMNYSYS_AUTO_START],
         ['OMNYSYS_PROJECT_PATH', env.OMNYSYS_PROJECT_PATH],
         ['OMNYSYS_CLIENT_ID', env.OMNYSYS_CLIENT_ID],
         ['OMNYSYS_CLIENT_NAME', env.OMNYSYS_CLIENT_NAME]

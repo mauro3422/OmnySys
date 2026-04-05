@@ -58,9 +58,12 @@ async function refreshAnalysisCache(cache, projectPath) {
   const { getAllConnections } = await import('#layer-c/query/apis/connections-api.js');
   const { getRiskAssessment } = await import('#layer-c/query/apis/risk-api.js');
 
-  const metadata = await getProjectMetadata(projectPath);
-  const connections = await getAllConnections(projectPath);
-  const assessment = await getRiskAssessment(projectPath);
+  // Execute independent API calls in parallel instead of sequentially
+  const [metadata, connections, assessment] = await Promise.all([
+    getProjectMetadata(projectPath),
+    getAllConnections(projectPath),
+    getRiskAssessment(projectPath)
+  ]);
 
   if (cache && typeof cache.set === 'function') {
     cache.set('metadata', metadata);
