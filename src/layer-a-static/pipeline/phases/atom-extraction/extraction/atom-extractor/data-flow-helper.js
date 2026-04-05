@@ -42,17 +42,29 @@ function parseCodeToNode(code) {
  */
 export function extractDataFlowSafe(functionInfo, functionCode, filePath) {
   try {
-    // Prefer the AST node from the parser; fallback to parsing the code ourselves
+    // PRIORITY 1: Use the AST node from the original parser (most accurate)
     let input = functionInfo.node;
-    if (!input && functionCode) {
-      input = parseCodeToNode(functionCode);
-    }
-
     if (input) {
-      return extractDataFlowV2(
+      const result = extractDataFlowV2(
         input,
         { functionName: functionInfo.name, filePath, code: functionCode, inferTypes: true }
       );
+      if (result && !result.error) return result;
+    }
+
+    // PRIORITY 2: Try parsing the function code with Tree-sitter
+    // extractDataFlowV2 already does this internally when given a string,
+    // so we just pass the code string and let it handle the parsing
+    if (functionCode && functionCode.trim().length > 0) {
+      const result = extractDataFlowV2(
+        functionCode,
+        { functionName: functionInfo.name, filePath, code: functionCode, inferTypes: true }
+      );
+      // Return result even if it has parseWarning — empty dataFlow is better than null
+      // (DNA extraction needs some structure to work with)
+      if (result && !result.error) return result;
+      // If it has a parseWarning but still produced results, return it
+      if (result && result.inputs) return result;
     }
   } catch (error) {
     logger.warn(`Data flow extraction failed for ${functionInfo.name} in ${filePath}: ${error.message}`);

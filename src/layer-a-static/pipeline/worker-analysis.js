@@ -22,6 +22,65 @@ import {
     withBusyRetry
 } from './worker-analysis-helpers.js';
 import { warmExtractorCache } from './phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
+import { saveFileSummariesBatch } from './file-summary-storage.js';
+
+const FLUSH_INTERVAL = 100; // Flush pending writes every N files
+
+function flushWorkerWritesToDb(repo, state, processedCount, totalFiles) {
+    if (repo?.db?.open === false) return;
+
+    try {
+        // Flush atoms incrementally (lite atoms only — no heavy fields)
+        // This prevents total data loss if the worker crashes before sending DONE message
+        if (state.pendingAtoms && state.pendingAtoms.length > 0) {
+            const atomsToFlush = state.pendingAtoms;
+            try {
+                if (repo.saveManyBulk) {
+                    repo.saveManyBulk(atomsToFlush, 200); // Smaller batch = less lock time
+                } else if (repo.saveMany) {
+                    repo.saveMany(atomsToFlush);
+                }
+                state.pendingAtoms = [];
+            } catch (flushError) {
+                // If SQLite is busy, don't lose the atoms — keep them for next flush
+                if (flushError.message.includes('database is locked') || flushError.message.includes('SQLITE_BUSY')) {
+                    logger.debug(`[Worker] SQLite busy, deferring ${atomsToFlush.length} atoms to next flush`);
+                    return; // Keep atoms in state, retry later
+                }
+                throw flushError;
+            }
+        }
+
+        // Flush file hashes (incremental upsert)
+        if (state.allFileHashesToSave.size > 0) {
+            const hashEntries = Array.from(state.allFileHashesToSave.entries());
+            const upsertStmt = repo.db.prepare(`
+                INSERT INTO files (path, last_analyzed, hash) VALUES (?, ?, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                    last_analyzed = excluded.last_analyzed,
+                    hash = excluded.hash,
+                    is_removed = 0,
+                    updated_at = datetime('now')
+            `);
+            const tx = repo.db.transaction((entries) => {
+                const now = new Date().toISOString();
+                for (const [filePath, hash] of entries) {
+                    upsertStmt.run(filePath, now, hash);
+                }
+            });
+            tx(hashEntries);
+            state.allFileHashesToSave.clear();
+        }
+
+        // Flush file summaries
+        if (state.allFileSummariesToSave.size > 0) {
+            saveFileSummariesBatch(repo, Array.from(state.allFileSummariesToSave.entries()), undefined, 200);
+            state.allFileSummariesToSave.clear();
+        }
+    } catch (error) {
+        logger.warn(`[Worker] Incremental flush failed: ${error.message}`);
+    }
+}
 
 async function runWorker() {
     const { files, absoluteRootPath, extractionDepth = 'structural', gitStats = {} } = workerData;
@@ -54,7 +113,8 @@ async function runWorker() {
         totalExtractedCount: 0,
         allLiteResults: {},
         allFileHashesToSave: new Map(),
-        allFileSummariesToSave: new Map()
+        allFileSummariesToSave: new Map(),
+        pendingAtoms: []  // NEW: accumulate atoms for incremental flush
     };
     let processedSinceLastPing = 0;
 
@@ -108,13 +168,24 @@ async function runWorker() {
     }
 
     // Main Loop
+    let filesProcessed = 0;
     for (const absoluteFilePath of files) {
         const result = await processWorkerFile(absoluteFilePath);
         processedSinceLastPing++;
+        filesProcessed++;
+
+        // Incremental flush every FLUSH_INTERVAL files to prevent data loss on crash
+        if (filesProcessed % FLUSH_INTERVAL === 0) {
+            flushWorkerWritesToDb(repo, state, filesProcessed, files.length);
+        }
+
         if (processedSinceLastPing >= 20) {
             processedSinceLastPing = flushProgress(processedSinceLastPing, result?.skipped || false);
         }
     }
+
+    // Final flush of remaining pending writes
+    flushWorkerWritesToDb(repo, state, filesProcessed, files.length);
 
     processedSinceLastPing = flushProgress(processedSinceLastPing, false);
 

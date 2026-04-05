@@ -148,8 +148,6 @@ function scheduleRestart(clearCache = false, reanalyze = false) {
         const dataDir = path.join(projectPath, '.omnysysdata');
         const toDelete = ['files', 'atoms', 'molecules'];
         const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
-        const preservedFiles = new Set(['health-history.db', 'atom-history.db']);
-
         try {
           // Borrar carpetas
           for (const dir of toDelete) {
@@ -160,7 +158,7 @@ function scheduleRestart(clearCache = false, reanalyze = false) {
           }
           // Borrar archivos de DB
           for (const file of dbFiles) {
-            if (preservedFiles.has(file)) continue;
+            if (shouldPreserveHistoryArtifact(file)) continue;
             const fullPath = path.join(dataDir, file);
             if (fs.existsSync(fullPath)) {
               fs.unlinkSync(fullPath);
@@ -212,6 +210,18 @@ process.on('SIGTERM', () => {
 // ─── Debug terminal (flag: --debug-terminal) ────────────────────────────────
 // Agrega "--debug-terminal" a los args o setea OMNYSYS_DEBUG_TERMINAL=1
 // en el environment para ver logs en una ventana de terminal.
+function shouldPreserveHistoryArtifact(fileName) {
+  const name = String(fileName || '');
+  return (
+    name === 'health-history.db' ||
+    name.startsWith('health-history.db-') ||
+    name.startsWith('health-history.db.') ||
+    name === 'atom-history.db' ||
+    name.startsWith('atom-history.db-') ||
+    name.startsWith('atom-history.db.')
+  );
+}
+
 const debugTerminal = process.argv.includes('--debug-terminal') || process.env.OMNYSYS_DEBUG_TERMINAL === '1';
 if (debugTerminal) {
   log('🔍 Debug terminal flag detected, opening window...');

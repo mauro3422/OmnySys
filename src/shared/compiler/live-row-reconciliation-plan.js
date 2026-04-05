@@ -2,7 +2,7 @@ import { buildStandardPlan } from './remediation-plan-builder.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import { buildOrphanRelationCleanupStatement } from './live-row-relations-cleanup.js';
 import { getPhase2PendingFiles } from './compiler-runtime-metrics/index.js';
-import { getLiveFileSetSql, getLiveRowDriftSummary, loadStaleTableRows } from './live-row-utils.js';
+import { getLiveFileSetSql, getLiveFileTotal, getLiveRowDriftSummary, loadStaleTableRows } from './live-row-utils.js';
 
 function buildZeroCleanupResult() {
   return { atoms: 0, files: 0, riskAssessments: 0, relations: 0, issues: 0, connections: 0 };
@@ -10,6 +10,65 @@ function buildZeroCleanupResult() {
 
 function buildDeleteStatement(tableName, fileColumn) {
   return `UPDATE ${tableName} SET is_removed = 1, updated_at = datetime('now') WHERE ${fileColumn} NOT IN (${getLiveFileSetSql()}) AND (is_removed IS NULL OR is_removed = 0)`;
+}
+
+function buildRestoreStatement(tableName, fileColumn) {
+  return `UPDATE ${tableName} SET is_removed = 0, updated_at = datetime('now') WHERE ${fileColumn} IN (${getLiveFileSetSql()}) AND (is_removed = 1)`;
+}
+
+function restoreLiveRowsFromFiles(db) {
+  const restoreAtoms = db.prepare(buildRestoreStatement('atoms', 'file_path')).run().changes || 0;
+  const restoreFiles = db.prepare(buildRestoreStatement('files', 'path')).run().changes || 0;
+  const restoreRiskAssessments = db.prepare(buildRestoreStatement('risk_assessments', 'file_path')).run().changes || 0;
+  const restoreIssues = db.prepare(buildRestoreStatement('semantic_issues', 'file_path')).run().changes || 0;
+  const restoreConnections = db.prepare(`
+    UPDATE semantic_connections
+    SET is_removed = 0,
+        lifecycle_status = 'active',
+        updated_at = datetime('now')
+    WHERE (is_removed = 1 OR lifecycle_status = 'removed')
+      AND source_path IN (${getLiveFileSetSql()})
+      AND target_path IN (${getLiveFileSetSql()})
+  `).run().changes || 0;
+
+  const restoreSystemFiles = db.prepare(`
+    UPDATE system_files
+    SET is_removed = 0,
+        updated_at = datetime('now')
+    WHERE (is_removed = 1)
+      AND path IN (${getLiveFileSetSql()})
+  `).run().changes || 0;
+
+  const restoreRelations = db.prepare(`
+    UPDATE atom_relations
+    SET is_removed = 0,
+        lifecycle_status = 'active',
+        updated_at = datetime('now')
+    WHERE relation_type = 'calls'
+      AND (is_removed = 1 OR lifecycle_status = 'removed')
+      AND EXISTS (
+        SELECT 1
+        FROM atoms src
+        WHERE src.id = atom_relations.source_id
+          AND (src.is_removed IS NULL OR src.is_removed = 0)
+      )
+      AND EXISTS (
+        SELECT 1
+        FROM atoms tgt
+        WHERE tgt.id = atom_relations.target_id
+          AND (tgt.is_removed IS NULL OR tgt.is_removed = 0)
+      )
+  `).run().changes || 0;
+
+  return {
+    atoms: restoreAtoms,
+    files: restoreFiles,
+    riskAssessments: restoreRiskAssessments,
+    relations: restoreRelations,
+    issues: restoreIssues,
+    connections: restoreConnections,
+    systemFiles: restoreSystemFiles
+  };
 }
 
 export function buildLiveRowReconciliationPlan(db, options = {}) {
@@ -74,6 +133,24 @@ export function executeLiveRowCleanup(db, options = {}) {
   const { dryRun = true } = options;
   const plan = buildLiveRowCleanupPlan(db, options);
   const phase2PendingFiles = getPhase2PendingFiles(db);
+  const activeAtomCount = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM atoms
+    WHERE (is_removed IS NULL OR is_removed = 0)
+  `).get()?.total || 0;
+  const activeFileCount = getLiveFileTotal(db);
+
+  if (activeAtomCount === 0 && activeFileCount > 0) {
+    const recovered = restoreLiveRowsFromFiles(db);
+    return {
+      ...plan,
+      dryRun: false,
+      recovered,
+      skipped: false,
+      skippedReason: null,
+      deleted: buildZeroCleanupResult()
+    };
+  }
 
   if (phase2PendingFiles > 0 && options.allowDuringPhase2 !== true) {
     return {

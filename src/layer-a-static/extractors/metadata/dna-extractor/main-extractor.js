@@ -42,25 +42,46 @@ import { computeDuplicabilityScore } from './duplicability-scorer.js';
  * @returns {AtomDNA} Atom's DNA
  */
 export function extractDNA(atom) {
-  if (!atom || !atom.dataFlow) {
-    // Graceful fallback for atoms without dataFlow (e.g., config files, simple exports)
-    const fallbackHash = 'no-dataflow';
+  if (!atom) {
+    return null;
+  }
+
+  const hasMinimalDataFlow = atom.dataFlow && (
+    Array.isArray(atom.dataFlow.inputs) ||
+    Array.isArray(atom.dataFlow.transformations) ||
+    Array.isArray(atom.dataFlow.outputs) ||
+    atom.dataFlow.graph
+  );
+
+  if (!hasMinimalDataFlow) {
+    // Structural fallback: use basic atom properties for DNA
+    // This ensures every atom has a unique, non-empty DNA
+    const structuralSig = [
+      atom.name || 'anonymous',
+      atom.type || 'function',
+      String(atom.complexity || 0),
+      String(atom.linesOfCode || 0),
+      atom.isAsync ? 'async' : 'sync',
+      atom.isExported ? 'exported' : 'private',
+      Array.isArray(atom.calls) ? String(atom.calls.length) : '0'
+    ].join(':');
+
     return {
-      structuralHash: fallbackHash,
-      contextualHash: fallbackHash,
-      semanticHash: fallbackHash,
-      patternHash: fallbackHash,
+      structuralHash: structuralSig,
+      contextualHash: structuralSig,
+      semanticHash: structuralSig,
+      patternHash: structuralSig,
       flowType: 'unknown',
       operationSequence: [],
-      complexityScore: 1,
+      complexityScore: Math.min(10, Math.max(1, Math.round((atom.complexity || 1) / 3))),
       inputCount: 0,
       outputCount: 0,
       transformationCount: 0,
       semanticFingerprint: 'unknown',
-      duplicabilityScore: 0, // Not duplicable
+      duplicabilityScore: 0,
       extractedAt: new Date().toISOString(),
       version: '2.0',
-      id: fallbackHash
+      id: 'structural:' + structuralSig
     };
   }
 

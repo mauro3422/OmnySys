@@ -8,9 +8,10 @@ function normalizeLimit(limit, fallback = 10) {
 export function getLiveFileSetSql() {
   return `
     SELECT DISTINCT path AS file_path
-    FROM compiler_scanned_files
+    FROM files
     WHERE path IS NOT NULL
       AND path != ''
+      AND (is_removed IS NULL OR is_removed = 0)
   `;
 }
 
@@ -18,9 +19,10 @@ export function getLiveFileTotal(db) {
   return toCount(
     db.prepare(`
       SELECT COUNT(DISTINCT path) as total
-      FROM compiler_scanned_files
+      FROM files
       WHERE path IS NOT NULL
         AND path != ''
+        AND (is_removed IS NULL OR is_removed = 0)
     `).get()?.total
   );
 }

@@ -30,16 +30,32 @@ function buildClassMethodIndex(allAtoms) {
 
 /**
  * Builds an index of class atoms by class name.
+ * Now also detects class-like functions (PascalCase names with 'Builder', 'Analyzer', etc.)
  * Returns: className -> class atom
  */
 function buildClassAtomIndex(allAtoms) {
   const classAtoms = new Map();
+  const CLASS_ROLE_SUFFIXES = ['Builder', 'Analyzer', 'Manager', 'Handler', 'Tracker', 'Resolver', 'Detector', 'Extractor', 'Parser', 'Compiler', 'Generator', 'Factory', 'Provider', 'Service', 'Controller', 'Repository', 'Store', 'Registry', 'Engine', 'Orchestrator'];
 
   for (const atom of allAtoms) {
-    if (atom.type !== 'class' && atom.atom_type !== 'class') continue;
-    if (!atom.name) continue;
+    // Explicit class type
+    if (atom.type === 'class' || atom.atom_type === 'class') {
+      if (atom.name) {
+        classAtoms.set(atom.name, atom);
+      }
+      continue;
+    }
 
-    classAtoms.set(atom.name, atom);
+    // Heuristic: PascalCase names with class-like suffixes are likely classes
+    if (atom.type === 'function' || atom.functionType === 'function') {
+      const name = atom.name || '';
+      // PascalCase + suffix = likely a class constructor
+      if (/^[A-Z][a-zA-Z]+$/.test(name) && CLASS_ROLE_SUFFIXES.some(suffix => name.endsWith(suffix))) {
+        if (!classAtoms.has(name)) {
+          classAtoms.set(name, atom);
+        }
+      }
+    }
   }
 
   return classAtoms;

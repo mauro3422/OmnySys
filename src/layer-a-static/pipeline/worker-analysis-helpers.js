@@ -103,6 +103,11 @@ function saveAnalyzedFileResult(state, relativeFilePath, absoluteFilePath, conte
         hash: currentHash
     });
     state.allLiteResults[absoluteFilePath] = createAnalyzedResult(result, liteAtoms);
+
+    // NEW: Accumulate atoms for incremental flush to prevent data loss on worker crash
+    if (state.pendingAtoms) {
+        state.pendingAtoms.push(...liteAtoms);
+    }
 }
 
 export function flushProgress(processedSinceLastPing, skipped = false) {

@@ -34,6 +34,12 @@ function collectCallRelationSyncAtoms(repo, allAtoms, absoluteRootPath) {
             return [];
         }
 
+        // Skip on fresh reindex: if atom_versions is empty, there's nothing to sync against
+        const versionCount = repo.db.prepare(`SELECT COUNT(*) as cnt FROM atom_versions`).get();
+        if (!versionCount || versionCount.cnt === 0) {
+            return []; // Fresh reindex — no previous versions to compare
+        }
+
         const candidates = [];
         for (const atom of allAtoms) {
             if (!atom?.id) {
@@ -79,10 +85,11 @@ function collectCallRelationSyncAtoms(repo, allAtoms, absoluteRootPath) {
 
 /**
  * Orquesta los 4 pasos de calledBy linkage delegando a módulos especializados.
- * TODOS los cambios se acumulan y se guardan en BULK al final.
+ * Ahora con flush incremental después de cada sub-paso para evitar cuellos de botella.
  */
 export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose) {
     const timerTotal = startTimer('6a. Build atom index');
+    const repo = getRepository(absoluteRootPath);
     const allAtoms = [];
     for (const parsedFile of Object.values(parsedFiles)) {
         if (parsedFile.atoms) {
@@ -97,6 +104,7 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
 
     // Set para trackear átomos modificados (evita duplicados)
     const modifiedAtoms = new Set();
+    let lastFlushedCount = 0;
 
     // 3.6a: Function calledBy
     try {
@@ -109,6 +117,9 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
         logger.warn(`  ⚠️ function-linker failed: ${err.message}`);
     }
 
+    // Flush incrementally to avoid massive bulk save at the end
+    flushModifiedAtomsIncrementally(repo, modifiedAtoms, 'function calledBy', verbose);
+
     // 3.6b: Variable reference calledBy
     try {
         const timerVar = startTimer('6c. Variable calledBy links');
@@ -119,6 +130,9 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     } catch (err) {
         logger.warn(`  ⚠️ variable-linker failed: ${err.message}`);
     }
+
+    // Flush incrementally
+    flushModifiedAtomsIncrementally(repo, modifiedAtoms, 'variable calledBy', verbose);
 
     // 3.6c: Mixin + namespace import calledBy
     try {
@@ -132,6 +146,9 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
         logger.warn(`  ⚠️ mixin-linker failed: ${err.message}`);
     }
 
+    // Flush incrementally
+    flushModifiedAtomsIncrementally(repo, modifiedAtoms, 'mixin/namespace', verbose);
+
     // 3.7: Class instantiation calledBy
     try {
         const timerClass = startTimer('6e. Class instantiation links');
@@ -139,7 +156,6 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
         const { resolved: classResolved, classesTracked } = resolveClassInstantiationCalledBy(allAtoms);
         if (verbose) logger.info(`  ✓ ${classResolved} class method calledBy links resolved (${classesTracked} classes tracked)\n`);
         if (classResolved > 0) {
-            // Acumular átomos modificados (sin guardar individualmente)
             allAtoms
                 .filter(a => a.calledBy?.length > 0 && a.filePath && a.name)
                 .forEach(a => modifiedAtoms.add(a));
@@ -149,7 +165,10 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
         logger.warn(`  ⚠️ class-instantiation-tracker failed: ${err.message}`);
     }
 
-    // 3.7b: Export object references (e.g., export const handlers = { func1, func2 })
+    // Flush incrementally
+    flushModifiedAtomsIncrementally(repo, modifiedAtoms, 'class instantiation', verbose);
+
+    // 3.7b: Export object references
     try {
         const timerExportObj = startTimer('6f. Export object references');
         if (verbose) logger.info('🔗 Resolving export object function references...');
@@ -160,6 +179,9 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     } catch (err) {
         logger.warn(`  ⚠️ export-object-references failed: ${err.message}`);
     }
+
+    // Flush incrementally
+    flushModifiedAtomsIncrementally(repo, modifiedAtoms, 'export object refs', verbose);
 
     // 3.8: Caller Pattern Detection
     const timerPattern = startTimer('6f. Caller pattern detection');
@@ -181,13 +203,13 @@ export async function buildCalledByLinks(parsedFiles, absoluteRootPath, verbose)
     }
     timerPattern.end(verbose);
 
-    // 🚀 BULK SAVE: Guardar TODOS los átomos modificados de una vez
+    // 🚀 BULK SAVE: Guardar átomos modificados (saveManyBulk ahora usa single-tx)
     const timerBulkUpdate = startTimer('6f-bulk. Bulk update modified atoms');
-    const repo = getRepository(absoluteRootPath);
     const callRelationSyncAtoms = collectCallRelationSyncAtoms(repo, allAtoms, absoluteRootPath);
     if (modifiedAtoms.size > 0) {
         if (repo.saveManyBulk) {
             const uniqueAtoms = Array.from(modifiedAtoms);
+            if (verbose) logger.info(`  💾 Saving ${uniqueAtoms.length} modified atoms (single-tx)...`);
             repo.saveManyBulk(uniqueAtoms, 500);
             if (verbose) {
                 logger.info(`  ✓ ${uniqueAtoms.length} modified atoms saved via bulk update`);
@@ -244,4 +266,26 @@ export function buildAtomsIndex(normalizedParsedFiles) {
         }
     }
     return atomsIndex;
+}
+
+/**
+ * Flush incremental de átomos modificados durante el linkage.
+ * Usa saveManyBulk que ahora es single-tx optimizado.
+ */
+function flushModifiedAtomsIncrementally(repo, modifiedAtoms, phaseLabel, verbose) {
+    if (!repo?.saveManyBulk || modifiedAtoms.size === 0) return;
+
+    const threshold = 2000; // Flush cada 2K átomos modificados
+    if (modifiedAtoms.size < threshold) return;
+
+    const atoms = Array.from(modifiedAtoms);
+    try {
+        repo.saveManyBulk(atoms, 500);
+        if (verbose) {
+            logger.info(`  💾 [${phaseLabel}] Flushed ${atoms.length} modified atoms`);
+        }
+        modifiedAtoms.clear();
+    } catch (err) {
+        logger.warn(`  ⚠️ Incremental flush failed (${phaseLabel}): ${err.message}`);
+    }
 }

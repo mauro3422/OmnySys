@@ -206,6 +206,18 @@ Any subsequent MCP tool calls you make right now will silently hang forever.
   };
 }
 
+function shouldPreserveHistoryArtifact(fileName) {
+  const name = String(fileName || '');
+  return (
+    name === 'health-history.db' ||
+    name.startsWith('health-history.db-') ||
+    name.startsWith('health-history.db.') ||
+    name === 'atom-history.db' ||
+    name.startsWith('atom-history.db-') ||
+    name.startsWith('atom-history.db.')
+  );
+}
+
 async function clearStandaloneCache(cache, reanalyze, server, result) {
   logger.info('Clearing cache...');
   await purgeRuntimeCache(cache, null);
@@ -219,13 +231,12 @@ async function clearStandaloneCache(cache, reanalyze, server, result) {
     try {
       const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm'];
       const legacyFiles = ['index.json', 'atom-versions.json'];
-      const preservedFiles = new Set(['health-history.db', 'atom-history.db']);
       for (const file of dbFiles) {
-        if (preservedFiles.has(file)) continue;
+        if (shouldPreserveHistoryArtifact(file)) continue;
         await fs.unlink(path.join(dataDir, file)).catch(() => {});
       }
       for (const file of legacyFiles) {
-        if (preservedFiles.has(file)) continue;
+        if (shouldPreserveHistoryArtifact(file)) continue;
         await fs.unlink(path.join(dataDir, file)).catch(() => {});
       }
       logger.info('Previous analysis deleted (SQLite DB + legacy files)');

@@ -198,11 +198,57 @@ async function executeWorkerPool(files, workerCount, workerContext) {
         workerPromises.push(createWorkerPromise(i, chunk, workerContext));
     }
 
+    // NEW: Periodic flush of pending writes while workers are running
+    // This prevents the massive saveManyBulk(21000) bottleneck at the end
+    const FLUSH_INTERVAL_MS = 5000;
+    let flushDone = false;
+    const flushInterval = setInterval(() => {
+        if (flushDone) return;
+        try {
+            flushPendingWritesIncrementally(workerContext.repo, workerContext.pendingWrites);
+        } catch (e) {
+            // Ignore flush errors — they're non-critical
+        }
+    }, FLUSH_INTERVAL_MS);
+
     try {
         await Promise.all(workerPromises);
     } catch (error) {
         logger.error(`Worker pool failed: ${error.message}`);
         throw error;
+    } finally {
+        flushDone = true;
+        clearInterval(flushInterval);
+    }
+}
+
+/**
+ * Incremental flush of pending writes — only flushes what's accumulated so far
+ * and clears the flushed items from pendingWrites. Safe to call multiple times.
+ */
+function flushPendingWritesIncrementally(repo, pendingWrites) {
+    if (!repo?.db || repo.db.open === false) return;
+
+    // Flush atoms in small batches (max 500 per call)
+    if (pendingWrites.atoms.length > 500) {
+        const batch = pendingWrites.atoms.splice(0, 500);
+        if (repo.saveManyBulk) {
+            repo.saveManyBulk(batch, 200);
+        } else if (repo.saveMany) {
+            repo.saveMany(batch);
+        }
+    }
+
+    // Flush summaries
+    if (pendingWrites.summaries.length > 200) {
+        const batch = pendingWrites.summaries.splice(0, 200);
+        saveFileSummariesBatch(repo, batch, undefined, 200);
+    }
+
+    // Flush hashes
+    if (pendingWrites.hashes.length > 200) {
+        const entries = pendingWrites.hashes.splice(0, 200);
+        writeFileHashBatch(repo, entries);
     }
 }
 

@@ -38,23 +38,103 @@ function buildRelationRows(atomsToSync) {
   return rows;
 }
 
+/**
+ * Build a name→atomId index for fast relation resolution.
+ * This avoids per-relation DB queries during bulk save.
+ */
+function buildCallTargetIndex(allAtoms) {
+  const byName = new Map();
+  const byQualifiedName = new Map();
+  const byId = new Map();
+
+  for (const atom of allAtoms) {
+    if (!atom?.id || !atom?.name) continue;
+
+    byId.set(atom.id, atom.id);
+    byName.set(atom.name, atom.id);
+
+    if (atom.className) {
+      byQualifiedName.set(`${atom.className}.${atom.name}`, atom.id);
+    }
+  }
+
+  return { byName, byQualifiedName, byId };
+}
+
+/**
+ * Resolve call target using in-memory index instead of DB queries.
+ */
+function resolveCallTargetFast(call, sourceAtomId, index) {
+  if (!call?.name) return null;
+
+  // Direct ID match
+  if (call.id && index.byId.has(call.id)) return call.id;
+
+  // Qualified name match (ClassName.methodName)
+  if (call.name.includes('.')) {
+    const qualified = index.byQualifiedName.get(call.name);
+    if (qualified) return qualified;
+  }
+
+  // Simple name match
+  return index.byName.get(call.name) || null;
+}
+
 function saveRelationRowsWithRepo(repo, relationRows, allAtoms, absoluteRootPath, logger) {
   if (relationRows.length === 0) return;
 
-  if (repo.saveRelationsBulk) {
-    repo.saveRelationsBulk(relationRows, 500);
-    return;
+  // Fast path: resolve all targets using in-memory index (no DB queries)
+  const targetIndex = buildCallTargetIndex(allAtoms);
+  const now = new Date().toISOString();
+  const normalizeFn = (id) => {
+    if (!id) return null;
+    // Already normalized if it contains the project path
+    return id.includes(absoluteRootPath.replace(/\\/g, '/')) ? id : `${absoluteRootPath.replace(/\\/g, '/')}/${id}`;
+  };
+
+  const resolvedRows = [];
+  for (const row of relationRows) {
+    const targetId = resolveCallTargetFast(row.call, row.atomId, targetIndex);
+    if (!targetId) continue;
+
+    const contextJson = typeof row.call === 'object' ? JSON.stringify(row.call) : '{}';
+    resolvedRows.push({
+      source_id: row.atomId,
+      target_id: targetId,
+      relation_type: 'calls',
+      weight: typeof row.call?.weight === 'number' ? row.call.weight : 1.0,
+      line_number: typeof row.call?.line === 'number' ? row.call.line : null,
+      context_json: contextJson,
+      created_at: now,
+      is_removed: 0,
+      lifecycle_status: 'active',
+      updated_at: now
+    });
   }
 
-  for (const atom of allAtoms) {
-    if (atom.calls && atom.calls.length > 0) {
-      try {
-        persistAtomCalls(repo, atom.id, atom.calls, absoluteRootPath, logger);
-      } catch (err) {
-        logger.warn(`  ⚠️ Failed to save relations for ${atom.id}: ${err.message}`);
-      }
+  if (resolvedRows.length === 0) return;
+
+  // Bulk insert with a single transaction
+  const insertStmt = repo.db.prepare(`
+    INSERT OR REPLACE INTO atom_relations
+    (source_id, target_id, relation_type, weight, line_number, context_json, created_at, is_removed, lifecycle_status, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const tx = repo.db.transaction((rows) => {
+    for (const r of rows) {
+      insertStmt.run(r.source_id, r.target_id, r.relation_type, r.weight, r.line_number, r.context_json, r.created_at, r.is_removed, r.lifecycle_status, r.updated_at);
     }
+  });
+
+  // Process in batches to avoid memory issues
+  const batchSize = 5000;
+  for (let i = 0; i < resolvedRows.length; i += batchSize) {
+    const batch = resolvedRows.slice(i, i + batchSize);
+    tx(batch);
   }
+
+  if (logger) logger.debug(`  Bulk inserted ${resolvedRows.length} call relations`);
 }
 
 function persistSqlQueryRelations(db, allAtoms, verbose, logger) {
@@ -160,7 +240,11 @@ export async function persistCallRelations(allAtoms, absoluteRootPath, verbose, 
     ? relationSyncAtoms
     : allAtoms;
 
-  clearExistingCallRelations(repo.db, buildSourceIds(atomsToSync, absoluteRootPath));
+  // Skip clear on fresh reindex — table is empty
+  const relationCount = repo.db.prepare(`SELECT COUNT(*) as cnt FROM atom_relations`).get();
+  if (relationCount && relationCount.cnt > 0) {
+    clearExistingCallRelations(repo.db, buildSourceIds(atomsToSync, absoluteRootPath));
+  }
 
   const timerRelationsLog = startTimer('Bulk save relations');
   const relationRows = buildRelationRows(atomsToSync);

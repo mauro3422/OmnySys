@@ -86,11 +86,7 @@ export async function printDiagnosticsDashboard(projectPath, options = {}) {
 }
 
 async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelemetry = null) {
-  const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
-  const compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
-    projectPath,
-    db
-  });
+  // Load atom inventory FIRST — before any reconciliation marks atoms as removed
   const metrics = {
     totalAtoms: 0,
     typeSummary: '',
@@ -114,8 +110,8 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelem
     hasPhase2DebtSnapshot: false,
     zeroAtomFileCount: 0,
     liveCoverageRatio: 0,
-    liveRowSyncSummary: liveRowSync.summary,
-    compilerDiagnostics,
+    liveRowSyncSummary: null,
+    compilerDiagnostics: null,
     metricsSnapshot: null,
     updateSurface: null,
     startupTelemetry,
@@ -125,7 +121,20 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelem
   };
 
   try {
+    // 1. Capture raw atom counts BEFORE reconciliation (prevents "0 atoms" bug)
     loadAtomInventory(metrics, db);
+    loadGraphMetrics(metrics, db);
+    loadPhysicsMetrics(metrics, db);
+
+    // 2. Now run live row reconciliation
+    const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
+    metrics.liveRowSyncSummary = liveRowSync.summary;
+
+    // 3. Load remaining metrics after reconciliation
+    metrics.compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
+      projectPath,
+      db
+    });
     loadStructuralDuplicateMetrics(metrics, db);
     loadConceptualDuplicateMetrics(metrics, repo);
     loadIssueMetrics(metrics, db);

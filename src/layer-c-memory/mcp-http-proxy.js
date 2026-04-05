@@ -159,6 +159,18 @@ function scheduleRespawn(delayMs, extraArgs = []) {
 }
 
 // ── Spawn Worker ─────────────────────────────────────────────────────────────
+function shouldPreserveHistoryArtifact(fileName) {
+    const name = String(fileName || '');
+    return (
+        name === 'health-history.db' ||
+        name.startsWith('health-history.db-') ||
+        name.startsWith('health-history.db.') ||
+        name === 'atom-history.db' ||
+        name.startsWith('atom-history.db-') ||
+        name.startsWith('atom-history.db.')
+    );
+}
+
 function spawnWorker(extraArgs = []) {
     clearRespawnTimer();
     writeOwnerLock(restartCount === 0 ? 'starting' : 'restarting');
@@ -267,9 +279,8 @@ function spawnWorker(extraArgs = []) {
                         }
                     }
                     const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
-                    const preservedFiles = new Set(['health-history.db', 'atom-history.db']);
                     for (const file of dbFiles) {
-                        if (preservedFiles.has(file)) continue;
+                        if (shouldPreserveHistoryArtifact(file)) continue;
                         const filePath = path.join(dataDir, file);
                         if (fs.existsSync(filePath)) {
                             fs.unlinkSync(filePath);

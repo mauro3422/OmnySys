@@ -4,6 +4,9 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- Clarified the two-stage analysis pipeline: Phase 1 builds the structural atom skeleton, while Phase 2 reuses the indexed baseline to recompute call links, semantic connections, caller patterns, risk, and persistence-backed history without treating the run as a brand-new project universe.
+- Hardened the restart/reanalyze path so operational cleanup no longer wipes atom history artifacts (`atom-history.db` and its WAL/SHM sidecars), and the bulk atom saver writes back `atom_versions` / `atom_events` again so evolution data survives full reindex cycles.
+- Documented the MCP session-restart behavior: a true daemon restart invalidates the prior `sessionId`, so the bridge must reinitialize and may require a fresh client reconnection if the transport is interrupted mid-restart.
 - Added durable historical storage surfaces for compiler evolution by separating `health-history.db` and `atom-history.db` from the operational SQLite DB, then surfacing them through system inventory, status, database schema, and the canonical atom evolution report.
 - Added `mcp_omnysystem_get_atom_evolution_report` as a canonical MCP query that composes atom details, DNA, data flow, impact, Git history, persisted atom archive history, and schema context into one report.
 - Made `get_schema(type: "database")`, the control-plane contracts, and the status table expose historical store readiness so long-lived memory is visible alongside live DB health instead of being hidden behind the runtime database.

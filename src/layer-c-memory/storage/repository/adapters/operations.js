@@ -17,6 +17,8 @@ import { RelationBulkHandler } from './handlers/relation-bulk-handler.js';
 import { EventBulkHandler } from './handlers/event-bulk-handler.js';
 import { resolveCallTargetId } from './helpers/call-target-resolver.js';
 import { normalizeCanonicalAtomId } from './helpers/canonical-atom-id.js';
+import { atomToRow } from './helpers/converters.js';
+import { buildAtomInsertSql, buildAtomInsertValues } from './helpers/atom-schema.js';
 import { chunkArray } from '../../../../shared/utils/array-utils.js';
 
 function getAtomFilePath(atom) {
@@ -133,11 +135,11 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
   /**
    * @private - Actualiza tabla 'files'
    */
-  _saveAtomsBatch(atoms, fileHash, trackSingleFileHash) {
+  _saveAtomsBatch(atoms, fileHash, trackSingleFileHash, externalNormalizeFn = null) {
     if (!atoms || atoms.length === 0) return atoms;
 
     const now = new Date().toISOString();
-    const normalizePath = (value) => this._normalize(value);
+    const normalizePath = externalNormalizeFn || ((value) => this._normalize(value));
     const groupedByFile = groupAtomsByFilePath(atoms, normalizePath);
     const firstFilePath = normalizePath(getAtomFilePath(atoms[0]));
     const existingIds = trackSingleFileHash
@@ -178,14 +180,75 @@ export class SQLiteBulkOperations extends SQLiteRelationOperations {
       return this._saveAtomsBatch(atoms, null, false);
     }
 
+    // Single transaction for all batches — eliminates per-batch transaction overhead
+    // Skip cleanup since INSERT OR REPLACE already handles updates
     const savedAtoms = [];
-    for (const batch of chunkArray(atoms, size)) {
-      const batchResult = this._saveAtomsBatch(batch, null, false);
-      if (Array.isArray(batchResult) && batchResult.length > 0) {
-        savedAtoms.push(...batchResult);
-      }
-    }
+    const normalizePath = (value) => this._normalize(value);
+    const now = new Date().toISOString();
+    const insertStmt = this.db.prepare(buildAtomInsertSql());
+    const relationInsertStmt = this.db.prepare(
+      `INSERT OR IGNORE INTO atom_relations (source_id, target_id, relation_type, weight, line_number, created_at)
+       VALUES (?, ?, 'calls', 1.0, ?, ?)`
+    );
+    const msNow = Date.now();
 
+    // Track max line per file for efficient metadata update
+    const fileMaxLines = new Map();
+
+    connectionManager.transaction(() => {
+      for (const batch of chunkArray(atoms, size)) {
+        const groupedByFile = groupAtomsByFilePath(batch, normalizePath);
+        const existingIds = collectExistingIdsForFiles(this.db, groupedByFile.keys());
+
+        for (const atom of batch) {
+          // Normalize path
+          atom.filePath = normalizePath(atom.file || atom.filePath);
+          atom.file = atom.filePath;
+
+          // Ensure ID
+          if (!atom.id || !atom.id.includes('::')) {
+            atom.id = `${atom.filePath}::${atom.name}`;
+          }
+
+          const row = atomToRow(atom);
+          const values = buildAtomInsertValues(row, now);
+          insertStmt.run(...values);
+
+          // Insert relations inline (skip handler overhead)
+          if (atom.calls?.length > 0) {
+            for (const call of atom.calls) {
+              const targetId = normalizeCanonicalAtomId(call.id || call.name, this.projectPath);
+              relationInsertStmt.run(atom.id, targetId, call.line || null, now);
+            }
+          }
+
+          // Track max lines per file (deferred metadata update)
+          const endLine = atom.line_end || atom.endLine || atom.line || 0;
+          const current = fileMaxLines.get(atom.filePath) || 0;
+          if (endLine > current) {
+            fileMaxLines.set(atom.filePath, endLine);
+          }
+        }
+
+        this.eventHandler.handle(batch, existingIds, now, msNow, normalizePath);
+        savedAtoms.push(...batch);
+      }
+
+      // Bulk update file metadata once per file (not per atom)
+      const upsertFileMeta = this.db.prepare(`
+        INSERT INTO files (path, last_analyzed, total_lines) VALUES (?, ?, ?)
+        ON CONFLICT(path) DO UPDATE SET
+          last_analyzed = excluded.last_analyzed,
+          total_lines = MAX(COALESCE(files.total_lines, 0), excluded.total_lines),
+          is_removed = 0,
+          updated_at = datetime('now')
+      `);
+      for (const [filePath, maxLines] of fileMaxLines.entries()) {
+        upsertFileMeta.run(filePath, now, maxLines);
+      }
+    });
+
+    this._logger.debug(`[BulkOrchestrator] Processed ${atoms.length} atoms (single-tx)`);
     return savedAtoms;
   }
 
