@@ -8,6 +8,10 @@ All notable changes to this project are documented here as a release index. Deta
 - Fixed Phase 2 data loss on incremental reindex: `INSERT OR REPLACE` now preserves enriched Phase 2 fields (DNA, dataFlow, errorFlow, performance) when Phase 1 re-extracts skeleton-only atoms.
 - Refactored `buildCompilerHealthDashboard` (CC 134→43) by extracting 8 section-builder helpers; no functional changes, all output fields preserved.
 - Refactored `detectFlowType` (CC 45→~5) to rule-based pattern matching; identical classification behavior with table-driven rules.
+- **Consolidated 3 canonical drift findings:**
+  - `data_gateway_contract`: whitelisted `data-checks.js` in governance diagnostic modules.
+  - `file_universe_granularity`: fixed callers collapsing scanned vs manifest universes in 3 files.
+  - `runtime_boundary_surfaces`: re-exports `runAsyncBoundary` as canonical API, added guidance catalog entries.
 
 - Clarified the two-stage analysis pipeline: Phase 1 builds the structural atom skeleton, while Phase 2 reuses the indexed baseline to recompute call links, semantic connections, caller patterns, risk, and persistence-backed history without treating the run as a brand-new project universe.
 - Hardened the restart/reanalyze path so operational cleanup no longer wipes atom history artifacts (`atom-history.db` and its WAL/SHM sidecars), and the bulk atom saver writes back `atom_versions` / `atom_events` again so evolution data survives full reindex cycles.
