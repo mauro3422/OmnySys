@@ -28,8 +28,8 @@ function buildLiteAtoms(enrichedAtoms) {
     return enrichedAtoms.map((atom) => {
         const lite = { ...atom };
 
-        delete lite.dna;
-        delete lite.dataFlow;
+        // Preserve DNA and dataFlow on the active atom snapshot.
+        // History gets archived separately by the version/event writers.
         delete lite.temporal;
         delete lite.errorFlow;
         delete lite.performance;

@@ -25,7 +25,12 @@ import {
   loadCompilerDiagnosticsSnapshot,
   buildCompilerMetricsSnapshot,
   buildCompilerHealthDashboard,
-  buildCompilerHealthPanel
+  buildCompilerHealthPanel,
+  buildCompilerToolInventorySnapshot,
+  buildCompilerToolInventoryReport,
+  buildCompilerSystemInventorySnapshot,
+  buildCompilerSystemInventoryReport,
+  buildStatusSummaryPayload
 } from '#shared/compiler/index.js';
 import { sessionManager } from '../session-manager.js';
 import {
@@ -113,6 +118,8 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelem
     liveRowSyncSummary: null,
     compilerDiagnostics: null,
     metricsSnapshot: null,
+    toolInventory: null,
+    systemInventory: null,
     updateSurface: null,
     startupTelemetry,
     mcpSessionSummary: getMcpSessionSummary(sessionManager, {
@@ -135,6 +142,7 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelem
       projectPath,
       db
     });
+    const compilerDiagnostics = metrics.compilerDiagnostics;
     loadStructuralDuplicateMetrics(metrics, db);
     loadConceptualDuplicateMetrics(metrics, repo);
     loadIssueMetrics(metrics, db);
@@ -155,6 +163,15 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelem
       startupTelemetry,
       persist: true
     });
+    const toolInventorySnapshot = buildCompilerToolInventorySnapshot({ includeSchemas: false });
+    metrics.toolInventory = buildCompilerToolInventoryReport(toolInventorySnapshot);
+    const systemInventorySnapshot = buildCompilerSystemInventorySnapshot({
+      projectPath,
+      compilerExplainability: compilerDiagnostics,
+      toolInventory: toolInventorySnapshot,
+      historyStores: compilerDiagnostics?.historyStores || null
+    });
+    metrics.systemInventory = buildCompilerSystemInventoryReport(systemInventorySnapshot);
     metrics.healthSnapshot = buildCompilerHealthDashboard(metrics.metricsSnapshot, compilerDiagnostics, {
       watcherAlerts: [],
       recentErrors: null
@@ -169,6 +186,76 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelem
       phase2PendingFiles: metrics.phase2PendingFiles,
       mcpSessionSummary: sessionSummary
     });
+    metrics.statusPayload = buildStatusSummaryPayload({
+      initialized: true,
+      initializing: false,
+      project: projectPath,
+      telemetryMode: 'fast_phase2',
+      timestamp: new Date().toISOString(),
+      databaseHealth: metrics.compilerDiagnostics?.databaseHealth || null,
+      repository: {
+        status: {
+          dbOpen: !!db?.open,
+          ready: true,
+          initialized: true,
+          projectPath
+        },
+        integrity: liveRowSync?.summary || null
+      },
+      watcher: {
+        isRunning: true,
+        pendingChanges: 0,
+        failedChanges: 0,
+        lastChangeOrigin: 'bootstrap'
+      },
+      metadata: {
+        totalFiles: metrics.compilerDiagnostics?.totalFiles || 0,
+        totalFunctions: metrics.compilerDiagnostics?.totalFunctions || 0,
+        lastAnalyzed: metrics.compilerDiagnostics?.lastAnalyzed || null,
+        liveAtomCount: metrics.totalAtoms,
+        liveFileCount: metrics.compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+        phase2PendingFiles: metrics.phase2PendingFiles,
+        phase2CompletedFiles: metrics.compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+        societiesCount: metrics.compilerDiagnostics?.societiesCount || 0
+      },
+      cache: {
+        atoms: metrics.totalAtoms,
+        files: metrics.compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+        relations: metrics.callLinks,
+        status: liveRowSync?.summary || 'bootstrap'
+      },
+      background: {
+        phase2PendingFiles: metrics.phase2PendingFiles,
+        phase2CompletedFiles: metrics.compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+        societiesCount: metrics.compilerDiagnostics?.societiesCount || 0,
+        graphCoverage: {
+          filesTotal: metrics.compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+          dependenciesTotal: metrics.callLinks,
+          coverageRatio: metrics.liveCoverageRatio || 0,
+          callGraphLinks: metrics.callLinks
+        },
+        fileUniverseSummary: metrics.compilerDiagnostics?.fileUniverseGranularity || null,
+        conceptualDuplicates: {
+          actionableGroups: metrics.conceptualGroups,
+          rawGroups: metrics.conceptualRawGroups,
+          actionableRatio: metrics.conceptualActionableRatio
+        },
+        issueSummary: metrics.issueSummary,
+        mcpSessionSummary: sessionSummary
+      },
+      mcpSessions: sessionSummary,
+      compilerExplainability: compilerDiagnostics,
+      metricsSnapshot: metrics.metricsSnapshot,
+      healthSnapshot: metrics.healthSnapshot,
+      healthPanel: metrics.healthPanel,
+      systemInventory: metrics.systemInventory,
+      canonicalPromotion: metrics.metricsSnapshot?.current?.canonicalPromotion || null,
+      cachePolicy: metrics.metricsSnapshot?.current?.cachePolicy || null,
+      toolInventory: toolInventorySnapshot,
+      updateSurface: metrics.updateSurface,
+      surfaceAudit: compilerDiagnostics?.surfaceAudit || null,
+      signalConfidence: compilerDiagnostics?.signalConfidence || null
+    }, []);
     loadPhysicsMetrics(metrics, db);
   } catch (error) {
     logger.debug('Extended metrics fetch partially failed:', error.message);

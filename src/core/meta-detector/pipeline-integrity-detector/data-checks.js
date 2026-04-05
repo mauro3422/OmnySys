@@ -18,6 +18,11 @@ export async function checkScanToAtomCoverage(detector) {
         `).get().count;
 
         const liveIndexedFiles = getLiveFileTotal(db);
+        const liveFileRows = db.prepare(`
+            SELECT COUNT(*) as count
+            FROM files
+            WHERE COALESCE(is_removed, 0) = 0
+        `).get().count;
         const fileUniverseGranularity = getFileUniverseGranularity({
             scannedFileTotal: scannedFiles,
             manifestFileTotal: scannedFiles,
@@ -28,9 +33,9 @@ export async function checkScanToAtomCoverage(detector) {
             SELECT path
             FROM compiler_scanned_files
             WHERE path NOT IN (
-                SELECT DISTINCT file_path
-                FROM atoms
-                WHERE file_path IS NOT NULL
+            SELECT DISTINCT file_path
+            FROM atoms
+            WHERE file_path IS NOT NULL
                   AND file_path != ''
             )
             LIMIT 20
@@ -42,6 +47,7 @@ export async function checkScanToAtomCoverage(detector) {
             fileUniverseGranularity.healthy === true ? 'low' : 'high',
             {
                 scannedFiles,
+                liveFileRows,
                 filesWithAtoms: liveIndexedFiles,
                 liveIndexedFiles,
                 missingFiles: 0,
@@ -49,6 +55,9 @@ export async function checkScanToAtomCoverage(detector) {
                 zeroAtomFiles: fileUniverseGranularity.zeroAtomFileCount,
                 zeroAtomFilesSample,
                 coveragePercentage: 100,
+                coverageSource: 'live_atoms_and_files',
+                manifestCoverageRatio: fileUniverseGranularity.manifestCoverageRatio,
+                liveCoverageRatio: fileUniverseGranularity.liveCoverageRatio,
                 fileUniverseGranularity
             },
             fileUniverseGranularity.healthy === true

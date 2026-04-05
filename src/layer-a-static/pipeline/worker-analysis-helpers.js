@@ -59,8 +59,8 @@ function createLiteAtom(atom, relativeFilePath) {
     const lite = { ...atom };
     lite.filePath = relativeFilePath;
 
-    delete lite.dna;
-    delete lite.dataFlow;
+    // Keep DNA/dataFlow: they are part of the canonical atom history and
+    // must survive worker flushes so reindexing does not erase evolution.
     delete lite.temporal;
     delete lite.errorFlow;
     delete lite.performance;

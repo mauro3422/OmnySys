@@ -70,6 +70,7 @@ export function resolveDashboardHeader(isFinal, isSettling, snapshotKind = 'boot
 
 export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, isSettling, fileUniverseSettling, snapshotKind = 'bootstrap' }) {
   const detailLines = [];
+  const systemTableRows = extendedMetrics.statusPayload?.systemTable?.rows || [];
 
   if (isPreliminary && isSettling) {
     detailLines.push('  Preliminary snapshot: Phase 2 telemetry is still settling; final debt counts may change.', '');
@@ -105,8 +106,20 @@ export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPrelimin
     extendedMetrics.metricsSnapshot
       ? `  Metrics Snapshot: ${extendedMetrics.metricsSnapshot.summary}`
       : null,
+    extendedMetrics.systemInventory?.summaryText
+      ? `  System Inventory: ${extendedMetrics.systemInventory.summaryText}`
+      : null,
+    extendedMetrics.toolInventory?.summaryText
+      ? `  Tool Inventory: ${extendedMetrics.toolInventory.summaryText}`
+      : null,
     extendedMetrics.healthPanel?.oneLine
       ? `  Health Panel: ${extendedMetrics.healthPanel.oneLine}`
+      : null,
+    systemTableRows.length > 0
+      ? `  Control Plane: ${systemTableRows.map((row) => `${row.area}=${row.state}`).join(' | ')}`
+      : null,
+    systemTableRows.length > 0
+      ? `  Control Plane Detail: ${systemTableRows.slice(0, 8).map((row) => `${row.area}:${row.detail}`).join(' || ')}`
       : null,
     `  Physics Coverage: ${extendedMetrics.physicsCoverage}% signals (${extendedMetrics.hotspots} hotspots)`,
     ...(isFinal
