@@ -27,6 +27,13 @@ async function runWorker() {
     const { files, absoluteRootPath, extractionDepth = 'structural', gitStats = {} } = workerData;
     const repo = getRepository(absoluteRootPath);
 
+    // Guard: wait for DB to be ready before accessing it
+    if (repo?.db?.open === false) {
+        logger.warn(`Worker: DB not ready for ${absoluteRootPath}, skipping worker`);
+        parentPort.postMessage({ type: 'DONE', extractedCount: 0, liteResults: {}, summaries: [], hashes: [] });
+        return;
+    }
+
     const state = {
         totalExtractedCount: 0,
         allLiteResults: {},

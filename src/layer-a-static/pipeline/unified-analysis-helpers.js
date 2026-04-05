@@ -146,6 +146,7 @@ function createWorkerPromise(workerIndex, chunk, workerContext) {
             }
 
             if (msg.type === 'ERROR') {
+                lastProgressAt = Date.now();
                 logger.warn(`Worker ${workerIndex + 1} error on ${msg.file || 'unknown'}: ${msg.error}`);
             }
         });
