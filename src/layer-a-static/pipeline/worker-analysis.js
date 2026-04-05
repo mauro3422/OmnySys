@@ -27,11 +27,27 @@ async function runWorker() {
     const { files, absoluteRootPath, extractionDepth = 'structural', gitStats = {} } = workerData;
     const repo = getRepository(absoluteRootPath);
 
-    // Guard: wait for DB to be ready before accessing it
+    // Wait for DB schema migration to complete before accessing it.
+    // During reanalyze, workers can start before migration finishes.
+    // We MUST wait — skipping = losing data = corrupt DB.
     if (repo?.db?.open === false) {
-        logger.warn(`Worker: DB not ready for ${absoluteRootPath}, skipping worker`);
-        parentPort.postMessage({ type: 'DONE', extractedCount: 0, liteResults: {}, summaries: [], hashes: [] });
-        return;
+        const maxWaitMs = 60000;
+        const pollMs = 500;
+        let waited = 0;
+        logger.warn(`[Worker] DB not open, waiting for schema migration (max ${maxWaitMs / 1000}s)...`);
+        while (repo?.db?.open === false && waited < maxWaitMs) {
+            await new Promise((r) => setTimeout(r, pollMs));
+            waited += pollMs;
+        }
+        if (repo?.db?.open === false) {
+            parentPort.postMessage({
+                type: 'ERROR',
+                error: `DB not ready after ${waited / 1000}s — schema migration failed or took too long`,
+                file: 'worker-init'
+            });
+            return;
+        }
+        logger.info(`[Worker] DB ready after ${waited / 1000}s, proceeding with ${files.length} files`);
     }
 
     const state = {
