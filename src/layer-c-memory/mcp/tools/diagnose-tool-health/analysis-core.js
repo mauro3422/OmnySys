@@ -2,11 +2,11 @@ import {
   calculateToolTrend,
   generateAutomaticAlerts,
   getDailyToolMetrics
-} from '../../../shared/compiler/index.js';
+} from '../../../../shared/compiler/index.js';
 import {
   detectErrorPatterns,
   prioritizeIssues
-} from './diagnose-tool-health-analysis-rules.js';
+} from '../diagnose-tool-health-analysis-rules.js';
 
 export function buildToolHealthAnalysis(repo, options = {}) {
   const { limit = 100, toolName = null, days = 7 } = options;

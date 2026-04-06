@@ -2,8 +2,8 @@ export {
   buildToolHealthMap,
   buildToolHealthPropagation,
   generateDiagnosticReport
-} from './diagnose-tool-health-report.js';
+} from './report.js';
 
 export {
   buildToolHealthAnalysis as analyzeToolHealth
-} from './diagnose-tool-health-analysis-core.js';
+} from './analysis-core.js';

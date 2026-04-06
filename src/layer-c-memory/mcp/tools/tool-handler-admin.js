@@ -11,7 +11,7 @@ import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
 import { get_atom_history } from './get-atom-history.js';
 import { get_tool_inventory_report, list_tools } from './list-tools.js';
-import { diagnose_tool_health } from './diagnose-tool-health.js';
+import { diagnose_tool_health } from './diagnose-tool-health/health.js';
 
 export const adminToolHandlers = {
   mcp_omnysystem_get_schema: get_schema,

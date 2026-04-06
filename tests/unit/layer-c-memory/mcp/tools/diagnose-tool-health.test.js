@@ -23,7 +23,7 @@ vi.mock('../../../../../src/shared/compiler/index.js', () => ({
   summarizePropagationPlan: mocks.summarizePropagationPlan
 }));
 
-import { diagnose_tool_health } from '../../../../../src/layer-c-memory/mcp/tools/diagnose-tool-health.js';
+import { diagnose_tool_health } from '../../../../../src/layer-c-memory/mcp/tools/diagnose-tool-health/health.js';
 
 function buildRepo() {
   return {

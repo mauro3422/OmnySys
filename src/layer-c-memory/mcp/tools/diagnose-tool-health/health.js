@@ -13,15 +13,15 @@
  * @module layer-c-memory/mcp/tools/diagnose-tool-health
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { getRepository } from '../../storage/repository/repository-factory.js';
-import { buildPipelineHealthPropagationPlan } from '../../../shared/compiler/index.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { getRepository } from '../../../storage/repository/repository-factory.js';
+import { buildPipelineHealthPropagationPlan } from '../../../../shared/compiler/index.js';
 import {
   analyzeToolHealth,
   buildToolHealthMap,
   buildToolHealthPropagation,
   generateDiagnosticReport
-} from './diagnose-tool-health-helpers.js';
+} from './index.js';
 
 const logger = createLogger('OmnySys:mcp:diagnose_tool_health');
 

@@ -1,3 +1,4 @@
+import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { runAsyncBoundary } from '../../../shared/compiler/index.js';
 import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
@@ -6,6 +7,7 @@ import { withMutationBatch } from '../core/shared/mutation-batch.js';
 import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
 import { buildFolderizedFamilyGroups, buildFolderizedFamilySuggestion } from '../../../shared/compiler/index.js';
 import { rewriteFolderizedFamilyImports } from './folderize-family-import-rewriter.js';
+import { runFileWatcherSemanticGuards } from '../../../core/file-watcher/analyze-flow.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family:runner');
 
@@ -113,7 +115,8 @@ async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPa
       logger.info(`[Tool] folderize move: ${target.from} -> ${target.to}`);
       const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, {
         ...moveContext,
-        skipSettlement: true // Don't reindex after each move
+        skipSettlement: true,  // Don't reindex after each move
+        deferGuards: true      // Defer guards to end of batch
       });
       results.push({
         from: target.from,
@@ -171,7 +174,10 @@ async function runFolderizeRenameBatch({ server, focusPlan, renameTargets, proje
 
     for (const target of renameTargets) {
       logger.info(`[Tool] folderize rename: ${target.from} -> ${target.to}`);
-      const renameMoveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, moveContext);
+      const renameMoveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, {
+        ...moveContext,
+        deferGuards: true  // Defer guards to end of batch
+      });
       results.push({
         from: target.from,
         to: target.to,
@@ -266,6 +272,48 @@ async function runFolderizeRewritePhase({
   };
 }
 
+/**
+ * Run deferred semantic guards ONCE at the end of the batch.
+ * This runs all semantic guards against the final state of all affected files,
+ * ensuring we catch any issues that were deferred during individual operations.
+ */
+async function runDeferredGuards({ focusPlan, projectPath, moveContext, allTargets }) {
+  logger.info(`[DEFERRED GUARDS] Running semantic guards for ${allTargets.length} target files...`);
+
+  const results = [];
+  const guardContext = {
+    ...moveContext,
+    deferGuards: false // Ensure guards actually run this time
+  };
+
+  // Run guards against each final target file
+  for (const targetPath of allTargets) {
+    try {
+      // Re-analyze the file to get molecule atoms for guard checking
+      const { collectAndBuildFileAnalysis } = await import('../../../core/file-watcher/analyze-flow.js');
+      const fullPath = path.resolve(projectPath, targetPath);
+      const analysis = await collectAndBuildFileAnalysis({ rootPath: projectPath }, targetPath, fullPath);
+
+      if (analysis?.moleculeAtoms?.length > 0) {
+        await runFileWatcherSemanticGuards(guardContext, targetPath, analysis.moleculeAtoms);
+        results.push({ filePath: targetPath, status: 'checked' });
+      }
+    } catch (error) {
+      logger.error(`[DEFERRED GUARD] Failed for ${targetPath}: ${error.message}`);
+      results.push({ filePath: targetPath, status: 'error', error: error.message });
+    }
+  }
+
+  logger.info(`[DEFERRED GUARDS] Complete: ${results.filter(r => r.status === 'checked').length} checked, ${results.filter(r => r.status === 'error').length} errors`);
+
+  return {
+    success: results.every(r => r.status !== 'error'),
+    checked: results.filter(r => r.status === 'checked').length,
+    errors: results.filter(r => r.status === 'error'),
+    total: results.length
+  };
+}
+
 export async function executeFolderizationPlan({ focusPlan, projectPath, context, moveContext, server, validateAfterMove }) {
   return await runAsyncBoundary('executeFolderizationPlan', async () => {
     try {
@@ -296,7 +344,7 @@ export async function executeFolderizationPlan({ focusPlan, projectPath, context
         return renameResult;
       }
 
-      return await runFolderizeRewritePhase({
+      const rewriteResult = await runFolderizeRewritePhase({
         focusPlan,
         moveResult,
         renameResult,
@@ -306,6 +354,23 @@ export async function executeFolderizationPlan({ focusPlan, projectPath, context
         moveContext,
         validateAfterMove
       });
+
+      // Run deferred guards ONCE at the end of the entire batch
+      // This ensures we catch any issues with the final state
+      if (validateAfterMove) {
+        const guardResult = await runDeferredGuards({
+          focusPlan,
+          projectPath,
+          moveContext,
+          allTargets: [...(moveResult.results || []).map(r => r.to), ...(renameResult?.results || []).map(r => r.to)]
+        });
+        return {
+          ...rewriteResult,
+          deferredGuards: guardResult
+        };
+      }
+
+      return rewriteResult;
     } catch (error) {
       throw error;
     }

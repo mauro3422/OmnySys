@@ -45,6 +45,13 @@ export async function runFileWatcherSemanticGuards(context, filePath, moleculeAt
   if (!moleculeAtoms || moleculeAtoms.length === 0) return;
 
   try {
+    // Defer guards during batch operations (folderization, bulk moves).
+    // Guards will run ONCE at the end of the batch against the final state.
+    if (context?.deferGuards) {
+      logger.debug(`[GUARDS DEFERRED] Deferring semantic guards for ${filePath} (batch mode)`);
+      return;
+    }
+
     const { guardRegistry } = await import(`./guards/registry.js?bust=${Date.now()}`);
     await guardRegistry.initializeDefaultGuards();
     await guardRegistry.runSemanticGuards(context.rootPath, filePath, context, moleculeAtoms, { verbose: true });

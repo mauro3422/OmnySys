@@ -11,7 +11,7 @@ import { suggest_canonical_api } from './suggest-canonical-api.js';
 import { validate_exports } from './validate-exports-tool.js';
 import { split_large_file } from './split-large-file.js';
 import { detect_folderization_opportunities } from './detect-folderization-opportunities.js';
-import { diagnose_tool_health } from './diagnose-tool-health.js';
+import { diagnose_tool_health } from './diagnose-tool-health/health.js';
 import { performAction } from '../../../shared/compiler/index.js';
 
 export const actionToolHandlers = {
