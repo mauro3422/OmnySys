@@ -1,4 +1,4 @@
-import { normalizeSemanticKey, normalizeSemanticPath, isEnvSemanticReference } from './semantic-surface-derivation-helpers.js';
+import { normalizeSemanticKey, normalizeSemanticPath, isEnvSemanticReference } from './semantic-surface-derivation/index.js';
 import { pushConnectionRow } from './semantic-surface-derivation-connections-shared.js';
 
 export function deriveSharedStateConnections(atomSurface = [], now = Date.now()) {

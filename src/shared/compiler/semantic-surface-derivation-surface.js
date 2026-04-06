@@ -4,7 +4,7 @@
  * @module shared/compiler/semantic-surface-derivation-surface
  */
 
-import { createSurfaceEntry, isEnvSemanticReference, normalizeSemanticKey } from './semantic-surface-derivation-helpers.js';
+import { createSurfaceEntry, isEnvSemanticReference, normalizeSemanticKey } from './semantic-surface-derivation/index.js';
 
 export function loadAtomSemanticSurface(db) {
   if (!db?.prepare) {

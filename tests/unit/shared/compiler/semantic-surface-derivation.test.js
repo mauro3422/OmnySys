@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveSemanticConnectionsFromAtomSurface,
   summarizeAtomSemanticSurface
-} from '../../../../src/shared/compiler/semantic-surface-derivation.js';
+} from '../../../../src/shared/compiler/semantic-surface-derivation/derivation.js';
 
 describe('semantic-surface-derivation', () => {
   it('summarizes atom semantic metadata and derives file-level semantic rows', () => {

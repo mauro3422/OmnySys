@@ -9,7 +9,7 @@ import {
   deriveSemanticConnectionsFromAtomSurface,
   loadAtomSemanticSurface,
   summarizeAtomSemanticSurface
-} from './semantic-surface-derivation.js';
+} from './semantic-surface-derivation/derivation.js';
 import {
   buildLegacyView,
   summarizeConnectionTypes

@@ -15,10 +15,10 @@ import {
   buildCanonicalEntrypoints,
   buildSurface,
   buildSurfaceInventory
-} from './compiler-contract-layer-helpers.js';
-import { buildDerivedFeatureRegistry } from './registry.js';
-import { summarizeDataGatewayContract } from './contract.js';
-import { buildApiGovernance, buildInvariants } from './compiler-contract-layer-governance.js';
+} from './index.js';
+import { buildDerivedFeatureRegistry } from '../registry.js';
+import { summarizeDataGatewayContract } from '../contract.js';
+import { buildApiGovernance, buildInvariants } from '../compiler-contract-layer-governance.js';
 
 export function buildCompilerContractLayer({
   persistedFileCoverage = null,

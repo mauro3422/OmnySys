@@ -4,7 +4,7 @@
  * @module shared/compiler/compiler-contract-layer-governance-metrics
  */
 
-import { normalizeCount } from './compiler-contract-layer-helpers.js';
+import { normalizeCount } from './compiler-contract-layer/index.js';
 
 export function buildCanonicalGovernanceMetrics(policySummary = {}, standardization = null) {
   const byRule = policySummary?.byRule || {};

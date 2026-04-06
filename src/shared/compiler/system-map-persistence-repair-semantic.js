@@ -2,7 +2,7 @@ import { safeParseJson } from './core-utils.js';
 import {
   deriveSemanticConnectionsFromAtomSurface,
   loadAtomSemanticSurface
-} from './semantic-surface-derivation.js';
+} from './semantic-surface-derivation/derivation.js';
 import { normalizeDbPath, toJsonText } from './system-map-persistence-repair-paths.js';
 
 function sameRepairPath(candidatePath, targetPath) {

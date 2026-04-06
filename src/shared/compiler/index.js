@@ -65,7 +65,7 @@ export {
 
 export {
   buildCompilerContractLayer
-} from './compiler-contract-layer.js';
+} from './compiler-contract-layer/layer.js';
 
 export {
   loadCompilerDiagnosticsSnapshot
@@ -371,7 +371,7 @@ export {
   loadAtomSemanticSurface,
   summarizeAtomSemanticSurface,
   deriveSemanticConnectionsFromAtomSurface
-} from './semantic-surface-derivation.js';
+} from './semantic-surface-derivation/derivation.js';
 
 export {
   getDatabaseHealthSummary

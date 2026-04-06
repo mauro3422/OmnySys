@@ -11,7 +11,7 @@ import {
   summarizeDataGatewayContract
 } from '../../../../src/shared/compiler/index.js';
 import { getMetadataSurfaceParity } from '../../../../src/shared/compiler/metadata-surface-parity.js';
-import { buildCompilerContractLayer } from '../../../../src/shared/compiler/compiler-contract-layer.js';
+import { buildCompilerContractLayer } from '../../../../src/shared/compiler/compiler-contract-layer/layer.js';
 
 describe('derived feature registry', () => {
   it('exposes canonical derived feature groups', () => {

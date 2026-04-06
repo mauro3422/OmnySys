@@ -4,7 +4,7 @@ import { buildAnalysisGenerationSnapshot } from './counts-generation.js';
 import { buildCompilerDriftAssessment } from './compiler-drift-assessment.js';
 import { buildDataGatewayContract } from './contract.js';
 import { buildCompilerStandardizationReport } from './standardization-report.js';
-import { buildCompilerContractLayer } from './compiler-contract-layer.js';
+import { buildCompilerContractLayer } from './compiler-contract-layer/layer.js';
 import { buildSurfaceAudit } from './surface-audit/audit.js';
 import { getLiveFileTotal } from './live-row-utils.js';
 import { buildResolvedCanonicalAdoptions } from './compiler-diagnostics-snapshot-contracts-adoptions.js';

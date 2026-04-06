@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import { detectCanonicalExtensionConformanceFromSource } from '../../../../src/shared/compiler/canonical-extension-conformance.js';
 import { resolveArchitecturalRecommendation } from '../../../../src/shared/compiler/architectural-recommendations.js';
-import { buildCompilerContractLayer } from '../../../../src/shared/compiler/compiler-contract-layer.js';
+import { buildCompilerContractLayer } from '../../../../src/shared/compiler/compiler-contract-layer/layer.js';
 
 describe('canonical-extension conformance - barrel surfaces', () => {
   it('flags mixed barrels that re-export and define local logic', () => {

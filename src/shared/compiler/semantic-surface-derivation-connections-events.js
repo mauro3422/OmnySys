@@ -1,4 +1,4 @@
-import { normalizeSemanticKey, normalizeSemanticPath } from './semantic-surface-derivation-helpers.js';
+import { normalizeSemanticKey, normalizeSemanticPath } from './semantic-surface-derivation/index.js';
 import { deriveSharedStateConnections } from './semantic-surface-derivation-connections-shared-state.js';
 import { pushConnectionRow } from './semantic-surface-derivation-connections-shared.js';
 

@@ -7,6 +7,6 @@
  * @module shared/compiler/compiler-contract-layer-helpers
  */
 
-export { normalizeCount } from './surface-utils.js';
-export { buildSurface, buildInvariant, buildSurfaceInventory } from './compiler-contract-layer-helpers-surface.js';
-export { buildCanonicalEntrypoints } from './compiler-contract-layer-helpers-entrypoints.js';
+export { normalizeCount } from '../surface-utils.js';
+export { buildSurface, buildInvariant, buildSurfaceInventory } from '../compiler-contract-layer-helpers-surface.js';
+export { buildCanonicalEntrypoints } from '../compiler-contract-layer-helpers-entrypoints.js';

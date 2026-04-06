@@ -11,8 +11,8 @@
 export {
   loadAtomSemanticSurface,
   summarizeAtomSemanticSurface
-} from './semantic-surface-derivation-surface.js';
+} from '../semantic-surface-derivation-surface.js';
 
 export {
   deriveSemanticConnectionsFromAtomSurface
-} from './semantic-surface-derivation-connections.js';
+} from '../semantic-surface-derivation-connections.js';

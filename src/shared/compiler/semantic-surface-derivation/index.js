@@ -4,7 +4,7 @@
  * @module shared/compiler/semantic-surface-derivation-helpers
  */
 
-import { parsePersistedArray } from './core-utils.js';
+import { parsePersistedArray } from '../core-utils.js';
 
 export function normalizeSemanticPath(filePath = '') {
   return String(filePath || '')

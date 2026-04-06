@@ -4,7 +4,7 @@
  * @module shared/compiler/compiler-contract-layer-governance-invariants
  */
 
-import { buildInvariant, normalizeCount } from './compiler-contract-layer-helpers.js';
+import { buildInvariant, normalizeCount } from './compiler-contract-layer/index.js';
 
 export function buildInvariants({
   persistedFileCoverage = null,
