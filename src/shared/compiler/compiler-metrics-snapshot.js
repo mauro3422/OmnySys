@@ -146,11 +146,12 @@ export function buildCompilerMetricsSnapshot(options = {}) {
   current.summaryText = summary;
 
   const currentHistoryEntry = summarizeCurrentSnapshotRow(current);
+  const safeHistoryEntries = Array.isArray(history?.entries) ? history.entries : [];
   const returnedHistory = {
-    entries: currentHistoryEntry ? [currentHistoryEntry, ...history.entries] : history.entries,
-    latest: currentHistoryEntry || history.latest,
-    previous: history.latest,
-    baseline: history.baseline
+    entries: currentHistoryEntry ? [currentHistoryEntry, ...safeHistoryEntries] : safeHistoryEntries,
+    latest: currentHistoryEntry || history?.latest || null,
+    previous: history?.latest || null,
+    baseline: history?.baseline || null
   };
 
   const snapshot = {

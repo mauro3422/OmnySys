@@ -227,13 +227,14 @@ export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
     const allArchiveEntries = mergeHistoryRows(safeArchiveEntries, safeMetricsArchiveEntries);
     const safeEffectiveRows = Array.isArray(effectiveRows) ? effectiveRows : [];
     const safeMergedRows = Array.isArray(mergedRows) ? mergedRows : [];
-    const mergedEntries = [...(safeEffectiveRows.length > 0 ? safeEffectiveRows : safeMergedRows), ...allArchiveEntries].slice(0, limit);
+    const safeAllArchive = Array.isArray(allArchiveEntries) ? allArchiveEntries : [];
+    const mergedEntries = [...(safeEffectiveRows.length > 0 ? safeEffectiveRows : safeMergedRows), ...safeAllArchive].slice(0, limit);
 
     return {
-      entries: mergedEntries.map(summarizeHistoryRow),
-      latest: summarizeHistoryRow(effectiveRows[0] || mergedRows[0] || archiveLatest || rows[0] || null),
-      previous: summarizeHistoryRow(effectivePreviousAlt),
-      baseline: summarizeHistoryRow(effectiveBaseline || mergedBaseline)
+      entries: Array.isArray(mergedEntries) ? mergedEntries.map(summarizeHistoryRow) : [],
+      latest: summarizeHistoryRow(safeEffectiveRows[0] || safeMergedRows[0] || archiveLatest || rows[0] || null),
+      previous: summarizeHistoryRow(effectivePreviousAlt || null),
+      baseline: summarizeHistoryRow(effectiveBaseline || mergedBaseline || null)
     };
   } catch {
     return { entries: [], latest: null, previous: null, baseline: null };
