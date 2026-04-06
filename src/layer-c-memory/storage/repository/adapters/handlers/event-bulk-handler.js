@@ -1,13 +1,16 @@
 /**
  * @fileoverview event-bulk-handler.js
- * 
+ *
  * Maneja el registro de eventos de átomos y control de versiones.
- * 
+ *
+ * NOTA: NO archiva en atom-history.db. El archive de historia genealógica
+ * solo debe registrar cambios en átomos existentes (vía incremental-atom-saver).
+ * Los bulk saves de Layer A son construcción inicial, no evolución.
+ *
  * @module storage/repository/adapters/handlers/event-bulk-handler
  */
 
 import { calculateHash, calculateFieldHashes } from '../helpers/hashing.js';
-import { persistAtomVersionArchiveBatch } from '../../../../../shared/compiler/atom-history-archive.js';
 
 export class EventBulkHandler {
     constructor(db, logger, projectPath = null) {
@@ -26,8 +29,6 @@ export class EventBulkHandler {
      */
     handle(atoms, existingIds, now, msNow, normalizeFn) {
         if (!atoms || atoms.length === 0) return;
-
-        const archiveEntries = [];
 
         const eventStmt = this.db.prepare(`
       INSERT OR IGNORE INTO atom_events (atom_id, event_type, impact_score, timestamp, source)
@@ -52,7 +53,7 @@ export class EventBulkHandler {
             const eventType = existingIds.has(atomId) ? 'updated' : 'created';
             eventStmt.run(atomId, eventType, atom.derived?.changeRisk || 0, now, 'bulk_save');
 
-            // 2. Atom Versions
+            // 2. Atom Versions (UPSERT - solo tracking de versión actual para detección de cambios)
             const fieldHashes = calculateFieldHashes(atom);
             const totalHash = calculateHash(atom);
             versionStmt.run(
@@ -63,30 +64,10 @@ export class EventBulkHandler {
                 filePath,
                 atom.name
             );
-
-            if (this.projectPath) {
-                archiveEntries.push({
-                    atomId,
-                    atomData: atom,
-                    version: {
-                        hash: totalHash,
-                        fieldHashes,
-                        lastModified: msNow,
-                        filePath,
-                        atomName: atom.name
-                    },
-                    capturedAt: now,
-                    source: 'event-bulk-handler'
-                });
-            }
         }
 
-        if (this.projectPath && archiveEntries.length > 0) {
-            try {
-                persistAtomVersionArchiveBatch(this.projectPath, archiveEntries, { source: 'event-bulk-handler' });
-            } catch (error) {
-                this.logger?.warn?.(`[AtomArchive] Failed to persist atom version archive batch: ${error.message}`);
-            }
-        }
+        // NOTA: NO archivamos aquí. atom-history.db es solo para evolución genealógica
+        // de átomos existentes (edits vía FileWatcher/atomic-edit/Phase 2).
+        // Los bulk saves son construcción inicial, no cambios de estado.
     }
 }
