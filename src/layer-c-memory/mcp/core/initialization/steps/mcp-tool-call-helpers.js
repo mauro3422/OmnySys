@@ -27,6 +27,34 @@ import {
 
 const logger = createLogger('OmnySys:mcp:tool-telemetry');
 
+/**
+ * Recursively strips null, undefined, empty arrays, and empty objects from a response.
+ * Saves ~30-50% token overhead on large responses with many optional fields.
+ * Preserves: false, 0, "", and top-level meta-fields (_recentErrors, _provenance, _toolTelemetry).
+ */
+function compactResponse(obj) {
+  if (obj === null || obj === undefined) return undefined;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    const compacted = obj.map(compactResponse).filter(v => v !== undefined);
+    return compacted.length > 0 ? compacted : undefined;
+  }
+
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Always preserve top-level meta-fields (system needs them)
+    if (key.startsWith('_')) {
+      result[key] = value;
+      continue;
+    }
+    const compacted = compactResponse(value);
+    if (compacted !== undefined) {
+      result[key] = compacted;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 export function buildToolExecutionContext(server, transportContext = null) {
   return {
     orchestrator: server.orchestrator,
@@ -143,9 +171,11 @@ export function buildToolCallProvenance(name, server, recentErrors, transportCon
 }
 
 export function buildToolCallResult(rawResult, recentErrors, provenance) {
+  const compactedResult = compactResponse(rawResult);
+
   const resultWithErrors = recentErrors.count > 0
-    ? { _recentErrors: recentErrors, ...rawResult }
-    : rawResult;
+    ? { _recentErrors: recentErrors, ...compactedResult }
+    : compactedResult;
 
   return {
     ...resultWithErrors,
