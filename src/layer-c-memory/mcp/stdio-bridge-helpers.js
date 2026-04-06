@@ -1,8 +1,9 @@
 import { runAsyncBoundary } from '../../shared/compiler/index.js';
 import { normalizeTransportOrigin } from './transport-provenance.js';
+import { execSync } from 'child_process';
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
 
-// Client ID detection: env vars take priority, then detect from user agent
+// Client ID detection: env vars take priority, then auto-detect from parent process
 function detectClientFromEnv() {
     const envId = String(process.env.OMNYSYS_CLIENT_ID || '').trim();
     const envName = String(process.env.OMNYSYS_CLIENT_NAME || '').trim();
@@ -22,8 +23,38 @@ function detectClientFromUserAgent(userAgent) {
     return null;
 }
 
-// Auto-detect client if not explicitly set
-const autoDetectedClient = detectClientFromEnv() || detectClientFromUserAgent(process.env.OMNYSYS_USER_AGENT);
+function detectClientFromParentProcess() {
+    try {
+        const ppid = process.ppid;
+        if (!ppid) return null;
+        
+        // Get parent process name on Windows
+        const output = execSync(`wmic process where ProcessId=${ppid} get Name`, { encoding: 'utf8', timeout: 2000 });
+        const parentName = output.toLowerCase();
+        
+        // Detect based on parent process
+        if (parentName.includes('qwen') || parentName.includes('qwen-code')) return { id: 'qwen-code', name: 'Qwen Code' };
+        if (parentName.includes('codex')) return { id: 'codex', name: 'Codex' };
+        if (parentName.includes('cline')) return { id: 'cline', name: 'Cline' };
+        if (parentName.includes('claude')) return { id: 'claude', name: 'Claude' };
+        if (parentName.includes('cursor')) return { id: 'cursor', name: 'Cursor' };
+        
+        // If parent is VS Code, check grandparent or use heuristic
+        if (parentName.includes('code.exe') || parentName.includes('visual studio code')) {
+            // Running under VS Code - could be any AI extension
+            // Default to 'vscode-ai' since we can't determine which one
+            return { id: 'vscode-ai', name: 'VS Code AI' };
+        }
+        
+        return null;
+    } catch {
+        // wmic may fail or timeout, ignore
+        return null;
+    }
+}
+
+// Auto-detect client: env vars > user agent > parent process
+const autoDetectedClient = detectClientFromEnv() || detectClientFromUserAgent(process.env.OMNYSYS_USER_AGENT) || detectClientFromParentProcess();
 
 const BRIDGE_CLIENT_ID = autoDetectedClient?.id || '';
 const BRIDGE_CLIENT_NAME = autoDetectedClient?.name || '';
