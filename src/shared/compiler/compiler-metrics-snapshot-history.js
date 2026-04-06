@@ -121,7 +121,7 @@ export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
     `).all(projectPath, snapshotKind, normalizedScope, normalizedFocus, limit);
 
     const baselineCutoff = new Date(Date.now() - (compareDays * 24 * 60 * 60 * 1000)).toISOString();
-    const baselineRow = db.prepare(`
+    let baselineRow = db.prepare(`
       SELECT *
       FROM compiler_metrics_snapshots
       WHERE project_path = ?
@@ -132,6 +132,21 @@ export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
       ORDER BY captured_at DESC
       LIMIT 1
     `).get(projectPath, snapshotKind, normalizedScope, normalizedFocus, baselineCutoff) || null;
+
+    // Fallback: if no baseline of same kind, use any snapshot as baseline
+    if (!baselineRow && rows.length > 0) {
+      baselineRow = db.prepare(`
+        SELECT *
+        FROM compiler_metrics_snapshots
+        WHERE project_path = ?
+          AND snapshot_kind != ?
+          AND IFNULL(scope_path, '') = IFNULL(?, '')
+          AND IFNULL(focus_path, '') = IFNULL(?, '')
+          AND captured_at <= ?
+        ORDER BY captured_at DESC
+        LIMIT 1
+      `).get(projectPath, snapshotKind, normalizedScope, normalizedFocus, baselineCutoff) || null;
+    }
     const archiveHistory = projectPath
       ? loadCompilerHealthArchiveHistory(projectPath, {
           snapshotKind,
@@ -160,10 +175,29 @@ export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
       || (shouldMergeArchive ? mergedRows.find((row) => String(row.captured_at || '') <= baselineCutoff) || archiveBaseline : null)
       || null;
 
+    // Fallback previous: if only 1 row of same kind, use any other snapshot as previous
+    let effectivePrevious = mergedRows[1] || archivePrevious || rows[1] || null;
+    if (!effectivePrevious && rows.length >= 1) {
+      effectivePrevious = db.prepare(`
+        SELECT *
+        FROM compiler_metrics_snapshots
+        WHERE project_path = ?
+          AND snapshot_kind != ?
+          AND IFNULL(scope_path, '') = IFNULL(?, '')
+          AND IFNULL(focus_path, '') = IFNULL(?, '')
+        ORDER BY captured_at DESC
+        LIMIT 1
+      `).get(projectPath, snapshotKind, normalizedScope, normalizedFocus) || null;
+    }
+
+    // Merge archive entries for history view
+    const allArchiveEntries = mergeHistoryRows(archiveHistory.entries, metricsArchiveHistory.entries);
+    const mergedEntries = [...mergedRows, ...allArchiveEntries].slice(0, limit);
+
     return {
-      entries: mergedRows.map(summarizeHistoryRow),
+      entries: mergedEntries.map(summarizeHistoryRow),
       latest: summarizeHistoryRow(mergedRows[0] || archiveLatest || rows[0] || null),
-      previous: summarizeHistoryRow(mergedRows[1] || archivePrevious || rows[1] || null),
+      previous: summarizeHistoryRow(effectivePrevious),
       baseline: summarizeHistoryRow(mergedBaseline)
     };
   } catch {
