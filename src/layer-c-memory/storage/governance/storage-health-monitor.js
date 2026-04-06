@@ -8,7 +8,6 @@
  */
 
 import {
-  buildStorageFileSummary,
   getAtomHistoryDbPath,
   getCompilerHistoryDbPath,
   getCompilerDataDir
@@ -75,15 +74,25 @@ function collectDatabaseSizes(rootPath) {
 /**
  * Gets atom-history.db row counts and archive health
  */
-function collectArchiveMetrics(rootPath) {
+async function collectArchiveMetrics(rootPath) {
   const archivePath = getAtomHistoryDbPath(rootPath);
   if (!existsSync(archivePath)) {
     return { exists: false, totalRows: 0, bySource: [], rowsPerAtom: 0 };
   }
 
   try {
-    const Database = require('better-sqlite3');
+    const Database = (await import('better-sqlite3')).default;
     const db = new Database(archivePath, { readonly: true });
+
+    // Check if the archive table exists
+    const tableCheck = db.prepare(`
+      SELECT name FROM sqlite_master WHERE type='table' AND name='atom_versions_archive'
+    `).get();
+
+    if (!tableCheck) {
+      db.close();
+      return { exists: true, tableExists: false, totalRows: 0, bySource: [], rowsPerAtom: 0 };
+    }
 
     const total = db.prepare('SELECT COUNT(*) as c FROM atom_versions_archive').get();
     const bySource = db.prepare(`
@@ -102,6 +111,7 @@ function collectArchiveMetrics(rootPath) {
 
     return {
       exists: true,
+      tableExists: true,
       totalRows: total.c,
       bySource: bySource,
       uniqueAtoms: uniqueAtoms.c,
@@ -215,9 +225,9 @@ function detectAnomalies(dbSizes, archiveMetrics, operational) {
 /**
  * Main function: produces a comprehensive storage health report
  */
-export function getStorageHealthReport(projectPath) {
+export async function getStorageHealthReport(projectPath) {
   const dbSizes = collectDatabaseSizes(projectPath);
-  const archiveMetrics = collectArchiveMetrics(projectPath);
+  const archiveMetrics = await collectArchiveMetrics(projectPath);
   const operational = collectOperationalMetrics(projectPath);
   const { anomalies, recommendations, healthy } = detectAnomalies(dbSizes, archiveMetrics, operational);
 

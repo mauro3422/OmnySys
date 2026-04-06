@@ -17,14 +17,14 @@ const logger = createLogger('OmnySys:ArchiveDuplicateDetector');
 /**
  * Scans atom_versions_archive for duplicate version_hash values per atom_id
  */
-export function detectArchiveDuplicates(projectPath) {
+export async function detectArchiveDuplicates(projectPath) {
   const archivePath = getAtomHistoryDbPath(projectPath);
   if (!existsSync(archivePath)) {
     return { exists: false, duplicateGroups: 0, totalDuplicateRows: 0, spaceWastedBytes: 0, groups: [] };
   }
 
   try {
-    const Database = require('better-sqlite3');
+    const Database = (await import('better-sqlite3')).default;
     const db = new Database(archivePath, { readonly: true });
 
     // Find atoms with multiple rows having the same version_hash
@@ -113,7 +113,7 @@ export function detectArchiveDuplicates(projectPath) {
 /**
  * Removes duplicate rows from archive, keeping only the latest per (atom_id, version_hash)
  */
-export function purgeArchiveDuplicates(projectPath, options = {}) {
+export async function purgeArchiveDuplicates(projectPath, options = {}) {
   const { dryRun = true } = options;
   const archivePath = getAtomHistoryDbPath(projectPath);
   if (!existsSync(archivePath)) {
@@ -121,7 +121,7 @@ export function purgeArchiveDuplicates(projectPath, options = {}) {
   }
 
   try {
-    const Database = require('better-sqlite3');
+    const Database = (await import('better-sqlite3')).default;
     const db = new Database(archivePath);
 
     const before = db.prepare('SELECT COUNT(*) as c FROM atom_versions_archive').get();

@@ -30,7 +30,7 @@ const REQUIRED_GENEALOGICAL_FIELDS = [
 /**
  * Validates genealogy completeness
  */
-export function validateGenealogy(projectPath) {
+export async function validateGenealogy(projectPath) {
   const repo = getRepository(projectPath);
   const archivePath = getAtomHistoryDbPath(projectPath);
 
@@ -50,7 +50,7 @@ export function validateGenealogy(projectPath) {
   }
 
   try {
-    const Database = require('better-sqlite3');
+    const Database = (await import('better-sqlite3')).default;
     const archiveDb = new Database(archivePath, { readonly: true });
 
     // Count atoms in operational DB

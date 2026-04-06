@@ -8,69 +8,66 @@
  */
 
 import {
-  getStorageGovernanceReport,
-  runStorageMaintenance
+  getStorageHealthReport,
+  detectArchiveDuplicates,
+  validateGenealogy
 } from '../../../storage/governance/index.js';
 
 export async function handleStorageHealth(tool, projectPath, options = {}) {
-  const {
-    runMaintenance = false,
-    dryRun = true,
-    includeDuplicates = true,
-    includeGenealogy = true
-  } = options;
+  const { runMaintenance = false, dryRun = true } = options;
 
   try {
-    const report = getStorageGovernanceReport(projectPath, {
-      runMaintenance,
-      dryRun
-    });
+    const [health, duplicates, genealogy] = await Promise.all([
+      getStorageHealthReport(projectPath),
+      detectArchiveDuplicates(projectPath),
+      validateGenealogy(projectPath)
+    ]);
 
-    // Trim verbose details for MCP response
+    const issues = [];
+    const recommendations = [];
+
+    if (health?.anomalies) {
+      issues.push(...health.anomalies.map(a => a.message));
+      recommendations.push(...(health.recommendations || []));
+    }
+    if (duplicates?.duplicateGroups > 0) {
+      issues.push(`Archive has ${duplicates.duplicateGroups} duplicate groups (${duplicates.totalDuplicateRows} excess rows)`);
+      recommendations.push('Run archive deduplication with dryRun=false to remove duplicates');
+    }
+    if (genealogy?.issues) {
+      issues.push(...genealogy.issues.map(i => i.message));
+      recommendations.push(...(genealogy.recommendations || []));
+    }
+
     return {
       health: {
-        score: report.health.health.score,
-        grade: report.health.health.grade,
-        healthy: report.health.health.healthy,
-        totalSizeMB: report.health.totalSizeMB,
-        anomalies: report.health.anomalies.length,
-        databases: report.health.databases.map(d => ({
-          label: d.label,
-          sizeMB: d.sizeMB,
-          exists: d.exists
-        }))
+        score: health?.health?.score ?? 0,
+        grade: health?.health?.grade ?? 'F',
+        healthy: health?.health?.healthy ?? false,
+        totalSizeMB: health?.totalSizeMB ?? 0,
+        anomalies: health?.anomalies?.length ?? 0,
+        databases: (health?.databases || []).map(d => ({ label: d.label, sizeMB: d.sizeMB, exists: d.exists }))
       },
-      archive: report.duplicates ? {
-        exists: report.duplicates.exists,
-        totalRows: report.duplicates.totalRows,
-        duplicateGroups: report.duplicates.duplicateGroups,
-        rowsPerAtom: report.duplicates.rowsPerAtom,
-        healthy: report.duplicates.healthy,
-        bySource: report.duplicates.bySource
+      archive: duplicates ? {
+        totalRows: duplicates.totalRows,
+        duplicateGroups: duplicates.duplicateGroups,
+        rowsPerAtom: duplicates.rowsPerAtom,
+        healthy: duplicates.healthy
       } : null,
-      genealogy: report.genealogy ? {
-        healthy: report.genealogy.healthy,
-        atomCoveragePct: report.genealogy.atomCoveragePct,
-        atomsWithoutGenealogy: report.genealogy.atomsWithoutGenealogy,
-        orphanedArchiveRows: report.genealogy.orphanedArchiveRows,
-        issues: report.genealogy.issues?.length || 0
+      genealogy: genealogy ? {
+        healthy: genealogy.healthy,
+        atomCoveragePct: genealogy.atomCoveragePct,
+        atomsWithoutGenealogy: genealogy.atomsWithoutGenealogy,
+        orphanedArchiveAtoms: genealogy.orphanedArchiveAtoms || 0
       } : null,
-      maintenance: report.maintenance ? {
-        dryRun: report.maintenance.dryRun,
-        operations: Object.fromEntries(
-          Object.entries(report.maintenance.operations).map(([k, v]) => [k, { success: v.success, message: v.message || null, freedMB: v.freedMB }])
-        )
-      } : null,
-      summary: report.summary,
-      recommendations: [
-        ...report.health.recommendations,
-        ...(report.genealogy?.recommendations || [])
-      ].slice(0, 10)
+      maintenance: runMaintenance
+        ? { message: 'Maintenance not yet available via MCP — use governance module directly', dryRun }
+        : null,
+      issues: issues.slice(0, 10),
+      recommendations: recommendations.slice(0, 10),
+      checkedAt: new Date().toISOString()
     };
   } catch (error) {
-    return {
-      error: error.message,
-      healthy: false
-    };
+    return { error: error.message, healthy: false };
   }
 }

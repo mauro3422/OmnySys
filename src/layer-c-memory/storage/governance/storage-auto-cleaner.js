@@ -47,14 +47,14 @@ function vacuumOperationalDb(projectPath) {
 /**
  * Runs VACUUM on atom-history.db
  */
-function vacuumArchiveDb(projectPath) {
+async function vacuumArchiveDb(projectPath) {
   const archivePath = getAtomHistoryDbPath(projectPath);
   if (!existsSync(archivePath)) {
     return { success: false, reason: 'archive does not exist' };
   }
 
   try {
-    const Database = require('better-sqlite3');
+    const Database = (await import('better-sqlite3')).default;
     const db = new Database(archivePath);
 
     const before = db.prepare('SELECT page_count * page_size as s FROM pragma_page_count(), pragma_page_size()').get();
@@ -82,7 +82,7 @@ function vacuumArchiveDb(projectPath) {
 /**
  * Removes orphaned archive rows (atoms no longer in operational DB)
  */
-function cleanOrphanedArchives(projectPath) {
+async function cleanOrphanedArchives(projectPath) {
   const archivePath = getAtomHistoryDbPath(projectPath);
   if (!existsSync(archivePath)) {
     return { success: false, reason: 'archive does not exist' };
@@ -92,7 +92,7 @@ function cleanOrphanedArchives(projectPath) {
     const repo = getRepository(projectPath);
     if (!repo?.db) return { success: false, reason: 'operational db not available' };
 
-    const Database = require('better-sqlite3');
+    const Database = (await import('better-sqlite3')).default;
     const archiveDb = new Database(archivePath);
 
     // Get valid atom IDs
