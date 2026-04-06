@@ -222,8 +222,12 @@ export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
     }
 
     // Merge archive entries for history view
-    const allArchiveEntries = mergeHistoryRows(archiveHistory.entries, metricsArchiveHistory.entries);
-    const mergedEntries = [...(effectiveRows.length > 0 ? effectiveRows : mergedRows), ...allArchiveEntries].slice(0, limit);
+    const safeArchiveEntries = Array.isArray(archiveHistory?.entries) ? archiveHistory.entries : [];
+    const safeMetricsArchiveEntries = Array.isArray(metricsArchiveHistory?.entries) ? metricsArchiveHistory.entries : [];
+    const allArchiveEntries = mergeHistoryRows(safeArchiveEntries, safeMetricsArchiveEntries);
+    const safeEffectiveRows = Array.isArray(effectiveRows) ? effectiveRows : [];
+    const safeMergedRows = Array.isArray(mergedRows) ? mergedRows : [];
+    const mergedEntries = [...(safeEffectiveRows.length > 0 ? safeEffectiveRows : safeMergedRows), ...allArchiveEntries].slice(0, limit);
 
     return {
       entries: mergedEntries.map(summarizeHistoryRow),
