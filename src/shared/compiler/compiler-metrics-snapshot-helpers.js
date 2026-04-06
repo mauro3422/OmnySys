@@ -2,6 +2,8 @@
  * @fileoverview Internal helpers for compiler metrics snapshot assembly.
  */
 
+import path from 'path';
+import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
 import { safeJsonStringify } from './safe-json.js';
 import { normalizeCount } from './contract-helpers.js';
@@ -251,10 +253,6 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
  */
 async function mirrorSnapshotToArchive(args) {
   try {
-    const path = await import('path');
-    const { default: Database } = await import('better-sqlite3');
-    const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    
     const projectPath = args.project_path;
     if (!projectPath) return;
     

@@ -1,3 +1,5 @@
+import path from 'path';
+import Database from 'better-sqlite3';
 import {
   loadCompilerHealthArchiveHistory,
   loadCompilerMetricsArchiveHistory
@@ -92,7 +94,7 @@ export function muteBootstrapTrend(trend = null) {
   };
 }
 
-export async function loadCompilerMetricsSnapshotHistory(db, options = {}) {
+export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
   if (!db?.prepare) {
     return { entries: [], latest: null, previous: null, baseline: null };
   }
@@ -196,8 +198,6 @@ export async function loadCompilerMetricsSnapshotHistory(db, options = {}) {
     let effectivePreviousAlt = effectivePrevious;
     if (effectiveRows.length === 0 && projectPath) {
       try {
-        const { default: Database } = await import('better-sqlite3');
-        const path = await import('path');
         const archivePath = path.join(projectPath, '.omnysysdata', 'health-history.db');
         const archiveDb = new Database(archivePath, { readonly: true });
         const archiveRows = archiveDb.prepare(`
