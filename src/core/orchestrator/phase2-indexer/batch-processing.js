@@ -1,6 +1,8 @@
 import path from 'path';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { getPhase2FileCounts } from '#shared/compiler/index.js';
+import { persistAtomVersionArchiveBatch } from '#shared/compiler/atom-history-archive.js';
+import { rowToAtom } from '#layer-c/storage/repository/adapters/helpers/converters.js';
 
 export async function processPhase2Batch({
     indexer,
@@ -127,6 +129,52 @@ function persistMissingFiles(db, missingFiles) {
     persistTransaction(missingFiles);
 }
 
+/**
+ * Archiva las versiones esqueleto de los átomos ANTES de que Phase 2 las reemplace.
+ * Esto preserva la genealogía: se puede ver el estado antes y después del enriquecimiento.
+ */
+function archivePhase2Skeletons(db, filesToProcess, projectPath) {
+    const stmt = db.prepare(`
+        SELECT id, name, file_path, dna_json, data_flow_json, error_flow_json,
+               performance_json, calls_json, called_by_json, complexity, lines_of_code,
+               archetype_type, purpose_type, is_exported, is_async,
+               shared_state_json, event_emitters_json, event_listeners_json,
+               fragility_score, cohesion_score, coupling_score, centrality_score,
+               change_frequency, age_days, generation
+        FROM atoms
+        WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
+    `);
+
+    const archiveEntries = [];
+
+    for (const relPath of filesToProcess) {
+        const atoms = stmt.all(relPath);
+        for (const row of atoms) {
+            const atom = rowToAtom(row);
+            archiveEntries.push({
+                atomId: row.id,
+                atomData: atom,
+                version: {
+                    hash: atom.dna?.structuralHash || 'skeleton',
+                    fieldHashes: {},
+                    lastModified: Date.now(),
+                    filePath: row.file_path,
+                    atomName: row.name
+                },
+                source: 'phase2-pre-enrichment'
+            });
+        }
+    }
+
+    if (archiveEntries.length > 0) {
+        try {
+            persistAtomVersionArchiveBatch(projectPath, archiveEntries, { source: 'phase2-pre-enrichment' });
+        } catch (error) {
+            // No fatal — archive failure shouldn't block Phase 2
+        }
+    }
+}
+
 async function processExistingFiles({
     db,
     filesToProcess,
@@ -136,6 +184,10 @@ async function processExistingFiles({
 }) {
     try {
         const hr = new BaseSqlRepository(db, 'Indexer:Batch');
+
+        // ARCHIVAR versiones esqueleto ANTES de borrarlas (preservar genealogía Phase 2)
+        archivePhase2Skeletons(db, filesToProcess, projectPath);
+
         const clearPendingAtoms = hr.db.transaction((paths) => {
             for (const filePath of paths) {
                 hr.delete('atoms', 'file_path', filePath);

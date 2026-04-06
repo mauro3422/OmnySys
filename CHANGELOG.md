@@ -15,6 +15,10 @@ All notable changes to this project are documented here as a release index. Deta
 - **Genealogical atom history:** added field filtering to atom-history archive — only stores
   identity, connections, DNA/flows, metrics, classification, semantics, and git data. Excludes
   `_meta_json`, `imports_json`, `exports_json`, `uses_json` (~60% storage reduction).
+- **CRITICAL FIX: Removed event-bulk-handler from atom-history archiving.** The bulk handler
+  was archiving every atom during Layer A initial build (93K rows = 1.7GB for fresh build).
+  The archive is for genealogy (evolution of existing atoms), not initial construction. Now
+  only `incremental-atom-saver` archives — triggered by FileWatcher edits and Phase 2 enrichment.
 
 - Clarified the two-stage analysis pipeline: Phase 1 builds the structural atom skeleton, while Phase 2 reuses the indexed baseline to recompute call links, semantic connections, caller patterns, risk, and persistence-backed history without treating the run as a brand-new project universe.
 - Hardened the restart/reanalyze path so operational cleanup no longer wipes atom history artifacts (`atom-history.db` and its WAL/SHM sidecars), and the bulk atom saver writes back `atom_versions` / `atom_events` again so evolution data survives full reindex cycles.
