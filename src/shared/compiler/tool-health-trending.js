@@ -7,7 +7,7 @@
  * @module shared/compiler/tool-health-trending
  */
 
-import { asNumber } from './tool-run-telemetry-helpers.js';
+import { asNumber } from './tool-run-telemetry/index.js';
 
 /**
  * Umbrales para alertas automáticas

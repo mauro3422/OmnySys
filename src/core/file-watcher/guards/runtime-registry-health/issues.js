@@ -3,4 +3,4 @@ export { buildRegistryLeakIssue } from './issues-growth.js';
 export {
     buildInitializationChurnIssue,
     buildSlowInitializationIssue
-} from './issues-lifecycle.js';
+} from './issues-lifecycle/index.js';

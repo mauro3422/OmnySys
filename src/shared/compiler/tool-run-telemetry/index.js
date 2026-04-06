@@ -2,8 +2,8 @@
  * @fileoverview Helper normalizers for tool run telemetry.
  */
 
-import { safeJsonStringify } from './safe-json.js';
-import { asNumber, normalizeTelemetryPath } from './core-utils.js';
+import { safeJsonStringify } from '../safe-json.js';
+import { asNumber, normalizeTelemetryPath } from '../core-utils.js';
 
 function mapSnapshotCurrentForStorage(current = {}) {
   return {

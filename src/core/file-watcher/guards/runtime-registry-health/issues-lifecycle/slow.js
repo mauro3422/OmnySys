@@ -1,4 +1,4 @@
-import { IssueDomains, createIssueType, createStandardContext } from '../guard-standards.js';
+import { IssueDomains, createIssueType, createStandardContext } from '../../guard-standards.js';
 
 export function buildSlowInitializationIssue({ filePath, timeInInit, hasInitPromise, isInitialized }) {
     const severity = 'low';

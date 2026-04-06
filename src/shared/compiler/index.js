@@ -229,11 +229,11 @@ export {
   evaluateToolRunTelemetry,
   persistToolRunTelemetry,
   summarizeToolRunTelemetry
-} from './tool-run-telemetry.js';
+} from './tool-run-telemetry/telemetry.js';
 
 export {
   buildToolRunTelemetrySummary
-} from './tool-run-telemetry-summary.js';
+} from './tool-run-telemetry/summary.js';
 
 export {
   buildSurfaceAudit,

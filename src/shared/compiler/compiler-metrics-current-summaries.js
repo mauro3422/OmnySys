@@ -7,7 +7,7 @@ import { getGraphCoverageSummary, getIssueSummary, getConceptualDuplicateSummary
 import { getPhase2PendingFiles } from './compiler-runtime-metrics-db.js';
 import { getPipelineOrphanSummary } from './pipeline-orphans.js';
 import { buildPipelineTimingTelemetrySummary } from './pipeline-timing-telemetry.js';
-import { buildToolRunTelemetrySummary } from './tool-run-telemetry.js';
+import { buildToolRunTelemetrySummary } from './tool-run-telemetry/telemetry.js';
 import { asNumber } from './core-utils.js';
 import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
 

@@ -3,7 +3,7 @@ import {
   buildToolRunTelemetrySummary,
   evaluateToolRunTelemetry,
   persistToolRunTelemetry
-} from '../../../../src/shared/compiler/tool-run-telemetry.js';
+} from '../../../../src/shared/compiler/tool-run-telemetry/telemetry.js';
 
 function createDbMock() {
   return {

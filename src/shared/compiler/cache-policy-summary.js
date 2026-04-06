@@ -7,7 +7,7 @@
 
 import { asNumber } from './core-utils.js';
 import { takeSample } from './sample-helpers.js';
-import { buildToolCachePolicySummary } from './tool-run-telemetry-helpers.js';
+import { buildToolCachePolicySummary } from './tool-run-telemetry/index.js';
 
 function summarizeRecentErrors(recentErrors = null) {
   if (!recentErrors || typeof recentErrors !== 'object') {

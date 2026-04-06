@@ -8,7 +8,7 @@ import {
   buildToolTelemetryNoiseSummary,
   classifyToolTelemetryNoise,
   normalizeTelemetryPath
-} from './tool-run-telemetry-helpers.js';
+} from './index.js';
 
 export function buildToolRunTelemetrySummary(db, options = {}) {
   if (!db?.prepare) {
