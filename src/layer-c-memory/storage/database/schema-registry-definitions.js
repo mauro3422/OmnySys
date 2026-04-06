@@ -231,7 +231,9 @@ export const TABLE_DEFINITIONS = {
     columns: [
       { name: 'file_path', type: 'TEXT', pk: true, nullable: false, description: 'Ruta normalizada del archivo' },
       { name: 'content_hash', type: 'TEXT', nullable: false, description: 'Hash SHA-256 del contenido' },
-      { name: 'last_updated', type: 'INTEGER', nullable: false, description: 'Timestamp de última actualización' }
+      { name: 'last_updated', type: 'INTEGER', nullable: false, description: 'Timestamp de última actualización' },
+      { name: 'mtime_ms', type: 'INTEGER', nullable: true, description: 'Modification time para fast path' },
+      { name: 'file_size', type: 'INTEGER', nullable: true, description: 'Tamaño del archivo para fast path' }
     ],
     indexes: [{ name: 'idx_file_hashes_path', columns: ['file_path'] }]
   },

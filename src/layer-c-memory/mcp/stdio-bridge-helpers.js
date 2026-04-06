@@ -1,9 +1,33 @@
 import { runAsyncBoundary } from '../../shared/compiler/index.js';
 import { normalizeTransportOrigin } from './transport-provenance.js';
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
-const BRIDGE_CLIENT_ID = String(process.env.OMNYSYS_CLIENT_ID || '').trim();
-const BRIDGE_CLIENT_NAME = String(process.env.OMNYSYS_CLIENT_NAME || '').trim();
-const BRIDGE_CLIENT_VERSION = String(process.env.OMNYSYS_CLIENT_VERSION || '').trim();
+
+// Client ID detection: env vars take priority, then detect from user agent
+function detectClientFromEnv() {
+    const envId = String(process.env.OMNYSYS_CLIENT_ID || '').trim();
+    const envName = String(process.env.OMNYSYS_CLIENT_NAME || '').trim();
+    if (envId || envName) return { id: envId, name: envName };
+    return null;
+}
+
+function detectClientFromUserAgent(userAgent) {
+    if (!userAgent) return null;
+    const ua = userAgent.toLowerCase();
+    if (ua.includes('qwen') || ua.includes('qwen-code')) return { id: 'qwen-code', name: 'Qwen Code' };
+    if (ua.includes('codex')) return { id: 'codex', name: 'Codex' };
+    if (ua.includes('cline')) return { id: 'cline', name: 'Cline' };
+    if (ua.includes('claude')) return { id: 'claude', name: 'Claude' };
+    if (ua.includes('cursor')) return { id: 'cursor', name: 'Cursor' };
+    if (ua.includes('copilot')) return { id: 'copilot', name: 'GitHub Copilot' };
+    return null;
+}
+
+// Auto-detect client if not explicitly set
+const autoDetectedClient = detectClientFromEnv() || detectClientFromUserAgent(process.env.OMNYSYS_USER_AGENT);
+
+const BRIDGE_CLIENT_ID = autoDetectedClient?.id || '';
+const BRIDGE_CLIENT_NAME = autoDetectedClient?.name || '';
+const BRIDGE_CLIENT_VERSION = String(process.env.OMNYSYS_CLIENT_VERSION || process.version || '0.0.0').trim();
 
 export function isRequestMessage(message) {
     return !!message &&
