@@ -1,225 +1,168 @@
-# OmnySys — Agent Protocol Guide
+<!-- OMNYSYS MCP TOOLS REFERENCE — Auto-injected by OmnySys installer -->
 
-> **Última actualización:** Abril 2026 | Fuente de verdad: `src/layer-c-memory/mcp/tools/tool-definitions.js`
+## OmnySys MCP Tools — Reference Guide
 
----
+> **Golden Rule:** Before creating → verify it doesn't exist. Before editing → check impact. After editing → check for errors.
 
-## REGLA DE ORO — Flujo de trabajo obligatorio
-
-```
-PASO 0: list_tools() → ver todas las herramientas disponibles
-PASO 1: ANTES de crear → query_graph(instances) — ¿ya existe?
-PASO 2: ANTES de editar → traverse_graph(impact_map) — ¿qué se rompe?
-PASO 3: SIEMPRE después de editar → get_recent_errors() — ¿el watcher captó algo?
-```
-
-> ⚠️ **NUNCA asumas qué tools existen.** Siempre empieza con `list_tools()` para ver el catálogo actualizado y sus schemas.
-
----
-
-## Catálogo de Herramientas (43 tools)
-
-### 🔎 QUERIES — Inspeccionar código
-
-| Tool | Cuándo usarlo |
-|------|---------------|
-| **`query_graph`** | Inspeccionar un símbolo: `instances` (buscar), `details` (metadata completa), `history` (commits git) |
-| **`traverse_graph`** | Navegar dependencias: `impact_map` (qué se rompe), `call_graph` (quién llama a quién) |
-| **`impact_atomic`** | Simular impacto antes de modificar: `intent: "usage"` |
-| **`get_atom_history`** | Ver historial Git de un símbolo (quién, cuándo, qué cambió) |
-| **`get_atom_evolution_report`** | Reporte completo: details + DNA + dataFlow + impact + git + archive |
-| **`aggregate_metrics`** | Métricas agrupadas (ver tabla abajo) |
-
-#### `aggregate_metrics` — aggregationType disponibles
-
-| Tipo | Qué retorna |
-|------|-------------|
-| `health` | Fragilidad, acoplamiento, cohesión del proyecto |
-| `risk` | Archivos por nivel de riesgo (Critical/High/Medium/Low) |
-| `duplicates` | Clones estructurales por ADN |
-| `pipeline_health` | Estado del pipeline de análisis interno |
-| `storage_health` | **Nuevo:** Salud del storage (DB sizes, genealogía, duplicados, anomalías) |
-| `watcher_alerts` | Alertas activas del file watcher |
-| `patterns` | Patrones de eventos y conexiones semánticas |
-| `society` | Clústeres funcionales cohesivos |
-| `modules` | Inventario de módulos |
-| `molecule` | Átomos de un archivo específico + riesgo |
-| `race_conditions` | Race conditions en código async |
-| `async_analysis` | Análisis profundo de funciones async |
-
----
-
-### ✍️ EDICIÓN — Modificar código
-
-| Tool | Uso | Notas |
-|------|-----|-------|
-| **`atomic_edit`** | `filePath, oldString, newString` | Edición segura con validación + vibraciones |
-| **`atomic_write`** | `filePath, content` | Crear archivo nuevo con validación |
-| **`safe_edit`** | `filePath, lineNumber/pattern, newContent` | Editar por línea o patrón (auto-contexto) |
-| **`fix_imports`** | `filePath, execute: false` | Preview de imports rotos (true = aplicar) |
-| **`move_file`** | `oldPath, newPath` | Mover + actualizar imports en todo el proyecto |
-| **`folderize_family`** | `candidatePath, execute: false` | Plan para mover familia cohesiva a carpeta |
-
----
-
-### 🔬 ANÁLISIS — Diagnosticar problemas
-
-| Tool | Uso | Notas |
-|------|-----|-------|
-| **`suggest_refactoring`** | `severity: "high"`, `filePath?` | Sugerencias por grafo (CC, loops, cohesión) |
-| **`detect_performance_hotspots`** | `minRisk: 20`, `limit: 10` | O(n²), I/O bloqueante, memory risks |
-| **`execute_solid_split`** | `filePath, symbolName, execute: false` | Dividir god-function (preview primero) |
-| **`suggest_architecture`** | `limit: 10` | Refactorización DDD, reagrupar archivos |
-| **`validate_imports`** | `filePath, checkBroken: true, checkCircular: true` | Imports rotos/circulares/no-usados |
-| **`validate_exports`** | `filePath` | Verificar que exports existen en cadena |
-
----
-
-### 🛠️ ADMIN — Gestión del sistema
-
-| Tool | Uso | Notas |
-|------|-----|-------|
-| **`get_server_status`** | Sin params | Salud completa del servidor |
-| **`get_health_panel`** | Sin params | Panel resumido: status + trend + next action |
-| **`get_health_snapshot`** | `snapshotKind: "dashboard"` | Dashboard detallado con histórico |
-| **`get_schema`** | `type: "atoms"` o `"database"` | Schema de átomos o estado de SQLite |
-| **`get_tool_inventory_report`** | Sin params | Catálogo de tools con recomendaciones |
-| **`get_system_inventory_report`** | Sin params | Inventario de surfaces canónicas |
-| **`get_canonical_promotion_report`** | Sin params | Plan de promoción de surfaces emergentes |
-| **`get_technical_debt_report`** | Sin params | Reporte de deuda técnica |
-| **`check_pipeline_integrity`** | `fullCheck: true` | Verificar integridad completa del pipeline |
-| **`get_recent_errors`** | Sin params | Errores/warnings recientes del logger |
-| **`execute_sql`** | `query: "SELECT ..."` | SQL directo contra la DB |
-| **`list_tools`** | `includeSchemas: true` | **USAR PRIMERO** — ver todas las tools |
-| **`restart_server`** | `clearCacheOnly: true` | Ver modos abajo ↓ |
-
-#### `restart_server` — Modos
-
-| Modo | Qué hace | Cuándo usarlo |
-|------|----------|---------------|
-| `{ clearCacheOnly: true }` | Limpia cache + refresca tool registry | **Después de editar código** ← uso más común |
-| `{ reindexOnly: true }` | Re-analiza Layer A sin borrar DB | Cambios en archivos analizados |
-| `{ reanalyze: true }` | Borrado completo + reindex desde cero | Reset total (destructivo) |
-| `{ refreshOnly: true }` | Solo refresca metadata | Cambio de config sin reindex |
-
-> ⚠️ **NUNCA mates procesos node manualmente.** Usa `restart_server({ clearCacheOnly: true })` para recargar código. El sistema maneja el restart correctamente.
-
----
-
-## Flujos Obligatorios
-
-### 🆕 Crear código nuevo
+### Standard Workflow
 
 ```js
-// 0. Ver tools disponibles
+// Step 1: See available tools
 list_tools({ includeSchemas: false })
 
-// 1. ¿Ya existe?
-query_graph({ queryType: "instances", symbolName: "miNuevaFuncion" })
+// Step 2: Before creating — check if it exists
+query_graph({ queryType: "instances", symbolName: "myFunction" })
 
-// 2. ¿Hay clones de ADN?
-aggregate_metrics({ aggregationType: "duplicates" })
-
-// 3. Crear con validación
-atomic_write({ filePath, content })
-
-// 4. El FileWatcher detecta duplicados automáticamente
-// Revisa _recentErrors en la respuesta
-```
-
-### ✏️ Editar código existente
-
-```js
-// 1. Ver qué se rompe
+// Step 3: Before editing — check what breaks
 traverse_graph({ traverseType: "impact_map", filePath: "src/file.js" })
 
-// 2. Validar imports
-validate_imports({ filePath: "src/file.js", checkBroken: true, checkCircular: true })
-
-// 3. Editar
-atomic_edit({ filePath, oldString, newString })
-
-// 4. Verificar (los errores vienen en _recentErrors automáticamente)
+// Step 4: After editing — verify nothing broke
 get_recent_errors()
-```
-
-### 🐛 Debuggear un bug
-
-```js
-// 1. Encontrar el símbolo
-query_graph({ queryType: "instances", symbolName: "buggyFunc" })
-
-// 2. Ver detalles
-query_graph({ queryType: "details", filePath, symbolName: "buggyFunc" })
-
-// 3. Ver quién lo llama
-traverse_graph({ traverseType: "call_graph", filePath, options: { maxDepth: 2 } })
-
-// 4. Editar
-atomic_edit({ filePath, oldString: buggyCode, newString: fixedCode })
-```
-
-### ♻️ Refactorizar complejidad alta
-
-```js
-// 1. Encontrar hotspots
-detect_performance_hotspots({ minRisk: 20, limit: 10 })
-
-// 2. Sugerir refactor
-suggest_refactoring({ severity: "high", filePath: "src/file.js" })
-
-// 3. Preview del split
-execute_solid_split({ filePath, symbolName: "godFunction", execute: false })
-
-// 4. Aplicar si el preview es correcto
-execute_solid_split({ filePath, symbolName: "godFunction", execute: true })
-```
-
-### 🏗️ Después de editar código del sistema
-
-```js
-// Recargar sin reindex
-restart_server({ clearCacheOnly: true })
-
-// Verificar que cargó
-get_recent_errors()
+// Note: errors are auto-injected in _recentErrors on ANY tool response
 ```
 
 ---
 
-## ❌ Anti-Patrones
+### Query Tools — Inspect Code
 
-| Qué NO hacer | Por qué | Qué hacer en vez |
-|--------------|---------|-----------------|
-| Crear sin `query_graph(instances)` | Duplicar dead code existente | Buscar primero |
-| Editar sin `traverse_graph(impact_map)` | Romper dependencias silenciosamente | Ver impacto primero |
-| Omitir `_recentErrors` | Perder warnings del file watcher | Siempre revisar |
-| Matar procesos node manualmente | El restart_server ya maneja todo | Usar `restart_server` |
-| Asumir qué tools existen | El catálogo cambia con updates | Usar `list_tools()` primero |
+| Tool | When to Use | Required Params |
+|------|-------------|----------------|
+| **`query_graph`** | Inspect a symbol: `instances` (find), `details` (full metadata), `history` (Git commits) | `queryType` |
+| **`traverse_graph`** | Navigate dependencies: `impact_map` (what breaks), `call_graph` (who calls whom) | `traverseType`, `filePath` |
+| **`impact_atomic`** | Simulate impact before modifying: `intent: "usage"`, `"deletion"`, `"signature_change"` | `symbolName` |
+| **`get_atom_history`** | Git history of a symbol — who changed what and when | `symbolName`, `filePath` |
+| **`get_atom_evolution_report`** | Full report: details + DNA + dataFlow + impact + Git + archive + schema | `symbolName`, `filePath` |
+| **`aggregate_metrics`** | Grouped metrics — see table below | `aggregationType` |
+
+#### `aggregate_metrics` — Available aggregationType values
+
+| Type | Returns |
+|------|---------|
+| `health` | Average fragility, coupling, cohesion across the project |
+| `risk` | Files by risk level (Critical/High/Medium/Low) |
+| `duplicates` | Structural clones by DNA fingerprint |
+| `isomorphism` | Isomorphic duplicate detection |
+| `conceptual_duplicates` | Semantic duplicates (same purpose, different implementation) |
+| `pipeline_health` | Internal analysis pipeline status |
+| `storage_health` | Storage health — DB sizes, genealogy, duplicates, anomalies |
+| `watcher_alerts` | Active file watcher alerts |
+| `patterns` | Event patterns and semantic connections |
+| `race_conditions` | Async race condition detection |
+| `async_analysis` | Deep analysis of async functions |
+| `society` | Functional cohesion clusters |
+| `modules` | Module inventory |
+| `molecule` | Atoms in a specific file + risk (requires `filePath`) |
+| `prioritized_backlog` | Prioritized tech debt backlog |
 
 ---
 
-## Convenciones del Proyecto
+### Action Tools — Modify Code
 
-| Parámetro | Límite |
-|-----------|--------|
-| Max CC por función | ≤ 15 (óptimo ≤ 10) |
-| Max líneas por función | ≤ 250 |
-| Cobertura de tests | > 80% |
-| Bulk save SQLite | Máx 50 átomos por batch |
-| Lenguajes soportados | JS/TS |
+| Tool | Purpose | Required Params |
+|------|---------|----------------|
+| **`atomic_edit`** | Safe edit with syntax validation + dependent vibration analysis | `filePath`, `oldString`, `newString` |
+| **`atomic_write`** | Create new file with validation — indexes atom immediately | `filePath`, `content` |
+| **`safe_edit`** | Edit by line number or pattern — auto-fetches context | `filePath`, `newContent` + `lineNumber` or `pattern` |
+| **`get_edit_context`** | Get exact edit context for a line number (use before atomic_edit) | `filePath`, `lineNumber` |
+| **`fix_imports`** | Fix broken imports by searching the global graph. `execute: false` = preview | `filePath` |
+| **`validate_imports`** | Check for broken/circular/unused imports | `filePath` |
+| **`validate_exports`** | Verify imports match the export chain | `filePath` |
+| **`move_file`** | Move file + update ALL imports across the project atomically | `oldPath`, `newPath` |
+| **`folderize_family`** | Move a cohesive family to a dedicated folder. `execute: false` = preview | `candidatePath` |
+| **`rename_folderized_family`** | Rename internal basenames of a folderized family | `candidatePath` |
+| **`normalize_folderized_family_names`** | Normalize names within a folderized family without moving | `candidatePath` |
+| **`detect_folderization_opportunities`** | Scan project for folderization candidates | — |
+| **`execute_solid_split`** | Split a god-function (SOLID). `execute: false` = preview | `filePath`, `symbolName` |
+| **`split_large_file`** | Split files >300 lines using coordinator/barrel pattern. `execute: false` = preview | `filePath` |
+| **`suggest_refactoring`** | AI-powered refactoring suggestions by graph analysis | — |
+| **`suggest_architecture`** | DDD refactoring — regroup cohesive scattered files | — |
+| **`suggest_canonical_api`** | Detect direct DB access and suggest canonical API replacements | `filePath` |
+| **`consolidate_conceptual_cluster`** | Consolidate duplicates toward a Source of Truth | `semanticFingerprint`, `ssotFilePath` |
+| **`generate_tests`** | Analyze or generate tests for a function. `action: "analyze"` or `"generate"` | `filePath` |
+| **`generate_batch_tests`** | Batch test generation for uncovered high-complexity functions | — |
 
 ---
 
-## Notas sobre `_recentErrors`
+### Admin Tools — System Management
 
-El servidor inyecta automáticamente warnings/errors en **CUALQUIER** response bajo `_recentErrors`. No necesitas llamar `get_recent_errors()` explícitamente si ya estás usando otra tool — los errores aparecerán ahí.
+| Tool | Purpose | Required Params |
+|------|---------|----------------|
+| **`get_server_status`** | Complete server health status | — |
+| **`get_health_panel`** | One-screen health panel: status + trend + next action | — |
+| **`get_health_snapshot`** | Detailed dashboard with history and trends | — |
+| **`get_folderization_snapshot`** | Lightweight folderization guidance + naming debt | — |
+| **`get_schema`** | Schema info: `type: "atoms"` (atom stats) or `"database"` (SQLite health) | — |
+| **`execute_sql`** | Direct SQL query against OmnySys DB | `query` |
+| **`get_technical_debt_report`** | Automated tech debt report with duplicates + orphans | — |
+| **`check_pipeline_integrity`** | Full pipeline integrity check (9 checks) | — |
+| **`detect_performance_hotspots`** | Detect O(n²), blocking I/O, memory risks | — |
+| **`restart_server`** | Restart server — see modes below | — |
+| **`get_recent_errors`** | Recent warnings/errors from logger | — |
+| **`get_tool_inventory_report`** | Tool catalog with consolidation recommendations | — |
+| **`get_system_inventory_report`** | System inventory: canonical surfaces, bridges, wrappers | — |
+| **`get_canonical_promotion_report`** | Promotion plan for emergent surfaces | — |
+| **`list_tools`** | List all 43 tools with schemas. `includeSchemas: true` for full details | — |
+| **`diagnose_tool_health`** | Analyze MCP tool execution health — failure rates, performance | — |
 
-Estructura de `_recentErrors`:
+#### `restart_server` — Modes
+
+| Mode | What it does | When to use |
+|------|-------------|-------------|
+| `{ clearCacheOnly: true }` | Flush in-memory cache + refresh tool registry | **After editing code** ← most common |
+| `{ reindexOnly: true }` | Force Layer A re-analysis without clearing DB | Changes to analyzed files |
+| `{ reanalyze: true }` | Full destructive wipe + full reindex | Complete reset |
+| `{ refreshOnly: true }` | Refresh metadata only | Config changes without reindex |
+| `{ softReload: true }` | Soft reload — orchestrator + runtime state | When orchestrator is stale |
+
+> ⚠️ **NEVER kill node processes manually.** Always use `restart_server({ clearCacheOnly: true })` — the system handles restarts correctly.
+
+---
+
+### Anti-Patterns
+
+| Don't | Why | Do Instead |
+|-------|-----|-----------|
+| Create without `query_graph(instances)` | Duplicate dead code | Search first |
+| Edit without `traverse_graph(impact_map)` | Break dependencies silently | Check impact first |
+| Ignore `_recentErrors` | Miss watcher warnings | Always check after edits |
+| Kill node processes manually | `restart_server` already handles it | Use `restart_server` |
+| Assume which tools exist | Catalog changes with updates | Call `list_tools()` first |
+
+---
+
+### Tips
+
+- **`_recentErrors`** is auto-injected on **EVERY** tool response. No need to call `get_recent_errors()` separately if you're already using another tool.
+- **`aggregate_metrics({ aggregationType: "storage_health" })`** — Check storage health (DB sizes, genealogy coverage, duplicate detection).
+- **`get_schema({ type: "database" })`** — Verify SQLite schema health and drift.
+- **`execute_sql({ query: "SELECT ..." })`** — Run any SQL against the OmnySys DB directly.
+- **`get_health_panel()`** — Quick health check with trend and recommended next action.
+
+<!-- END OMNYSYS MCP TOOLS REFERENCE -->
+
+---
+
+## Project Conventions
+
+| Parameter | Limit |
+|-----------|-------|
+| Max CC per function | ≤ 15 (optimal ≤ 10) |
+| Max lines per function | ≤ 250 |
+| Test coverage | > 80% |
+| SQLite bulk save | Max 50 atoms per batch |
+| Supported languages | JS/TS |
+
+---
+
+## About `_recentErrors`
+
+The server automatically injects warnings/errors into **ANY** tool response under the `_recentErrors` key. You don't need to call `get_recent_errors()` explicitly if you're already using another tool — errors will appear there.
+
+`_recentErrors` structure:
 ```js
 {
-  logs: [],           // Logs del logger
-  watcherAlerts: [],  // Alertas del file watcher
+  logs: [],           // Logger logs
+  watcherAlerts: [],  // File watcher alerts
   summary: { errors: N, warnings: N, total: N }
 }
 ```
