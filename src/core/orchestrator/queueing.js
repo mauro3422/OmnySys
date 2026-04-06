@@ -107,75 +107,68 @@ export function _onJobProgress(job, progress) {
   this.emit('job:progress', job, progress);
 }
 
+function _emitPhase2Progress(orchestrator, processed, total) {
+  const percentage = Math.floor((processed / total) * 100);
+  const isInitialMilestone = processed === 1 || processed === 10;
+  const isStepMilestone = processed % 20 === 0 || (percentage > 0 && percentage % 5 === 0);
+
+  if (isInitialMilestone || isStepMilestone || processed === total) {
+    const progressBarWidth = 20;
+    const progressSegments = Math.min(progressBarWidth, Math.max(processed > 0 ? 1 : 0, Math.floor((processed / total) * progressBarWidth)));
+    const bar = '='.repeat(progressSegments) + '>'.repeat(progressSegments < progressBarWidth ? 1 : 0) + ' '.repeat(Math.max(0, progressBarWidth - progressSegments - 1));
+    logger.info(`📊 Phase 2: [${bar}] ${percentage}% (${processed}/${total} files)`);
+    if (processed === total && total > 0) {
+      logger.info('✅ Phase 2 Background Analysis Complete!');
+    }
+  } else {
+    logger.debug(`   ✅ Completed: ${processed}/${total}`);
+  }
+}
+
+function _tryFillAvailableSlots(orchestrator) {
+  const maxConcurrent = orchestrator.maxConcurrentAnalyses || DEFAULT_MAX_CONCURRENT;
+  while (orchestrator.activeJobs < maxConcurrent && orchestrator.queue.size() > 0) {
+    orchestrator._processNext();
+  }
+}
+
+function _determineNextAction(orchestrator) {
+  const maxConcurrent = orchestrator.maxConcurrentAnalyses || DEFAULT_MAX_CONCURRENT;
+  const allProcessed = orchestrator.processedFiles.size >= orchestrator.totalFilesToAnalyze && orchestrator.totalFilesToAnalyze > 0;
+
+  if (allProcessed) {
+    logger.info(`\n🎉 All ${orchestrator.totalFilesToAnalyze} files processed!`);
+    orchestrator._finalizeAnalysis();
+    return;
+  }
+  if (orchestrator.queue.size() === 0 && !orchestrator.isIterating && orchestrator.iteration < orchestrator.maxIterations) {
+    orchestrator._startIterativeAnalysis();
+  } else if (orchestrator.queue.size() > 0 && orchestrator.activeJobs < maxConcurrent) {
+    orchestrator._processNext();
+  } else if (orchestrator.queue.size() > 0) {
+    logger.debug(`Waiting for slot - Queue: ${orchestrator.queue.size()}, Active: ${orchestrator.activeJobs}/${maxConcurrent}`);
+  } else if (orchestrator.totalFilesToAnalyze > 0 && orchestrator.processedFiles.size < orchestrator.totalFilesToAnalyze) {
+    logger.debug(`Queue empty but waiting for more files: ${orchestrator.processedFiles.size}/${orchestrator.totalFilesToAnalyze}`);
+  } else {
+    orchestrator._finalizeAnalysis();
+  }
+}
+
 export function _onJobComplete(job, result) {
   this.stats.totalAnalyzed++;
-  // Decrement active jobs counter
   this.activeJobs = Math.max(0, (this.activeJobs || 1) - 1);
   this.currentJob = null;
   this.indexedFiles.add(job.filePath);
   this.processedFiles.add(job.filePath);
-
   this.emit('job:complete', job, result);
 
-  // 🛡️ Run Pipeline Guard to detect Shadow Volume issues or zero-atom extractions
-  if (result) {
-    this._runPipelineGuard(job.filePath, result);
-  }
+  if (result) this._runPipelineGuard(job.filePath, result);
 
   if (this.totalFilesToAnalyze > 0) {
-    const processed = this.processedFiles.size;
-    const total = this.totalFilesToAnalyze;
-    const percentage = Math.floor((processed / total) * 100);
-
-    // Emitir progreso visual cada 20 archivos o cada 5%
-    const isInitialMilestone = processed === 1 || processed === 10;
-    const isStepMilestone = processed % 20 === 0 || (percentage > 0 && percentage % 5 === 0);
-
-    if (isInitialMilestone || isStepMilestone || processed === total) {
-      const progressBarWidth = 20;
-      // Ensure at least 1 bar segment if we have started, for visibility
-      const progressSegments = Math.min(progressBarWidth, Math.max(processed > 0 ? 1 : 0, Math.floor((processed / total) * progressBarWidth)));
-      const bar = '='.repeat(progressSegments) + '>'.repeat(progressSegments < progressBarWidth ? 1 : 0) + ' '.repeat(Math.max(0, progressBarWidth - progressSegments - 1));
-
-      logger.info(`📊 Phase 2: [${bar}] ${percentage}% (${processed}/${total} files)`);
-
-      if (processed === total && total > 0) {
-        logger.info('✅ Phase 2 Background Analysis Complete!');
-      }
-    } else {
-      logger.debug(`   ✅ Completed: ${job.filePath} (${processed}/${total})`);
-    }
+    _emitPhase2Progress(this, this.processedFiles.size, this.totalFilesToAnalyze);
   }
 
-  // Check if all files have been processed
-  if (this.processedFiles.size >= this.totalFilesToAnalyze && this.totalFilesToAnalyze > 0) {
-    logger.info(`\nðŸŽ‰ All ${this.totalFilesToAnalyze} files processed!`);
-    this._finalizeAnalysis();
-    return;
-  }
-
-  // OPTIMIZATION: Try to fill available slots with more jobs
-  const maxConcurrent = this.maxConcurrentAnalyses || DEFAULT_MAX_CONCURRENT;
-  while (this.activeJobs < maxConcurrent && this.queue.size() > 0) {
-    this._processNext();
-  }
-
-  // Check if main queue is empty and we should start iterative analysis
-  if (this.queue.size() === 0 && !this.isIterating && this.iteration < this.maxIterations) {
-    this._startIterativeAnalysis();
-  } else if (this.queue.size() > 0 && this.activeJobs < maxConcurrent) {
-    // Continuar con el siguiente job
-    this._processNext();
-  } else if (this.queue.size() > 0) {
-    // Queue has jobs but all slots are full - will be called when a job completes
-    logger.debug(`Waiting for slot - Queue: ${this.queue.size()}, Active: ${this.activeJobs}/${maxConcurrent}`);
-  } else if (this.totalFilesToAnalyze > 0 && this.processedFiles.size < this.totalFilesToAnalyze) {
-    // Phase 2 or indexed scan still in progress - do NOT finalize just because queue is empty
-    logger.debug(`Queue empty but waiting for more files: ${this.processedFiles.size}/${this.totalFilesToAnalyze}`);
-  } else {
-    // No hay más jobs ni iteraciones, finalizar
-    this._finalizeAnalysis();
-  }
+  _determineNextAction(this);
 }
 
 export function _onJobError(job, error) {
