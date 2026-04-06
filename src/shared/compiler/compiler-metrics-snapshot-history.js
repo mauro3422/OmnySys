@@ -92,7 +92,7 @@ export function muteBootstrapTrend(trend = null) {
   };
 }
 
-export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
+export async function loadCompilerMetricsSnapshotHistory(db, options = {}) {
   if (!db?.prepare) {
     return { entries: [], latest: null, previous: null, baseline: null };
   }
@@ -190,15 +190,46 @@ export function loadCompilerMetricsSnapshotHistory(db, options = {}) {
       `).get(projectPath, snapshotKind, normalizedScope, normalizedFocus) || null;
     }
 
+    // Fallback: if no rows in operational DB, try health-history.db archive
+    let effectiveRows = rows;
+    let effectiveBaseline = baselineRow;
+    let effectivePreviousAlt = effectivePrevious;
+    if (effectiveRows.length === 0 && projectPath) {
+      try {
+        const { default: Database } = await import('better-sqlite3');
+        const path = await import('path');
+        const archivePath = path.join(projectPath, '.omnysysdata', 'health-history.db');
+        const archiveDb = new Database(archivePath, { readonly: true });
+        const archiveRows = archiveDb.prepare(`
+          SELECT *
+          FROM compiler_metrics_snapshots
+          WHERE project_path = ?
+            AND IFNULL(scope_path, '') = IFNULL(?, '')
+            AND IFNULL(focus_path, '') = IFNULL(?, '')
+          ORDER BY captured_at DESC
+          LIMIT ?
+        `).all(projectPath, normalizedScope, normalizedFocus, limit);
+        
+        if (archiveRows.length > 0) {
+          effectiveRows = archiveRows;
+          effectiveBaseline = archiveRows.find((row) => String(row.captured_at || '') <= baselineCutoff) || archiveRows[archiveRows.length - 1];
+          effectivePreviousAlt = archiveRows[1] || archiveRows[0];
+        }
+        archiveDb.close();
+      } catch {
+        // Ignore archive read failures
+      }
+    }
+
     // Merge archive entries for history view
     const allArchiveEntries = mergeHistoryRows(archiveHistory.entries, metricsArchiveHistory.entries);
-    const mergedEntries = [...mergedRows, ...allArchiveEntries].slice(0, limit);
+    const mergedEntries = [...(effectiveRows.length > 0 ? effectiveRows : mergedRows), ...allArchiveEntries].slice(0, limit);
 
     return {
       entries: mergedEntries.map(summarizeHistoryRow),
-      latest: summarizeHistoryRow(mergedRows[0] || archiveLatest || rows[0] || null),
-      previous: summarizeHistoryRow(effectivePrevious),
-      baseline: summarizeHistoryRow(mergedBaseline)
+      latest: summarizeHistoryRow(effectiveRows[0] || mergedRows[0] || archiveLatest || rows[0] || null),
+      previous: summarizeHistoryRow(effectivePreviousAlt),
+      baseline: summarizeHistoryRow(effectiveBaseline || mergedBaseline)
     };
   } catch {
     return { entries: [], latest: null, previous: null, baseline: null };

@@ -233,10 +233,115 @@ function persistCompilerMetricsSnapshot(db, snapshot = null) {
     return null;
   }
 
+  const args = buildSnapshotPersistenceArgs(snapshot);
   const stmt = db.prepare(`INSERT INTO compiler_metrics_snapshots (project_path, snapshot_kind, scope_path, focus_path, capture_source, analysis_generation_id, captured_at, health_score, health_grade, issue_count, structural_groups, conceptual_groups, conceptual_raw_groups, pipeline_orphans, folderization_candidate_count, flat_families, mixed_families, already_folderized_families, naming_families, naming_targets, naming_debt, live_coverage_ratio, active_atoms, zero_atom_file_count, call_links, semantic_links, watcher_alert_count, recent_warning_count, recent_error_count, phase2_pending_files, drift_state, drift_score, stability_score, success_score, success_threshold, mvp_ready, behavior_state, readiness_reason, snapshot_fingerprint, summary_text, payload_json, trend_json) VALUES (@project_path, @snapshot_kind, @scope_path, @focus_path, @capture_source, @analysis_generation_id, @captured_at, @health_score, @health_grade, @issue_count, @structural_groups, @conceptual_groups, @conceptual_raw_groups, @pipeline_orphans, @folderization_candidate_count, @flat_families, @mixed_families, @already_folderized_families, @naming_families, @naming_targets, @naming_debt, @live_coverage_ratio, @active_atoms, @zero_atom_file_count, @call_links, @semantic_links, @watcher_alert_count, @recent_warning_count, @recent_error_count, @phase2_pending_files, @drift_state, @drift_score, @stability_score, @success_score, @success_threshold, @mvp_ready, @behavior_state, @readiness_reason, @snapshot_fingerprint, @summary_text, @payload_json, @trend_json)`);
-  const result = stmt.run(buildSnapshotPersistenceArgs(snapshot));
+  const result = stmt.run(args);
+
+  // Mirror to health-history.db so snapshots survive destructive reindex
+  // Fire-and-forget: archive failures are silently ignored
+  void mirrorSnapshotToArchive(args).catch(() => {});
+
   result.archive = pruneCompilerMetricsSnapshotHistory(db, snapshot);
   return result;
+}
+
+/**
+ * Persiste la snapshot en health-history.db para que sobreviva reindex destructivo.
+ * Similar a como atom-history.db sobrevive cuando omnysys.db se reconstruye.
+ */
+async function mirrorSnapshotToArchive(args) {
+  try {
+    const path = await import('path');
+    const { default: Database } = await import('better-sqlite3');
+    const { getRepository } = await import('#layer-c/storage/repository/index.js');
+    
+    const projectPath = args.project_path;
+    if (!projectPath) return;
+    
+    const archivePath = path.join(projectPath, '.omnysysdata', 'health-history.db');
+    const archiveDb = new Database(archivePath);
+    
+    archiveDb.exec(`
+      CREATE TABLE IF NOT EXISTS compiler_metrics_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_path TEXT NOT NULL,
+        snapshot_kind TEXT NOT NULL,
+        scope_path TEXT,
+        focus_path TEXT,
+        capture_source TEXT,
+        analysis_generation_id TEXT,
+        captured_at TEXT NOT NULL,
+        health_score REAL NOT NULL DEFAULT 0,
+        health_grade TEXT,
+        issue_count INTEGER NOT NULL DEFAULT 0,
+        structural_groups INTEGER NOT NULL DEFAULT 0,
+        conceptual_groups INTEGER NOT NULL DEFAULT 0,
+        conceptual_raw_groups INTEGER NOT NULL DEFAULT 0,
+        pipeline_orphans INTEGER NOT NULL DEFAULT 0,
+        folderization_candidate_count INTEGER NOT NULL DEFAULT 0,
+        flat_families INTEGER NOT NULL DEFAULT 0,
+        mixed_families INTEGER NOT NULL DEFAULT 0,
+        already_folderized_families INTEGER NOT NULL DEFAULT 0,
+        naming_families INTEGER NOT NULL DEFAULT 0,
+        naming_targets INTEGER NOT NULL DEFAULT 0,
+        naming_debt INTEGER NOT NULL DEFAULT 0,
+        live_coverage_ratio REAL NOT NULL DEFAULT 0,
+        active_atoms INTEGER NOT NULL DEFAULT 0,
+        zero_atom_file_count INTEGER NOT NULL DEFAULT 0,
+        call_links INTEGER NOT NULL DEFAULT 0,
+        semantic_links INTEGER NOT NULL DEFAULT 0,
+        watcher_alert_count INTEGER NOT NULL DEFAULT 0,
+        recent_warning_count INTEGER NOT NULL DEFAULT 0,
+        recent_error_count INTEGER NOT NULL DEFAULT 0,
+        phase2_pending_files INTEGER NOT NULL DEFAULT 0,
+        drift_state TEXT,
+        drift_score REAL NOT NULL DEFAULT 0,
+        stability_score REAL NOT NULL DEFAULT 0,
+        success_score REAL NOT NULL DEFAULT 0,
+        success_threshold REAL NOT NULL DEFAULT 0,
+        mvp_ready INTEGER NOT NULL DEFAULT 0,
+        behavior_state TEXT,
+        readiness_reason TEXT,
+        snapshot_fingerprint TEXT,
+        summary_text TEXT,
+        payload_json TEXT,
+        trend_json TEXT
+      )
+    `);
+    
+    const archiveStmt = archiveDb.prepare(`
+      INSERT OR REPLACE INTO compiler_metrics_snapshots (
+        project_path, snapshot_kind, scope_path, focus_path, capture_source,
+        analysis_generation_id, captured_at, health_score, health_grade,
+        issue_count, structural_groups, conceptual_groups, conceptual_raw_groups,
+        pipeline_orphans, folderization_candidate_count, flat_families,
+        mixed_families, already_folderized_families, naming_families,
+        naming_targets, naming_debt, live_coverage_ratio, active_atoms,
+        zero_atom_file_count, call_links, semantic_links, watcher_alert_count,
+        recent_warning_count, recent_error_count, phase2_pending_files,
+        drift_state, drift_score, stability_score, success_score,
+        success_threshold, mvp_ready, behavior_state, readiness_reason,
+        snapshot_fingerprint, summary_text, payload_json, trend_json
+      ) VALUES (
+        @project_path, @snapshot_kind, @scope_path, @focus_path, @capture_source,
+        @analysis_generation_id, @captured_at, @health_score, @health_grade,
+        @issue_count, @structural_groups, @conceptual_groups, @conceptual_raw_groups,
+        @pipeline_orphans, @folderization_candidate_count, @flat_families,
+        @mixed_families, @already_folderized_families, @naming_families,
+        @naming_targets, @naming_debt, @live_coverage_ratio, @active_atoms,
+        @zero_atom_file_count, @call_links, @semantic_links, @watcher_alert_count,
+        @recent_warning_count, @recent_error_count, @phase2_pending_files,
+        @drift_state, @drift_score, @stability_score, @success_score,
+        @success_threshold, @mvp_ready, @behavior_state, @readiness_reason,
+        @snapshot_fingerprint, @summary_text, @payload_json, @trend_json
+      )
+    `);
+    
+    archiveStmt.run(args);
+    archiveDb.close();
+  } catch {
+    // Ignore archive mirror failures
+  }
 }
 
 export {
