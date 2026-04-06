@@ -27,6 +27,27 @@ const REQUIRED_GENEALOGICAL_FIELDS = [
   'isExported', 'isAsync'
 ];
 
+/** Queries helper to reduce validateGenealogy complexity */
+function queryOperationalAtoms(repo) {
+  return repo.db.prepare(`SELECT id, file_path, name FROM atoms WHERE (is_removed IS NULL OR is_removed = 0)`).all();
+}
+function queryArchiveAtomIds(archiveDb) {
+  return archiveDb.prepare(`SELECT DISTINCT atom_id FROM atom_versions_archive`).all().map(r => r.atom_id);
+}
+function queryFieldCompleteness(archiveDb) {
+  return archiveDb.prepare(`
+    SELECT COUNT(*) as total_rows,
+      SUM(CASE WHEN payload_json IS NULL OR payload_json = 'null' THEN 1 ELSE 0 END) as null_payload,
+      SUM(CASE WHEN version_hash IS NULL OR version_hash = '' THEN 1 ELSE 0 END) as null_hash
+    FROM atom_versions_archive`).get();
+}
+function querySourceDistribution(archiveDb) {
+  return archiveDb.prepare(`
+    SELECT source, COUNT(*) as cnt,
+      ROUND(CAST(COUNT(*) AS FLOAT) / (SELECT COUNT(*) FROM atom_versions_archive) * 100, 1) as pct
+    FROM atom_versions_archive GROUP BY source ORDER BY cnt DESC`).all();
+}
+
 /**
  * Validates genealogy completeness
  */
@@ -53,50 +74,16 @@ export async function validateGenealogy(projectPath) {
     const Database = (await import('better-sqlite3')).default;
     const archiveDb = new Database(archivePath, { readonly: true });
 
-    // Count atoms in operational DB
-    const operationalAtoms = repo.db.prepare(`
-      SELECT id, file_path, name FROM atoms
-      WHERE (is_removed IS NULL OR is_removed = 0)
-    `).all();
+    const operationalAtoms = queryOperationalAtoms(repo);
+    const archiveAtomIds = queryArchiveAtomIds(archiveDb);
+    const archiveAtomSet = new Set(archiveAtomIds);
+    const atomsWithoutGenealogy = operationalAtoms.filter(atom => !archiveAtomSet.has(atom.id));
 
-    // Count unique atoms in archive
-    const archiveAtoms = archiveDb.prepare(`
-      SELECT DISTINCT atom_id FROM atom_versions_archive
-    `).all().map(r => r.atom_id);
-
-    const archiveAtomSet = new Set(archiveAtoms);
-
-    // Find atoms without any archive entry
-    const atomsWithoutGenealogy = operationalAtoms.filter(atom => {
-      return !archiveAtomSet.has(atom.id);
-    });
-
-    // Find orphaned archive rows (archive atoms not in operational DB)
     const operationalAtomIds = new Set(operationalAtoms.map(a => a.id));
-    const allArchiveAtomIds = archiveDb.prepare(`
-      SELECT DISTINCT atom_id FROM atom_versions_archive
-    `).all().map(r => r.atom_id);
+    const orphanedArchiveRows = archiveAtomIds.filter(id => !operationalAtomIds.has(id));
 
-    const orphanedArchiveRows = allArchiveAtomIds.filter(id => !operationalAtomIds.has(id));
-
-    // Validate genealogical field completeness in archive
-    const fieldCompleteness = archiveDb.prepare(`
-      SELECT
-        COUNT(*) as total_rows,
-        SUM(CASE WHEN payload_json IS NULL OR payload_json = 'null' THEN 1 ELSE 0 END) as null_payload,
-        SUM(CASE WHEN version_hash IS NULL OR version_hash = '' THEN 1 ELSE 0 END) as null_hash
-      FROM atom_versions_archive
-    `).get();
-
-    // Check source distribution
-    const sourceDistribution = archiveDb.prepare(`
-      SELECT source, COUNT(*) as cnt,
-        ROUND(CAST(COUNT(*) AS FLOAT) / (SELECT COUNT(*) FROM atom_versions_archive) * 100, 1) as pct
-      FROM atom_versions_archive
-      GROUP BY source
-      ORDER BY cnt DESC
-    `).all();
-
+    const fieldCompleteness = queryFieldCompleteness(archiveDb);
+    const sourceDistribution = querySourceDistribution(archiveDb);
     archiveDb.close();
 
     const totalAtoms = operationalAtoms.length;
