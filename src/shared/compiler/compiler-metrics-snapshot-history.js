@@ -197,6 +197,7 @@ export function buildCompilerMetricsTrend(current = null, history = null, compar
   const daysSincePrevious = previousCapturedAt ? Math.max(0.01, (currentCapturedAt - previousCapturedAt) / (24 * 60 * 60 * 1000)) : 0;
   const daysSinceBaseline = baselineCapturedAt ? Math.max(0.01, (currentCapturedAt - baselineCapturedAt) / (24 * 60 * 60 * 1000)) : 0;
   const hasStableBaseline = Boolean(baseline) && daysSinceBaseline >= minStableTrendDays;
+  const hasIntradayBaseline = Boolean(baseline) && daysSinceBaseline > 0 && daysSinceBaseline < minStableTrendDays;
 
   const deltaSincePrevious = previous ? {
     healthScore: asNumber(current.healthScore) - asNumber(previous.healthScore),
@@ -248,8 +249,8 @@ export function buildCompilerMetricsTrend(current = null, history = null, compar
     phase2PendingFiles: asNumber(current.phase2PendingFiles) - asNumber(baseline.phase2PendingFiles)
   } : {};
 
-  const progressScore = hasStableBaseline ? calculateProgressScore(deltaSinceBaseline, current, baseline) : 0;
-  const velocityPerDay = hasStableBaseline && daysSinceBaseline > 0 ? Number((progressScore / daysSinceBaseline).toFixed(2)) : 0;
+  const progressScore = hasStableBaseline ? calculateProgressScore(deltaSinceBaseline, current, baseline) : hasIntradayBaseline ? calculateProgressScore(deltaSinceBaseline, current, baseline) : 0;
+  const velocityPerDay = (hasStableBaseline || hasIntradayBaseline) && daysSinceBaseline > 0 ? Number((progressScore / daysSinceBaseline).toFixed(2)) : 0;
   const recentWindow = Array.isArray(history?.entries) ? history.entries.slice(0, 4) : [];
   const improvingStreak = recentWindow.slice(0, 3).every((entry, index, array) => {
     const next = array[index + 1];
@@ -257,7 +258,7 @@ export function buildCompilerMetricsTrend(current = null, history = null, compar
     return asNumber(entry?.healthScore, 0) >= asNumber(next?.healthScore, 0) && asNumber(entry?.issueCount, 0) <= asNumber(next?.issueCount, 0);
   });
   const behaviorTrend = recentWindow.length >= 2 ? (asNumber(recentWindow[0]?.healthScore, 0) - asNumber(recentWindow[recentWindow.length - 1]?.healthScore, 0)) : 0;
-  const status = !baseline ? 'initial' : !hasStableBaseline ? 'settling' : progressScore > 0 ? 'improving' : progressScore < 0 ? 'regressing' : 'stable';
+  const status = !baseline ? 'initial' : !hasStableBaseline && hasIntradayBaseline ? (progressScore > 0 ? 'improving' : progressScore < 0 ? 'regressing' : 'stable') : !hasStableBaseline ? 'settling' : progressScore > 0 ? 'improving' : progressScore < 0 ? 'regressing' : 'stable';
 
   const trend = {
     status,
@@ -268,7 +269,7 @@ export function buildCompilerMetricsTrend(current = null, history = null, compar
     velocityPerDay,
     improvingStreak,
     behaviorTrend: Number(behaviorTrend.toFixed(2)),
-    summary: !baseline ? 'First metrics snapshot captured.' : !hasStableBaseline ? `Bootstrap trend settling; waiting for a baseline at least ${Math.round(minStableTrendDays * 24)}h old.` : buildTrendSummary(deltaSinceBaseline),
+    summary: !baseline ? 'First metrics snapshot captured.' : !hasStableBaseline && hasIntradayBaseline ? buildTrendSummary(deltaSinceBaseline) : !hasStableBaseline ? `Bootstrap trend settling; waiting for a baseline at least ${Math.round(minStableTrendDays * 24)}h old.` : buildTrendSummary(deltaSinceBaseline),
     deltaSincePrevious,
     deltaSinceBaseline,
     baselineCapturedAt: baseline?.capturedAt || null,
