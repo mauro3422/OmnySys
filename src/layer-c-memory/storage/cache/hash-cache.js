@@ -7,7 +7,7 @@
 
 import path from 'path';
 import { createHash } from 'crypto';
-import { readFile } from 'fs/promises';
+import { readFile, stat } from 'fs/promises';
 import { getRepository } from '../repository/index.js';
 import { BaseSqlRepository } from '#layer-c/storage/repository/core/BaseSqlRepository.js';
 import { createLogger } from '../../utils/logger.js';
@@ -23,8 +23,19 @@ function getHashRepo(projectPath) {
   _hashRepo.ensureTable('file_hashes', `
     file_path TEXT PRIMARY KEY,
     content_hash TEXT NOT NULL,
-    last_updated INTEGER NOT NULL
+    last_updated INTEGER NOT NULL,
+    mtime_ms INTEGER,
+    file_size INTEGER
   `);
+
+  // Migracion: agregar columnas si no existen (para tablas pre-existentes)
+  try {
+    _hashRepo.db.exec(`ALTER TABLE file_hashes ADD COLUMN mtime_ms INTEGER`);
+  } catch { /* Column may already exist */ }
+  try {
+    _hashRepo.db.exec(`ALTER TABLE file_hashes ADD COLUMN file_size INTEGER`);
+  } catch { /* Column may already exist */ }
+
   return _hashRepo;
 }
 
@@ -101,11 +112,15 @@ export function calculateContentHash(content) {
 export function getStoredHashes(projectPath) {
   try {
     const hr = getHashRepo(projectPath);
-    const rows = hr.db.prepare('SELECT file_path, content_hash FROM file_hashes').all();
+    const rows = hr.db.prepare('SELECT file_path, content_hash, mtime_ms, file_size FROM file_hashes').all();
     const hashes = {};
 
     for (const row of rows) {
-      hashes[row.file_path] = row.content_hash;
+      hashes[row.file_path] = {
+        hash: row.content_hash,
+        mtime_ms: row.mtime_ms || null,
+        file_size: row.file_size || null
+      };
     }
 
     return hashes;
@@ -117,6 +132,8 @@ export function getStoredHashes(projectPath) {
 
 /**
  * Guarda hashes de archivos en SQLite (bulk insert)
+ * @param {string} projectPath 
+ * @param {Array<{filePath: string, hash: string, mtime_ms?: number, file_size?: number}>} fileHashes - Array de objetos con filePath, hash, y opcionalmente mtime_ms y file_size
  */
 export function saveHashes(projectPath, fileHashes) {
   try {
@@ -125,20 +142,29 @@ export function saveHashes(projectPath, fileHashes) {
 
     const now = Date.now();
     const insert = db.prepare(`
-      INSERT OR REPLACE INTO file_hashes (file_path, content_hash, last_updated)
-      VALUES (?, ?, ?)
+      INSERT OR REPLACE INTO file_hashes (file_path, content_hash, last_updated, mtime_ms, file_size)
+      VALUES (?, ?, ?, ?, ?)
     `);
 
     // Bulk insert en transacción
-    const transaction = db.transaction((hashes) => {
-      for (const [filePath, hash] of hashes) {
-        insert.run(filePath, hash, now);
+    const transaction = db.transaction((entries) => {
+      for (const entry of entries) {
+        const filePath = entry.filePath || entry[0];
+        const hash = entry.hash || entry[1];
+        const mtime = entry.mtime_ms ?? entry[2] ?? null;
+        const size = entry.file_size ?? entry[3] ?? null;
+        insert.run(filePath, hash, now, mtime, size);
       }
     });
 
-    transaction(Object.entries(fileHashes));
+    // Soporta tanto array de objetos como Map entries
+    const entries = Array.isArray(fileHashes) 
+      ? fileHashes 
+      : Object.entries(fileHashes).map(([k, v]) => typeof v === 'object' ? { filePath: k, ...v } : { filePath: k, hash: v });
+    
+    transaction(entries);
 
-    logger.debug(`[HashCache] Saved ${Object.keys(fileHashes).length} hashes`);
+    logger.debug(`[HashCache] Saved ${entries.length} hashes`);
   } catch (error) {
     logger.warn(`[HashCache] Failed to save hashes: ${error.message}`);
   }
@@ -226,9 +252,10 @@ export function deleteHashes(projectPath, filePaths) {
 function collectStoredHashState(projectPath) {
   const storedHashesRaw = getStoredHashes(projectPath);
   const storedHashes = {};
+  const storedMeta = {}; // mtime y size por archivo
   const staleStoredKeys = [];
 
-  for (const [storedPath, hash] of Object.entries(storedHashesRaw)) {
+  for (const [storedPath, entry] of Object.entries(storedHashesRaw)) {
     const normalizedStoredPath = normalizeHashCachePath(storedPath, projectPath);
     if (!normalizedStoredPath) {
       staleStoredKeys.push(storedPath);
@@ -245,11 +272,15 @@ function collectStoredHashState(projectPath) {
     }
 
     if (!storedHashes[normalizedStoredPath]) {
-      storedHashes[normalizedStoredPath] = hash;
+      storedHashes[normalizedStoredPath] = entry.hash || entry;
+      storedMeta[normalizedStoredPath] = {
+        mtime_ms: entry.mtime_ms || null,
+        file_size: entry.file_size || null
+      };
     }
   }
 
-  return { storedHashes, staleStoredKeys };
+  return { storedHashes, storedMeta, staleStoredKeys };
 }
 
 function buildInitialChangeSet(storedHashes, currentFiles, projectPath) {
@@ -271,7 +302,7 @@ function buildInitialChangeSet(storedHashes, currentFiles, projectPath) {
   };
 }
 
-async function collectCurrentHashes(projectPath, currentFiles, storedHashes, changes) {
+async function collectCurrentHashes(projectPath, currentFiles, storedHashes, storedMeta, changes) {
   try {
     const newHashes = {};
     const batchSize = 50;
@@ -281,13 +312,41 @@ async function collectCurrentHashes(projectPath, currentFiles, storedHashes, cha
 
       await Promise.all(
         batch.map(async (filePath) => {
-          const currentHash = await calculateFileContentHash(filePath);
-          if (!currentHash) return;
-
           const normalizedPath = normalizeHashCachePath(filePath, projectPath);
           if (!normalizedPath) return;
 
-          newHashes[normalizedPath] = currentHash;
+          // Fast path: check mtime+size first
+          const meta = storedMeta[normalizedPath];
+          if (meta && meta.mtime_ms !== null && meta.file_size !== null) {
+            try {
+              const fileStat = await stat(filePath);
+              const currentMtime = fileStat.mtimeMs;
+              const currentSize = fileStat.size;
+
+              // If mtime and size unchanged, skip hash calculation
+              if (Math.abs(currentMtime - meta.mtime_ms) < 1 && currentSize === meta.file_size) {
+                changes.unchangedFiles.push(normalizedPath);
+                newHashes[normalizedPath] = {
+                  hash: storedHashes[normalizedPath],
+                  mtime_ms: Math.round(currentMtime),
+                  file_size: currentSize
+                };
+                return;
+              }
+            } catch {
+              // stat failed, fall through to hash calculation
+            }
+          }
+
+          // Slow path: calculate hash
+          const currentHash = await calculateFileContentHash(filePath);
+          if (!currentHash) return;
+
+          newHashes[normalizedPath] = {
+            hash: currentHash,
+            mtime_ms: null,
+            file_size: null
+          };
 
           if (!storedHashes[normalizedPath]) {
             changes.newFiles.push(normalizedPath);
@@ -295,6 +354,17 @@ async function collectCurrentHashes(projectPath, currentFiles, storedHashes, cha
             changes.modifiedFiles.push(normalizedPath);
           } else {
             changes.unchangedFiles.push(normalizedPath);
+          }
+
+          // Try to get stat for metadata if we haven't already
+          if (!newHashes[normalizedPath].mtime_ms) {
+            try {
+              const fileStat = await stat(filePath);
+              newHashes[normalizedPath].mtime_ms = Math.round(fileStat.mtimeMs);
+              newHashes[normalizedPath].file_size = fileStat.size;
+            } catch {
+              // Ignore stat failures
+            }
           }
         })
       );
@@ -319,16 +389,16 @@ function cleanupStaleHashEntries(projectPath, staleStoredKeys, deletedFiles) {
 }
 
 /**
- * Detecta cambios reales comparando hashes
+ * Detecta cambios reales comparando hashes con fast path via mtime+size
  */
 export async function detectRealChanges(projectPath, currentFiles, verbose = false) {
   const timer = verbose ? Date.now() : 0;
 
   try {
-    const { storedHashes, staleStoredKeys } = collectStoredHashState(projectPath);
+    const { storedHashes, storedMeta, staleStoredKeys } = collectStoredHashState(projectPath);
     const baselineMissing = Object.keys(storedHashes).length === 0 && Array.isArray(currentFiles) && currentFiles.length > 0;
     const { changes, deletedFiles } = buildInitialChangeSet(storedHashes, currentFiles, projectPath);
-    const newHashes = await collectCurrentHashes(projectPath, currentFiles, storedHashes, changes);
+    const newHashes = await collectCurrentHashes(projectPath, currentFiles, storedHashes, storedMeta, changes);
 
     saveHashes(projectPath, newHashes);
     cleanupStaleHashEntries(projectPath, staleStoredKeys, deletedFiles);

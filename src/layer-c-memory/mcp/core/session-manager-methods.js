@@ -18,6 +18,19 @@ import {
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 
+/**
+ * Detecta errores SQLite busy/locked para retry logic.
+ */
+function isSqliteBusyError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    error?.code === 'SQLITE_BUSY' ||
+    error?.code === 'SQLITE_LOCKED' ||
+    message.includes('database is locked') ||
+    message.includes('database is busy')
+  );
+}
+
 function sleepSync(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return;
   const shared = new Int32Array(new SharedArrayBuffer(4));
