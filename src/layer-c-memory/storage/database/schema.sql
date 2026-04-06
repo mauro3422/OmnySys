@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS idx_files_module ON files(module_name);
 
 -- Event sourcing para audit trail y Delta updates
+-- UNIQUE on (atom_id, event_type, source) prevents duplicate events from multiple flushes
 CREATE TABLE IF NOT EXISTS atom_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     atom_id TEXT NOT NULL,
@@ -148,7 +149,8 @@ CREATE TABLE IF NOT EXISTS atom_events (
     after_state TEXT,                      -- JSON completo despues
     impact_score REAL,                     -- Impacto calculado del cambio
     timestamp TEXT NOT NULL,
-    source TEXT DEFAULT 'extractor'       -- 'extractor', 'semantic', 'user', 'migration'
+    source TEXT DEFAULT 'extractor',       -- 'extractor', 'semantic', 'user', 'migration'
+    UNIQUE(atom_id, event_type, source)
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_atom ON atom_events(atom_id);
