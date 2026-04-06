@@ -12,6 +12,7 @@
  */
 
 import { standardizeMcpInstallation } from './src/cli/utils/mcp-client-standardizer.js';
+import { distributeAgentsTemplate } from './src/cli/utils/agents-distributor.js';
 import { resolveProjectPath } from './src/cli/utils/paths.js';
 import { PORTS } from './src/cli/utils/port-checker.js';
 
@@ -58,6 +59,16 @@ async function main() {
   log('info', `Applying OmnySys MCP standard in: ${projectPath}`);
 
   const result = await standardizeMcpInstallation({ projectPath });
+
+  // Distribute official AGENTS.md template (skips if already exists)
+  const agentsResult = distributeAgentsTemplate(projectPath);
+  if (agentsResult.applied) {
+    log('ok', `AGENTS.md template installed at: ${agentsResult.path}`);
+  } else if (agentsResult.skipped) {
+    log('info', `AGENTS.md: ${agentsResult.reason}`);
+  } else {
+    log('warn', `AGENTS.md: ${agentsResult.error}`);
+  }
 
   printClientResults(result.clientResults);
 

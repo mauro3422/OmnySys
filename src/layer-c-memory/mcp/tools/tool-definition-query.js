@@ -1,15 +1,15 @@
 export const queryToolDefinitions = [
   {
     name: 'mcp_omnysystem_query_graph',
-    description: 'Unified point-query router. Use it to inspect a specific symbol. Replaces older tools. Active queryType options: instances, details, history. Deprecated routes: value_flow, search, removed. includeSemantic=true adds sharedState, events, async info.',
+    description: 'Inspect a specific atom/symbol. queryType: "instances" (find all occurrences), "details" (full metadata + DNA + dataFlow), "history" (Git commit history). Set includeSemantic=true in options for sharedState/events.',
     inputSchema: {
       type: 'object',
       properties: {
-        queryType: { type: 'string', description: 'Query type: instances, details, history, value_flow, search, removed' },
+        queryType: { type: 'string', description: 'Query type: instances, details, history' },
         symbolName: { type: 'string', description: 'Symbol/function name to search (or regex pattern for search)' },
-        filePath: { type: 'string', description: 'File path (required for details, history, value_flow)' },
+        filePath: { type: 'string', description: 'File path (required for details, history)' },
         autoDetect: { type: 'boolean', description: 'For instances: detect all project duplicates automatically' },
-        options: { type: 'object', description: 'Extra options like maxDepth, includeSimilar, includeCode, includeSemantic, etc.' }
+        options: { type: 'object', description: 'Extra options like maxDepth, includeSimilar, includeCode, includeSemantic' }
       },
       required: ['queryType']
     }
@@ -45,15 +45,15 @@ export const queryToolDefinitions = [
   },
   {
     name: 'mcp_omnysystem_traverse_graph',
-    description: 'Unified dependency graph router (BFS/DFS). Replaces older impact/call graph tools. Active traverseType options: impact_map, call_graph. Deprecated routes: analyze_change, simulate_data_journey, trace_variable, trace_data_flow, explain_connection, signature_change. includeSemantic=true adds sharedState, events, async info.',
+    description: 'Navigate the dependency graph. traverseType: "impact_map" (what breaks if I change this?), "call_graph" (who calls whom?). Set includeSemantic=true in options for sharedState/events.',
     inputSchema: {
       type: 'object',
       properties: {
-        traverseType: { type: 'string', description: 'Traversal type' },
+        traverseType: { type: 'string', description: 'Traversal type: impact_map, call_graph' },
         filePath: { type: 'string', description: 'Origin file path' },
         symbolName: { type: 'string', description: 'Origin symbol/function/variable name' },
-        variableName: { type: 'string', description: 'Variable to trace, or fileB for explain_connection' },
-        options: { type: 'object', description: 'Extra options like maxDepth, newSignature, includeSemantic, etc.' }
+        variableName: { type: 'string', description: 'Variable to trace' },
+        options: { type: 'object', description: 'Extra options like maxDepth, includeSemantic' }
       },
       required: ['traverseType', 'filePath']
     }
