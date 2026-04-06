@@ -8,8 +8,8 @@ import {
   ErrorCode,
   McpError
 } from '@modelcontextprotocol/sdk/types.js';
-import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl } from './mcp/http-session-routing-helpers.js';
-import { buildJsonRpcErrorResponse, shouldSkipStaleInitRecovery } from './mcp/http-session-routing-handlers.impl.js';
+import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl, buildJsonRpcErrorResponse } from './mcp/http-session-routing-helpers.js';
+import { shouldSkipStaleInitRecovery } from './mcp/http-session-routing-handlers.impl.js';
 import { asJsonResource } from '#shared/utils/normalize-helpers.js';
 export {
   executeMcpToolCall,

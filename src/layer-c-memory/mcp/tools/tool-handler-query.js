@@ -3,7 +3,7 @@ import { get_atom_evolution_report } from './get-atom-evolution-report.js';
 import { traverse_graph } from './traverse-graph.js';
 import { impact_atomic } from './impact-atomic.js';
 import { aggregate_metrics } from './aggregate-metrics.js';
-import { technical_debt_report } from './technical-debt-report.js';
+import { technical_debt_report } from './technical-debt/index.js';
 import { check_pipeline_integrity } from './check-pipeline-integrity.js';
 
 export const queryToolHandlers = {

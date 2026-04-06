@@ -1,12 +1,12 @@
 import {
   buildEmptyFolderizationReport,
   buildFolderizationReportFromRepo
-} from '../../../shared/compiler/index.js';
+} from '../../../../shared/compiler/index.js';
 import {
   buildEmptyConceptualResult,
   buildEmptyDuplicatesResult,
   buildEmptyPipelineHealthResult
-} from './technical-debt-report-cache.js';
+} from '../technical-debt-report-cache.js';
 
 function buildTechnicalDebtReportNeeds(snapshotCurrent = {}, folderizationSnapshotReport = null) {
   return {

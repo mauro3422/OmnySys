@@ -74,7 +74,10 @@ function summarizeImportImpact(candidate, rows = []) {
 }
 
 function decideMigration(candidate, importImpact) {
-  const strongFolderSignal = candidate.confidence >= 55 && candidate.fileCount >= 4;
+  // FIX: Alineado con scoreCandidateGroup minFileCount=2.
+  // Familias pequeñas (2-3 archivos) son válidas si tienen alta cohesión.
+  const strongFolderSignal = candidate.confidence >= 45 && candidate.fileCount >= 2;
+  const mediumFolderSignal = candidate.confidence >= 55 && candidate.fileCount >= 3;
   const lowCrossFamilyPressure = importImpact.impactedFileCount <= Math.max(12, candidate.fileCount * 3);
   const lowRewriteLoad = importImpact.rewriteCount <= Math.max(20, candidate.fileCount * 5);
 
@@ -86,7 +89,12 @@ function decideMigration(candidate, importImpact) {
     return 'review';
   }
 
-  return 'approve';
+  // Families of 2 need higher confidence to auto-approve
+  if (candidate.fileCount < 3 && candidate.confidence < 55) {
+    return 'review';
+  }
+
+  return mediumFolderSignal ? 'approve' : 'review';
 }
 
 function buildRewriteMap(moveTargets = []) {

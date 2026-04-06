@@ -28,7 +28,7 @@ vi.mock('../../../../../src/layer-c-memory/mcp/tools/aggregate-metrics.js', () =
   }
 }));
 
-import { technical_debt_report } from '../../../../../src/layer-c-memory/mcp/tools/technical-debt-report.js';
+import { technical_debt_report } from '../../../../../src/layer-c-memory/mcp/tools/technical-debt/index.js';
 
 function buildCurrentSnapshot() {
   return {

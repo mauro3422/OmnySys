@@ -8,19 +8,19 @@
  * @module mcp/tools/technical-debt-report
  */
 
-import { AggregateMetricsTool } from './aggregate-metrics.js';
-import { getRepository } from '#layer-c/storage/repository/index.js';
-import { buildCompilerMetricsSnapshot } from '../../../shared/compiler/index.js';
+import { AggregateMetricsTool } from '../aggregate-metrics.js';
+import { getRepository } from '../../../storage/repository/index.js';
+import { buildCompilerMetricsSnapshot } from '../../../../shared/compiler/index.js';
 import {
   TECHNICAL_DEBT_SNAPSHOT_KIND,
   buildTechnicalDebtFingerprint,
   loadCachedTechnicalDebtReport,
   persistTechnicalDebtReport
-} from './technical-debt-report-cache.js';
+} from '../technical-debt-report-cache.js';
 import {
   buildTechnicalDebtReportResult,
   loadTechnicalDebtReportDetails
-} from './technical-debt-report-core.js';
+} from './report-core.js';
 
 export async function getTechnicalDebtReport(args, context) {
   try {
