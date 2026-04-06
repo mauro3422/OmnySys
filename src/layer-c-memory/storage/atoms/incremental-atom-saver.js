@@ -175,6 +175,51 @@ export async function saveAtomsIncremental(rootPath, filePath, atoms, options = 
 }
 
 /**
+ * Campos genealógicos que se archivan en atom-history.db.
+ * Filtramos para no guardar bloat (_meta, imports, exports que son del archivo).
+ * Esto reduce ~60% el espacio del archive sin perder información genealógica.
+ */
+const GENEALOGICAL_FIELDS = [
+  // Identidad
+  'id', 'name', 'atom_type', 'file_path', 'line', 'endLine', 'linesOfCode',
+  // Conexiones (genealógicas — quién llamaba a quién en esta versión)
+  'calls', 'calledBy',
+  // Evolución del átomo (ADN, flujos, métricas)
+  'dna', 'dnaJson', 'dataFlow', 'dataFlowJson', 'errorFlow', 'errorFlowJson',
+  'performance', 'performanceJson', 'signature', 'signatureJson',
+  // Métricas derivadas (cambian con el código)
+  'complexity', 'fragilityScore', 'cohesionScore', 'couplingScore',
+  'propagationScore', 'testabilityScore', 'centralityScore', 'centralityClassification',
+  'importanceScore', 'stabilityScore', 'riskLevel', 'riskPrediction',
+  // Clasificación
+  'archetype', 'purpose', 'purposeConfidence', 'isDeadCode',
+  // Semántica
+  'sharedStateAccess', 'sharedStateJson', 'eventEmitters', 'eventEmittersJson',
+  'eventListeners', 'eventListenersJson',
+  // Git
+  'changeFrequency', 'ageDays', 'generation',
+  // Flags
+  'isExported', 'isAsync', 'hasErrorHandling', 'hasNetworkCalls',
+  'functionType', 'scopeType', 'isDeprecated', 'deprecatedReason'
+];
+
+/**
+ * Extrae solo los campos genealógicos de un átomo para archivar.
+ * NO archivamos: _meta, imports, exports, uses, side_effects (bloat o metadata del archivo).
+ */
+function extractGenealogicalPayload(atom) {
+  const payload = {};
+
+  for (const field of GENEALOGICAL_FIELDS) {
+    if (atom[field] !== undefined && atom[field] !== null) {
+      payload[field] = atom[field];
+    }
+  }
+
+  return payload;
+}
+
+/**
  * Carga los átomos COMPLETOS existentes de un archivo desde la tabla `atoms`.
  * Esto es necesario para archivar la versión ANTERIOR antes de reemplazarla.
  */
@@ -227,7 +272,7 @@ async function saveAtomsIncrementalInternal(repo, rootPath, normalizedPath, atom
       try {
         persistAtomVersionArchiveBatch(rootPath, [{
           atomId,
-          atomData: oldAtom,
+          atomData: extractGenealogicalPayload(oldAtom),
           version: {
             hash: existingRow?.hash || 'unknown',
             fieldHashes: existingRow?.field_hashes_json ? JSON.parse(existingRow.field_hashes_json) : {},
@@ -264,7 +309,12 @@ async function saveAtomsIncrementalInternal(repo, rootPath, normalizedPath, atom
   if (versionsToSave.length > 0) {
     saveAtomVersionsBatch(repo.db, versionsToSave);
     try {
-      persistAtomVersionArchiveBatch(rootPath, versionsToSave, { source: 'incremental-atom-saver' });
+      // Filtrar solo campos genealógicos para el archive (reduce ~60% espacio)
+      const genealogicalVersions = versionsToSave.map(v => ({
+        ...v,
+        atomData: extractGenealogicalPayload(v.atomData)
+      }));
+      persistAtomVersionArchiveBatch(rootPath, genealogicalVersions, { source: 'incremental-atom-saver' });
     } catch (error) {
       logger.warn(`Atom version archive persistence failed for ${normalizedPath}: ${error.message}`);
     }
