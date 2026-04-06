@@ -1,3 +1,4 @@
+
 # OmnySys — Agent Protocol Guide
 
 > **Última actualización:** Abril 2026 | Fuente de verdad: `src/layer-c-memory/mcp/tools/tool-definitions.js`

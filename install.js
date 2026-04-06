@@ -60,14 +60,16 @@ async function main() {
 
   const result = await standardizeMcpInstallation({ projectPath });
 
-  // Distribute official AGENTS.md template (skips if already exists)
+  // Distribute official AGENTS.md template or inject workflow into existing
   const agentsResult = distributeAgentsTemplate(projectPath);
   if (agentsResult.applied) {
-    log('ok', `AGENTS.md template installed at: ${agentsResult.path}`);
-  } else if (agentsResult.skipped) {
-    log('info', `AGENTS.md: ${agentsResult.reason}`);
+    if (agentsResult.action === 'created_full') {
+      log('ok', `AGENTS.md template created at: ${agentsResult.path}`);
+    } else {
+      log('ok', `Tools workflow injected into ${agentsResult.path}`);
+    }
   } else {
-    log('warn', `AGENTS.md: ${agentsResult.error}`);
+    log('info', `AGENTS.md: ${agentsResult.reason || agentsResult.error}`);
   }
 
   printClientResults(result.clientResults);
