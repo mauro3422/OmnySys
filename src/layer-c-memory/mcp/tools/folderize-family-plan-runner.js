@@ -104,9 +104,17 @@ async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPa
   }, async () => {
     const results = [];
 
+    // OPTIMIZATION: Move all files FIRST without individual settlement.
+    // Settlement (reindex) is done ONCE after all moves complete.
+    // This avoids N sequential reindex operations (each ~5-10s).
+    const movedFiles = [];
+
     for (const target of moveTargets) {
       logger.info(`[Tool] folderize move: ${target.from} -> ${target.to}`);
-      const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, moveContext);
+      const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, {
+        ...moveContext,
+        skipSettlement: true // Don't reindex after each move
+      });
       results.push({
         from: target.from,
         to: target.to,
@@ -122,6 +130,23 @@ async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPa
           results,
           error: moveResult?.error || `Failed to move ${target.from}`
         };
+      }
+
+      movedFiles.push(target.to);
+    }
+
+    // BATCH settlement: reindex ALL moved files at once
+    if (movedFiles.length > 0) {
+      logger.info(`[Tool] folderize batch reindex: ${movedFiles.length} files`);
+      try {
+        const { analyzeSingleFile } = await import('#layer-a/pipeline/single-file.js');
+        // Analyze all moved files in parallel (faster than sequential)
+        await Promise.all(
+          movedFiles.map(f => analyzeSingleFile(projectPath, f, { verbose: false, incremental: true }))
+        );
+        logger.info(`[Tool] folderize batch reindex complete: ${movedFiles.length} files`);
+      } catch (error) {
+        logger.warn(`[Tool] folderize batch reindex failed: ${error.message}, continuing`);
       }
     }
 

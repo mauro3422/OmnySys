@@ -217,6 +217,16 @@ export class MoveOrchestrator {
                 return moveResult;
             }
 
+            // Skip settlement for batch operations (e.g., folderize_family)
+            if (context?.skipSettlement) {
+                logger.info(`[MoveOrchestrator] Skipping settlement (batch mode): ${oldPath} -> ${newPath}`);
+                return {
+                    ...moveResult,
+                    settlement: null,
+                    skippedSettlement: true
+                };
+            }
+
             const settlement = await settleMoveMutation(projectPath, context, oldPath, newPath, dependents, moveResult);
 
             return {
