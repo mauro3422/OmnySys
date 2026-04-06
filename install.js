@@ -23,7 +23,7 @@ const ICON = {
   err: '[ERROR]'
 };
 
-function log(type, message) {
+function installerLog(type, message) {
   console.log(`${ICON[type]} ${message}`);
 }
 
@@ -34,88 +34,96 @@ function getNodeMajorVersion() {
 function printClientResults(clientResults = []) {
   for (const item of clientResults) {
     if (item.applied) {
-      log('ok', `${item.client}: ${item.path || '(skipped path)'}`);
+      installerLog('ok', `${item.client}: ${item.path || '(skipped path)'}`);
     } else {
-      log('warn', `${item.client}: ${item.error || 'not applied'}`);
+      installerLog('warn', `${item.client}: ${item.error || 'not applied'}`);
     }
   }
 }
 
-async function main() {
-  if (process.env.OMNYSYS_SKIP_POSTINSTALL === '1') {
-    log('warn', 'Skipping install standardization (OMNYSYS_SKIP_POSTINSTALL=1).');
-    return;
-  }
-
-  const nodeMajor = getNodeMajorVersion();
-  if (nodeMajor < 18) {
-    log('err', `Node.js ${process.versions.node} detected. Node.js 18+ is required.`);
-    process.exit(1);
-  }
-
-  const projectArg = process.argv[2];
-  const projectPath = resolveProjectPath(projectArg || process.cwd());
-
-  log('info', `Applying OmnySys MCP standard in: ${projectPath}`);
-
-  const result = await standardizeMcpInstallation({ projectPath });
-
-  // Distribute official AGENTS.md template or inject workflow into existing
-  const agentsResult = distributeAgentsTemplate(projectPath);
+function printAgentsResult(agentsResult) {
   if (agentsResult.applied) {
     if (agentsResult.action === 'created_full') {
-      log('ok', `AGENTS.md template created at: ${agentsResult.path}`);
+      installerLog('ok', `AGENTS.md template created at: ${agentsResult.path}`);
     } else {
-      log('ok', `Tools workflow injected into ${agentsResult.path}`);
+      installerLog('ok', `Tools workflow injected into ${agentsResult.path}`);
     }
   } else {
-    log('info', `AGENTS.md: ${agentsResult.reason || agentsResult.error}`);
+    installerLog('info', `AGENTS.md: ${agentsResult.reason || agentsResult.error}`);
   }
+}
 
-  printClientResults(result.clientResults);
-
-  // Print terminal auto-start results
-  if (result.terminal && result.terminal.results) {
-    console.log('');
-    log('info', 'Terminal auto-start configuration:');
-    for (const r of result.terminal.results) {
-      if (r.applied) {
-        log('ok', `${r.shell}: ${r.profile}`);
-      } else if (r.alreadyConfigured) {
-        log('info', `${r.shell}: already configured`);
-      } else {
-        log('warn', `${r.shell}: ${r.error || 'not applied'}`);
-      }
+function printTerminalResults(terminal) {
+  if (!terminal?.results) return;
+  console.log('');
+  installerLog('info', 'Terminal auto-start configuration:');
+  for (const r of terminal.results) {
+    if (r.applied) {
+      installerLog('ok', `${r.shell}: ${r.profile}`);
+    } else if (r.alreadyConfigured) {
+      installerLog('info', `${r.shell}: already configured`);
+    } else {
+      installerLog('warn', `${r.shell}: ${r.error || 'not applied'}`);
     }
   }
+}
 
-  if (!result.success) {
-    log('err', 'MCP standardization finished with errors.');
-    process.exit(1);
-  }
-
-  log('ok', 'MCP standardization applied successfully.');
-  log('info', `MCP URL: ${result.mcpUrl}`);
-  log('info', `Health URL: http://127.0.0.1:${PORTS.mcp}/health`);
-  log('info', `Unified config: ${result.unifiedConfigPath}`);
-  log('info', `Workspace .mcp.json: ${result.workspace.files.dotMcp}`);
-  log('info', `Workspace mcp-servers.json: ${result.workspace.files.mcpServers}`);
-  log('info', `Workspace schema: ${result.workspace.files.mcpServersSchema}`);
-  log('info', `VS Code task: ${result.vscode.paths.tasks}`);
-  log('info', `VS Code settings: ${result.vscode.paths.settings}`);
-  log('info', `Qwen global config: ${result.clientResults.find(r => r.client === 'qwen')?.projectConfigPath || '(not applied)'}`);
-  log('info', `Antigravity config: ${result.clientResults.find(r => r.client === 'antigravity')?.path || '(not applied)'}`);
-  log('info', `Gemini CLI config: ${result.clientResults.find(r => r.client === 'geminiCli')?.path || '(not applied)'}`);
-
+function printNextSteps(result) {
   console.log('');
-  log('info', 'Next steps:');
+  installerLog('info', 'Next steps:');
   console.log('  1) Open VS Code in this workspace (daemon task auto-runs).');
   console.log('  2) Or start manually: node src/layer-c-memory/mcp-http-proxy.js');
   console.log('  3) Re-apply standard anytime: npm run setup');
   console.log('  4) Terminal auto-start will run when you open a new terminal');
 }
 
+async function main() {
+  if (process.env.OMNYSYS_SKIP_POSTINSTALL === '1') {
+    installerLog('warn', 'Skipping install standardization (OMNYSYS_SKIP_POSTINSTALL=1).');
+    return;
+  }
+
+  const nodeMajor = getNodeMajorVersion();
+  if (nodeMajor < 18) {
+    installerLog('err', `Node.js ${process.versions.node} detected. Node.js 18+ is required.`);
+    process.exit(1);
+  }
+
+  const projectArg = process.argv[2];
+  const projectPath = resolveProjectPath(projectArg || process.cwd());
+
+  installerLog('info', `Applying OmnySys MCP standard in: ${projectPath}`);
+
+  const result = await standardizeMcpInstallation({ projectPath });
+  printAgentsResult(distributeAgentsTemplate(projectPath));
+  printClientResults(result.clientResults);
+  printTerminalResults(result.terminal);
+
+  if (!result.success) {
+    installerLog('err', 'MCP standardization finished with errors.');
+    process.exit(1);
+  }
+
+  installerLog('ok', 'MCP standardization applied successfully.');
+  installerLog('info', `MCP URL: ${result.mcpUrl}`);
+  installerLog('info', `Health URL: http://127.0.0.1:${PORTS.mcp}/health`);
+  installerLog('info', `Unified config: ${result.unifiedConfigPath}`);
+  installerLog('info', `Workspace .mcp.json: ${result.workspace.files.dotMcp}`);
+  installerLog('info', `Workspace mcp-servers.json: ${result.workspace.files.mcpServers}`);
+  installerLog('info', `Workspace schema: ${result.workspace.files.mcpServersSchema}`);
+  installerLog('info', `VS Code task: ${result.vscode.paths.tasks}`);
+  installerLog('info', `VS Code settings: ${result.vscode.paths.settings}`);
+  const qwenConfig = result.clientResults.find(r => r.client === 'qwen')?.projectConfigPath || '(not applied)';
+  installerLog('info', `Qwen global config: ${qwenConfig}`);
+  const antigravityConfig = result.clientResults.find(r => r.client === 'antigravity')?.path || '(not applied)';
+  installerLog('info', `Antigravity config: ${antigravityConfig}`);
+  const geminiConfig = result.clientResults.find(r => r.client === 'geminiCli')?.path || '(not applied)';
+  installerLog('info', `Gemini CLI config: ${geminiConfig}`);
+
+  printNextSteps();
+}
+
 main().catch((error) => {
-  log('err', error.message || 'Unknown installation error');
+  installerLog('err', error.message || 'Unknown installation error');
   process.exit(1);
 });
