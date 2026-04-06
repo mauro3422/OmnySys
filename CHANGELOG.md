@@ -12,6 +12,9 @@ All notable changes to this project are documented here as a release index. Deta
   - `data_gateway_contract`: whitelisted `data-checks.js` in governance diagnostic modules.
   - `file_universe_granularity`: fixed callers collapsing scanned vs manifest universes in 3 files.
   - `runtime_boundary_surfaces`: re-exports `runAsyncBoundary` as canonical API, added guidance catalog entries.
+- **Genealogical atom history:** added field filtering to atom-history archive — only stores
+  identity, connections, DNA/flows, metrics, classification, semantics, and git data. Excludes
+  `_meta_json`, `imports_json`, `exports_json`, `uses_json` (~60% storage reduction).
 
 - Clarified the two-stage analysis pipeline: Phase 1 builds the structural atom skeleton, while Phase 2 reuses the indexed baseline to recompute call links, semantic connections, caller patterns, risk, and persistence-backed history without treating the run as a brand-new project universe.
 - Hardened the restart/reanalyze path so operational cleanup no longer wipes atom history artifacts (`atom-history.db` and its WAL/SHM sidecars), and the bulk atom saver writes back `atom_versions` / `atom_events` again so evolution data survives full reindex cycles.
