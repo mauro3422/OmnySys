@@ -7,7 +7,7 @@
  * @module shared/compiler/system-map-persistence-repair-helpers
  */
 
-import { parsePersistedArray } from './core-utils.js';
+import { parsePersistedArray } from '../core-utils.js';
 
 function safeParseObject(value, fallback = {}) {
   if (value == null || value === '') {

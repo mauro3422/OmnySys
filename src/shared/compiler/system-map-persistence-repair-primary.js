@@ -9,7 +9,7 @@ import {
   toJsonText
 } from './system-map-persistence-repair-paths.js';
 import { parsePersistedArray } from './core-utils.js';
-import { loadSystemFileSnapshots } from './system-map-persistence-repair-helpers.js';
+import { loadSystemFileSnapshots } from './system-map-persistence-repair/helpers.js';
 import { buildSemanticSurfaceFromAtoms } from './system-map-persistence-repair-semantic.js';
 
 function buildSystemFilesFromPrimaryFiles(db, now) {

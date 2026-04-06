@@ -7,13 +7,13 @@
  * @module shared/compiler/system-map-persistence-repair
  */
 
-import { getSystemMapPersistenceCoverage } from './system-map-persistence.js';
-import { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';
-import { repairFromSystemFileDependsOn } from './system-map-persistence-repair-dependencies.js';
+import { getSystemMapPersistenceCoverage } from '../system-map-persistence.js';
+import { getSemanticSurfaceGranularity } from '../semantic-surface-granularity.js';
+import { repairFromSystemFileDependsOn } from '../system-map-persistence-repair-dependencies.js';
 import {
   repairFromPrimaryFiles,
   repairSemanticConnectionsFromAtoms
-} from './system-map-persistence-repair-core.js';
+} from './index.js';
 
 export function repairSystemMapPersistenceCoverage(db) {
   const initialCoverage = getSystemMapPersistenceCoverage(db);

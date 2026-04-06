@@ -11,7 +11,7 @@
 
 import { toNumber } from './core-utils.js';
 
-export { repairSystemMapPersistenceCoverage } from './system-map-persistence-repair.js';
+export { repairSystemMapPersistenceCoverage } from './system-map-persistence-repair/repair.js';
 
 export function getSystemMapPersistenceCoverage(db) {
   const row = db.prepare(`
