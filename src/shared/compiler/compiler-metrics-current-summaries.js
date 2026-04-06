@@ -8,13 +8,8 @@ import { getPhase2PendingFiles } from './compiler-runtime-metrics-db.js';
 import { getPipelineOrphanSummary } from './pipeline-orphans.js';
 import { buildPipelineTimingTelemetrySummary } from './pipeline-timing-telemetry.js';
 import { buildToolRunTelemetrySummary } from './tool-run-telemetry.js';
-import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
 import { asNumber } from './core-utils.js';
-
-function normalizeSnapshotPath(value = '') {
-  const normalized = normalizeFolderizationPath(value);
-  return normalized || null;
-}
+import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
 
 export function buildCurrentSummaries({
   db,

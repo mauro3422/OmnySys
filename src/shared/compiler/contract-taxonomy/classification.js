@@ -4,9 +4,7 @@
  * @module shared/compiler/contract-taxonomy/classification
  */
 
-function normalizeFilePath(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/').toLowerCase();
-}
+import { normalizeFilePath } from '#shared/utils/normalize-helpers.js';
 
 function inferContractFamily(normalizedFilePath) {
   if (
@@ -131,7 +129,7 @@ export function classifyContractSurface({
   purposeType = '',
   isExported = false
 } = {}) {
-  const normalizedFilePath = normalizeFilePath(filePath);
+  const normalizedFilePath = normalizeFilePath(filePath, { lowercase: true });
   const contractFamily = inferContractFamily(normalizedFilePath);
   const contractFlavor = inferContractFlavor(normalizedFilePath);
   const truthRole = inferTruthRole(purposeType, isExported, normalizedFilePath);

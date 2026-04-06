@@ -8,17 +8,10 @@
  */
 
 import { asNumber } from './core-utils.js';
+import { normalizeText } from '#shared/utils/normalize-helpers.js';
 
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(asNumber(value, 0))));
-}
-
-function normalizeText(value, fallback = null) {
-  if (typeof value === 'string' && value.trim()) {
-    return value.trim();
-  }
-
-  return fallback;
 }
 
 export function buildCompilerPolicyCoverageSummary({

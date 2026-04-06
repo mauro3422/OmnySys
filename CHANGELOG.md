@@ -4,6 +4,31 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- **Watcher: migró de `fs.watch` a `chokidar` con polling en Windows.** Resuelve
+  el problema de que en Windows no se detectan archivos eliminados ni creados en
+  subdirectorios profundos. Archivos nuevos se indexan automáticamente sin reindex
+  completo; deletes se procesan vía orphan cleanup periódico (cada 30s).
+- **`validate_imports`: eliminados falsos positivos.** `getFileExports` ahora hace
+  fallback a `parseFileFromDisk` cuando la DB tiene datos stale de un archivo recién
+  editado, evitando marcar imports válidos como rotos.
+- **Consolidación de duplicados: 20 → 4 grupos estructurales.**
+  - Creó `src/shared/utils/normalize-helpers.js` — SSOT con 12 funciones:
+    `normalizeKey`, `normalizeKeyLower`, `clampScore`, `normalizeText`,
+    `normalizeCapturedDay`, `normalizeSnapshotPath`, `isTransientSqliteAvailabilityError`,
+    `shouldPreserveHistoryArtifact`, `asJsonResource`, `nowIso`, `escapeRegex`,
+    `normalizeFilePath`.
+  - Creó `src/shared/compiler/archive-db-utils.js` — DB helpers parametrizados:
+    `ensureArchiveDirectory`, `applyArchiveDbConfig` (cache_size configurable).
+  - Eliminadas ~16 funciones duplicadas en 27 archivos, reemplazadas por imports.
+- **Delete handling: archivos eliminados se marcan como `is_removed = 1`.**
+  `notifyChange` ya no hace `stat()` para deletes (fallaba en Windows).
+  Orphan check periódico marca files, atoms y relations como removidos.
+  Los datos quedan como genealogía (reactivables con `is_removed = 0`).
+- **Policy drift: limpiados 5 duplicados de `overloaded_service_boundary`**
+  en `initialization.js` — queda 1 issue legítimo (archivo mezcla 4 dominios).
+- **Limpieza de archivos huérfanos de test:** 6 archivos eliminados marcados
+  como `is_removed = 1` en DB (genealogía preservada).
+
 - Fixed atom history archive deduplication: removed `lastModified` from fingerprint so identical content hashes no longer create duplicate rows; added pre-write hash check to skip unchanged atoms automatically.
 - Fixed Phase 2 data loss on incremental reindex: `INSERT OR REPLACE` now preserves enriched Phase 2 fields (DNA, dataFlow, errorFlow, performance) when Phase 1 re-extracts skeleton-only atoms.
 - Refactored `buildCompilerHealthDashboard` (CC 134→43) by extracting 8 section-builder helpers; no functional changes, all output fields preserved.

@@ -6,22 +6,15 @@
  */
 
 import Database from 'better-sqlite3';
-import { mkdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { createLogger } from '#utils/logger.js';
 import { safeJsonStringify } from './safe-json.js';
-import { getAtomHistoryDbPath, getCompilerHistoryDir } from './compiler-persistence-paths.js';
+import { getAtomHistoryDbPath } from './compiler-persistence-paths.js';
+import { normalizeKey, normalizeCapturedDay } from '#shared/utils/normalize-helpers.js';
+import { ensureArchiveDirectory, applyArchiveDbConfig } from './archive-db-utils.js';
 
 const logger = createLogger('OmnySys:AtomHistoryArchive');
 const archiveConnections = new Map();
-
-function normalizeKey(value) {
-  return String(value || '').trim();
-}
-
-function normalizeCapturedDay(capturedAt = new Date().toISOString()) {
-  return String(capturedAt || new Date().toISOString()).slice(0, 10);
-}
 
 function buildArchiveSchemaSql() {
   return `
@@ -53,22 +46,6 @@ function buildArchiveSchemaSql() {
   `;
 }
 
-function ensureArchiveDirectory(projectPath) {
-  const archiveDir = getCompilerHistoryDir(projectPath);
-  if (!existsSync(archiveDir)) {
-    mkdirSync(archiveDir, { recursive: true });
-  }
-  return archiveDir;
-}
-
-function applyArchiveDbConfig(db) {
-  db.pragma('journal_mode = WAL');
-  db.pragma('cache_size = 12000');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('temp_store = MEMORY');
-  db.pragma('busy_timeout = 5000');
-}
-
 function ensureArchiveDb(projectPath) {
   const normalizedProjectPath = resolve(projectPath || process.cwd());
   const existing = archiveConnections.get(normalizedProjectPath);
@@ -79,7 +56,7 @@ function ensureArchiveDb(projectPath) {
   const dbPath = getAtomHistoryDbPath(normalizedProjectPath);
   ensureArchiveDirectory(normalizedProjectPath);
   const db = new Database(dbPath);
-  applyArchiveDbConfig(db);
+  applyArchiveDbConfig(db, { cacheSize: 12000 });
   db.exec(buildArchiveSchemaSql());
   archiveConnections.set(normalizedProjectPath, db);
   logger.debug(`[AtomHistoryArchive] Ready at: ${dbPath}`);

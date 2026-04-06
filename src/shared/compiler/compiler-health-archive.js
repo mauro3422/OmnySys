@@ -6,23 +6,16 @@
  */
 
 import Database from 'better-sqlite3';
-import { mkdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { createLogger } from '#utils/logger.js';
 import { asNumber } from './core-utils.js';
-import { getCompilerHistoryDbPath, getCompilerHistoryDir } from './compiler-persistence-paths.js';
+import { getCompilerHistoryDbPath } from './compiler-persistence-paths.js';
 import { safeJsonStringify } from './safe-json.js';
+import { normalizeKey, normalizeCapturedDay } from '#shared/utils/normalize-helpers.js';
+import { ensureArchiveDirectory, applyArchiveDbConfig } from './archive-db-utils.js';
 
 const logger = createLogger('OmnySys:Compiler:HealthArchive');
 const archiveConnections = new Map();
-
-function normalizeKey(value) {
-  return String(value || '').trim();
-}
-
-function normalizeCapturedDay(capturedAt = new Date().toISOString()) {
-  return String(capturedAt || new Date().toISOString()).slice(0, 10);
-}
 
 function buildArchiveSchemaSql() {
   return `
@@ -124,22 +117,6 @@ function buildArchiveSchemaSql() {
     CREATE INDEX IF NOT EXISTS idx_metrics_archive_fingerprint
       ON compiler_metrics_daily_snapshots(snapshot_fingerprint);
   `;
-}
-
-function ensureArchiveDirectory(projectPath) {
-  const archiveDir = getCompilerHistoryDir(projectPath);
-  if (!existsSync(archiveDir)) {
-    mkdirSync(archiveDir, { recursive: true });
-  }
-  return archiveDir;
-}
-
-function applyArchiveDbConfig(db) {
-  db.pragma('journal_mode = WAL');
-  db.pragma('cache_size = 16000');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('temp_store = MEMORY');
-  db.pragma('busy_timeout = 5000');
 }
 
 function ensureArchiveDb(projectPath) {

@@ -8,14 +8,7 @@
 
 import { asNumber } from './core-utils.js';
 import { clampScore } from './score-utils.js';
-
-function normalizeText(value, fallback = null) {
-  if (typeof value === 'string' && value.trim()) {
-    return value.trim();
-  }
-
-  return fallback;
-}
+import { normalizeText } from '#shared/utils/normalize-helpers.js';
 
 function buildPromotionTarget(candidate = {}, { index = 0, source = 'inventory' } = {}) {
   const role = normalizeText(candidate.role, 'emergent');

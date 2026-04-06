@@ -1,21 +1,15 @@
 import { asNumber } from './core-utils.js';
 import { buildCompilerToolInventorySnapshot } from './tool-inventory-summary.js';
 import { inferSystemKind } from './system-inventory-kind-helpers.js';
+import { normalizeText } from '#shared/utils/normalize-helpers.js';
 
 // --- Extracted utilities ---
-
-function normalizeText(value, fallback = null) {
-  if (typeof value === 'string' && value.trim()) {
-    return value.trim();
-  }
-  return fallback;
-}
 
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(asNumber(value, 0))));
 }
 
-export { normalizeText, clampScore };
+export { clampScore };
 
 export function normalizeToolInventory(toolInventory = null) {
   if (!toolInventory) {

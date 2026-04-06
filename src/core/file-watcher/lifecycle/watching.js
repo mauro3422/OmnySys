@@ -1,13 +1,13 @@
 import path from 'path';
-import { watch } from 'fs';
-import { access, stat } from 'fs/promises';
+import { stat } from 'fs/promises';
+import chokidar from 'chokidar';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('file-watcher');
 const STARTUP_NOISE_WINDOW_MS = 1500;
 
 /**
- * Inicia el watching del filesystem usando fs.watch
+ * Inicia el watching del filesystem usando chokidar (cross-platform reliable)
  * Detecta cambios automaticamente sin depender de notificaciones externas
  */
 export function startWatching() {
@@ -19,58 +19,78 @@ export function startWatching() {
   try {
     this.watcherStartedAt = Date.now();
 
-    // Usar fs.watch para monitorear recursivamente
-    this.fsWatcher = watch(
-      this.rootPath,
-      { recursive: true },
-      async (eventType, filename) => {
-        // Ignorar si no hay filename o esta vacio
-        if (!filename) return;
+    // Detectar platform para ajustes específicos
+    const isWindows = process.platform === 'win32';
 
-        // Windows puede emitir bursts espurios al adjuntar el watcher.
-        if (Date.now() - this.watcherStartedAt < STARTUP_NOISE_WINDOW_MS) {
-          this.startupNoiseSuppressed = (this.startupNoiseSuppressed || 0) + 1;
-          if (this.options.verbose) {
-            logger.debug(`Ignoring startup watcher noise: ${filename}`);
-          }
-          return;
-        }
+    // Usar chokidar para monitoreo recursivo confiable en todas las plataformas
+    this.fsWatcher = chokidar.watch(this.rootPath, {
+      ignored: [
+        /[/\\]node_modules[/\\]/,
+        /[/\\]\.git[/\\]/,
+        /[/\\]__pycache__[/\\]/,
+        /[/\\]\.omnysysdata[/\\]/,
+        /[/\\]dist[/\\]/,
+        /[/\\]coverage[/\\]/,
+        /\.log$/,
+        /\.tmp$/
+      ],
+      ignoreInitial: true,
+      persistent: true,
+      awaitWriteFinish: {
+        stabilityThreshold: 200,
+        pollInterval: 50
+      },
+      // En Windows, usar polling para detectar deletes confiablemente
+      usePolling: isWindows,
+      interval: isWindows ? 1000 : 0,
+      binaryInterval: isWindows ? 2000 : 0,
+      depth: 99,
+      ignorePermissionErrors: true
+    });
 
-        // Convertir a path relativo
-        const fullPath = path.join(this.rootPath, filename);
+    // Evento: archivo creado
+    this.fsWatcher.on('add', async (fullPath) => {
+      if (Date.now() - this.watcherStartedAt < STARTUP_NOISE_WINDOW_MS) return;
+      await this.notifyChange(fullPath, 'created', {
+        origin: 'filesystem',
+        detector: 'chokidar',
+        transport: 'filesystem-watch'
+      });
+    });
 
-        // Determinar tipo de cambio
-        // 'rename' = archivo creado o eliminado (hay que verificar si existe)
-        // 'change' = archivo modificado
-        let changeType;
-        if (eventType === 'rename') {
-          try {
-            await access(fullPath);
-            changeType = 'created';
-          } catch {
-            changeType = 'deleted';
-          }
+    // Evento: archivo modificado
+    this.fsWatcher.on('change', async (fullPath) => {
+      if (Date.now() - this.watcherStartedAt < STARTUP_NOISE_WINDOW_MS) return;
+      await this.notifyChange(fullPath, 'modified', {
+        origin: 'filesystem',
+        detector: 'chokidar',
+        transport: 'filesystem-watch'
+      });
+    });
 
-          // Para archivos creados, verificar si es modificacion (ya existia)
-          if (changeType === 'created' && this.fileHashes.has(filename)) {
-            changeType = 'modified';
-          }
-        } else {
-          changeType = 'modified';
-        }
+    // Evento: archivo eliminado
+    this.fsWatcher.on('unlink', async (fullPath) => {
+      if (Date.now() - this.watcherStartedAt < STARTUP_NOISE_WINDOW_MS) return;
+      await this.notifyChange(fullPath, 'deleted', {
+        origin: 'filesystem',
+        detector: 'chokidar',
+        transport: 'filesystem-watch'
+      });
+    });
 
-        // Notificar el cambio
-        await this.notifyChange(fullPath, changeType, {
-          origin: 'filesystem',
-          detector: 'fs.watch',
-          transport: 'filesystem-watch'
-        });
+    // Evento: directorio creado
+    this.fsWatcher.on('addDir', (fullPath) => {
+      if (this.options.verbose) {
+        logger.debug(`Directory created: ${fullPath}`);
       }
-    );
+    });
 
-    if (this.options.verbose) {
-      logger.info('Watching filesystem for changes...');
-    }
+    // Evento: directorio eliminado
+    this.fsWatcher.on('unlinkDir', (fullPath) => {
+      if (this.options.verbose) {
+        logger.debug(`Directory removed: ${fullPath}`);
+      }
+    });
 
     // Manejar errores del watcher
     this.fsWatcher.on('error', (error) => {
@@ -78,10 +98,30 @@ export function startWatching() {
       this.emit('error', error);
     });
 
-    this.emit('watching:start');
+    this.fsWatcher.on('ready', () => {
+      if (this.options.verbose) {
+        logger.info('Chokidar watcher ready, watching for changes...');
+      }
+      this.emit('watching:start');
+    });
   } catch (error) {
     logger.error('Failed to start file watching:', error);
     this.emit('error', error);
+  }
+}
+
+/**
+ * Detiene el watching del filesystem
+ */
+export function stopWatching() {
+  if (this.fsWatcher) {
+    if (typeof this.fsWatcher.close === 'function') {
+      this.fsWatcher.close();
+    }
+    this.fsWatcher = null;
+    if (this.options.verbose) {
+      logger.info('File watcher stopped');
+    }
   }
 }
 
@@ -90,6 +130,30 @@ export function startWatching() {
  * Llama a esta funcion cuando detectes un cambio (fs.watch, etc.)
  */
 export async function notifyChange(filePath, changeType = 'modified', metadata = {}) {
+  // Para archivos eliminados, no hacer stat (el archivo ya no existe)
+  if (changeType === 'deleted') {
+    const relativePath = path.relative(this.rootPath, filePath).replace(/\\/g, '/');
+    const surface = this.classifyWatcherSurface(relativePath);
+    if (!surface.relevant) {
+      return;
+    }
+
+    const changeInfo = this.buildWatcherChangeInfo({
+      filePath: relativePath,
+      fullPath: filePath,
+      changeType: 'deleted',
+      metadata,
+      surface
+    });
+
+    this.recordWatcherOrigin(this, changeInfo.origin);
+    this.recordWatcherSurface(this, surface);
+    this.queueWatcherChange(this, relativePath, changeInfo);
+    logger.info(`[DELETE QUEUED] ${relativePath}`);
+    return;
+  }
+
+  // Para archivos existentes, verificar que existan y no sean directorios
   const targetStats = await stat(filePath).catch(() => null);
   if (!targetStats || targetStats.isDirectory()) {
     return;

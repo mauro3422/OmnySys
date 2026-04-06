@@ -8,6 +8,8 @@
  * @since 2026-04-02
  */
 
+import { resolveSessionSyncGraceMs } from '#shared/compiler/compiler-runtime-metrics-sessions-client-sync.js';
+
 function asNumber(value, fallback = 0) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -15,15 +17,6 @@ function asNumber(value, fallback = 0) {
 
 function normalizeSessionDb(sessionDb) {
   return sessionDb && typeof sessionDb.prepare === 'function' ? sessionDb : null;
-}
-
-function resolveSessionSyncGraceMs() {
-  const raw = Number(process.env.OMNYSYS_SESSION_SYNC_GRACE_MS);
-  if (Number.isFinite(raw) && raw > 0) {
-    return raw;
-  }
-
-  return 120000;
 }
 
 function getAgeMs(updatedAt, now = Date.now()) {

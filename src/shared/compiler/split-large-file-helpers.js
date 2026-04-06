@@ -7,6 +7,8 @@
  * @module shared/compiler/split-large-file-helpers
  */
 
+import { escapeRegex } from '#shared/utils/normalize-helpers.js';
+
 /**
  * Agrupa átomos por responsabilidad usando múltiples estrategias.
  * 
@@ -461,13 +463,6 @@ function extractImportSymbols(importLine) {
     }
 
     return symbols;
-}
-
-/**
- * Escapa caracteres especiales de regex
- */
-function escapeRegex(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**

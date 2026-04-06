@@ -1,12 +1,15 @@
 import path from 'path';
+import { existsSync } from 'fs';
 import {
   getPersistedKnownFilePaths,
   loadPersistedScannedFilePaths
 } from '../../../shared/compiler/index.js';
 import { createLogger } from '../../../utils/logger.js';
 import { createSmartBatchProcessor } from '../batch-processor/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 
 const logger = createLogger('file-watcher');
+const ORPHAN_CHECK_INTERVAL_MS = 30000; // Every 30 seconds
 
 /**
  * Inicializa el file watcher
@@ -46,6 +49,17 @@ export async function initialize() {
       });
     }, this.options.batchDelayMs);
   }
+
+  // Periodic orphan cleanup: mark DB files as removed if they no longer exist on disk
+  if (this.orphanCheckInterval) {
+    clearInterval(this.orphanCheckInterval);
+  }
+  this.orphanCheckInterval = setInterval(() => {
+    this._checkOrphanedFiles().catch((error) => {
+      logger.error('FileWatcher orphan check failed:', error);
+    });
+  }, ORPHAN_CHECK_INTERVAL_MS);
+  logger.info(`[ORPHAN CHECK] Interval set up: every ${ORPHAN_CHECK_INTERVAL_MS / 1000}s`);
 
   this.emit('ready');
 }
@@ -99,5 +113,61 @@ export async function loadCurrentState() {
     if (this.options.verbose) {
       logger.info('No existing analysis found, starting fresh');
     }
+  }
+}
+
+/**
+ * Periodic orphan cleanup: marks DB files as removed if they no longer exist on disk.
+ * This is a safety net for Windows where chokidar may not emit 'unlink' reliably.
+ */
+export async function _checkOrphanedFiles() {
+  logger.info(`[ORPHAN CHECK] Running periodic check for ${this.rootPath}...`);
+  try {
+    const repo = getRepository(this.rootPath);
+    logger.info(`[ORPHAN CHECK] repo=${!!repo}, initialized=${repo?.initialized}, dbOpen=${repo?.db?.open}`);
+    if (!repo?.initialized || !repo?.db || repo.db.open === false) {
+      logger.warn('[ORPHAN CHECK] Repository not ready, skipping');
+      return;
+    }
+
+    const files = repo.db.prepare(
+      'SELECT path FROM files WHERE is_removed = 0'
+    ).all();
+
+    if (!files || files.length === 0) return;
+
+    const orphanedPaths = [];
+    for (const file of files) {
+      const fullPath = path.join(this.rootPath, file.path);
+      if (!existsSync(fullPath)) {
+        orphanedPaths.push(file.path);
+      }
+    }
+
+    if (orphanedPaths.length === 0) return;
+
+    logger.info(`[ORPHAN CHECK] Found ${orphanedPaths.length} orphaned file(s) in DB, marking as removed...`);
+
+    for (const filePath of orphanedPaths) {
+      try {
+        repo.db.prepare(
+          "UPDATE files SET is_removed = 1, updated_at = datetime('now') WHERE path = ? AND is_removed = 0"
+        ).run(filePath);
+
+        repo.db.prepare(
+          "UPDATE atoms SET is_removed = 1, updated_at = datetime('now') WHERE file_path = ? AND is_removed = 0"
+        ).run(filePath);
+
+        const changes = repo.db.prepare(
+          "UPDATE atom_relations SET is_removed = 1, updated_at = datetime('now') WHERE file_path = ? AND is_removed = 0"
+        ).run(filePath);
+
+        logger.info(`[ORPHAN MARKED] ${filePath} (${changes.changes} relations marked as removed)`);
+      } catch (error) {
+        logger.warn(`[ORPHAN MARK FAIL] ${filePath}: ${error.message}`);
+      }
+    }
+  } catch (error) {
+    logger.error(`[ORPHAN CHECK] Failed: ${error.message}`);
   }
 }

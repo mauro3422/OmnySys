@@ -16,7 +16,7 @@ const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DE
 const sharedEventStore = new (await import('@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js')).InMemoryEventStore();
 const staleInitRecoveryInFlight = new Set();
 
-function shouldSkipStaleInitRecovery(sessionId) {
+export function shouldSkipStaleInitRecovery(sessionId) {
   const key = String(sessionId || 'unknown');
   if (staleInitRecoveryInFlight.has(key)) {
     return true;

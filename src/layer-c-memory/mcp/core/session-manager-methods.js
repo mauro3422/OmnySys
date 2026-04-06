@@ -1,4 +1,5 @@
 import { createLogger } from '#utils/logger.js';
+import { isTransientSqliteAvailabilityError } from '#shared/utils/normalize-helpers.js';
 import { connectionManager } from '../../storage/database/connection.js';
 import {
   isDedupFresh,
@@ -16,27 +17,6 @@ import {
 } from '../transport-provenance.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');
-
-function isSqliteBusyError(error) {
-  const message = String(error?.message || '').toLowerCase();
-  return (
-    error?.code === 'SQLITE_BUSY' ||
-    error?.code === 'SQLITE_LOCKED' ||
-    message.includes('database is locked') ||
-    message.includes('database is busy')
-  );
-}
-
-function isTransientSqliteAvailabilityError(error) {
-  const message = String(error?.message || '').toLowerCase();
-  return (
-    error?.code === 'SQLITE_BUSY' ||
-    error?.code === 'SQLITE_LOCKED' ||
-    message.includes('database connection is not open') ||
-    message.includes('database is locked') ||
-    message.includes('database is busy')
-  );
-}
 
 function sleepSync(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return;

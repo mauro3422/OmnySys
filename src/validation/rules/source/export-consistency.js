@@ -8,6 +8,7 @@
 
 import { ValidationRule } from '../../core/rules/index.js';
 import { ValidationResult } from '../../core/results/index.js';
+import { escapeRegex } from '#shared/utils/normalize-helpers.js';
 
 export const ExportConsistencyRule = new ValidationRule({
   id: 'source.export-consistency',
@@ -89,9 +90,5 @@ export const ExportConsistencyRule = new ValidationRule({
         });
   }
 });
-
-function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 export default ExportConsistencyRule;

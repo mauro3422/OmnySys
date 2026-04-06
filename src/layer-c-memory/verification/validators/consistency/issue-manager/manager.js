@@ -1,4 +1,5 @@
 import { DataSystem, IssueCategory, Severity } from '../../../types/index.js';
+import { normalizeKeyLower } from '#shared/utils/normalize-helpers.js';
 
 const DEFAULT_SUMMARY = () => ({
   data: {
@@ -19,10 +20,6 @@ const DEFAULT_SUMMARY = () => ({
     bySystem: {}
   }
 });
-
-function normalizeKey(value) {
-  return String(value || '').toLowerCase();
-}
 
 export class IssueManager {
   constructor() {
@@ -117,7 +114,7 @@ export class IssueManager {
   }
 
   hasCriticalIssues() {
-    return this.issues.some(issue => normalizeKey(issue.severity) === Severity.CRITICAL);
+    return this.issues.some(issue => normalizeKeyLower(issue.severity) === Severity.CRITICAL);
   }
 
   calculateStats() {
@@ -135,9 +132,9 @@ export class IssueManager {
     };
 
     for (const issue of this.issues) {
-      const severity = normalizeKey(issue.severity) || 'info';
-      const category = normalizeKey(issue.category) || 'unknown';
-      const system = normalizeKey(issue.system) || 'unknown';
+      const severity = normalizeKeyLower(issue.severity) || 'info';
+      const category = normalizeKeyLower(issue.category) || 'unknown';
+      const system = normalizeKeyLower(issue.system) || 'unknown';
 
       if (stats.bySeverity[severity] !== undefined) {
         stats.bySeverity[severity]++;

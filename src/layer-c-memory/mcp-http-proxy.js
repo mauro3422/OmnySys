@@ -28,8 +28,12 @@
 
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
+import http from 'http';
+import { createRequire } from 'module';
+import { createLogger } from '#utils/logger.js';
+import { shouldPreserveHistoryArtifact, nowIso } from '#shared/utils/normalize-helpers.js';
+import { fileURLToPath } from 'url';
 import {
     ensureCompilerRuntimeDirSync,
     readProxyRuntimeTelemetry,
@@ -77,10 +81,6 @@ let restartCount = 0;
 let respawnTimer = null;
 let shutdownInProgress = false;
 let proxyTelemetry = readProxyRuntimeTelemetry(projectRoot) || null;
-
-function nowIso() {
-    return new Date().toISOString();
-}
 
 function persistProxyTelemetry(patch = {}) {
     proxyTelemetry = {
@@ -159,17 +159,6 @@ function scheduleRespawn(delayMs, extraArgs = []) {
 }
 
 // ── Spawn Worker ─────────────────────────────────────────────────────────────
-function shouldPreserveHistoryArtifact(fileName) {
-    const name = String(fileName || '');
-    return (
-        name === 'health-history.db' ||
-        name.startsWith('health-history.db-') ||
-        name.startsWith('health-history.db.') ||
-        name === 'atom-history.db' ||
-        name.startsWith('atom-history.db-') ||
-        name.startsWith('atom-history.db.')
-    );
-}
 
 function spawnWorker(extraArgs = []) {
     clearRespawnTimer();

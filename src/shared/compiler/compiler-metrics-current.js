@@ -16,15 +16,7 @@ import {
 import { buildCurrentSummaries } from './compiler-metrics-current-summaries.js';
 import { asNumber } from './core-utils.js';
 import { buildStartupRegressionSummary } from './startup-regression-summary.js';
-
-function normalizeSnapshotPath(value = '') {
-  const normalized = normalizeFolderizationPath(value);
-  return normalized || null;
-}
-
-function clampScore(value, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, value));
-}
+import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
 
 function compactFolderizationPropagation(propagation = null) {
   if (!propagation) {

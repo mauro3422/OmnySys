@@ -9,7 +9,8 @@ import {
   McpError
 } from '@modelcontextprotocol/sdk/types.js';
 import { createConditionalJsonMiddleware as createConditionalJsonMiddlewareImpl } from './mcp/http-session-routing-helpers.js';
-import { buildJsonRpcErrorResponse } from './mcp/http-session-routing-helpers.js';
+import { buildJsonRpcErrorResponse, shouldSkipStaleInitRecovery } from './mcp/http-session-routing-handlers.impl.js';
+import { asJsonResource } from '#shared/utils/normalize-helpers.js';
 export {
   executeMcpToolCall,
   handleMcpRequest
@@ -26,15 +27,6 @@ const RESOURCE_URIS = {
 
 const MCP_POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'];
 const MCP_GET_ACCEPT_TYPES = ['text/event-stream'];
-
-function asJsonResource(uri, payload, meta = {}) {
-  return {
-    uri,
-    mimeType: 'application/json',
-    text: JSON.stringify(payload, null, 2),
-    _meta: meta
-  };
-}
 
 export function createConditionalJsonMiddleware(logger) {
   return createConditionalJsonMiddlewareImpl(logger, buildJsonRpcErrorResponse);
@@ -84,20 +76,6 @@ function applyNodeHeaderOverride(req, headerName, headerValue) {
   if (!replaced) {
     req.rawHeaders.push(headerName, headerValue);
   }
-}
-
-function shouldSkipStaleInitRecovery(sessionId) {
-  const key = String(sessionId || 'unknown');
-  if (staleInitRecoveryInFlight.has(key)) {
-    return true;
-  }
-
-  staleInitRecoveryInFlight.add(key);
-  queueMicrotask(() => {
-    staleInitRecoveryInFlight.delete(key);
-  });
-
-  return false;
 }
 
 export function normalizeMcpRequestHeaders(req, logger) {

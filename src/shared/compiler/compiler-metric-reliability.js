@@ -9,10 +9,7 @@
  */
 
 import { asNumber } from './core-utils.js';
-
-function clampScore(value, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, value));
-}
+import { clampScore } from '#shared/utils/normalize-helpers.js';
 
 function gradeFromScore(score = 0) {
   if (score >= 97) return 'A+';

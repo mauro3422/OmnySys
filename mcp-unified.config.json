@@ -18,13 +18,13 @@
     "geminiCli": "C:\\Users\\mauro\\.gemini\\settings.json"
   },
   "workspace": {
-    "dotMcp": "c:\\Dev\\OmnySystem\\.mcp.json",
-    "mcpServers": "c:\\Dev\\OmnySystem\\mcp-servers.json",
-    "mcpServersSchema": "c:\\Dev\\OmnySystem\\mcp-servers.schema.json"
+    "dotMcp": "C:\\Dev\\OmnySystem\\.mcp.json",
+    "mcpServers": "C:\\Dev\\OmnySystem\\mcp-servers.json",
+    "mcpServersSchema": "C:\\Dev\\OmnySystem\\mcp-servers.schema.json"
   },
   "vscode": {
-    "tasks": "c:\\Dev\\OmnySystem\\.vscode\\tasks.json",
-    "settings": "c:\\Dev\\OmnySystem\\.vscode\\settings.json",
-    "mcp": "c:\\Dev\\OmnySystem\\.vscode\\mcp.json"
+    "tasks": "C:\\Dev\\OmnySystem\\.vscode\\tasks.json",
+    "settings": "C:\\Dev\\OmnySystem\\.vscode\\settings.json",
+    "mcp": "C:\\Dev\\OmnySystem\\.vscode\\mcp.json"
   }
 }

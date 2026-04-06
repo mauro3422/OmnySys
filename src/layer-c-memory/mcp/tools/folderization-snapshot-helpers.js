@@ -1,10 +1,5 @@
 import { createHash } from 'node:crypto';
-import { normalizeFolderizationPath } from '../../../shared/compiler/directory-structure-folderization-data.js';
-
-function normalizeSnapshotPath(value = '') {
-  const normalized = normalizeFolderizationPath(value);
-  return normalized || null;
-}
+import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
 
 export function buildFolderizationSnapshotFingerprint(snapshot = null) {
   return createHash('sha1')

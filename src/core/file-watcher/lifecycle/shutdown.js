@@ -14,17 +14,24 @@ export async function stop() {
     }
   };
   try {
-    // Detener fs.watch
+    // Detener chokidar watcher
     if (this.fsWatcher) {
-      await closeIfPresent(this.fsWatcher);
+      if (typeof this.fsWatcher.close === 'function') {
+        await this.fsWatcher.close();
+      }
       this.fsWatcher = null;
 
-      logVerbose('Filesystem watcher stopped');
+      logVerbose('Chokidar filesystem watcher stopped');
     }
 
     if (this.processingInterval) {
       clearInterval(this.processingInterval);
       this.processingInterval = null;
+    }
+
+    if (this.orphanCheckInterval) {
+      clearInterval(this.orphanCheckInterval);
+      this.orphanCheckInterval = null;
     }
 
     // Procesar últimos cambios pendientes si hay batch processor

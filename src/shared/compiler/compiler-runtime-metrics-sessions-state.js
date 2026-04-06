@@ -5,18 +5,9 @@
  */
 
 import { buildMcpSessionSummaryText } from './compiler-runtime-metrics-sessions-format.js';
-export { buildClientSyncDiagnostics } from './compiler-runtime-metrics-sessions-client-sync.js';
+export { buildClientSyncDiagnostics, resolveSessionSyncGraceMs } from './compiler-runtime-metrics-sessions-client-sync.js';
 export { collectSessionDbSnapshot } from '#layer-c/query/apis/mcp-sessions-api.js';
 import { asNumber } from './core-utils.js';
-
-export function resolveSessionSyncGraceMs() {
-  const raw = Number(process.env.OMNYSYS_SESSION_SYNC_GRACE_MS);
-  if (Number.isFinite(raw) && raw > 0) {
-    return raw;
-  }
-
-  return 120000;
-}
 
 export function isRecentSessionActivityObserved(sessionSnapshot, sessionSyncGraceMs = resolveSessionSyncGraceMs()) {
   if (!sessionSnapshot) return false;

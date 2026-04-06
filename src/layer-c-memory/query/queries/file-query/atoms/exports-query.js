@@ -78,17 +78,23 @@ export async function getFileExports(rootPath, filePath) {
 
   if (exportNames.size === 0) {
     const analysis = await getFileAnalysis(rootPath, filePath).catch(() => null);
-    collectAnalysisExportNames(analysis, exportNames);
+    if (analysis) {
+      collectAnalysisExportNames(analysis, exportNames);
+    }
   }
 
+  // Fallback: parse from disk when DB has no exports (stale index or new file)
   if (exportNames.size === 0) {
-    const absolutePath = path.isAbsolute(filePath)
-      ? filePath
-      : path.join(rootPath, filePath);
-    const parsedFile = await parseFileFromDisk(absolutePath).catch(() => null);
-    collectAnalysisExportNames(parsedFile, exportNames);
+    try {
+      const parsed = await parseFileFromDisk(path.join(rootPath, filePath));
+      if (parsed?.exports) {
+        collectAnalysisExportNames({ exports: parsed.exports }, exportNames);
+      }
+    } catch {
+      // File may not exist on disk or parse error — accept empty exports
+    }
   }
-  
+
   return exportNames;
 }
 

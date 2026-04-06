@@ -5,10 +5,7 @@
 import { summarizeCompilerDriftAssessment } from './compiler-drift-assessment.js';
 import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
 import { asNumber } from './core-utils.js';
-
-function clampScore(value, min = 0, max = 100) {
-  return Math.max(min, Math.min(max, value));
-}
+import { clampScore } from '#shared/utils/normalize-helpers.js';
 
 function buildBehaviorGateSummary(current = {}, driftSummary = null) {
   const blockedBy = [];

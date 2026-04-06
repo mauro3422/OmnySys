@@ -28,6 +28,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
+import { shouldPreserveHistoryArtifact } from '#shared/utils/normalize-helpers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -210,17 +211,6 @@ process.on('SIGTERM', () => {
 // ─── Debug terminal (flag: --debug-terminal) ────────────────────────────────
 // Agrega "--debug-terminal" a los args o setea OMNYSYS_DEBUG_TERMINAL=1
 // en el environment para ver logs en una ventana de terminal.
-function shouldPreserveHistoryArtifact(fileName) {
-  const name = String(fileName || '');
-  return (
-    name === 'health-history.db' ||
-    name.startsWith('health-history.db-') ||
-    name.startsWith('health-history.db.') ||
-    name === 'atom-history.db' ||
-    name.startsWith('atom-history.db-') ||
-    name.startsWith('atom-history.db.')
-  );
-}
 
 const debugTerminal = process.argv.includes('--debug-terminal') || process.env.OMNYSYS_DEBUG_TERMINAL === '1';
 if (debugTerminal) {

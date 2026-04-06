@@ -2,6 +2,7 @@ import { createLogger } from '../../utils/logger.js';
 import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
 import { reloadMetadata as reloadServerMetadata } from '../../core/unified-server/initialization/analysis-manager.js';
 import { clearPendingRuntimeRestart } from './core/hot-reload-manager/restart-coordinator.js';
+import { shouldPreserveHistoryArtifact } from '#shared/utils/normalize-helpers.js';
 import {
   buildProxyRestartResult,
   fastRestartOrchestrator,
@@ -204,18 +205,6 @@ Any subsequent MCP tool calls you make right now will silently hang forever.
     ...buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly, reindexOnly }),
     message: warningMessage
   };
-}
-
-function shouldPreserveHistoryArtifact(fileName) {
-  const name = String(fileName || '');
-  return (
-    name === 'health-history.db' ||
-    name.startsWith('health-history.db-') ||
-    name.startsWith('health-history.db.') ||
-    name === 'atom-history.db' ||
-    name.startsWith('atom-history.db-') ||
-    name.startsWith('atom-history.db.')
-  );
 }
 
 async function clearStandaloneCache(cache, reanalyze, server, result) {

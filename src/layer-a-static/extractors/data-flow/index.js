@@ -27,12 +27,9 @@ import { InvariantDetector } from './analyzers/invariant-detector.js';
 import { TypeInferrer } from './analyzers/type-inferrer/index.js';
 import { ScopeManager } from './utils/scope-manager.js';
 import { PatternIndexManager } from './utils/managers/index.js';
+import { normalizeFilePath } from '#shared/utils/normalize-helpers.js';
 
 const logger = createLogger('OmnySys:data-flow');
-
-function normalizeFilePath(filePath = '') {
-  return String(filePath || '').replace(/\\/g, '/');
-}
 
 function isSupportOrTestFile(filePath = '') {
   const normalized = normalizeFilePath(filePath);

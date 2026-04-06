@@ -9,6 +9,7 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
+import { nowIso } from '#shared/utils/normalize-helpers.js';
 import {
     createBridgeState,
     log,
@@ -37,10 +38,6 @@ const DAEMON_URL = getDaemonUrl();
 const PROJECT_PATH = process.env.OMNYSYS_PROJECT_PATH || process.cwd();
 
 let bridgeTelemetry = readBridgeRuntimeTelemetry(PROJECT_PATH) || null;
-
-function nowIso() {
-    return new Date().toISOString();
-}
 
 function persistBridgeTelemetry(patch = {}) {
     bridgeTelemetry = {
