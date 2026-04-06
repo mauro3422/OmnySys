@@ -9,6 +9,7 @@ import { aggregatePipelineHealth } from './handlers/pipeline-health-handler.js';
 import { handleWatcherAlerts } from './handlers/watcher-handler.js';
 import { handlePatterns, handleAsyncAnalysis } from './handlers/patterns-handler.js';
 import { handlePrioritizedBacklog } from './handlers/prioritized-backlog-handler.js';
+import { handleStorageHealth } from './handlers/storage-health-handler.js';
 
 /**
  * mcp_omnysystem_aggregate_metrics
@@ -53,7 +54,8 @@ export class AggregateMetricsTool extends SemanticQueryTool {
                 const result = await handleWatcherAlerts(this, this.repo?.db, options, filePath);
                 return result.error ? result : this.formatSuccess(result);
             },
-            prioritized_backlog: async () => this.formatSuccess(await handlePrioritizedBacklog(this, this.projectPath, options))
+            prioritized_backlog: async () => this.formatSuccess(await handlePrioritizedBacklog(this, this.projectPath, options)),
+            storage_health: async () => this.formatSuccess({ aggregationType: 'storage_health', ...(await handleStorageHealth(this, this.projectPath, options)) })
         };
     }
 
