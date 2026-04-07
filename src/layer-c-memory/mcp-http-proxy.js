@@ -61,6 +61,13 @@ let respawnTimer = null;
 let shutdownInProgress = false;
 let proxyTelemetry = readProxyRuntimeTelemetry(projectRoot) || null;
 
+// Restart cooldown to prevent loops after processRestart.
+// When the worker respawns with fresh ESM cache, the file watcher may detect
+// residual changes (new files from refactor, etc.). This cooldown prevents
+// those from triggering another restart.
+const RESTART_COOLDOWN_MS = 60000; // 60 seconds
+let _lastRestartAt = 0;
+
 function persistProxyTelemetry(patch = {}) {
     proxyTelemetry = { ...(proxyTelemetry || {}), projectPath, port: String(port), pid: process.pid, updatedAt: nowIso(), ...patch };
     try { writeProxyRuntimeTelemetrySync(projectRoot, proxyTelemetry); }
@@ -113,6 +120,22 @@ function scheduleRespawn(delayMs, extraArgs = []) {
 function attachWorkerIPCListeners(worker) {
     worker.on('message', (msg) => {
         if (msg?.type === 'restart') {
+            // COOLDOWN CHECK: Prevent restart loops after processRestart.
+            // When the worker respawns with fresh ESM cache, the file watcher
+            // may detect residual changes. We suppress restarts for 60s.
+            const now = Date.now();
+            const timeSinceLastRestart = now - _lastRestartAt;
+            if (_lastRestartAt > 0 && timeSinceLastRestart < RESTART_COOLDOWN_MS) {
+                const remaining = Math.round((RESTART_COOLDOWN_MS - timeSinceLastRestart) / 1000);
+                log(`⏳ Restart suppressed (cooldown: ${remaining}s remaining). File: ${msg.file || 'unknown'}. Reason: ${msg.reason || 'unknown'}`);
+                recordProxyEvent('restart-suppressed-cooldown', {
+                    remainingSeconds: remaining,
+                    file: msg.file || null,
+                    reason: msg.reason || null
+                });
+                return;
+            }
+
             if (restartScheduled || restartInFlight) return;
             restartInFlight = true;
             restartScheduled = true;
@@ -136,6 +159,8 @@ function attachWorkerIPCListeners(worker) {
 
             setTimeout(() => {
                 log(`⏹️  Sending SIGTERM to worker... (processRestart=${msg.processRestart})`);
+                // Record restart time for cooldown
+                _lastRestartAt = Date.now();
                 worker.kill('SIGTERM');
                 restartScheduled = nextArgs;
             }, 300);

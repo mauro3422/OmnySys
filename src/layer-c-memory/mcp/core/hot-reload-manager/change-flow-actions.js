@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Dispatch reloadable file changes to the correct handler.
+ *
+ * REINDEX changes (shared/compiler, layer-a-static, etc.) now trigger
+ * actual Layer A analysis via the orchestrator instead of just emitting
+ * a dead event. This ensures new files/folders get indexed automatically
+ * without requiring a full restart.
+ */
+
 import { createLogger } from '../../../utils/logger.js';
 import { classifyRuntimeChange, RuntimeChangeAction } from './policy/runtime-change-policy.js';
 import { queueRuntimeRestart } from './restart-coordinator.js';
@@ -117,7 +126,23 @@ function applyReindexChange({
   runtimeContext
 }) {
   recordInventorySignal(server, filename, moduleInfo, policy);
-  logger.info(`â™»ï¸ Reindex-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+  logger.info(`♻️ Reindex-worthy change detected: ${filename} (${moduleInfo?.type || policy.reason}/${eventType})`);
+
+  // ACTUAL FIX: Trigger Layer A analysis via the orchestrator instead of
+  // just emitting a dead event that nobody listens to. This ensures new
+  // files/folders get indexed automatically without requiring a restart.
+  const orchestrator = server?.orchestrator;
+  if (orchestrator?.handleFileChange) {
+    const changeType = eventType === 'rename' ? 'created' : 'modified';
+    orchestrator.handleFileChange(filename, changeType, { priority: 'high' })
+      .catch((err) => {
+        logger.warn(`Failed to queue reindex for ${filename}: ${err.message}`);
+      });
+    logger.info(`  → Queued Layer A analysis for ${filename} (${changeType})`);
+  } else {
+    logger.warn(`  → No orchestrator available — ${filename} will NOT be reindexed until next full scan`);
+  }
+
   server?.emit?.('hot-reload:reindex-requested', {
     file: filename,
     reason: policy.reason,
@@ -128,22 +153,14 @@ function applyReindexChange({
     semanticSignals: runtimeContext.semanticSignals
   });
 
-  if (shouldAutoRestartAfterReindex(server)) {
-    queueRuntimeRestart(server, {
-      filename,
-      reason: `${policy.reason} (deferred until reindex settles)`,
-      eventName: 'hot-reload:restart-pending'
-    });
-  }
+  // NOTE: We intentionally do NOT auto-restart after reindex.
+  // Layer A analysis runs in the background and Phase 2 enrichment
+  // happens automatically. A restart would be wasteful and could
+  // cause the restart loop bug seen when compiler files change.
 }
 
 function applyRuntimeReloadChange({ eventType, filename, server, moduleInfo, policy, reloadHandler }) {
   recordInventorySignal(server, filename, moduleInfo, policy);
   logger.info(`â™»ï¸ Runtime change detected: ${filename} (${moduleInfo?.type || 'reloadable surface'}/${eventType})`);
   reloadHandler.applyModuleReload(filename, moduleInfo);
-}
-
-function shouldAutoRestartAfterReindex(server) {
-  const autoRestartAfterReindex = String(process.env.OMNYSYS_REINDEX_AUTO_RESTART || '').toLowerCase() === 'true';
-  return autoRestartAfterReindex && server?.runtimeRestartMode === 'auto';
 }

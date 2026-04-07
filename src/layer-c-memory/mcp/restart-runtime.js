@@ -16,6 +16,19 @@ import {
 
 const logger = createLogger('OmnySys:restart:server');
 
+// Cooldown to prevent restart loops. Shared with hot-reload-manager.
+const RESTART_COOLDOWN_MS = 60000;
+let _lastRestartAt = 0;
+
+function isRestartCooldownActive() {
+  const now = Date.now();
+  return _lastRestartAt > 0 && (now - _lastRestartAt) < RESTART_COOLDOWN_MS;
+}
+
+function recordRestartTime() {
+  _lastRestartAt = Date.now();
+}
+
 export async function handleRuntimeRestart(args = {}, context = {}) {
   const {
     clearCache = false,
@@ -136,6 +149,22 @@ async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
  *   reindex modified files automatically — no manual reindex needed.
  */
 async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, server) {
+  // COOLDOWN CHECK: Prevent restart loops. After a processRestart, the file
+  // watcher may detect residual changes (new files from refactor, etc.).
+  // We suppress restarts for 60s to let Phase 2 settle.
+  if (isRestartCooldownActive()) {
+    const remaining = Math.round((RESTART_COOLDOWN_MS - (Date.now() - _lastRestartAt)) / 1000);
+    logger.warn(`⏳ Restart suppressed (cooldown: ${remaining}s remaining). Skipping to prevent loop.`);
+    return {
+      success: true,
+      restarting: false,
+      restartType: 'cooldown_suppressed',
+      message: `Restart suppressed — cooldown active (${remaining}s remaining). File watcher will reindex changes incrementally.`,
+      databasesPreserved: ['omnysys.db', 'atom-history.db', 'health-history.db'],
+      timestamp: new Date().toISOString()
+    };
+  }
+
   logger.info('Process restart requested — killing worker, preserving all databases...');
 
   if (!isProxyMode()) {
@@ -154,6 +183,7 @@ async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, s
   }
 
   // Proxy mode: signal proxy to kill worker and respawn with --processRestart flag
+  recordRestartTime();
   if (process.send) {
     process.send({
       type: 'restart',

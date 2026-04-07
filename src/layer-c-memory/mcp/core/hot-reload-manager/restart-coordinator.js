@@ -14,6 +14,12 @@ import { buildRestartLifecycleGuidance } from '../../../../shared/compiler/index
 const logger = createLogger('OmnySys:hot-reload:restart');
 const DEFAULT_RESTART_DEBOUNCE_MS = 900;
 
+// Cooldown after a processRestart to prevent restart loops.
+// When the worker respawns with fresh ESM cache, the file watcher may detect
+// residual changes. This cooldown prevents those from triggering another restart.
+const RESTART_COOLDOWN_MS = 60000; // 60 seconds
+let _lastRestartAt = 0;
+
 function ensureRestartState(server) {
   if (!server._pendingHotReloadRestartFiles) {
     server._pendingHotReloadRestartFiles = new Set();
@@ -50,6 +56,19 @@ function emitRestartNotice(server, eventName, file, files, reason) {
 }
 
 function requestProxyManagedRestart(server, filename, reason, eventName) {
+  // COOLDOWN CHECK: Prevent restart loops after processRestart.
+  // When the worker respawns with fresh ESM cache, the file watcher may
+  // detect residual changes. We suppress restarts for 60s after the last one.
+  const now = Date.now();
+  const timeSinceLastRestart = now - _lastRestartAt;
+  if (_lastRestartAt > 0 && timeSinceLastRestart < RESTART_COOLDOWN_MS) {
+    logger.warn(
+      `⏳ Restart suppressed (cooldown: ${Math.round((RESTART_COOLDOWN_MS - timeSinceLastRestart) / 1000)}s remaining). ` +
+      `File: ${filename}. Reason: ${reason}`
+    );
+    return false;
+  }
+
   if (server._hotReloadRestartTimer) {
     clearTimeout(server._hotReloadRestartTimer);
   }
@@ -70,6 +89,9 @@ function requestProxyManagedRestart(server, filename, reason, eventName) {
     logger.warn(
       `${reason || 'Runtime module'} changed - requesting worker restart for fresh runtime cache: ${touchedFiles.join(', ')}`
     );
+
+    // Record restart time for cooldown
+    _lastRestartAt = Date.now();
 
     process.send?.({
       type: 'restart',
