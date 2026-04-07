@@ -25,6 +25,7 @@ import {
     detectHealthyDaemon,
     waitForPortRelease
 } from './mcp-http-proxy-health.js';
+import { cleanupZombieProcesses } from './mcp-http-proxy-zombies.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -120,22 +121,26 @@ function scheduleRespawn(delayMs, extraArgs = []) {
 function attachWorkerIPCListeners(worker) {
     worker.on('message', (msg) => {
         if (msg?.type === 'restart') {
-            // COOLDOWN CHECK: Prevent restart loops after processRestart.
-            // When the worker respawns with fresh ESM cache, the file watcher
-            // may detect residual changes. We suppress restarts for 60s.
+            // CRITICAL: Cooldown check MUST be first and MUST return early.
+            // Prevents restart loops when file watcher detects residual changes
+            // after processRestart (fresh ESM cache worker spawn).
             const now = Date.now();
             const timeSinceLastRestart = now - _lastRestartAt;
             if (_lastRestartAt > 0 && timeSinceLastRestart < RESTART_COOLDOWN_MS) {
                 const remaining = Math.round((RESTART_COOLDOWN_MS - timeSinceLastRestart) / 1000);
-                log(`⏳ Restart suppressed (cooldown: ${remaining}s remaining). File: ${msg.file || 'unknown'}. Reason: ${msg.reason || 'unknown'}`);
+                log(`⏳ RESTART BLOCKED by cooldown (${remaining}s remaining). File: ${msg.file || 'unknown'}. Reason: ${msg.reason || 'unknown'}`);
                 recordProxyEvent('restart-suppressed-cooldown', {
                     remainingSeconds: remaining,
                     file: msg.file || null,
-                    reason: msg.reason || null
+                    reason: msg.reason || null,
+                    timeSinceLastRestart
                 });
+                // CRITICAL: This return MUST exit the message handler entirely.
+                // The cooldown is the gatekeeper — nothing below executes.
                 return;
             }
 
+            // Guard: prevent concurrent restart requests
             if (restartScheduled || restartInFlight) return;
             restartInFlight = true;
             restartScheduled = true;
@@ -159,7 +164,8 @@ function attachWorkerIPCListeners(worker) {
 
             setTimeout(() => {
                 log(`⏹️  Sending SIGTERM to worker... (processRestart=${msg.processRestart})`);
-                // Record restart time for cooldown
+                // Record restart time for cooldown — must be set BEFORE kill
+                // so subsequent requests within 60s are suppressed
                 _lastRestartAt = Date.now();
                 worker.kill('SIGTERM');
                 restartScheduled = nextArgs;
@@ -290,6 +296,9 @@ process.on('SIGTERM', shutdown);
 // ── Start ─────────────────────────────────────────────────────────────────────
 log(`OmnySys MCP HTTP Proxy starting — project: ${projectPath}, port: ${port}`);
 log(`Worker: ${workerPath}`);
+
+// CLEANUP: Detect and kill zombie processes from previous restarts before spawning.
+await cleanupZombieProcesses(process.pid, log);
 
 if (await detectHealthyDaemon()) {
     log('✅ Existing healthy OmnySys daemon detected. Proxy will not spawn a duplicate worker.');
