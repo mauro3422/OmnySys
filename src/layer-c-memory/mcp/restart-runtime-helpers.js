@@ -16,9 +16,7 @@ export async function invalidateIncrementalState(server) {
     db.prepare('DELETE FROM file_hashes').run();
   } catch {}
 
-  try {
-    db.prepare('UPDATE files SET hash = NULL WHERE hash IS NOT NULL').run();
-  } catch {}
+  // files.hash column deprecated: ya no se limpia, file_hashes es la fuente de verdad
 }
 
 export async function stopOrchestrator(orchestrator) {

@@ -9,8 +9,7 @@
  */
 
 import {
-  backfillAtomTestCallbackTypes,
-  backfillFileHashes
+  backfillAtomTestCallbackTypes
 } from './metadata-extraction-coverage-repair-local.js';
 import {
   backfillSystemFileCalls,
@@ -28,7 +27,6 @@ export function repairMetadataExtractionCoverage(db) {
     return {
       repaired: false,
       atomsUpdated: 0,
-      fileHashesUpdated: 0,
       systemFilesUpdated: 0,
       systemFilesCallsUpdated: 0,
       rebuiltFrom: 'metadata_extraction_coverage'
@@ -37,7 +35,6 @@ export function repairMetadataExtractionCoverage(db) {
 
   const nowIso = new Date().toISOString();
   const atomsUpdated = backfillAtomTestCallbackTypes(db, nowIso);
-  const fileHashesUpdated = backfillFileHashes(db, nowIso);
   const systemFilesCallsUpdated = backfillSystemFileCalls(db, nowIso);
   const systemFilesMetadataUpdated = backfillSystemFileDefinitionsAndCulture(db, nowIso);
   const systemFilesIdentifiersUpdated = backfillSystemFileIdentifierRefs(db, nowIso);
@@ -48,7 +45,6 @@ export function repairMetadataExtractionCoverage(db) {
   return {
     repaired:
       atomsUpdated > 0 ||
-      fileHashesUpdated > 0 ||
       systemFilesCallsUpdated > 0 ||
       systemFilesMetadataUpdated > 0 ||
       systemFilesIdentifiersUpdated > 0 ||
@@ -56,7 +52,6 @@ export function repairMetadataExtractionCoverage(db) {
       systemFilesTransitiveUpdated > 0 ||
       systemFilesTransitiveDependsUpdated > 0,
     atomsUpdated,
-    fileHashesUpdated,
     systemFilesUpdated: systemFilesCallsUpdated,
     systemFilesCallsUpdated,
     systemFilesMetadataUpdated,

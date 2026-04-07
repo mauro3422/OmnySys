@@ -10,7 +10,7 @@ import { syncIncrementalSystemMapSurface } from '#layer-c/storage/repository/ada
 
 const logger = createLogger('OmnySys:single:file:db');
 
-function buildFileSummaryEntry(singleFile, fileAnalysis, fileHash, absoluteRootPath) {
+function buildFileSummaryEntry(singleFile, fileAnalysis, _fileHash, absoluteRootPath) {
     return [
         singleFile,
         {
@@ -18,8 +18,7 @@ function buildFileSummaryEntry(singleFile, fileAnalysis, fileHash, absoluteRootP
             exports: fileAnalysis.exports || [],
             moduleName: fileAnalysis.moduleName || deriveModuleName(singleFile, absoluteRootPath),
             atomCount: fileAnalysis.totalAtoms || 0,
-            totalLines: fileAnalysis.totalLines || 0,
-            hash: fileHash || null
+            totalLines: fileAnalysis.totalLines || 0
         }
     ];
 }

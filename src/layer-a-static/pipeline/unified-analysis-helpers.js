@@ -258,19 +258,15 @@ function writeFileHashBatch(repo, hashEntries) {
     }
 
     const upsertFileHash = repo.db.prepare(`
-        INSERT INTO files (path, last_analyzed, hash) VALUES (?, ?, ?)
-        ON CONFLICT(path) DO UPDATE SET
-            last_analyzed = excluded.last_analyzed,
-            hash = excluded.hash,
-            is_removed = 0,
-            updated_at = datetime('now')
+        INSERT OR REPLACE INTO file_hashes (file_path, content_hash, last_updated)
+        VALUES (?, ?, ?)
     `);
 
     const hashMap = new Map(hashEntries);
     const transaction = repo.db.transaction((entries) => {
-        const now = new Date().toISOString();
+        const now = Date.now();
         for (const [filePath, hash] of entries) {
-            upsertFileHash.run(filePath, now, hash);
+            upsertFileHash.run(filePath, hash, now);
         }
     });
 

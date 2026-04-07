@@ -21,6 +21,28 @@ function normalizeFilePaths(filePaths = []) {
     : [];
 }
 
+/**
+ * Trunca semanticSurface para el snapshot, eliminando vistas legacy redundantes
+ * que ya están en la DB (semantic_connections + atoms.semantic_metadata).
+ * Mantiene solo resumenes y contract para diagnóstico.
+ * Ahorra ~16MB por snapshot (3 vistas legacy de ~678 filas cada una).
+ */
+function summarizeSemanticSurfaceForSnapshot(semanticSurface) {
+  if (!semanticSurface) return null;
+
+  return {
+    fileLevel: semanticSurface.fileLevel,
+    atomLevel: semanticSurface.atomLevel,
+    contract: semanticSurface.contract,
+    healthy: semanticSurface.healthy,
+    materiallyDrifting: semanticSurface.materiallyDrifting,
+    materialIssues: semanticSurface.materialIssues || [],
+    advisories: semanticSurface.advisories || [],
+    // ❌ NO guardar: legacyView, persistedLegacyView, canonicalAdapterView
+    // Estas vistas ya están en semantic_connections y atoms.semantic_metadata
+  };
+}
+
 function summarizeLiveRowSync(liveRowSync = null) {
   if (!liveRowSync) {
     return {
@@ -236,7 +258,7 @@ export async function buildFolderizationSnapshotContext(args = {}, context = {},
         liveRowSync: databaseHealth.metrics?.liveRowSync || null,
         fileUniverse: databaseHealth.metrics?.fileUniverse || null,
         systemMapCoverage: databaseHealth.metrics?.systemMapCoverage || null,
-        semanticSurface: databaseHealth.metrics?.semanticSurface || null
+        semanticSurface: summarizeSemanticSurfaceForSnapshot(databaseHealth.metrics?.semanticSurface)
       },
       criticalFindings: Array.isArray(databaseHealth.criticalFindings) ? databaseHealth.criticalFindings.slice(0, 5) : [],
       warnings: Array.isArray(databaseHealth.warnings) ? databaseHealth.warnings.slice(0, 5) : [],

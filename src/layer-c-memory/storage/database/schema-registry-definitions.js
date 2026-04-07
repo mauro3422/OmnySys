@@ -120,7 +120,7 @@ export const TABLE_DEFINITIONS = {
       { name: 'imports_json', type: 'TEXT', nullable: true, description: 'Lista de imports' },
       { name: 'exports_json', type: 'TEXT', nullable: true, description: 'Lista de exports' },
       { name: 'is_removed', type: 'BOOLEAN', default: 0, description: 'Indica si el archivo fue removido', addedIn: 'v3.0.1' },
-      { name: 'hash', type: 'TEXT', nullable: true, description: 'Hash del contenido', addedIn: 'v2.1' },
+      { name: 'hash', type: 'TEXT', nullable: true, description: 'DEPRECATED: Hash del contenido — migrar a file_hashes.content_hash', addedIn: 'v2.1', deprecatedIn: 'v3.1' },
       { name: 'updated_at', type: 'TEXT', nullable: false, default: '1970-01-01 00:00:00', description: 'Fecha de actualización', addedIn: 'v3.0.1' }
     ],
     indexes: [{ name: 'idx_files_module', columns: ['module_name'] }]

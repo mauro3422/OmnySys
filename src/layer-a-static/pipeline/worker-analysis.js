@@ -51,21 +51,17 @@ function flushWorkerWritesToDb(repo, state, processedCount, totalFiles) {
             }
         }
 
-        // Flush file hashes (incremental upsert)
+        // Flush file hashes (incremental upsert) → usa file_hashes como fuente de verdad
         if (state.allFileHashesToSave.size > 0) {
             const hashEntries = Array.from(state.allFileHashesToSave.entries());
             const upsertStmt = repo.db.prepare(`
-                INSERT INTO files (path, last_analyzed, hash) VALUES (?, ?, ?)
-                ON CONFLICT(path) DO UPDATE SET
-                    last_analyzed = excluded.last_analyzed,
-                    hash = excluded.hash,
-                    is_removed = 0,
-                    updated_at = datetime('now')
+                INSERT OR REPLACE INTO file_hashes (file_path, content_hash, last_updated)
+                VALUES (?, ?, ?)
             `);
             const tx = repo.db.transaction((entries) => {
-                const now = new Date().toISOString();
+                const now = Date.now();
                 for (const [filePath, hash] of entries) {
-                    upsertStmt.run(filePath, now, hash);
+                    upsertStmt.run(filePath, hash, now);
                 }
             });
             tx(hashEntries);

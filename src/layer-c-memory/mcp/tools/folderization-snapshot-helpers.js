@@ -1,6 +1,58 @@
 import { createHash } from 'node:crypto';
 import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
+/**
+ * Elimina snapshots duplicados del mismo día, manteniendo solo el más reciente.
+ * Esto previene el crecimiento descontrolado cuando se llama varias veces al tool.
+ */
+function pruneFolderizationSnapshotHistory(db, snapshot = null) {
+  if (!db?.prepare || !snapshot) {
+    return null;
+  }
+
+  const projectPath = snapshot.projectPath || null;
+  const snapshotKind = snapshot.snapshotKind || 'folderization';
+  const scopePath = normalizeSnapshotPath(snapshot.scopePath);
+  const focusPath = normalizeSnapshotPath(snapshot.focusPath);
+  const capturedDay = String(snapshot.capturedAt || new Date().toISOString()).slice(0, 10);
+
+  try {
+    const retainedRow = db.prepare(`
+      SELECT id
+      FROM compiler_metrics_snapshots
+      WHERE project_path = ?
+        AND snapshot_kind = ?
+        AND IFNULL(scope_path, '') = IFNULL(?, '')
+        AND IFNULL(focus_path, '') = IFNULL(?, '')
+        AND substr(captured_at, 1, 10) = ?
+      ORDER BY captured_at DESC, id DESC
+      LIMIT 1
+    `).get(projectPath, snapshotKind, scopePath, focusPath, capturedDay) || null;
+
+    if (!retainedRow?.id) {
+      return { deleted: 0, retainedId: null, capturedDay };
+    }
+
+    const result = db.prepare(`
+      DELETE FROM compiler_metrics_snapshots
+      WHERE project_path = ?
+        AND snapshot_kind = ?
+        AND IFNULL(scope_path, '') = IFNULL(?, '')
+        AND IFNULL(focus_path, '') = IFNULL(?, '')
+        AND substr(captured_at, 1, 10) = ?
+        AND id <> ?
+    `).run(projectPath, snapshotKind, scopePath, focusPath, capturedDay, retainedRow.id);
+
+    return {
+      deleted: Number(result?.changes || 0),
+      retainedId: retainedRow.id,
+      capturedDay
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function buildFolderizationSnapshotFingerprint(snapshot = null) {
   return createHash('sha1')
     .update(JSON.stringify({
@@ -298,4 +350,9 @@ export function persistFolderizationSnapshot(db, snapshot = null) {
     payload_json: JSON.stringify(payload),
     trend_json: JSON.stringify(trend)
   });
+
+  // Rotación: eliminar duplicados del mismo día, mantener solo el más reciente
+  result.archive = pruneFolderizationSnapshotHistory(db, snapshot);
+
+  return result;
 }

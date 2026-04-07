@@ -2,12 +2,29 @@
  * @fileoverview Zombie process detection and cleanup for OmnySys proxy.
  * Detects orphaned Node.js processes from previous restarts that weren't
  * cleaned up properly. Prevents memory leaks and port conflicts.
+ *
+ * SAFETY: Only kills processes whose command line explicitly contains
+ * OmnySys/MCP file paths. Will NEVER touch Qwen CLI, VS Code, or other
+ * Node.js processes regardless of memory usage.
  */
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
+
+// Patterns that definitively identify OmnySys MCP processes
+// Must match the actual file paths, not just keywords
+const OMNYSYS_PATTERNS = [
+  'mcp-http-proxy.js',
+  'mcp-http-server.js',
+  'omnysys',
+  'omny.js'
+];
+
+// Memory thresholds for zombie detection (only for identified OmnySys processes)
+const WORKER_MEMORY_THRESHOLD_MB = 350;
+const PROXY_MEMORY_THRESHOLD_MB = 50;
 
 /**
  * Find all Node.js processes related to OmnySys.
