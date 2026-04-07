@@ -38,7 +38,14 @@ fs.writeFileSync(logFile, '');
 // ── Config ───────────────────────────────────────────────────────────────────
 const workerPath = path.join(__dirname, 'mcp-http-server.js');
 const projectPath = process.argv[2] || process.cwd();
-const port = process.argv[3] || process.env.OMNYSYS_MCP_PORT || '9999';
+const portStr = process.argv[3] || process.env.OMNYSYS_MCP_PORT || '9999';
+const portNum = Number(portStr);
+const port = Number.isFinite(portNum) && portNum > 0 && portNum < 65536 ? portNum : 9999;
+
+if (!Number.isFinite(portNum) || portNum < 0 || portNum >= 65536) {
+    console.error(`Invalid port value in proxy: "${portStr}". Using default port 9999.`);
+}
+
 const bugModeEnabled = process.argv.includes('--bug-mode') || process.env.OMNYSYS_BUG_MODE === '1';
 
 if (bugModeEnabled) {
@@ -220,7 +227,8 @@ function spawnWorker(extraArgs = []) {
     writeOwnerLock(restartCount === 0 ? 'starting' : 'restarting');
     log(`Spawning mcp-http-server.js (restart #${restartCount})...`);
 
-    const workerArgs = [workerPath, projectPath, port, ...extraArgs];
+    // spawnWorkerProcess already adds workerPath, so only pass projectPath and port
+    const workerArgs = [projectPath, String(port), ...extraArgs];
     worker = spawnWorkerProcess(workerPath, workerArgs, { proxyModeEnv: '1' });
 
     log(`Worker PID: ${worker.pid}`);

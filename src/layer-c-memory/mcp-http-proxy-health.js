@@ -2,7 +2,7 @@
 import http from 'http';
 import { isPortAcceptingConnections } from '../shared/utils/port-probe.js';
 
-export async function detectHealthyDaemon(port) {
+export async function detectHealthyDaemon(port = 9999) {
   return await new Promise((resolve) => {
     try {
       const req = http.get(`http://127.0.0.1:${port}/health`, { timeout: 1500 }, (res) => {

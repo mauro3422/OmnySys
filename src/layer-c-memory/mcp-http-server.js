@@ -207,11 +207,47 @@ await refreshLiveToolRegistry(logger);
 
 const arg1 = process.argv[2];
 const arg2 = process.argv[3];
-const parsedArg1AsPort = Number(arg1);
-const arg1IsPort = Number.isFinite(parsedArg1AsPort) && parsedArg1AsPort > 0;
 
-const projectPath = path.resolve(arg1IsPort ? process.cwd() : (arg1 || process.cwd()));
-const port = Number(process.env.OMNYSYS_MCP_PORT || (arg1IsPort ? arg1 : arg2) || 9999);
+// Detect which arg is port (numeric 1-65535) and which is project path
+const parsedArg1AsPort = Number(arg1);
+const parsedArg2AsPort = Number(arg2);
+const arg1IsPort = Number.isFinite(parsedArg1AsPort) && parsedArg1AsPort > 0 && parsedArg1AsPort < 65536;
+const arg2IsPort = Number.isFinite(parsedArg2AsPort) && parsedArg2AsPort > 0 && parsedArg2AsPort < 65536;
+
+let projectPath;
+let portStr;
+
+if (arg1IsPort && arg2IsPort) {
+  // Both are ports - use defaults
+  projectPath = process.cwd();
+  portStr = String(arg2);
+} else if (arg1IsPort) {
+  // arg1 is port, arg2 is path or missing
+  projectPath = arg2 || process.cwd();
+  portStr = arg1;
+} else if (arg2IsPort) {
+  // arg1 is path, arg2 is port
+  projectPath = arg1 || process.cwd();
+  portStr = arg2;
+} else {
+  // Neither is port - arg1 is path or cwd
+  projectPath = arg1 || process.cwd();
+  portStr = '9999';
+}
+
+// Apply env var override if present
+if (process.env.OMNYSYS_MCP_PORT) {
+  portStr = process.env.OMNYSYS_MCP_PORT;
+}
+
+projectPath = path.resolve(projectPath);
+let port = Number(portStr);
+
+if (!Number.isFinite(port) || port < 0 || port >= 65536) {
+  logger.warn(`Invalid port value: "${portStr}". Using default port 9999.`);
+  port = 9999;
+}
+
 const host = process.env.OMNYSYS_MCP_HOST || '127.0.0.1';
 
 const app = express();

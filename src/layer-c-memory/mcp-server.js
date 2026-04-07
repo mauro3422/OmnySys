@@ -52,7 +52,8 @@ let isRestarting = false;
 function spawnWorker() {
   log('Spawning worker...');
 
-  const workerArgs = [workerPath, projectPath];
+  // spawnWorkerProcess already adds workerPath, so only pass projectPath
+  const workerArgs = [projectPath];
   child = spawnWorkerProcess(workerPath, workerArgs, {
     extraEnv: ['OMNYSYS_LOGS_SPAWNED=1'],
     stdioConfig: ['pipe', 'pipe', 'pipe', 'ipc']
