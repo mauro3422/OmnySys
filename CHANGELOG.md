@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here as a release index. Detailed per-version notes live in `changelogs/`.
 
+## v0.9.287
+
+- **Storage cleanup — deprecate `files.hash`:** columna duplicada (58/2,755
+  rows pobladas). Todos los reads/writes migraron a `file_hashes` como fuente
+  de verdad canónica. Eliminada `backfillFileHashes` (ya innecesaria).
+  - `getAllFileHashes()` lee de `file_hashes`
+  - `writeFileHashBatch()` escribe en `file_hashes`
+  - `buildFileSummaryEntry()` ya no incluye `hash`
+  - `files.hash` marcada como `deprecatedIn: v3.1`
+
+- **Folderization snapshot bloat fix:** trunca `semanticSurface` en snapshots
+  (excluye legacyView, persistedLegacyView, canonicalAdapterView — ya están
+  en la DB). Ahorra ~16MB por snapshot.
+
+- **Atom-history delta compression:** `computeAtomDelta()` calcula cambios
+  a nivel de campo vs versión anterior. Payloads ~60% más chicos para updates.
+  Átomos nuevos guardan payload completo como antes.
+
+- **Snapshot rotation:** `pruneFolderizationSnapshotHistory()` elimina
+  duplicados del mismo día. Máximo 1 snapshot de folderization por día.
+
 ## v0.9.286
 
 - **Monolith extraction:** 5 compiler monoliths (~3,550 líneas) redistribuidos
