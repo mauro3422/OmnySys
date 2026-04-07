@@ -4,6 +4,11 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- **Startup regression fix: 34s → 1.7s (95% reduction).** El fast path de
+  Layer A verificaba `index.json` que NO existe (el sistema usa `omnysys.db`).
+  Esto causaba que cada boot cayera al slow path que abre el repo SQLite (~30s)
+  y escanea 2730 archivos. Corregido a `fs.access(omnysys.db)` antes de importar
+  módulos pesados.
 - **Propagation Completeness Scanner:** nuevo sistema proactivo que detecta
   patrones que deberían propagarse pero no lo están. Integrado en
   `buildCompilerDriftAssessment` como señal `propagation_completeness`.
