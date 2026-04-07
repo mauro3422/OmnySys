@@ -29,6 +29,71 @@ async function hasCompleteAnalysis(projectPath) {
 }
 
 /**
+ * Log result of a full analysis run.
+ */
+function logAnalysisResult(result) {
+  if (result.ran) {
+    const strategyIcon = result.incremental ? '🔄' : '🚀';
+    logger.info(`  ${strategyIcon} Analysis complete: ${result.strategy}`);
+    logger.info(`     Files analyzed: ${result.filesAnalyzed}${result.filesChanged ? ` (${result.filesChanged} changed)` : ''}`);
+    if (result.duration) {
+      logger.info(`     Duration: ${result.duration.toFixed(2)}s`);
+    }
+  } else {
+    logger.info(`  📦 Loaded existing analysis: ${result.filesAnalyzed} files (no changes)`);
+  }
+}
+
+/**
+ * Build the startupLayerAResult object from analysis output.
+ */
+function buildLayerAResult(result) {
+  return {
+    ran: result.ran === true,
+    strategy: result.strategy || null,
+    filesAnalyzed: result.filesAnalyzed || 0,
+    filesChanged: result.filesChanged || 0,
+    durationMs: Math.round((result.duration || 0) * 1000),
+    incremental: result.incremental === true
+  };
+}
+
+/**
+ * Build a fast-path result (no analysis needed).
+ */
+function buildFastPathResult() {
+  return {
+    ran: false,
+    strategy: 'load_only',
+    filesAnalyzed: 0,
+    filesChanged: 0,
+    durationMs: 0,
+    incremental: false
+  };
+}
+
+/**
+ * Run the full analysis via analysis-checker.
+ */
+async function runFullAnalysis(projectPath, server) {
+  const { checkAndRunAnalysisSmart } = await import('../../analysis-checker.js');
+  return checkAndRunAnalysisSmart(projectPath, {
+    orchestrator: server.orchestrator || null,
+    reloadMetadataFn: () => server.reloadMetadata?.() || Promise.resolve()
+  });
+}
+
+/**
+ * Force GC if available.
+ */
+function forceGC() {
+  if (typeof global.gc === 'function') {
+    global.gc();
+    logger.info('  🧹 GC forced — memory freed before LLM analysis');
+  }
+}
+
+/**
  * Step 1: Layer A Analysis
  * Runs first to determine what analysis is needed before starting LLM.
  */
@@ -56,62 +121,20 @@ export class LayerAAnalysisStep extends InitializationStep {
       }
       logger.info(`   ⏱️  reloadMetadata: ${Date.now() - t2}ms`);
 
-      server.startupLayerAResult = {
-        ran: false,
-        strategy: 'load_only',
-        filesAnalyzed: 0,
-        filesChanged: 0,
-        durationMs: 0,
-        incremental: false
-      };
-
+      server.startupLayerAResult = buildFastPathResult();
       logger.info('   ✅ All files processed (LLM enrichment runs in background)');
 
-      if (typeof global.gc === 'function') {
-        global.gc();
-        logger.info('  🧹 GC forced after Layer A — memory freed before LLM analysis');
-      }
-
+      forceGC();
       logger.info(`   ⏱️  TOTAL Layer A fast path: ${Date.now() - t0}ms`);
       return true;
     }
 
-    // SLOW PATH: No index.json — need full analysis check
-    const { checkAndRunAnalysisSmart } = await import('../../analysis-checker.js');
+    // SLOW PATH: No omnysys.db — need full analysis check
+    const result = await runFullAnalysis(server.projectPath, server);
+    server.startupLayerAResult = buildLayerAResult(result);
+    logAnalysisResult(result);
 
-    const result = await checkAndRunAnalysisSmart(server.projectPath, {
-      orchestrator: server.orchestrator || null,
-      reloadMetadataFn: () => server.reloadMetadata?.() || Promise.resolve()
-    });
-
-    server.startupLayerAResult = {
-      ran: result.ran === true,
-      strategy: result.strategy || null,
-      filesAnalyzed: result.filesAnalyzed || 0,
-      filesChanged: result.filesChanged || 0,
-      durationMs: Math.round((result.duration || 0) * 1000),
-      incremental: result.incremental === true
-    };
-
-    // Loguear resultado según la estrategia usada
-    if (result.ran) {
-      const strategyIcon = result.incremental ? '🔄' : '🚀';
-      logger.info(`  ${strategyIcon} Analysis complete: ${result.strategy}`);
-      logger.info(`     Files analyzed: ${result.filesAnalyzed}${result.filesChanged ? ` (${result.filesChanged} changed)` : ''}`);
-      if (result.duration) {
-        logger.info(`     Duration: ${result.duration.toFixed(2)}s`);
-      }
-    } else {
-      logger.info(`  📦 Loaded existing analysis: ${result.filesAnalyzed} files (no changes)`);
-    }
-
-    // Forzar GC para liberar ASTs y estructuras de Layer A antes de iniciar LLM.
-    // Layer A puede usar varios GB en parsedFiles/systemMap que deben liberarse ahora.
-    if (typeof global.gc === 'function') {
-      global.gc();
-      logger.info('  🧹 GC forced after Layer A — memory freed before LLM analysis');
-    }
-
+    forceGC();
     return true;
   }
 

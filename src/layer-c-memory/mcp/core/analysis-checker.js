@@ -90,13 +90,98 @@ export async function checkAndRunAnalysis(projectPath) {
 }
 
 /**
+ * Ultra-fast check: if omnysys.db exists, skip heavy analysis.
+ * Uses only fs.access — no DB open, no file scan.
+ */
+async function hasAnalysisDb(projectPath) {
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const dbPath = path.join(projectPath, '.omnysysdata', 'omnysys.db');
+    await fs.access(dbPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Handle the no-changes case: reload metadata and report.
+ */
+async function handleNoChanges(projectPath, reloadMetadataFn, fileCount) {
+  logger.info('   ✅ No changes detected');
+
+  if (reloadMetadataFn) {
+    await reloadMetadataFn();
+  }
+
+  const pendingLLM = await countPendingLLMAnalysis(projectPath);
+  if (pendingLLM > 0) {
+    logger.info(`   ⏳ ${pendingLLM} files pending LLM enrichment (background)`);
+  } else {
+    logger.info('   ✅ All files processed');
+  }
+
+  return {
+    ran: false,
+    strategy: IndexingStrategy.LOAD_ONLY,
+    filesAnalyzed: fileCount,
+    filesChanged: 0
+  };
+}
+
+/**
+ * Handle the full reindex case: run indexing and reload metadata.
+ */
+async function handleFullReindex(projectPath, reloadMetadataFn) {
+  logger.info('⚠️  No analysis found, running Layer A...');
+  logger.info('   ⏳ This may take 30-60 seconds...\n');
+
+  const result = await runFullIndexing(projectPath);
+
+  if (reloadMetadataFn) {
+    await reloadMetadataFn();
+  }
+
+  logger.info('\n✅ Layer A completed');
+  logger.info('   🤖 LLM enrichment will continue in background');
+
+  return {
+    ran: true,
+    strategy: IndexingStrategy.FULL_REINDEX,
+    filesAnalyzed: Object.keys(result.files || {}).length,
+    duration: result.duration || 0
+  };
+}
+
+/**
+ * Handle the ultra-fast path: analysis DB exists, just reload metadata.
+ */
+async function handleUltraFastPath(reloadMetadataFn) {
+  logger.info('   ✅ omnysys.db found — ultra-fast path (skip DB open + file scan)');
+
+  if (reloadMetadataFn) {
+    await reloadMetadataFn();
+  }
+
+  logger.info('   ✅ All files processed (LLM enrichment runs in background)');
+
+  return {
+    ran: false,
+    strategy: IndexingStrategy.LOAD_ONLY,
+    filesAnalyzed: 0,
+    filesChanged: 0
+  };
+}
+
+/**
  * 🆕 Verifica y ejecuta análisis con estrategia inteligente
- * 
+ *
  * Esta función decide automáticamente la mejor estrategia basada en volumen de cambios:
  * - LOAD_ONLY: Sin cambios (2-3s)
  * - INCREMENTAL: Pocos cambios <10 archivos (< 5s)
  * - FULL_REINDEX: Muchos cambios >20% o >100 archivos (30-60s)
- * 
+ *
  * @param {string} projectPath - Project root path
  * @param {Object} options - Opciones
  * @param {Object} options.orchestrator - Instancia del orchestrator (para incremental)
@@ -105,68 +190,24 @@ export async function checkAndRunAnalysis(projectPath) {
  */
 export async function checkAndRunAnalysisSmart(projectPath, options = {}) {
   const { orchestrator = null, reloadMetadataFn = null } = options;
-  
+
   try {
     const { getProjectMetadata } =
       await import('#layer-c/query/apis/project-api.js');
 
     // Paso 1: Verificar si existe análisis previo
     const hasAnalysis = await hasExistingAnalysis(projectPath);
-
     if (!hasAnalysis) {
-      logger.info('⚠️  No analysis found, running Layer A...');
-      logger.info('   ⏳ This may take 30-60 seconds...\n');
-
-      const result = await runFullIndexing(projectPath);
-
-      if (reloadMetadataFn) {
-        await reloadMetadataFn();
-      }
-
-      logger.info('\n✅ Layer A completed');
-      logger.info('   🤖 LLM enrichment will continue in background');
-      
-      return {
-        ran: true,
-        strategy: IndexingStrategy.FULL_REINDEX,
-        filesAnalyzed: Object.keys(result.files || {}).length,
-        duration: result.duration || 0
-      };
+      return handleFullReindex(projectPath, reloadMetadataFn);
     }
 
     // Paso 2: Ultra-fast path — si existe omnysys.db, el análisis es válido.
-    // Esto evita abrir el repo SQLite (~30s) y escanear archivos.
-    const hasAnalysisDb = await (async () => {
-      try {
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        const dbPath = path.join(projectPath, '.omnysysdata', 'omnysys.db');
-        await fs.access(dbPath);
-        return true;
-      } catch {
-        return false;
-      }
-    })();
-
-    if (hasAnalysisDb) {
-      logger.info('   ✅ omnysys.db found — ultra-fast path (skip DB open + file scan)');
-
-      if (reloadMetadataFn) {
-        await reloadMetadataFn();
-      }
-
-      logger.info('   ✅ All files processed (LLM enrichment runs in background)');
-
-      return {
-        ran: false,
-        strategy: IndexingStrategy.LOAD_ONLY,
-        filesAnalyzed: 0,
-        filesChanged: 0
-      };
+    if (await hasAnalysisDb(projectPath)) {
+      return handleUltraFastPath(reloadMetadataFn);
     }
 
-    // Paso 3: Slow path — sin index.json, necesitamos metadata completa desde DB
-    logger.info('   📦 No index.json found, loading full metadata from DB...');
+    // Paso 3: Slow path — sin DB, necesitamos metadata completa desde DB
+    logger.info('   📦 No omnysys.db found, loading full metadata from DB...');
     const metadata = await getProjectMetadata(projectPath);
     const fileCount = metadata?.stats?.totalFiles || 0;
 
@@ -174,36 +215,17 @@ export async function checkAndRunAnalysisSmart(projectPath, options = {}) {
     logger.info('   🔍 Checking for file changes...');
     const changes = await detectCacheChanges(projectPath, metadata);
 
-    const hasChanges = changes.newFiles.length > 0 || 
-                       changes.modifiedFiles.length > 0 || 
+    const hasChanges = changes.newFiles.length > 0 ||
+                       changes.modifiedFiles.length > 0 ||
                        changes.deletedFiles.length > 0;
-    
+
     if (!hasChanges) {
-      // Sin cambios: solo cargar datos
-      logger.info('   ✅ No changes detected');
-      
-      if (reloadMetadataFn) {
-        await reloadMetadataFn();
-      }
-
-      const pendingLLM = await countPendingLLMAnalysis(projectPath);
-      if (pendingLLM > 0) {
-        logger.info(`   ⏳ ${pendingLLM} files pending LLM enrichment (background)`);
-      } else {
-        logger.info('   ✅ All files processed');
-      }
-
-      return {
-        ran: false,
-        strategy: IndexingStrategy.LOAD_ONLY,
-        filesAnalyzed: fileCount,
-        filesChanged: 0
-      };
+      return handleNoChanges(projectPath, reloadMetadataFn, fileCount);
     }
 
     // Paso 4: Decidir estrategia basada en volumen
     const decision = await decideIndexingStrategy(projectPath, metadata, changes);
-    
+
     // Loguear decisión
     logger.info(`\n📊 Change detection:`);
     logger.info(`   New: ${changes.newFiles.length}, Modified: ${changes.modifiedFiles.length}, Deleted: ${changes.deletedFiles.length}`);
