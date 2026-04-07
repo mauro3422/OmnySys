@@ -61,7 +61,7 @@ export class Logger {
     const formatted = formatMessage(level, this.namespace, normalizedMsg, enrichedMeta, this.config.format);
 
     // Dispatch: write to appropriate console stream
-    const writer = level >= LogLevel.ERROR ? console.error : level === LogLevel.WARN ? console.warn : console.info;
+    const writer = level >= LogLevel.ERROR ? console.error : level === LogLevel.WARN ? console.warn : console.error;
     writer(formatted);
 
     return { input: { level, message: normalizedMsg, meta: cleanMeta }, output: { level, formatted }, enrichedMeta };
@@ -140,6 +140,10 @@ export async function setGlobalLevel(level) {
  * Convenience log function — explicitly delegates to rootLogger instance.
  */
 export function log(level, message, meta) {
+  if (message === undefined) {
+    message = level;
+    level = 'INFO';
+  }
   const numericLevel = LogLevel[level.toUpperCase()] ?? LogLevel.INFO;
   return rootLogger.log(numericLevel, message, meta);
 }
