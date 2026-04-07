@@ -108,41 +108,127 @@ export class ModifyOperation extends BaseOperation {
     };
   }
 
+  /**
+   * Extrae metadata del átomo desde la DB para validación de fragmentos
+   */
+  async extractAtomMetadata() {
+    const { symbolName, filePath } = this.options;
+    if (!symbolName) return null;
+
+    try {
+      const { getRepository } = await import('../../../layer-c-memory/storage/repository/repository-factory.js');
+      const repo = getRepository(this.context.projectPath);
+
+      const query = `
+        SELECT lineStart, lineEnd, name,
+               json_extract(dna_json, '$.signature') as signature,
+               json_extract(dna_json, '$.semanticFingerprint') as semanticFingerprint,
+               atom_type
+        FROM atoms
+        WHERE file_path = ?
+          AND name = ?
+          AND (is_removed IS NULL OR is_removed = 0)
+        LIMIT 1
+      `;
+
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      const row = repo.db.prepare(query).get(normalizedPath, symbolName);
+
+      if (!row) return null;
+
+      return {
+        lineStart: row.lineStart,
+        lineEnd: row.lineEnd,
+        name: row.name,
+        signature: row.signature ? JSON.parse(row.signature) : null,
+        semanticFingerprint: row.semanticFingerprint,
+        atomType: row.atom_type
+      };
+    } catch (err) {
+      return null;
+    }
+  }
+
   async execute() {
     try {
+      // Step 1: Read file content
       const absolutePath = resolveAbsolutePath(this.context, this.filePath);
       this.originalContent = await fs.readFile(absolutePath, 'utf-8');
 
-      const { newContent, position, replacements } = await calculateModification(
-        this.originalContent,
-        this.options,
-        this.filePath,
-        this.context,
-        logger
-      );
+      // Step 2: Extract atom metadata for fragment-aware replacement
+      const atomMetadata = await this.extractAtomMetadata();
+      logger.info(`[ModifyOperation-v2] execute() called for ${this.filePath}, strategy=${this.options.replacementStrategy}, hasMeta=${!!atomMetadata}`);
 
+      // Step 3: Perform the modification (transform content)
+      let strategy;
+      let newContent;
+      let position;
+      let replacements;
+
+      if (this.options.replacementStrategy === 'replace-body' && atomMetadata) {
+        // FRAGMENT MODE: Replace only the function body, preserving signature
+        this.options.atomMetadata = atomMetadata;
+        const lines = this.originalContent.split('\n');
+        const startIdx = atomMetadata.lineStart - 1;
+        const endIdx = atomMetadata.lineEnd - 1;
+        const functionLines = lines.slice(startIdx, endIdx + 1);
+        const fullFunctionText = functionLines.join('\n');
+
+        const openBraceIdx = fullFunctionText.indexOf('{');
+        const closeBraceIdx = fullFunctionText.lastIndexOf('}');
+
+        logger.info(`[ModifyOperation-v2] FRAGMENT MODE: ${atomMetadata.name} lines ${atomMetadata.lineStart}-${atomMetadata.lineEnd}`);
+        logger.info(`[ModifyOperation-v2] Function text (${functionLines.length} lines): "${fullFunctionText.substring(0, 80)}..."`);
+
+        if (openBraceIdx !== -1 && closeBraceIdx !== -1) {
+          const signaturePart = fullFunctionText.substring(0, openBraceIdx + 1);
+          const newFunction = `${signaturePart}\n  ${this.options.newString.trim()}\n}`;
+          lines.splice(startIdx, endIdx - startIdx + 1, newFunction);
+          newContent = lines.join('\n');
+          position = { line: atomMetadata.lineStart, column: 0 };
+          replacements = 1;
+          strategy = 'replace-body';
+        } else {
+          // Fallback to standard modification
+          logger.warn('[ModifyOperation-v2] Fragment braces not found, falling back to standard mode');
+          const result = await calculateModification(this.originalContent, this.options, this.filePath, this.context, logger);
+          newContent = result.newContent;
+          position = result.position;
+          replacements = result.replacements;
+          strategy = 'standard-fallback';
+        }
+      } else {
+        // STANDARD MODE: full content replacement
+        const result = await calculateModification(this.originalContent, this.options, this.filePath, this.context, logger);
+        newContent = result.newContent;
+        position = result.position;
+        replacements = result.replacements;
+        strategy = 'standard';
+      }
+
+      // Step 4: Write modified content and record result
       this.modifiedContent = newContent;
       this.matchPosition = position;
 
       await fs.writeFile(absolutePath, newContent, 'utf-8');
 
-      this._markExecuted(this._createResult(true, {
+      const delta = {
+        strategy,
         position,
         replacements,
         addedLength: this.options.newString.length,
         removedLength: this.options.oldString ? this.options.oldString.length : 0,
         netChange: this.options.newString.length - (this.options.oldString ? this.options.oldString.length : 0)
-      }));
+      };
 
+      this._markExecuted(this._createResult(true, delta));
       this._emit('operation:modify:executed', {
         file: this.filePath,
         symbol: this.options.symbolName,
-        position,
-        replacements,
-        netChange: this.options.newString.length - (this.options.oldString ? this.options.oldString.length : 0)
+        ...delta
       });
 
-      return this.result;
+      return { ...this.result, delta };
     } catch (error) {
       return this._createResult(false, {}, error);
     }

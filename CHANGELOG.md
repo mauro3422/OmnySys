@@ -4,10 +4,58 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
-- **Watcher: migró de `fs.watch` a `chokidar` con polling en Windows.** Resuelve
-  el problema de que en Windows no se detectan archivos eliminados ni creados en
-  subdirectorios profundos. Archivos nuevos se indexan automáticamente sin reindex
-  completo; deletes se procesan vía orphan cleanup periódico (cada 30s).
+- **Propagation Completeness Scanner:** nuevo sistema proactivo que detecta
+  patrones que deberían propagarse pero no lo están. Integrado en
+  `buildCompilerDriftAssessment` como señal `propagation_completeness`.
+  Cuando se añade un nuevo rol (ej: `wrapper`) al classifier, verifica
+  automáticamente que se propagó al skip logic del watcher.
+  - `src/shared/compiler/propagation-completeness-scanner.js` — scanner con
+    auto-load de fuentes desde disco, registry de contratos expandibles,
+    heurísticas de detección de gaps.
+  - `src/shared/compiler/compiler-drift-assessment.js` — integrado como
+    nueva signal en el assessment pipeline.
+  - `src/shared/compiler/index.js` — exportado como API pública.
+- **`restart_server`: nuevo modo `processRestart`.** Mata y respawnea el
+  worker proxy preservando TODAS las bases de datos (`omnysys.db`,
+  `atom-history.db`, `health-history.db`). No fuerza reindex — el file
+  watcher reindexa automáticamente los archivos modificados.
+  - `src/layer-c-memory/mcp/restart-runtime.js` — `handleProcessRestart()`
+    con detección de modo proxy vs standalone.
+  - `src/layer-c-memory/mcp-http-proxy.js` — capturación de flag
+    `--processRestart`, logging diferenciado, cleanup solo en `--reanalyze`.
+  - `src/layer-c-memory/mcp/tools/tool-definition-admin.js` — schema
+    actualizado con descripción detallada de cada modo.
+  - `AGENTS.md` y `templates/AGENTS.md` — documentación de modos de restart
+    + tabla de arquitectura de bases de datos (qué se borra vs qué se preserva).
+- **Watcher: heurísticas de delegación intencional.** El integrity guard
+  ahora reconoce patrones de delegation wrapper (`Logger`, `Operation`, etc.)
+  y no genera falsos positivos de `sem_data_flow_high` para clases que son
+  inherentemente delegadoras.
+  - `src/core/file-watcher/guards/integrity-guard/dataflow-skip.js` —
+    `isLikelyDelegationWrapperAtom()` con detección por nombre, tipo,
+    fingerprint semántico y path.
+  - `src/shared/compiler/atom-role-classification.js` — nuevos matchers
+    para roles `wrapper` (logger, operation).
+- **Proxy HTTP: extracción de `worker-spawner.js`.** Módulo compartido
+  para spawning de worker processes entre `mcp-http-proxy.js` (HTTP) y
+  `mcp-server.js` (stdio). Elimina duplicación conceptual de `spawnWorker`
+  y shutdown handlers.
+  - `src/layer-c-memory/worker-spawner.js` — `buildExecArgv()`,
+    `spawnWorkerProcess()`, `createShutdownHandler()`.
+  - `src/layer-c-memory/mcp-http-proxy.js` — 382 → 261 líneas.
+  - `src/layer-c-memory/mcp-server.js` — usa módulo compartido.
+- **Logger System: transformación explícita de datos.** `log()` ahora
+  retorna datos enriquecidos (`enrichedMeta`, `normalizedMsg`, `output`).
+  Delegación methods (`debug`, `info`, etc.) aplican normalización antes
+  de delegar. Restaurados `fatal()` y `trace()`.
+- **ModifyOperation: execute() con estrategia explícita.** Retorna
+  `delta` con `strategy` ('replace-body', 'standard', 'standard-fallback')
+  para trazabilidad de qué camino de modificación se usó.
+- **`applyFragmentEdit`: refactor SOLID.** De CC 32 a 5 funciones
+  cohesivas: `findFunctionBoundaries`, `extractFunctionSignature`,
+  `buildNewFunctionText`, `findImportInsertionPoint`, `validateSyntax`.
+
+- Fixed atom history archive deduplication: removed `lastModified` from fingerprint so identical content hashes no longer create duplicate rows; added pre-write hash check to skip unchanged atoms automatically.
 - **`validate_imports`: eliminados falsos positivos.** `getFileExports` ahora hace
   fallback a `parseFileFromDisk` cuando la DB tiene datos stale de un archivo recién
   editado, evitando marcar imports válidos como rotos.

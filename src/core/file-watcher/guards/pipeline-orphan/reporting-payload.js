@@ -1,5 +1,6 @@
 import { createIssueType, IssueDomains, createStandardContext, StandardSuggestions } from '../guard-standards.js';
 import {
+    buildPropagationPlan,
     buildPipelineOrphanPropagationPlan,
     summarizePropagationPlan
 } from '../../../../shared/compiler/index.js';

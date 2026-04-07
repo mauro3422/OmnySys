@@ -6,6 +6,7 @@ import {
     StandardSuggestions
 } from './guard-standards.js';
 import {
+    buildPropagationPlan,
     buildTopologyRegressionPropagationPlan,
     summarizePropagationPlan
 } from '../../../shared/compiler/index.js';

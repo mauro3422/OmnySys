@@ -6,6 +6,7 @@
 
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
 import { getLiveFileTotal } from './live-row-utils.js';
+import { ensureLiveRowSync } from './live-row-reconciliation.js';
 
 export function collectFileUniverseMetrics(db) {
   if (!db) {

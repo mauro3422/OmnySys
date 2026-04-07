@@ -9,7 +9,7 @@ import { getPipelineOrphanSummary } from './pipeline-orphans.js';
 import { buildPipelineTimingTelemetrySummary } from './pipeline-timing-telemetry.js';
 import { buildToolRunTelemetrySummary } from './tool-run-telemetry/telemetry.js';
 import { asNumber } from './core-utils.js';
-import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
+import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
 export function buildCurrentSummaries({
   db,

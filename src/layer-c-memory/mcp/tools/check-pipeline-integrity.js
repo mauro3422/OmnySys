@@ -11,6 +11,7 @@ import { PipelineIntegrityDetector } from '../../../core/meta-detector/pipeline-
 import { IntegrityDashboard } from '../../../core/meta-detector/integrity-dashboard.js';
 import { createLogger } from '../../utils/logger.js';
 import {
+    buildPropagationPlan,
     buildIntegrityGuardPropagationPlan,
     summarizePropagationPlan
 } from '../../../shared/compiler/index.js';

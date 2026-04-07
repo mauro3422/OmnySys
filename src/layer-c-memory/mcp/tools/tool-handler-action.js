@@ -7,11 +7,13 @@ import { validate_imports } from './validate-imports.js';
 import { generate_tests, generate_batch_tests } from './generate-tests/index.js';
 import { suggest_architecture } from './suggest-architecture.js';
 import { consolidate_conceptual_cluster } from './consolidate-conceptual-cluster.js';
+import { consolidate_batch } from './consolidate-batch.js';
 import { suggest_canonical_api } from './suggest-canonical-api.js';
 import { validate_exports } from './validate-exports-tool.js';
 import { split_large_file } from './split-large-file.js';
 import { detect_folderization_opportunities } from './detect-folderization-opportunities.js';
 import { diagnose_tool_health } from './diagnose-tool-health/health.js';
+import { consolidate_policy_drifts } from './consolidate-policy-drifts.js';
 import { performAction } from '../../../shared/compiler/index.js';
 
 export const actionToolHandlers = {
@@ -26,6 +28,7 @@ export const actionToolHandlers = {
   mcp_omnysystem_generate_tests: (args, ctx) => performAction('generate_tests', args, ctx),
   mcp_omnysystem_generate_batch_tests: generate_batch_tests,
   mcp_omnysystem_consolidate_conceptual_cluster: (args, ctx) => performAction('consolidate_cluster', args, ctx),
+  mcp_omnysystem_consolidate_batch: (args, ctx) => consolidate_batch(args, ctx),
   mcp_omnysystem_folderize_family: (args, ctx) => performAction('folderize_family', args, ctx),
   mcp_omnysystem_rename_folderized_family: (args, ctx) => performAction('rename_folderized_family', args, ctx),
   mcp_omnysystem_normalize_folderized_family_names: (args, ctx) => performAction('normalize_folderized_family_names', args, ctx),
@@ -35,5 +38,6 @@ export const actionToolHandlers = {
   mcp_omnysystem_validate_exports: validate_exports,
   mcp_omnysystem_split_large_file: (args, ctx) => performAction('split_large_file', args, ctx),
   mcp_omnysystem_detect_folderization_opportunities: (args, ctx) => performAction('detect_folderization_opportunities', args, ctx),
-  mcp_omnysystem_diagnose_tool_health: diagnose_tool_health
+  mcp_omnysystem_diagnose_tool_health: diagnose_tool_health,
+  mcp_omnysystem_consolidate_policy_drifts: consolidate_policy_drifts
 };

@@ -2,36 +2,16 @@
 
 /**
  * OmnySys MCP HTTP Proxy - True Restart Manager
+ * Wraps mcp-http-server.js as a child process (IPC). Kills and respawns worker
+ * on restart_server calls — fresh ESM cache without dropping the port.
  *
- * Wraps mcp-http-server.js as a child process (IPC).
- * When restart_server is called, sends SIGTERM to the worker and respawns it
- * — fresh Node.js ESM cache — without killing the proxy or the port.
- *
- * Architecture:
- *   IDE ←── HTTP :9999 ──→ [mcp-http-server.js (worker, IPC child)]
- *                                     ↑ spawned/killed by ↓
- *                          [mcp-http-proxy.js (this, parent, never dies)]
- *
- * Usage (replace IDE task):
- *   node src/layer-c-memory/mcp-http-proxy.js [projectPath] [port]
- *
- * Restart flow:
- *   1. restart_server tool calls process.send({ type: 'restart' })
- *   2. Proxy receives IPC message, waits 300ms for tool response to flush
- *   3. Sends SIGTERM to worker → worker shuts down (releases port 9999)
- *   4. Proxy spawns new worker → fresh ESM cache → binds port 9999 again
- *   5. IDE reconnects automatically (OmnySys has 2s reconnect logic)
- *
- * ⚡ NOTE: The IDE may show a brief "reconnecting" state during the 1-2s
- *    between SIGTERM and the new worker's port bind. This is normal.
+ * Usage: node src/layer-c-memory/mcp-http-proxy.js [projectPath] [port]
  */
 
+import { log } from '../shared/logger-system.js';
 import path from 'path';
 import fs from 'fs';
-import { spawn } from 'child_process';
-import http from 'http';
-import { createRequire } from 'module';
-import { createLogger } from '#utils/logger.js';
+import { spawnWorkerProcess, createShutdownHandler } from './worker-spawner.js';
 import { shouldPreserveHistoryArtifact, nowIso } from '#shared/utils/normalize-helpers.js';
 import { fileURLToPath } from 'url';
 import {
@@ -41,7 +21,6 @@ import {
     writeDaemonOwnerLockSync,
     writeProxyRuntimeTelemetrySync
 } from '../shared/compiler/index.js';
-import { sanitizeLogText } from '../utils/logger.js';
 import {
     detectHealthyDaemon,
     waitForPortRelease
@@ -54,14 +33,7 @@ const projectRoot = path.resolve(__dirname, '../..');
 const logsDir = path.join(projectRoot, 'logs');
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 const logFile = path.join(logsDir, 'mcp-http-proxy.log');
-fs.writeFileSync(logFile, ''); // Fresh log each session
-
-function log(msg) {
-    const ts = new Date().toISOString().slice(11, 23);
-    const line = sanitizeLogText(`[proxy] ${ts} ${msg}\n`);
-    fs.appendFileSync(logFile, line);
-    process.stdout.write(line); // Also show in IDE task terminal
-}
+fs.writeFileSync(logFile, '');
 
 // ── Config ───────────────────────────────────────────────────────────────────
 const workerPath = path.join(__dirname, 'mcp-http-server.js');
@@ -83,47 +55,21 @@ let shutdownInProgress = false;
 let proxyTelemetry = readProxyRuntimeTelemetry(projectRoot) || null;
 
 function persistProxyTelemetry(patch = {}) {
-    proxyTelemetry = {
-        ...(proxyTelemetry || {}),
-        projectPath,
-        port: String(port),
-        pid: process.pid,
-        updatedAt: nowIso(),
-        ...patch
-    };
-
-    try {
-        writeProxyRuntimeTelemetrySync(projectRoot, proxyTelemetry);
-    } catch (error) {
-        log(`⚠️  Failed to persist proxy telemetry: ${error.message}`);
-    }
-
+    proxyTelemetry = { ...(proxyTelemetry || {}), projectPath, port: String(port), pid: process.pid, updatedAt: nowIso(), ...patch };
+    try { writeProxyRuntimeTelemetrySync(projectRoot, proxyTelemetry); }
+    catch (error) { log(`⚠️  Failed to persist proxy telemetry: ${error.message}`); }
     return proxyTelemetry;
 }
 
 function recordProxyEvent(type, details = {}) {
     const current = proxyTelemetry || { events: [] };
     const events = Array.isArray(current.events) ? current.events.slice(-19) : [];
-    events.push({
-        type,
-        at: nowIso(),
-        ...details
-    });
-    return persistProxyTelemetry({
-        events,
-        lastEventType: type,
-        lastEventAt: events[events.length - 1]?.at || nowIso(),
-        ...details
-    });
+    events.push({ type, at: nowIso(), ...details });
+    return persistProxyTelemetry({ events, lastEventType: type, lastEventAt: events[events.length - 1]?.at || nowIso(), ...details });
 }
 
 function writeOwnerLock(state) {
-    writeDaemonOwnerLockSync(projectRoot, {
-        pid: process.pid,
-        port,
-        state,
-        projectPath
-    });
+    writeDaemonOwnerLockSync(projectRoot, { pid: process.pid, port, state, projectPath });
 }
 
 function removeOwnerLock() {
@@ -131,10 +77,7 @@ function removeOwnerLock() {
 }
 
 function clearRespawnTimer() {
-    if (respawnTimer) {
-        clearTimeout(respawnTimer);
-        respawnTimer = null;
-    }
+    if (respawnTimer) { clearTimeout(respawnTimer); respawnTimer = null; }
 }
 
 function scheduleRespawn(delayMs, extraArgs = []) {
@@ -160,35 +103,125 @@ function scheduleRespawn(delayMs, extraArgs = []) {
 
 // ── Spawn Worker ─────────────────────────────────────────────────────────────
 
+function attachWorkerIPCListeners(worker) {
+    worker.on('message', (msg) => {
+        if (msg?.type === 'restart') {
+            if (restartScheduled || restartInFlight) return;
+            restartInFlight = true;
+            restartScheduled = true;
+            clearRespawnTimer();
+
+            log(`🔄 Restart requested (clearCache=${msg.clearCache}, reanalyze=${msg.reanalyze})`);
+            writeOwnerLock('restarting');
+            recordProxyEvent('restart-requested', {
+                clearCache: !!msg.clearCache,
+                reanalyze: !!msg.reanalyze,
+                reindexOnly: !!msg.reindexOnly,
+                workerPid: worker?.pid || null,
+                restartCount
+            });
+
+            const nextArgs = [];
+            if (msg.reanalyze) nextArgs.push('--reanalyze');
+            if (msg.clearCache) nextArgs.push('--clearCache');
+            if (msg.reindexOnly) nextArgs.push('--reindexOnly');
+            if (msg.processRestart) nextArgs.push('--processRestart');
+
+            setTimeout(() => {
+                log(`⏹️  Sending SIGTERM to worker... (processRestart=${msg.processRestart})`);
+                worker.kill('SIGTERM');
+                restartScheduled = nextArgs;
+            }, 300);
+        }
+    });
+
+    worker.on('close', async (code, signal) => {
+        await handleWorkerClose(code, signal);
+    });
+
+    worker.on('error', (err) => {
+        log(`Worker error: ${err.message}`);
+        restartInFlight = false;
+    });
+}
+
+async function handlePlannedRestart(code, signal, nextArgs) {
+    if (nextArgs.includes('--reanalyze')) await cleanupAnalysisData();
+    else if (nextArgs.includes('--processRestart')) {
+        log('♻️  processRestart=true: Respawning worker — ALL databases preserved (omnysys.db, atom-history.db, health-history.db)');
+    }
+    log('🚀 Respawning worker with fresh ESM cache...');
+    recordProxyEvent('worker-exit-planned-restart', { workerPid: worker?.pid || null, workerExitCode: code, workerExitSignal: signal, restartCount });
+    scheduleRespawn(process.platform === 'win32' ? 3000 : 1000, nextArgs);
+    restartInFlight = false;
+}
+
+async function handleWorkerCrash(code, signal) {
+    persistProxyTelemetry({ state: 'crashed', crashCount: (proxyTelemetry?.crashCount || 0) + 1, unexpectedExitCount: (proxyTelemetry?.unexpectedExitCount || 0) + 1 });
+    recordProxyEvent('worker-crash', { workerPid: worker?.pid || null, workerExitCode: code, workerExitSignal: signal, restartCount });
+    if (await detectHealthyDaemon()) {
+        log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
+        removeOwnerLock();
+        process.exit(0);
+    }
+    writeOwnerLock('restarting');
+    log(`⚠️  Worker crashed (code=${code}). Respawning in 5s...`);
+    scheduleRespawn(5000);
+}
+
+function handleCleanExit(code, signal) {
+    persistProxyTelemetry({ state: 'clean-exit', cleanExitCount: (proxyTelemetry?.cleanExitCount || 0) + 1 });
+    recordProxyEvent('worker-exit-clean', { workerPid: worker?.pid || null, workerExitCode: code, workerExitSignal: signal, restartCount });
+    log('Worker exited cleanly. Proxy shutting down.');
+    removeOwnerLock();
+    process.exit(0);
+}
+
+async function handleWorkerClose(code, signal) {
+    log(`Worker exited (code=${code}, signal=${signal})`);
+    persistProxyTelemetry({ workerExitAt: nowIso(), workerExitCode: code, workerExitSignal: signal });
+
+    if (restartScheduled) {
+        const nextArgs = Array.isArray(restartScheduled) ? restartScheduled : [];
+        restartScheduled = false;
+        await handlePlannedRestart(code, signal, nextArgs);
+    } else if (code !== 0) {
+        await handleWorkerCrash(code, signal);
+    } else {
+        handleCleanExit(code, signal);
+    }
+}
+
+async function cleanupAnalysisData() {
+    log('🗑️  reanalyze=true: Cleaning up old analysis data from Proxy...');
+    const dataDir = path.join(projectPath, '.omnysysdata');
+    try {
+        for (const dir of ['files', 'atoms', 'molecules', 'watcher']) {
+            const dirPath = path.join(dataDir, dir);
+            if (fs.existsSync(dirPath)) {
+                fs.rmSync(dirPath, { recursive: true, force: true });
+            }
+        }
+        for (const file of ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json']) {
+            if (shouldPreserveHistoryArtifact(file)) continue;
+            const filePath = path.join(dataDir, file);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+        log('✅ Data cleanup complete (Proxy-side)');
+    } catch (err) {
+        log(`⚠️  Cleanup failed: ${err.message}`);
+    }
+}
+
 function spawnWorker(extraArgs = []) {
     clearRespawnTimer();
     writeOwnerLock(restartCount === 0 ? 'starting' : 'restarting');
     log(`Spawning mcp-http-server.js (restart #${restartCount})...`);
 
-    // Inherit memory flags, add defaults
-    const execArgv = process.execArgv.filter(a =>
-        a.startsWith('--max-old-space-size') || a.startsWith('--inspect') || a === '--expose-gc'
-    );
-    if (!execArgv.some(a => a.startsWith('--max-old-space-size'))) {
-        execArgv.push('--max-old-space-size=8192');
-    }
-    if (!execArgv.includes('--expose-gc')) {
-        execArgv.push('--expose-gc');
-    }
-
-    // Prepare worker arguments
     const workerArgs = [workerPath, projectPath, port, ...extraArgs];
-
-    worker = spawn(process.execPath, [...execArgv, ...workerArgs], {
-        // IPC channel enables process.send() from inside mcp-http-server.js
-        stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
-        windowsHide: true,
-        env: {
-            ...process.env,
-            OMNYSYS_MCP_PORT: port,
-            OMNYSYS_PROXY_MODE: '1',   // Tells mcp-http-server it's running under proxy
-        }
-    });
+    worker = spawnWorkerProcess(workerPath, workerArgs, { proxyModeEnv: '1' });
 
     log(`Worker PID: ${worker.pid}`);
     const spawnCount = restartCount + 1;
@@ -207,159 +240,16 @@ function spawnWorker(extraArgs = []) {
     restartCount = spawnCount;
     recordProxyEvent(restartCount === 1 ? 'spawn-initial' : 'spawn-restart', { workerPid: worker.pid, restartCount });
 
-    // ── IPC: handle restart signal from restart_server tool ───────────────────
-    worker.on('message', (msg) => {
-        if (msg?.type === 'restart') {
-            if (restartScheduled || restartInFlight) return;
-            restartInFlight = true;
-            restartScheduled = true;
-            clearRespawnTimer();
-
-            log(`🔄 Restart requested (clearCache=${msg.clearCache}, reanalyze=${msg.reanalyze})`);
-            writeOwnerLock('restarting');
-            recordProxyEvent('restart-requested', {
-                clearCache: !!msg.clearCache,
-                reanalyze: !!msg.reanalyze,
-                reindexOnly: !!msg.reindexOnly,
-                workerPid: worker?.pid || null,
-                restartCount
-            });
-
-            // Capture flags to pass to the next spawn
-            const nextArgs = [];
-            if (msg.reanalyze) nextArgs.push('--reanalyze');
-            if (msg.clearCache) nextArgs.push('--clearCache');
-            if (msg.reindexOnly) nextArgs.push('--reindexOnly');
-
-            // Give 300ms for the tool response to flush back to IDE before killing
-            setTimeout(() => {
-                log('⏹️  Sending SIGTERM to worker...');
-                worker.kill('SIGTERM');
-                restartScheduled = nextArgs; // Store args instead of just true
-            }, 300);
-        }
-    });
-
-    // ── Worker exit handler ───────────────────────────────────────────────────
-    worker.on('close', async (code, signal) => {
-        log(`Worker exited (code=${code}, signal=${signal})`);
-        persistProxyTelemetry({
-            workerExitAt: nowIso(),
-            workerExitCode: code,
-            workerExitSignal: signal
-        });
-
-        if (restartScheduled) {
-            const nextArgs = Array.isArray(restartScheduled) ? restartScheduled : [];
-            restartScheduled = false;
-
-            // ── Cleanup for reanalyze ─────────────────────────────────────────────
-            // On Windows, file locks often prevent the worker from deleting its own DB.
-            // By doing it here, after the worker has closed, we ensure success.
-            if (nextArgs.includes('--reanalyze')) {
-                log('🗑️  reanalyze=true: Cleaning up old analysis data from Proxy...');
-                const dataDir = path.join(projectPath, '.omnysysdata');
-                try {
-                    const toDelete = ['files', 'atoms', 'molecules', 'watcher'];
-                    for (const dir of toDelete) {
-                        const dirPath = path.join(dataDir, dir);
-                        if (fs.existsSync(dirPath)) {
-                            fs.rmSync(dirPath, { recursive: true, force: true });
-                        }
-                    }
-                    const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm', 'index.json', 'atom-versions.json'];
-                    for (const file of dbFiles) {
-                        if (shouldPreserveHistoryArtifact(file)) continue;
-                        const filePath = path.join(dataDir, file);
-                        if (fs.existsSync(filePath)) {
-                            fs.unlinkSync(filePath);
-                        }
-                    }
-                    log('✅ Data cleanup complete (Proxy-side)');
-                } catch (err) {
-                    log(`⚠️  Cleanup failed: ${err.message}`);
-                }
-            }
-
-            log('🚀 Respawning worker with fresh ESM cache...');
-            recordProxyEvent('worker-exit-planned-restart', {
-                workerPid: worker?.pid || null,
-                workerExitCode: code,
-                workerExitSignal: signal,
-                restartCount
-            });
-            // Small delay to allow OS to release port 9999 (Windows needs ~2-3s sometimes)
-            const delay = process.platform === 'win32' ? 3000 : 1000;
-            scheduleRespawn(delay, nextArgs);
-            restartInFlight = false;
-        } else if (code !== 0) {
-            persistProxyTelemetry({
-                state: 'crashed',
-                crashCount: (proxyTelemetry?.crashCount || 0) + 1,
-                unexpectedExitCount: (proxyTelemetry?.unexpectedExitCount || 0) + 1
-            });
-            recordProxyEvent('worker-crash', {
-                workerPid: worker?.pid || null,
-                workerExitCode: code,
-                workerExitSignal: signal,
-                restartCount
-            });
-            if (await detectHealthyDaemon()) {
-                log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
-                removeOwnerLock();
-                process.exit(0);
-            }
-            writeOwnerLock('restarting');
-            log(`⚠️  Worker crashed (code=${code}). Respawning in 5s...`);
-            // Increased delay for crashes to avoid tight loops on port conflict
-            scheduleRespawn(5000);
-        } else {
-            persistProxyTelemetry({
-                state: 'clean-exit',
-                cleanExitCount: (proxyTelemetry?.cleanExitCount || 0) + 1
-            });
-            recordProxyEvent('worker-exit-clean', {
-                workerPid: worker?.pid || null,
-                workerExitCode: code,
-                workerExitSignal: signal,
-                restartCount
-            });
-            log('Worker exited cleanly. Proxy shutting down.');
-            removeOwnerLock();
-            process.exit(0);
-        }
-    });
-
-    worker.on('error', (err) => {
-        log(`Worker error: ${err.message}`);
-        restartInFlight = false;
-    });
+    attachWorkerIPCListeners(worker);
 }
 
 // ── Proxy shutdown ────────────────────────────────────────────────────────────
-function beginProxyShutdown() {
+const shutdown = createShutdownHandler(worker, 'Proxy', () => {
     shutdownInProgress = true;
-    log('Proxy SIGINT/SIGTERM — shutting down worker...');
     clearRespawnTimer();
     removeOwnerLock();
     recordProxyEvent('proxy-shutdown', { shutdownInProgress: true });
-}
-
-function finalizeProxyShutdown() {
-    if (worker) {
-        worker.kill('SIGTERM');
-    }
-    setTimeout(() => process.exit(0), 2000);
-}
-
-function shutdown() {
-    if (shutdownInProgress) {
-        return;
-    }
-
-    beginProxyShutdown();
-    finalizeProxyShutdown();
-}
+});
 
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
@@ -375,7 +265,5 @@ if (await detectHealthyDaemon()) {
 
 ensureCompilerRuntimeDirSync(projectRoot);
 writeOwnerLock('starting');
-persistProxyTelemetry({
-    state: 'booting'
-});
+persistProxyTelemetry({ state: 'booting' });
 spawnWorker();

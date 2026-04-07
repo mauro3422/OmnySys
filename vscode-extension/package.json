@@ -1,0 +1,57 @@
+{
+  "name": "omnysystem-explorer",
+  "displayName": "OmnySystem Explorer",
+  "description": "Visual dashboard for OmnySystem — interactive code dependency graphs, atom explorer, and real-time health monitoring",
+  "version": "0.1.0",
+  "publisher": "omnysystem",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "omnysystem.openDashboard",
+        "title": "OmnySystem: Open Explorer Dashboard"
+      },
+      {
+        "command": "omnysystem.showFileAtoms",
+        "title": "OmnySystem: Show Atoms for Current File"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "omnysystem.openDashboard",
+        "key": "ctrl+shift+o",
+        "mac": "cmd+shift+o"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run build:webview && npm run build:ext && npm run copy:wasm",
+    "build:ext": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --sourcemap",
+    "copy:wasm": "node -e \"require('fs').copyFileSync('node_modules/sql.js/dist/sql-wasm.wasm','dist/sql-wasm.wasm')\"",
+    "build:webview": "cd webview-ui && npm run build",
+    "watch:ext": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --sourcemap --watch",
+    "dev": "concurrently \"npm run watch:ext\" \"cd webview-ui && npm run dev\"",
+    "install:all": "npm install && cd webview-ui && npm install"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "concurrently": "^8.2.2",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "sql.js": "^1.14.1"
+  }
+}

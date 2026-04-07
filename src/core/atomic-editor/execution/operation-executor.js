@@ -52,7 +52,7 @@ export async function executeOperation(operation, options) {
         oldString: operation.options?.oldString,
         newString: operation.options?.newString
       });
-      
+
       if (!safety.safe) {
         throw new Error(`Safety check failed: ${safety.error}`);
       }
@@ -69,14 +69,35 @@ export async function executeOperation(operation, options) {
       logger.info(`  ✅ Operation valid`);
     }
 
+    // Phase 2.5: Extract atom metadata BEFORE syntax validation (needed for fragment-aware validation)
+    let atomMeta = operation.options?.atomMetadata || null;
+    if (!atomMeta && operation.options?.symbolName && operation.extractAtomMetadata) {
+      atomMeta = await operation.extractAtomMetadata();
+      if (atomMeta) {
+        operation.options.atomMetadata = atomMeta;
+      }
+    }
+
     // Phase 3: Syntax validation (if JS/TS)
+    // FRAGMENT-AWARE: Pass atomMetadata so validator can validate full file after fragment edit
     if (enableSyntaxValidation && operation.options?.newString) {
       const ext = operation.filePath.match(/\.[^.]+$/);
       if (ext && ['.js', '.ts', '.mjs', '.cjs'].includes(ext[0])) {
         logger.info(`  🔍 Validating syntax...`);
         const modifiedContent = await getModifiedContent(operation);
-        const syntax = await validators.syntax.validate(operation.filePath, modifiedContent);
-        
+
+        const replacementStrategy = operation.options?.replacementStrategy || null;
+
+        const syntax = await validators.syntax.validate(
+          operation.filePath,
+          modifiedContent,
+          {
+            atomMetadata: atomMeta,
+            replacementStrategy: replacementStrategy,
+            originalFilePath: operation.filePath
+          }
+        );
+
         if (!syntax.valid) {
           safeEmit('atom:validation:failed', {
             file: operation.filePath,
@@ -85,11 +106,11 @@ export async function executeOperation(operation, options) {
             column: syntax.column,
             severity: 'critical'
           });
-          
+
           logger.error(`  ❌ SYNTAX ERROR:`);
           logger.error(`     ${syntax.error}`);
           logger.error(`     Line ${syntax.line}, Column ${syntax.column}`);
-          
+
           throw new Error(`Syntax error prevents edit: ${syntax.error}`);
         }
         logger.info(`  ✅ Syntax valid`);

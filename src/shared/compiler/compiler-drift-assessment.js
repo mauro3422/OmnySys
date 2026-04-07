@@ -2,6 +2,7 @@ import { normalizeCount } from './contract-helpers.js';
 import { summarizeAnalysisGeneration } from './counts-generation.js';
 import { summarizeDataGatewayContract } from './contract.js';
 import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
+import { buildPropagationCompletenessSignal } from './propagation-completeness-scanner.js';
 
 const signal = (value) => value;
 
@@ -196,6 +197,7 @@ export function buildCompilerDriftAssessment({
 } = {}) {
   const signals = [
     propagationExpansionSignal(policySummary || {}, metadataExtractionCoverage, metadataSurfaceParity),
+    buildPropagationCompletenessSignal(),
     policySignal(policySummary || {}),
     paritySignal(metadataSurfaceParity),
     extractionSignal(metadataExtractionCoverage),

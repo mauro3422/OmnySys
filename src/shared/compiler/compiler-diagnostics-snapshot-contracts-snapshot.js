@@ -7,7 +7,9 @@ import { buildCompilerStandardizationReport } from './standardization-report.js'
 import { buildCompilerContractLayer } from './compiler-contract-layer/layer.js';
 import { buildSurfaceAudit } from './surface-audit/audit.js';
 import { getLiveFileTotal } from './live-row-utils.js';
+import { ensureLiveRowSync } from './live-row-reconciliation.js';
 import { buildResolvedCanonicalAdoptions } from './compiler-diagnostics-snapshot-contracts-adoptions.js';
+import { loadCompilerDiagnosticsSnapshot } from './snapshot.js';
 
 export function buildCompilerDiagnosticsSnapshotContracts({
   projectPath,

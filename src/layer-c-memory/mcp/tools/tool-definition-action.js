@@ -190,6 +190,31 @@ export const actionToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_consolidate_batch',
+    description: 'Consolida múltiples clusters de duplicados conceptuales en batch. Incluye safety checks, signature validation y dry-run mode.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        clusters: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              fingerprint: { type: 'string' },
+              ssotPath: { type: 'string' }
+            },
+            required: ['fingerprint', 'ssotPath']
+          },
+          description: 'Lista de clusters a consolidar'
+        },
+        dryRun: { type: 'boolean', default: true, description: 'Preview only - no mutations' },
+        autoDetect: { type: 'boolean', default: false, description: 'Auto-detect clusters consolidables' },
+        maxClusters: { type: 'number', default: 10, description: 'Máx clusters a procesar' }
+      },
+      required: []
+    }
+  },
+  {
     name: 'mcp_omnysystem_safe_edit',
     description: 'Editor de alto nivel con contexto automático, backup y validación extendida. Usa atomic_edit internamente pero obtiene el contexto exacto automáticamente. Ideal cuando no sabés el oldString exacto.',
     inputSchema: {

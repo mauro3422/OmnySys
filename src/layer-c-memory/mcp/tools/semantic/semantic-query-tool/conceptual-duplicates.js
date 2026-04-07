@@ -1,4 +1,4 @@
-import { parseSemanticFingerprint } from '../../../../../shared/compiler/index.js';
+import { parseSemanticFingerprint, classifyConceptualNoise } from '../../../../../shared/compiler/index.js';
 
 function buildConceptualSummary(groups) {
     const totalGroups = groups.length;
@@ -79,7 +79,25 @@ export function loadConceptualDuplicates(repo, options = {}) {
         ? repo.findConceptualDuplicates(options)
         : queryConceptualDuplicates(repo.db, options);
     const repoSummary = rows?.summary || null;
-    const groups = mapConceptualGroups(rows);
+
+    // Filter out noise-class groups when using repo path (which has summary)
+    let groups;
+    if (repoSummary && repoSummary.noiseByClass) {
+        // When using repo path, filter each group by checking if ALL its atoms are noise
+        const rawGroups = rows.groups || rows || [];
+        groups = rawGroups.filter((group) => {
+            const fp = group.semanticFingerprint || group.fingerprint || '';
+            // Skip groups where the fingerprint indicates generic callbacks
+            const { chest, entity } = parseSemanticFingerprint(fp);
+            const isGenericCallback = /_callback$/.test(fp) || entity === 'callback' || entity === '_callback';
+            if (chest === 'lifecycle' && isGenericCallback) return false;
+            return true;
+        });
+        groups = mapConceptualGroups(groups);
+    } else {
+        groups = mapConceptualGroups(rows);
+    }
+
     const summary = buildConceptualSummary(groups);
 
     return {

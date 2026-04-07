@@ -20,6 +20,7 @@ import {
 import {
   buildCompilerPolicyIssueSummary,
   detectCompilerPolicyDriftFromSource,
+  buildPropagationPlan,
   buildPolicyDriftPropagationPlan,
   summarizePropagationPlan
 } from '../../../shared/compiler/index.js';

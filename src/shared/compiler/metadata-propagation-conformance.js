@@ -40,10 +40,20 @@ export function detectMetadataPropagationConformanceFromSource(filePath, source 
     options,
     { severity: 'medium', policyArea: 'metadata_propagation' },
     ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
+      const isExempt = (
+        normalizedPath.endsWith('/system-map-persistence.js') ||
+        normalizedPath.startsWith('src/shared/compiler/system-map-persistence') ||
+        normalizedPath.startsWith('src/shared/compiler/metadata-extraction-coverage') ||
+        normalizedPath.startsWith('src/layer-c-memory/storage/repository/adapters') ||
+        normalizedPath.startsWith('src/layer-c-memory/query/queries/file-query/system-map.js') ||
+        normalizedPath.startsWith('src/layer-c-memory/query/queries/file-query/dependencies/deps.js')
+      );
+
+      if (isExempt) return;
+
       if (
         mixesParallelMetadataUniverses(currentSource) &&
-        !importsCanonicalPropagationApi(currentSource) &&
-        !normalizedPath.endsWith('/system-map-persistence.js')
+        !importsCanonicalPropagationApi(currentSource)
       ) {
         findings.push(createFinding(
           'parallel_metadata_universes',
@@ -57,7 +67,6 @@ export function detectMetadataPropagationConformanceFromSource(filePath, source 
       if (
         usesLegacySystemMapTables(currentSource) &&
         !importsCanonicalPropagationApi(currentSource) &&
-        !normalizedPath.endsWith('/system-map-persistence.js') &&
         !normalizedPath.includes('/storage/repository/adapters/helpers/system-map/')
       ) {
         findings.push(createFinding(

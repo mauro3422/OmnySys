@@ -1,4 +1,5 @@
 import {
+  buildPropagationPlan,
   buildPipelineHealthPropagationPlan,
   formatToolHealthDashboard,
   summarizePropagationPlan

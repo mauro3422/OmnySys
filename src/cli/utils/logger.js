@@ -17,10 +17,7 @@ const ICONS = {
  * @param {string} msg - Message
  * @param {string} type - Message type
  */
-export function log(msg, type = 'info') {
-  console.log(`${ICONS[type] || '•'} ${msg}`);
-}
-
+export { log } from '../../shared/logger-system.js';
 /**
  * Display help text
  */

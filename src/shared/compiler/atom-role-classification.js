@@ -138,6 +138,21 @@ const ROLE_MATCHERS = [
     role: 'transformer',
     confidence: 0.82,
     reason: 'transformation_naming'
+  },
+  {
+    test: (s) =>
+      /logger/.test(s.normalizedPath) ||
+      /Logger$/.test(s.normalizedName),
+    role: 'wrapper',
+    confidence: 0.88,
+    reason: 'logger_delegation_wrapper'
+  },
+  {
+    test: (s) =>
+      /Operation$/.test(s.normalizedName) && s.purpose === 'api_export',
+    role: 'wrapper',
+    confidence: 0.85,
+    reason: 'operation_delegation_wrapper'
   }
 ];
 

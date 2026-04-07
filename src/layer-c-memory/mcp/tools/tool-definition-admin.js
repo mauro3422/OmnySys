@@ -188,14 +188,15 @@ export const adminToolDefinitions = [
   },
   {
     name: 'mcp_omnysystem_restart_server',
-    description: 'Restarts the OmnySys server to load updated code. clearCacheOnly=true for fastest option (no reindex). reindexOnly=true forces Layer A without clearing DB and is the closest thing to a resume/continue path. clearCache+reanalyze=true performs a destructive full wipe + full reindex from scratch and does not resume prior progress.',
+    description: 'Restarts the OmnySys server to load updated code. Modes (mutually exclusive — use ONE): processRestart=true kills worker and respawns preserving ALL databases (omnysys.db, atom-history.db, health-history.db) — ideal after code edits. clearCacheOnly=true flushes in-memory cache + refresh tool registry (fastest, no process restart). reindexOnly=true forces Layer A re-analysis without clearing DB. clearCache+reanalyze=true DESTRUCTIVE full wipe + full reindex (deletes omnysys.db, atom-versions, etc. but preserves atom-history.db and health-history.db).',
     inputSchema: {
       type: 'object',
       properties: {
-        clearCache: { type: 'boolean', default: false, description: 'Clear in-memory cache before restarting' },
-        reanalyze: { type: 'boolean', default: false, description: 'Delete DB + force full reindex from scratch. Does not resume prior progress. Use with clearCache:true.' },
-        clearCacheOnly: { type: 'boolean', default: false, description: 'FAST: Only flush in-memory cache + refresh tool registry. No reindex.' },
-        reindexOnly: { type: 'boolean', default: false, description: 'Force Layer A re-analysis without clearing the DB or restarting the process.' }
+        processRestart: { type: 'boolean', default: false, description: 'Kill worker process and respawn with fresh ESM cache. PRESERVES all databases (omnysys.db, atom-history.db, health-history.db). Does NOT trigger reindex — file watcher handles changed files automatically. Use this after editing code when changes are not reflected.' },
+        clearCache: { type: 'boolean', default: false, description: 'Clear in-memory cache before restarting. Use with reanalyze:true for full wipe, or alone with processRestart:true.' },
+        reanalyze: { type: 'boolean', default: false, description: 'DESTRUCTIVE: Delete DB + force full reindex from scratch. Does NOT preserve atom_versions, file_hashes, or analysis cache. DOES preserve atom-history.db and health-history.db. Use with clearCache:true.' },
+        clearCacheOnly: { type: 'boolean', default: false, description: 'FASTEST: Only flush in-memory cache + refresh tool registry. No process restart, no reindex. Use when you just want to clear cached results.' },
+        reindexOnly: { type: 'boolean', default: false, description: 'Force Layer A re-analysis without clearing the DB or restarting the process. Use when an atom was not indexed properly.' }
       }
     }
   },
@@ -254,6 +255,20 @@ export const adminToolDefinitions = [
         limit: { type: 'number', default: 100, description: 'Número máximo de ejecuciones a analizar' },
         toolName: { type: 'string', description: 'Filtrar por nombre de herramienta específica (opcional)' },
         includeDetails: { type: 'boolean', default: true, description: 'Incluir detalles de errores individuales' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'mcp_omnysystem_consolidate_policy_drifts',
+    description: 'Detecta policy drifts (violaciones de contratos canónicos) y genera/aplica planes de reparación automáticos. Similar a folderize_family pero para conformance de gobernanza.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePaths: { type: 'array', items: { type: 'string' }, description: 'Archivos específicos a escanear' },
+        scopePath: { type: 'string', description: 'Directorio a escanear' },
+        policyArea: { type: 'string', description: 'Filtrar por área de política (data_gateway, propagation_expansion, summary_presentation, etc.)' },
+        execute: { type: 'boolean', default: false, description: 'Si es true, aplica los repairs. Si es false, solo devuelve el plan.' }
       },
       required: []
     }

@@ -265,7 +265,7 @@ export class AtomicEditor extends EventEmitter {
         safety: this.safetyValidator
       },
       enableSafetyChecks: this.options.enableSafetyChecks,
-      enableSyntaxValidation: this.options.enableSyntaxValidation,
+      enableSyntaxValidation: options.enableSyntaxValidation !== false,  // Allow override
       enableUndo: this.options.enableUndo,
       emit: this.emit.bind(this),
       getModifiedContent: (op) => this._getModifiedContent(op),
@@ -293,6 +293,31 @@ export class AtomicEditor extends EventEmitter {
     const content = await fs.readFile(absolutePath, 'utf-8');
 
     if (operation.type === 'modify') {
+      const { symbolName, replacementStrategy, newString } = operation.options;
+
+      // FRAGMENT MODE: Apply body replacement to get content for validation
+      if (symbolName && replacementStrategy === 'replace-body') {
+        const atomMeta = operation.options.atomMetadata;
+        if (atomMeta) {
+          const lines = content.split('\n');
+          const startIdx = atomMeta.lineStart - 1;
+          const endIdx = atomMeta.lineEnd - 1;
+          const functionLines = lines.slice(startIdx, endIdx + 1);
+          const fullFunctionText = functionLines.join('\n');
+
+          const openBraceIdx = fullFunctionText.indexOf('{');
+          const closeBraceIdx = fullFunctionText.lastIndexOf('}');
+
+          if (openBraceIdx !== -1 && closeBraceIdx !== -1) {
+            const signaturePart = fullFunctionText.substring(0, openBraceIdx + 1);
+            const newFunction = `${signaturePart}\n  ${newString.trim()}\n}`;
+            lines.splice(startIdx, endIdx - startIdx + 1, newFunction);
+            return lines.join('\n');
+          }
+        }
+      }
+
+      // FALLBACK: Use standard calculateModification
       const { newContent } = await calculateModification(
         content,
         operation.options,

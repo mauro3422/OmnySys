@@ -24,7 +24,19 @@ function isPropagationExemptPath(normalizedPath = '') {
     || normalizedPath.includes('/metadata-completeness/')
     || normalizedPath.startsWith('src/shared/compiler/atom-metadata-helpers.js')
     || normalizedPath.startsWith('src/shared/compiler/propagation-expansion-conformance.js')
-    || normalizedPath.startsWith('src/shared/compiler/policy-conformance.js');
+    || normalizedPath.startsWith('src/shared/compiler/policy-conformance.js')
+    || normalizedPath.startsWith('src/shared/compiler/compiler-drift-assessment.js')
+    || normalizedPath.startsWith('src/shared/compiler/compiler-metrics-current.js')
+    || normalizedPath.startsWith('src/shared/compiler/compiler-metrics-snapshot.js')
+    || normalizedPath.startsWith('src/shared/compiler/dashboard.js')
+    || normalizedPath.startsWith('src/shared/compiler/status-system-table.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status-server-details.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/compiler-snapshot-service.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/folderization-snapshot-service.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt/')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js');
 }
 
 function isPropagationSurfaceCandidate(normalizedPath = '') {

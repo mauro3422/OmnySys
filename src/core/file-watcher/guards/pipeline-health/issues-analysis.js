@@ -4,6 +4,7 @@ import {
     createStandardContext
 } from '../guard-standards.js';
 import {
+    buildPropagationPlan,
     buildPipelineHealthPropagationPlan,
     summarizePropagationPlan
 } from '../../../../shared/compiler/index.js';

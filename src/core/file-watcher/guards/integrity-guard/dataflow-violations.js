@@ -3,6 +3,7 @@ import {
     StandardThresholds
 } from '../guard-standards.js';
 import {
+    buildPropagationPlan,
     buildIntegrityGuardPropagationPlan,
     summarizePropagationPlan
 } from '../../../../shared/compiler/index.js';

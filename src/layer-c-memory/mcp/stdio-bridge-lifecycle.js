@@ -6,6 +6,7 @@
  * bridge can remain focused on request forwarding.
  */
 
+import { log } from '../../shared/logger-system.js';
 import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
@@ -33,9 +34,7 @@ const START_LOCK_STALE_MS = 30000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export function log(message) {
-    process.stderr.write(`[mcp-stdio-bridge] ${new Date().toISOString().slice(11, 23)} ${message}\n`);
-}
+export { log };
 
 async function checkDaemon() {
     return (await readDaemonHealth(DAEMON_HEALTH)).healthy;

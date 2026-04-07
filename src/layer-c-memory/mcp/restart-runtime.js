@@ -23,7 +23,8 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
     reindexOnly = false,
     clearCacheOnly = false,
     refreshOnly = false,
-    softReload = false
+    softReload = false,
+    processRestart = false
   } = args;
   const { cache, server, orchestrator, refreshToolRegistry } = context;
 
@@ -38,6 +39,7 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
     if (refreshOnly) return await handleRefreshOnly(server, cache, refreshToolRegistry);
     if (softReload) return await handleSoftReload(server, orchestrator, cache, refreshToolRegistry);
     if (clearCacheOnly) return await handleClearCacheOnly(cache, refreshToolRegistry);
+    if (processRestart) return await handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, server);
     if (reindexOnly) {
       const result = {
         restarting: false,
@@ -109,6 +111,90 @@ async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
     restartType: 'cache_only_flush',
     lifecycle: buildRestartLifecycleGuidance({ restartType: 'cache_only_flush', clearCacheOnly: true }),
     message: 'In-memory cache flushed and tool registry refreshed. No reindex needed.',
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * Process restart: kills the Node.js process and respawns it via the proxy.
+ *
+ * What it DOES:
+ *   ✅ Kills and respawns the worker process (fresh ESM module cache)
+ *   ✅ Preserves omnysys.db (active atoms, files, relations, etc.)
+ *   ✅ Preserves atom-history.db (version evolution archive)
+ *   ✅ Preserves health-history.db (metrics snapshots)
+ *   ✅ Does NOT trigger Layer A reindex (file watcher handles this)
+ *
+ * What it does NOT:
+ *   ❌ Does NOT delete any database files
+ *   ❌ Does NOT clear file_hashes or force reindex
+ *   ❌ Does NOT re-analyze code (watcher picks up changes incrementally)
+ *
+ * When to use:
+ *   After editing code and the changes aren't reflected because the old
+ *   ESM module cache is still serving stale code. The file watcher will
+ *   reindex modified files automatically — no manual reindex needed.
+ */
+async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, server) {
+  logger.info('Process restart requested — killing worker, preserving all databases...');
+
+  if (!isProxyMode()) {
+    logger.warn('processRestart=true requires proxy mode. In standalone mode, only cache can be cleared.');
+    await purgeRuntimeCache(cache, 'Standalone cache cleared');
+    await refreshToolRegistrySafely(context?.refreshToolRegistry, 'Tool registry refreshed');
+    return {
+      success: true,
+      restarting: false,
+      restartType: 'process_restart_standalone',
+      lifecycle: buildRestartLifecycleGuidance({ restartType: 'process_restart_standalone', processRestart: true }),
+      message: 'Standalone mode: ESM cache cleared but true process restart requires proxy (npm run mcp). DB preserved, no reindex.',
+      databasesPreserved: ['omnysys.db', 'atom-history.db', 'health-history.db'],
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  // Proxy mode: signal proxy to kill worker and respawn with --processRestart flag
+  if (process.send) {
+    process.send({
+      type: 'restart',
+      clearCache: false,       // DON'T clear analysis cache
+      reanalyze: false,         // DON'T delete DB
+      reindexOnly: false,       // DON'T force reindex
+      processRestart: true      // JUST kill and respawn worker
+    });
+  }
+
+  const lifecycle = buildRestartLifecycleGuidance({
+    restartType: 'process_restart',
+    proxyMode: true,
+    processRestart: true
+  });
+
+  const warningMessage = `
+================================================================================
+PROCESS RESTART INITIATED (processRestart=true)
+
+What happened:
+  • Worker process is being killed and respawned by the proxy
+  • Fresh ESM module cache — your code changes are now loaded
+  • ALL databases preserved (omnysys.db, atom-history.db, health-history.db)
+  • NO reindex triggered — file watcher handles changed files automatically
+
+What to expect:
+  • Brief MCP disconnect (~1-2s) while IDE reconnects
+  • DO NOT call other MCP tools until the reconnect completes
+  • Tell user to continue once their IDE shows "connected"
+================================================================================
+`.trim();
+
+  return {
+    success: true,
+    restarting: true,
+    restartType: 'true_process_restart',
+    processRestart: true,
+    databasesPreserved: ['omnysys.db', 'atom-history.db', 'health-history.db'],
+    lifecycle,
+    message: warningMessage,
     timestamp: new Date().toISOString()
   };
 }

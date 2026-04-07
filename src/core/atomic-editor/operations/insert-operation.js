@@ -149,17 +149,54 @@ export class InsertOperation extends BaseOperation {
    * @returns {{newContent: string, position: {line: number, column: number}}}
    */
   _calculateInsertion(content) {
-    const { atLine, after, before, atEnd, content: insertContent } = this.options;
+    const { atLine, after, before, atEnd, position, content: insertContent } = this.options;
     let newContent = content;
-    let position = { line: 0, column: 0 };
+    let pos = { line: 0, column: 0 };
 
-    if (atLine !== undefined) {
+    if (position === 'top') {
+      // Insert at top of file - but AFTER shebang, license, and JSDoc comments
+      // Find the right insertion point: after initial comments but BEFORE first import
+      const lines = content.split('\n');
+      let insertIndex = 0;
+
+      // Skip shebang, initial comments, and JSDoc blocks
+      let inBlockComment = false;
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+
+        if (inBlockComment) {
+          if (line.includes('*/')) {
+            inBlockComment = false;
+            insertIndex = i + 1;
+          }
+          continue;
+        }
+
+        if (line.startsWith('#!') || line === '' || line.startsWith('//')) {
+          insertIndex = i + 1;
+        } else if (line.startsWith('/**')) {
+          inBlockComment = true;
+          insertIndex = i + 1;
+        } else if (line.startsWith('/*')) {
+          inBlockComment = true;
+          insertIndex = i + 1;
+        } else {
+          // Hit actual code or imports - insert here
+          break;
+        }
+      }
+
+      lines.splice(insertIndex, 0, insertContent, '');
+      newContent = lines.join('\n');
+      pos = { line: insertIndex + 1, column: 0 };
+
+    } else if (atLine !== undefined) {
       // Insert at specific line
       const lines = content.split('\n');
       const insertIndex = Math.max(0, Math.min(atLine - 1, lines.length));
       lines.splice(insertIndex, 0, insertContent);
       newContent = lines.join('\n');
-      position = { line: atLine, column: 0 };
+      pos = { line: atLine, column: 0 };
 
     } else if (after !== undefined) {
       // Insert after pattern
@@ -167,7 +204,7 @@ export class InsertOperation extends BaseOperation {
       if (index !== -1) {
         const insertIndex = index + after.length;
         newContent = content.slice(0, insertIndex) + insertContent + content.slice(insertIndex);
-        position = this._getPositionFromIndex(content, insertIndex);
+        pos = this._getPositionFromIndex(content, insertIndex);
       }
 
     } else if (before !== undefined) {
@@ -175,7 +212,7 @@ export class InsertOperation extends BaseOperation {
       const index = content.indexOf(before);
       if (index !== -1) {
         newContent = content.slice(0, index) + insertContent + content.slice(index);
-        position = this._getPositionFromIndex(content, index);
+        pos = this._getPositionFromIndex(content, index);
       }
 
     } else {
@@ -183,10 +220,10 @@ export class InsertOperation extends BaseOperation {
       const needsNewline = content.length > 0 && !content.endsWith('\n');
       newContent = content + (needsNewline ? '\n' : '') + insertContent;
       const lines = content.split('\n');
-      position = { line: lines.length, column: lines[lines.length - 1]?.length || 0 };
+      pos = { line: lines.length, column: lines[lines.length - 1]?.length || 0 };
     }
 
-    return { newContent, position };
+    return { newContent, position: pos };
   }
 
   /**

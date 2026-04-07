@@ -1,9 +1,8 @@
 /**
  * @fileoverview Shared normalization helpers — SSOT for tiny pure utilities
  * that were previously copy-pasted across compiler and layer-c modules.
+ * v3: Removed conceptual duplicates - consumers now import from canonical sources
  */
-
-import { normalizeFolderizationPath } from '#shared/compiler/directory-structure-folderization-data.js';
 
 // ── Key normalization ──────────────────────────────────────────────
 
@@ -50,16 +49,6 @@ export function normalizeText(value, fallback = null) {
  */
 export function normalizeCapturedDay(capturedAt = new Date().toISOString()) {
   return String(capturedAt || new Date().toISOString()).slice(0, 10);
-}
-
-// ── Path normalization ─────────────────────────────────────────────
-
-/**
- * Normalize a folderization/snapshot path via the canonical normalizer.
- */
-export function normalizeSnapshotPath(value = '') {
-  const normalized = normalizeFolderizationPath(value);
-  return normalized || null;
 }
 
 // ── SQLite error classification ─────────────────────────────────────
@@ -125,20 +114,4 @@ export function nowIso() {
  */
 export function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// ── Path helpers ─────────────────────────────────────────────────────
-
-/**
- * Normalize file path separators to forward slashes.
- * @param {string} filePath
- * @param {object} [opts]
- * @param {boolean} [opts.lowercase] - Also convert to lowercase
- */
-export function normalizeFilePath(filePath = '', opts = {}) {
-  let result = String(filePath || '').replace(/\\/g, '/');
-  if (opts.lowercase) {
-    result = result.toLowerCase();
-  }
-  return result;
 }

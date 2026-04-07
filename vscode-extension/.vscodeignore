@@ -1,0 +1,9 @@
+.vscode/**
+src/**
+webview-ui/src/**
+webview-ui/node_modules/**
+node_modules/**
+!dist/**
+!dist/sql-wasm.wasm
+!webview-ui/dist/**
+tsconfig.json

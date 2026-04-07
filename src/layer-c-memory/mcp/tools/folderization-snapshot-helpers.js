@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
+import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
 export function buildFolderizationSnapshotFingerprint(snapshot = null) {
   return createHash('sha1')

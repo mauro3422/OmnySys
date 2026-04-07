@@ -16,7 +16,7 @@ import {
 import { buildCurrentSummaries } from './compiler-metrics-current-summaries.js';
 import { asNumber } from './core-utils.js';
 import { buildStartupRegressionSummary } from './startup-regression-summary.js';
-import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
+import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
 function compactFolderizationPropagation(propagation = null) {
   if (!propagation) {

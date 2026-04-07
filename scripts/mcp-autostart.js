@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 /**
+import { log } from '../src/shared/logger-system.js';
+
  * MCP Auto-Start Script
  * 
  * This script is designed to be sourced or called when opening a terminal.
@@ -25,13 +27,7 @@ const PORT = 9999;
 const HOST = '127.0.0.1';
 
 function log(message, type = 'info') {
-    const prefix = {
-        info: 'ℹ️',
-        success: '✅',
-        warn: '⚠️',
-        error: '❌'
-    }[type] || '•';
-    console.log(`${prefix} ${message}`);
+  return log(...args);
 }
 
 /**

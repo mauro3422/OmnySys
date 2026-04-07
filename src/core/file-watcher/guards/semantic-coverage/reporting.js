@@ -1,6 +1,7 @@
 import { persistWatcherIssue } from '../../watcher-issue-persistence.js';
 import { createIssueType, createStandardContext, IssueDomains, StandardSuggestions } from '../guard-standards.js';
 import {
+    buildPropagationPlan,
     buildSemanticCoveragePropagationPlan,
     summarizePropagationPlan,
     summarizeSemanticCoverage

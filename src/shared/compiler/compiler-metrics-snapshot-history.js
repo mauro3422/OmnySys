@@ -6,7 +6,7 @@ import {
 } from './compiler-health-archive.js';
 import { summarizeHistoryRow } from './compiler-metrics-current.js';
 import { asNumber } from './core-utils.js';
-import { normalizeSnapshotPath } from '#shared/utils/normalize-helpers.js';
+import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
 export { asNumber, normalizeSnapshotPath };
 

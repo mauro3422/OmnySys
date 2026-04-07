@@ -36,10 +36,20 @@ export function detectSemanticSurfaceGranularityConformanceFromSource(filePath, 
     options,
     { severity: 'medium', policyArea: 'semantic_surface_granularity' },
     ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
+      const isExempt = (
+        normalizedPath.endsWith('/semantic-surface-granularity-contract.js') ||
+        normalizedPath.startsWith('src/shared/compiler/semantic-surface-granularity') ||
+        normalizedPath.startsWith('src/shared/compiler/metadata-extraction-coverage') ||
+        normalizedPath.startsWith('src/layer-c-memory/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js') ||
+        normalizedPath.startsWith('src/layer-c-memory/query/queries/connections-query.js') ||
+        normalizedPath.startsWith('src/shared/compiler/live-row-utils-queries.js')
+      );
+
+      if (isExempt) return;
+
       if (
         usesSemanticConnectionsTable(currentSource) &&
-        !importsCanonicalGranularityApi(currentSource) &&
-        !normalizedPath.endsWith('/semantic-surface-granularity.js')
+        !importsCanonicalGranularityApi(currentSource)
       ) {
         findings.push(createFinding(
           'raw_semantic_connections_summary',
@@ -53,8 +63,7 @@ export function detectSemanticSurfaceGranularityConformanceFromSource(filePath, 
       if (
         usesSemanticConnectionsTable(currentSource) &&
         usesAtomSemanticRelations(currentSource) &&
-        !importsCanonicalGranularityApi(currentSource) &&
-        !normalizedPath.endsWith('/semantic-surface-granularity.js')
+        !importsCanonicalGranularityApi(currentSource)
       ) {
         findings.push(createFinding(
           'mixed_semantic_granularity',

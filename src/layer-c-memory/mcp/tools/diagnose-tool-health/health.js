@@ -15,7 +15,10 @@
 
 import { createLogger } from '../../../../utils/logger.js';
 import { getRepository } from '../../../storage/repository/repository-factory.js';
-import { buildPipelineHealthPropagationPlan } from '../../../../shared/compiler/index.js';
+import {
+  buildPropagationPlan,
+  buildPipelineHealthPropagationPlan
+} from '../../../../shared/compiler/index.js';
 import {
   analyzeToolHealth,
   buildToolHealthMap,

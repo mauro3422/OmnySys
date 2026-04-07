@@ -3,6 +3,7 @@ import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import { buildOrphanRelationCleanupStatement } from './live-row-relations-cleanup.js';
 import { getPhase2PendingFiles } from './compiler-runtime-metrics/index.js';
 import { getLiveFileSetSql, getLiveFileTotal, getLiveRowDriftSummary, loadStaleTableRows } from './live-row-utils.js';
+import { ensureLiveRowSync } from './live-row-reconciliation.js';
 
 function buildZeroCleanupResult() {
   return { atoms: 0, files: 0, riskAssessments: 0, relations: 0, issues: 0, connections: 0 };

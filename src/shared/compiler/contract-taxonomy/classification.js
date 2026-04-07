@@ -4,7 +4,7 @@
  * @module shared/compiler/contract-taxonomy/classification
  */
 
-import { normalizeFilePath } from '#shared/utils/normalize-helpers.js';
+import { normalizeFilePath } from '#shared/compiler/path-normalization.js';
 
 function inferContractFamily(normalizedFilePath) {
   if (

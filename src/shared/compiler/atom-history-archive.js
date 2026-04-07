@@ -136,12 +136,16 @@ export function getAtomHistoryArchiveDb(projectPath = process.cwd()) {
 }
 
 export function closeAtomHistoryArchiveDb(projectPath = process.cwd()) {
-  const normalizedProjectPath = resolve(projectPath || process.cwd());
-  const db = archiveConnections.get(normalizedProjectPath);
-  if (db?.open !== false) {
-    db.close();
+  try {
+    const normalizedProjectPath = resolve(projectPath || process.cwd());
+    const db = archiveConnections.get(normalizedProjectPath);
+    if (db?.open !== false) {
+      db.close();
+    }
+    archiveConnections.delete(normalizedProjectPath);
+  } catch (error) {
+    logger.warn(`[AtomHistoryArchive] Error closing archive DB: ${error.message}`);
   }
-  archiveConnections.delete(normalizedProjectPath);
 }
 
 export function shutdownAtomHistoryArchiveStorage() {
@@ -155,54 +159,66 @@ export function persistAtomVersionArchiveSnapshot(projectPath, atomId, atomData 
     return null;
   }
 
-  const db = getAtomHistoryArchiveDb(projectPath);
-  const versionHash = version.hash || '';
-
-  // FIX: Verificar si ya existe una versión con el mismo content hash
-  if (versionHash) {
-    const existing = db.prepare(`
-      SELECT 1 FROM atom_versions_archive
-      WHERE atom_id = ? AND version_hash = ?
-      LIMIT 1
-    `).get(atomId, versionHash);
-    if (existing) {
-      return { changes: 0, skippedByDedup: 1 };
-    }
+  let db;
+  try {
+    db = getAtomHistoryArchiveDb(projectPath);
+  } catch (error) {
+    logger.error(`[AtomHistoryArchive] Failed to get archive DB: ${error.message}`);
+    return null;
   }
 
-  const row = buildArchiveRow(projectPath, atomId, atomData, version, options);
-  const stmt = db.prepare(`
-    INSERT INTO atom_versions_archive (
-      project_path,
-      atom_id,
-      atom_name,
-      file_path,
-      version_hash,
-      field_hashes_json,
-      last_modified,
-      captured_at,
-      captured_day,
-      source,
-      version_fingerprint,
-      payload_json
-    ) VALUES (
-      @project_path,
-      @atom_id,
-      @atom_name,
-      @file_path,
-      @version_hash,
-      @field_hashes_json,
-      @last_modified,
-      @captured_at,
-      @captured_day,
-      @source,
-      @version_fingerprint,
-      @payload_json
-    )
-    ON CONFLICT(version_fingerprint) DO NOTHING
-  `);
+  const versionHash = version.hash || '';
 
-  return stmt.run(row);
+  try {
+    // FIX: Verificar si ya existe una versión con el mismo content hash
+    if (versionHash) {
+      const existing = db.prepare(`
+        SELECT 1 FROM atom_versions_archive
+        WHERE atom_id = ? AND version_hash = ?
+        LIMIT 1
+      `).get(atomId, versionHash);
+      if (existing) {
+        return { changes: 0, skippedByDedup: 1 };
+      }
+    }
+
+    const row = buildArchiveRow(projectPath, atomId, atomData, version, options);
+    const stmt = db.prepare(`
+      INSERT INTO atom_versions_archive (
+        project_path,
+        atom_id,
+        atom_name,
+        file_path,
+        version_hash,
+        field_hashes_json,
+        last_modified,
+        captured_at,
+        captured_day,
+        source,
+        version_fingerprint,
+        payload_json
+      ) VALUES (
+        @project_path,
+        @atom_id,
+        @atom_name,
+        @file_path,
+        @version_hash,
+        @field_hashes_json,
+        @last_modified,
+        @captured_at,
+        @captured_day,
+        @source,
+        @version_fingerprint,
+        @payload_json
+      )
+      ON CONFLICT(version_fingerprint) DO NOTHING
+    `);
+
+    return stmt.run(row);
+  } catch (error) {
+    logger.error(`[AtomHistoryArchive] Failed to persist atom snapshot: ${error.message}`);
+    return null;
+  }
 }
 
 export function persistAtomVersionArchiveBatch(projectPath, entries = [], options = {}) {
@@ -210,122 +226,145 @@ export function persistAtomVersionArchiveBatch(projectPath, entries = [], option
     return { changes: 0 };
   }
 
-  const db = getAtomHistoryArchiveDb(projectPath);
-
-  // FIX: Cargar los version_hash existentes para deduplicar ANTES de escribir.
-  // Solo insertamos si el version_hash es diferente al último registrado.
-  const existingHashesStmt = db.prepare(`
-    SELECT atom_id, version_hash
-    FROM atom_versions_archive
-    WHERE (atom_id, id) IN (SELECT atom_id, MAX(id) FROM atom_versions_archive GROUP BY atom_id)
-  `);
-  const existingHashes = new Map();
-  for (const row of existingHashesStmt.all()) {
-    existingHashes.set(row.atom_id, row.version_hash);
+  let db;
+  try {
+    db = getAtomHistoryArchiveDb(projectPath);
+  } catch (error) {
+    logger.error(`[AtomHistoryArchive] Failed to get archive DB for batch: ${error.message}`);
+    return { changes: 0 };
   }
 
-  // Filtrar entradas cuyo contenido NO cambió
-  const dedupedEntries = [];
-  let skippedByDedup = 0;
-  for (const entry of entries) {
-    const entryHash = entry.version?.hash || entry.hash || '';
-    const existingHash = existingHashes.get(entry.atomId);
-
-    if (existingHash === entryHash) {
-      skippedByDedup++;
-      continue;
+  try {
+    // FIX: Cargar los version_hash existentes para deduplicar ANTES de escribir.
+    // Solo insertamos si el version_hash es diferente al último registrado.
+    const existingHashesStmt = db.prepare(`
+      SELECT atom_id, version_hash
+      FROM atom_versions_archive
+      WHERE (atom_id, id) IN (SELECT atom_id, MAX(id) FROM atom_versions_archive GROUP BY atom_id)
+    `);
+    const existingHashes = new Map();
+    for (const row of existingHashesStmt.all()) {
+      existingHashes.set(row.atom_id, row.version_hash);
     }
 
-    dedupedEntries.push(entry);
-  }
+    // Filtrar entradas cuyo contenido NO cambió
+    const dedupedEntries = [];
+    let skippedByDedup = 0;
+    for (const entry of entries) {
+      const entryHash = entry.version?.hash || entry.hash || '';
+      const existingHash = existingHashes.get(entry.atomId);
 
-  if (dedupedEntries.length === 0) {
-    return { changes: 0, skippedByDedup };
-  }
+      if (existingHash === entryHash) {
+        skippedByDedup++;
+        continue;
+      }
 
-  const stmt = db.prepare(`
-    INSERT INTO atom_versions_archive (
-      project_path,
-      atom_id,
-      atom_name,
-      file_path,
-      version_hash,
-      field_hashes_json,
-      last_modified,
-      captured_at,
-      captured_day,
-      source,
-      version_fingerprint,
-      payload_json
-    ) VALUES (
-      @project_path,
-      @atom_id,
-      @atom_name,
-      @file_path,
-      @version_hash,
-      @field_hashes_json,
-      @last_modified,
-      @captured_at,
-      @captured_day,
-      @source,
-      @version_fingerprint,
-      @payload_json
-    )
-    ON CONFLICT(version_fingerprint) DO NOTHING
-  `);
-
-  return db.transaction(() => {
-    let changes = 0;
-    for (const entry of dedupedEntries) {
-      const row = buildArchiveRow(
-        projectPath,
-        entry.atomId,
-        entry.atomData || {},
-        entry.version || entry,
-        {
-          capturedAt: entry.capturedAt || options.capturedAt,
-          source: entry.source || options.source || 'incremental'
-        }
-      );
-      const result = stmt.run(row);
-      changes += result.changes || 0;
+      dedupedEntries.push(entry);
     }
-    return { changes, skippedByDedup };
-  })();
+
+    if (dedupedEntries.length === 0) {
+      return { changes: 0, skippedByDedup };
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO atom_versions_archive (
+        project_path,
+        atom_id,
+        atom_name,
+        file_path,
+        version_hash,
+        field_hashes_json,
+        last_modified,
+        captured_at,
+        captured_day,
+        source,
+        version_fingerprint,
+        payload_json
+      ) VALUES (
+        @project_path,
+        @atom_id,
+        @atom_name,
+        @file_path,
+        @version_hash,
+        @field_hashes_json,
+        @last_modified,
+        @captured_at,
+        @captured_day,
+        @source,
+        @version_fingerprint,
+        @payload_json
+      )
+      ON CONFLICT(version_fingerprint) DO NOTHING
+    `);
+
+    return db.transaction(() => {
+      let changes = 0;
+      for (const entry of dedupedEntries) {
+        const row = buildArchiveRow(
+          projectPath,
+          entry.atomId,
+          entry.atomData || {},
+          entry.version || entry,
+          {
+            capturedAt: entry.capturedAt || options.capturedAt,
+            source: entry.source || options.source || 'incremental'
+          }
+        );
+        const result = stmt.run(row);
+        changes += result.changes || 0;
+      }
+      return { changes, skippedByDedup };
+    })();
+  } catch (error) {
+    logger.error(`[AtomHistoryArchive] Failed to persist batch: ${error.message}`);
+    return { changes: 0 };
+  }
 }
 
 export function loadAtomVersionArchiveHistory(projectPath, options = {}) {
   if (!projectPath) return [];
 
-  const db = getAtomHistoryArchiveDb(projectPath);
-  const where = ['project_path = ?'];
-  const params = [projectPath];
-
-  if (options.atomId) {
-    where.push('atom_id = ?');
-    params.push(options.atomId);
+  let db;
+  try {
+    db = getAtomHistoryArchiveDb(projectPath);
+  } catch (error) {
+    logger.error(`[AtomHistoryArchive] Failed to get archive DB for load: ${error.message}`);
+    return [];
   }
 
-  if (options.atomName) {
-    where.push('atom_name = ?');
-    params.push(options.atomName);
+  try {
+    const where = ['project_path = ?'];
+    const params = [projectPath];
+
+    if (options.atomId) {
+      where.push('atom_id = ?');
+      params.push(options.atomId);
+    }
+
+    if (options.atomName) {
+      where.push('atom_name = ?');
+      params.push(options.atomName);
+    }
+
+    if (options.filePath) {
+      where.push('file_path = ?');
+      params.push(options.filePath);
+    }
+
+    const limit = Number.isFinite(options.limit) ? Math.max(1, options.limit) : 50;
+    params.push(limit);
+
+    return db.prepare(`
+      SELECT *
+      FROM atom_versions_archive
+      WHERE ${where.join(' AND ')}
+      ORDER BY captured_at DESC, id DESC
+      LIMIT ?
+    `).all(...params);
+  } catch (error) {
+    logger.error(`[AtomHistoryArchive] Failed to load history: ${error.message}`);
+    return [];
   }
-
-  if (options.filePath) {
-    where.push('file_path = ?');
-    params.push(options.filePath);
-  }
-
-  const limit = Number.isFinite(options.limit) ? Math.max(1, options.limit) : 50;
-  params.push(limit);
-
-  return db.prepare(`
-    SELECT *
-    FROM atom_versions_archive
-    WHERE ${where.join(' AND ')}
-    ORDER BY captured_at DESC, id DESC
-    LIMIT ?
-  `).all(...params);
 }
 
 export default {

@@ -6,6 +6,7 @@ import { buildImpactWaveIssueContext } from './context.js';
 import { clearPersistedImpactWaveIssues } from './persistence.js';
 import { isTestFilePath } from './helpers.js';
 import {
+    buildPropagationPlan,
     buildImpactWavePropagationPlan,
     summarizePropagationPlan,
     runAsyncBoundary

@@ -19,6 +19,16 @@ export {
   parsePersistedArray
 } from './core-utils.js';
 
+// Policy Drift Repair Engine
+export {
+  detectPolicyDrifts,
+  detectPolicyDriftsBatch,
+  generateRepairPlan,
+  generateRepairPlansBatch,
+  executeRepairPlan,
+  consolidatePolicyDrifts
+} from './policy-drift-repair-engine.js';
+
 export {
   normalizeCount
 } from './contract-helpers.js';
@@ -417,6 +427,11 @@ export {
   buildPropagationPlan,
   summarizePropagationPlan
 } from './propagation-engine.js';
+
+export {
+  scanPropagationCompleteness,
+  buildPropagationCompletenessSignal
+} from './propagation-completeness-scanner.js';
 
 export {
   buildFolderizedFamilyGroups,

@@ -85,7 +85,14 @@ function isGovernanceDiagnosticModule(normalizedPath = '') {
     '/layer-c-memory/mcp/tools/detect-db-access.js',
     '/layer-c-memory/mcp/tools/handlers/pipeline-health-domain/metadata-health.js',
     '/layer-c-memory/mcp/tools/handlers/pipeline-health-handler.js',
-    '/layer-c-memory/query/queries/file-query/system-map.js'
+    '/layer-c-memory/query/queries/file-query/system-map.js',
+    '/layer-c-memory/query/queries/file-query/dependencies/deps.js',
+    '/layer-c-memory/query/queries/dependency-query.js',
+    '/layer-c-memory/query/queries/connections-query.js',
+    '/layer-c-memory/query/export.js',
+    '/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js',
+    '/core/file-watcher/handlers/relationships.js',
+    '/core/file-watcher/guards/circular-guard/repository.js'
   ];
 
   return diagnosticSuffixes.some((segment) => normalizedPath.endsWith(segment));

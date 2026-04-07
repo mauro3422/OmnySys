@@ -108,15 +108,26 @@ get_recent_errors()
 
 #### `restart_server` — Modes
 
-| Mode | What it does | When to use |
-|------|-------------|-------------|
-| `{ clearCacheOnly: true }` | Flush cache + refresh tool registry | **After editing code** ← most common |
-| `{ reindexOnly: true }` | Re-analyze Layer A without clearing DB | Changes to analyzed files |
-| `{ reanalyze: true }` | Destructive full wipe + full reindex | Complete reset |
-| `{ refreshOnly: true }` | Refresh metadata only | Config changes, no reindex |
-| `{ softReload: true }` | Soft reload — orchestrator + runtime | When orchestrator is stale |
+> **Golden rule:** After editing code → use `processRestart: true`. The file watcher handles reindex automatically.
 
-> ⚠️ **NEVER kill node processes manually.** Use `restart_server({ clearCacheOnly: true })`.
+| Mode | Process Kill? | DB Preserved? | Reindex? | When to use |
+|------|:---:|:---:|:---:|-------------|
+| `{ processRestart: true }` | ✅ Yes | ✅ **ALL** | ❌ No | **After editing code** — kills worker, respawns with fresh ESM cache. File watcher reindexes changed files automatically. |
+| `{ clearCacheOnly: true }` | ❌ No | ✅ Yes | ❌ No | Fastest — flush in-memory cache + refresh tool registry only. No process restart. |
+| `{ reindexOnly: true }` | ❌ No | ✅ Yes | ✅ Yes | Force Layer A re-analysis when an atom was not indexed properly. No process restart. |
+| `{ reanalyze: true }` | ✅ Yes | ⚠️ Partial | ✅ Full | **DESTRUCTIVE** — deletes omnysys.db, atom_versions, file_hashes, analysis cache. **Preserves** atom-history.db and health-history.db. Complete reset. |
+| `{ refreshOnly: true }` | ❌ No | ✅ Yes | ❌ No | Refresh metadata + cache. Config changes, no reindex. |
+| `{ softReload: true }` | ❌ No | ✅ Yes | ❌ No | Soft reload — orchestrator + runtime state. When orchestrator is stale. |
+
+#### Database Architecture — What Gets Deleted and What Doesn't
+
+| Database | Location | Purpose | Deleted by `reanalyze`? | Always Preserved |
+|----------|----------|---------|:---:|:---:|
+| `omnysys.db` | `.omnysysdata/` | **Active data** — atoms, files, relations, events, societies, risk, sessions, tool runs, metrics | ✅ Yes | ❌ No |
+| `atom-history.db` | `.omnysysdata/` | **Version archive** — historical evolution of every atom across Git commits | ❌ No | ✅ Yes |
+| `health-history.db` | `.omnysysdata/` | **Metrics history** — health snapshots, trends, comparisons over time | ❌ No | ✅ Yes |
+
+> ⚠️ **NEVER kill node processes manually.** Use `restart_server({ processRestart: true })` after code edits.
 
 ---
 
@@ -124,7 +135,9 @@ get_recent_errors()
 
 | Mistake | What Happened | Correct Approach |
 |---------|--------------|-----------------|
-| Killing node processes manually | Broke MCP session, had to manually restart proxy | `restart_server({ clearCacheOnly: true })` |
+| Killing node processes manually | Broke MCP session, had to manually restart proxy | `restart_server({ processRestart: true })` |
+| Using `clearCacheOnly` after code edits | Code changes not loaded — only cache cleared, process not restarted | `restart_server({ processRestart: true })` — kills worker, fresh ESM cache |
+| Using `reanalyze` when only code changed | Wiped entire DB unnecessarily — lost all analysis data | `restart_server({ processRestart: true })` — file watcher handles reindex |
 | Querying `atom_versions_archive` via `execute_sql` | "no such table" — it's in atom-history.db, not omnysys.db | Use `get_atom_history` or `get_atom_evolution_report` instead |
 | Not calling `list_tools()` first | Used deprecated tool names that confused the AI | Always start with `list_tools({ includeSchemas: false })` |
 | `query_graph(details)` without `filePath` | "MISSING_PARAMS" error — needs BOTH symbolName AND filePath | Always provide both required params |

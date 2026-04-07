@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 /**
+import { log } from '../src/shared/logger-system.js';
+
  * @fileoverview Auto-Generator de Tests Meta-Factory
  * 
  * Genera automáticamente archivos de test basados en el patrón Meta-Factory.
@@ -30,7 +32,7 @@ const colors = {
 };
 
 function log(message, color = 'reset') {
-  console.log(`${colors[color]}${message}${colors.reset}`);
+  return log(...args);
 }
 
 /**
