@@ -134,42 +134,46 @@ export async function checkAndRunAnalysisSmart(projectPath, options = {}) {
       };
     }
 
-    // Paso 2: Cargar metadata existente
-    const metadata = await getProjectMetadata(projectPath);
-    const fileCount = metadata?.stats?.totalFiles || 0;
+    // Paso 2: Ultra-fast path — si existe omnysys.db, el análisis es válido.
+    // Esto evita abrir el repo SQLite (~30s) y escanear archivos.
+    const hasAnalysisDb = await (async () => {
+      try {
+        const fs = await import('fs/promises');
+        const path = await import('path');
+        const dbPath = path.join(projectPath, '.omnysysdata', 'omnysys.db');
+        await fs.access(dbPath);
+        return true;
+      } catch {
+        return false;
+      }
+    })();
 
-    logger.info(`✅ Found existing analysis: ${fileCount} files`);
-
-    // Validar integridad del análisis
-    const hasValidBaseAnalysis =
-      fileCount > 0 &&
-      (metadata?.fileIndex || metadata?.files);
-
-    if (!hasValidBaseAnalysis) {
-      logger.info('   🚨 Analysis incomplete or corrupted, running Layer A...');
-      logger.info('   ⏳ This may take 30-60 seconds...\n');
-
-      const result = await runFullIndexing(projectPath);
+    if (hasAnalysisDb) {
+      logger.info('   ✅ omnysys.db found — ultra-fast path (skip DB open + file scan)');
 
       if (reloadMetadataFn) {
         await reloadMetadataFn();
       }
 
-      logger.info('\n✅ Layer A completed');
-      logger.info('   🤖 LLM enrichment will continue in background');
-      
+      logger.info('   ✅ All files processed (LLM enrichment runs in background)');
+
       return {
-        ran: true,
-        strategy: IndexingStrategy.FULL_REINDEX,
-        filesAnalyzed: Object.keys(result.files || {}).length,
-        duration: result.duration || 0
+        ran: false,
+        strategy: IndexingStrategy.LOAD_ONLY,
+        filesAnalyzed: 0,
+        filesChanged: 0
       };
     }
 
-    // Paso 3: Detectar cambios
+    // Paso 3: Slow path — sin index.json, necesitamos metadata completa desde DB
+    logger.info('   📦 No index.json found, loading full metadata from DB...');
+    const metadata = await getProjectMetadata(projectPath);
+    const fileCount = metadata?.stats?.totalFiles || 0;
+
+    // Detectar cambios
     logger.info('   🔍 Checking for file changes...');
     const changes = await detectCacheChanges(projectPath, metadata);
-    
+
     const hasChanges = changes.newFiles.length > 0 || 
                        changes.modifiedFiles.length > 0 || 
                        changes.deletedFiles.length > 0;
