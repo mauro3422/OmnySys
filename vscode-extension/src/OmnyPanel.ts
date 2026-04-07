@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { McpClient } from './McpClient';
-import { SqliteReader } from './SqliteReader';
+import { SqliteEngine } from './database/SqliteEngine';
+import { Queries } from './database/Queries';
 
 export class OmnyPanel {
   public static currentPanel: OmnyPanel | undefined;
@@ -11,14 +12,14 @@ export class OmnyPanel {
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
   private readonly _mcpClient: McpClient;
-  private readonly _sqliteReader: SqliteReader | null;
+  private readonly _sqliteEngine: SqliteEngine | null;
   private readonly _projectPath: string;
   private _disposed = false;
 
   public static createOrShow(
     extensionUri: vscode.Uri,
     mcpClient: McpClient,
-    sqliteReader: SqliteReader | null,
+    sqliteEngine: SqliteEngine | null,
     projectPath: string
   ) {
     const column = vscode.ViewColumn.Beside;
@@ -37,20 +38,20 @@ export class OmnyPanel {
         ]
       }
     );
-    OmnyPanel.currentPanel = new OmnyPanel(panel, extensionUri, mcpClient, sqliteReader, projectPath);
+    OmnyPanel.currentPanel = new OmnyPanel(panel, extensionUri, mcpClient, sqliteEngine, projectPath);
   }
 
   private constructor(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
     mcpClient: McpClient,
-    sqliteReader: SqliteReader | null,
+    sqliteEngine: SqliteEngine | null,
     projectPath: string
   ) {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._mcpClient = mcpClient;
-    this._sqliteReader = sqliteReader;
+    this._sqliteEngine = sqliteEngine;
     this._projectPath = projectPath;
 
     this._panel.webview.html = this._getHtmlForWebview();
@@ -120,11 +121,11 @@ export class OmnyPanel {
       let dataSource = 'none';
 
       // SQLite direct — fast, no MCP overhead
-      if (this._sqliteReader) {
+      if (this._sqliteEngine) {
         try {
-          stats = this._sqliteReader.getStats();
-          files = this._sqliteReader.getFilesWithRisk(300);
-          deps = this._sqliteReader.getFileDependencies();
+          stats = Queries.getStats(this._sqliteEngine);
+          files = Queries.getFilesWithRisk(this._sqliteEngine, 300);
+          deps = Queries.getFileDependencies(this._sqliteEngine);
           dataSource = 'sqlite';
           console.log(`[OmnyPanel] SQLite: ${stats.totalAtoms} atoms, ${files.length} files, ${deps.length} deps`);
         } catch (err: any) {
@@ -140,12 +141,15 @@ export class OmnyPanel {
 
       // Sync check: compare DB vs MCP
       let syncStatus = null;
-      if (this._sqliteReader && health?.background) {
-        const syncInfo = this._sqliteReader.getSyncInfo();
+      if (this._sqliteEngine && health?.background) {
+        // Use fs stat on mtime to sync
+        let dbLastModified: string = new Date().toISOString();
+        try { dbLastModified = new Date(fs.statSync((this._sqliteEngine as any).dbPath).mtimeMs).toISOString(); } catch {}
+        
         syncStatus = {
-          dbAtoms: syncInfo.dbAtoms,
-          dbFiles: syncInfo.dbFiles,
-          dbLastModified: syncInfo.lastModified.toISOString(),
+          dbAtoms: stats?.totalAtoms || 0,
+          dbFiles: stats?.totalFiles || 0,
+          dbLastModified,
           mcpSocieties: health.background.societiesCount || 0,
           mcpPhase2Pending: health.background.phase2PendingFiles || 0,
           inSync: true // Could compare counts for desync detection
@@ -168,9 +172,9 @@ export class OmnyPanel {
       let atoms: any[] = [];
       let relations: any[] = [];
 
-      if (this._sqliteReader) {
-        atoms = this._sqliteReader.getAtomsForFile(filePath);
-        relations = this._sqliteReader.getRelationsForFile(filePath);
+      if (this._sqliteEngine) {
+        atoms = Queries.getAtomsForFile(this._sqliteEngine, filePath);
+        relations = Queries.getRelationsForFile(this._sqliteEngine, filePath);
       }
 
       this.sendMessage({

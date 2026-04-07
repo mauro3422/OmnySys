@@ -1,7 +1,22 @@
-import { useMemo, useCallback, useRef, useEffect, useState } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
+import { useMemo, useCallback, useEffect, useState } from 'react';
+import { 
+  ReactFlow, 
+  Controls, 
+  Background, 
+  BackgroundVariant, 
+  useNodesState, 
+  useEdgesState, 
+  ConnectionLineType,
+  MarkerType,
+  Node,
+  Edge,
+  Position
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import * as dagre from 'dagre';
 import type { FileInfo, FileDependency } from '../types';
 import { useVsCode } from '../hooks/useVsCode';
+import { FileNode } from '../components/FileNode';
 
 interface Props {
   files: FileInfo[];
@@ -16,69 +31,106 @@ const riskColors: Record<string, string> = {
   low: '#2ed573',
 };
 
+const nodeTypes = {
+  fileNode: FileNode,
+};
+
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+const nodeWidth = 150;
+const nodeHeight = 40;
+
+const getLayoutedElements = (initialNodes: Node[], initialEdges: Edge[], direction = 'TB') => {
+  dagreGraph.setGraph({ rankdir: direction, nodesep: 40, ranksep: 70 });
+
+  initialNodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  initialEdges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const nodes = initialNodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    return {
+      ...node,
+      targetPosition: Position.Top,
+      sourcePosition: Position.Bottom,
+      position: {
+        x: nodeWithPosition.x - nodeWidth / 2,
+        y: nodeWithPosition.y - nodeHeight / 2,
+      },
+    };
+  });
+
+  return { nodes, edges: initialEdges };
+};
+
 export function DependencyGraph({ files, dependencies, onFileSelect }: Props) {
   const { openFile } = useVsCode();
-  const fgRef = useRef<any>(null);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  // Resize observer to keep the canvas filling the screen
   useEffect(() => {
-    if (!containerRef.current) return;
-    const resizeObserver = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height
-        });
-      }
-    });
-    resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
-  }, []);
+    const filePaths = new Set(files.map(f => f.path));
 
-  const graphData = useMemo(() => {
-    const nodes = files.map(f => ({
+    const initialNodes: Node[] = files.map(f => ({
       id: f.path,
-      name: f.path.split('/').pop() || f.path,
-      val: Math.max(1, Math.min(20, (f.totalComplexity || 1) / 5)),
-      color: riskColors[f.riskLevel] || '#585b70',
-      ...f
+      type: 'fileNode',
+      position: { x: 0, y: 0 },
+      data: {
+        label: f.path.split('/').pop() || f.path,
+        color: riskColors[f.riskLevel] || '#585b70',
+        totalComplexity: f.totalComplexity || 0,
+        avgFragility: (f as any).avgFragility || 0
+      }
     }));
 
-    const filePaths = new Set(nodes.map(n => n.id));
-
-    const links = dependencies
+    const initialEdges: Edge[] = dependencies
       .filter(d => filePaths.has(d.source) && filePaths.has(d.target))
-      .map(d => ({
-        source: d.source,
-        target: d.target,
-        color: d.isDynamic ? '#f1c40f' : '#585b7066'
-      }));
+      .map(d => {
+        const sourceFile = files.find(f => f.path === d.source);
+        const sourceColor = sourceFile ? (riskColors[sourceFile.riskLevel] || '#585b70') : '#7f849c';
+        const edgeColor = d.isDynamic ? '#f1c40f' : sourceColor;
+        
+        return {
+          id: `${d.source}-${d.target}`,
+          source: d.source,
+          target: d.target,
+          type: 'smoothstep',
+          animated: d.isDynamic,
+          style: { stroke: edgeColor, strokeWidth: d.isDynamic ? 2 : 1.2, opacity: 0.8 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: edgeColor,
+          },
+        };
+      });
 
-    return { nodes, links };
-  }, [files, dependencies]);
+    if (initialNodes.length > 0) {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        initialNodes,
+        initialEdges
+      );
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
+    } else {
+      setNodes([]);
+      setEdges([]);
+    }
+  }, [files, dependencies, setNodes, setEdges]);
 
-  const handleNodeClick = useCallback((node: any) => {
+  const onNodeClick = useCallback((_: any, node: Node) => {
     if (onFileSelect) onFileSelect(node.id);
   }, [onFileSelect]);
 
-  const handleNodeRightClick = useCallback((node: any) => {
+  const onNodeContextMenu = useCallback((e: React.MouseEvent, node: Node) => {
+    e.preventDefault();
     openFile(node.id);
   }, [openFile]);
-
-  // Configure physics to help DAG layout
-  useEffect(() => {
-    if (fgRef.current) {
-      fgRef.current.d3Force('collide', null); // Removed collision to let DAG handle separation
-      fgRef.current.d3Force('charge').strength(-200);
-      fgRef.current.d3Force('link').distance(40);
-      
-      setTimeout(() => {
-        fgRef.current?.zoomToFit(400, 50);
-      }, 500);
-    }
-  }, [graphData]);
 
   if (files.length === 0) {
     return (
@@ -90,77 +142,25 @@ export function DependencyGraph({ files, dependencies, onFileSelect }: Props) {
     );
   }
 
-  // Draw a card for the node
-  const paintNode = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number, isHitTest = false) => {
-    const label = node.name;
-    const fontSize = 10;
-    ctx.font = `${fontSize}px Sans-Serif`;
-    const textWidth = ctx.measureText(label).width;
-    const width = Math.max(100, textWidth + 30);
-    const height = 28;
-    const radius = 4;
-
-    const x = node.x - width / 2;
-    const y = node.y - height / 2;
-
-    if (isHitTest) {
-      // For hit testing, draw a simple rectangle using the provided color
-      ctx.fillRect(x, y, width, height);
-      return;
-    }
-
-    // Draw Card Background
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-
-    ctx.fillStyle = '#1e1e2e'; // Dark background similar to Atoms
-    ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = node.color; // Risk border
-    ctx.stroke();
-
-    // Draw Icon (📄)
-    ctx.fillStyle = '#cdd6f4';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('📄', x + 5, node.y);
-
-    // Draw Label text
-    ctx.fillStyle = '#cdd6f4';
-    ctx.fillText(label, x + 22, node.y);
-  }, []);
-
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#11111b' }}>
-      <ForceGraph2D
-        ref={fgRef}
-        width={dimensions.width}
-        height={dimensions.height}
-        graphData={graphData}
-        dagMode="td"
-        dagLevelDistance={80}
-        nodeLabel="id" // Tooltip path
-        linkColor="color"
-        linkWidth={1.5}
-        linkDirectionalArrowLength={3.5}
-        linkDirectionalArrowRelPos={1}
-        onNodeClick={handleNodeClick}
-        onNodeRightClick={handleNodeRightClick}
-        nodeCanvasObject={(node: any, ctx, globalScale) => paintNode(node, ctx, globalScale, false)}
-        nodePointerAreaPaint={(node: any, color, ctx) => {
-          ctx.fillStyle = color;
-          paintNode(node, ctx, 1, true);
-        }}
-      />
+    <div style={{ width: '100%', height: '100%' }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={onNodeClick}
+        onNodeContextMenu={onNodeContextMenu}
+        nodeTypes={nodeTypes}
+        connectionLineType={ConnectionLineType.SmoothStep}
+        fitView
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.1}
+        maxZoom={2}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#45475a" />
+        <Controls />
+      </ReactFlow>
     </div>
   );
 }

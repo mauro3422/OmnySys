@@ -1,0 +1,47 @@
+function buildFolderizationSummary({
+  candidateReport,
+  familyState,
+  migrationPlans,
+  naming,
+  namingPatterns,
+  normalization,
+  creationGuidance,
+  decision,
+  recommendation,
+  drift,
+  propagation
+}) {
+  return {
+    candidateCount: candidateReport?.totalCandidates || candidateReport?.candidateCount || 0,
+    flatFamilies: familyState?.stateCounts?.flat || 0,
+    mixedFamilies: familyState?.stateCounts?.mixed || 0,
+    alreadyFolderizedFamilies: familyState?.stateCounts?.already_folderized || 0,
+    namingFamilies: naming?.familyCount || 0,
+    namingTargets: naming?.renameTargetCount || 0,
+    normalizationTargets: normalization?.summary?.renameTargetCount || 0,
+    normalizationAction: normalization?.summary?.recommendedAction || 'noop',
+    normalizationSafetyLevel: normalization?.summary?.safetyLevel || 'none',
+    normalizationDensity: normalization?.summary?.renameTargetDensity || 0,
+    namingPatternCounts: namingPatterns?.patternCounts || {},
+    guidanceScopePath: creationGuidance?.scopePath || null,
+    guidanceFocusPath: creationGuidance?.focusPath || null,
+    focusDecision: migrationPlans?.focusCandidate?.decision || decision || 'reject',
+    recommendationStrategy: recommendation?.strategy || null,
+    propagationChangeType: propagation?.changeType || 'folderization',
+    propagationCacheKey: propagation?.cacheKey || null,
+    propagationCacheHit: Boolean(propagation?.cacheHit),
+    propagationMoveTargets: propagation?.moveTargetCount || 0,
+    propagationImpactedFiles: propagation?.impactedFileCount || 0,
+    propagationRewriteCount: propagation?.rewriteCount || 0,
+    propagationValidationTargets: propagation?.validationTargetCount || 0,
+    propagationMode: propagation?.mode || 'blocked',
+    propagationConnectedSystems: Array.isArray(propagation?.connectedSystems) ? propagation.connectedSystems.length : 0,
+    driftState: drift?.state || 'fresh',
+    driftScore: drift?.score || 0,
+    driftReason: drift?.reason || null,
+    driftRecommendation: drift?.recommendation || null,
+    driftEvidence: drift?.evidence || null
+  };
+}
+
+export { buildFolderizationSummary };

@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import { OmnyPanel } from './OmnyPanel';
 import { McpClient } from './McpClient';
-import { SqliteReader } from './SqliteReader';
+import { SqliteEngine } from './database/SqliteEngine';
 
 let statusBarItem: vscode.StatusBarItem;
 let mcpClient: McpClient;
-let sqliteReader: SqliteReader | null = null;
+let sqliteEngine: SqliteEngine | null = null;
 let pollInterval: ReturnType<typeof setInterval> | undefined;
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -15,14 +15,14 @@ export async function activate(context: vscode.ExtensionContext) {
   // Initialize SQLite reader (async — WASM)
   const dbPath = findDbPath(projectPath);
   if (dbPath) {
-    const reader = new SqliteReader(dbPath);
-    const ok = await reader.init();
+    const engine = new SqliteEngine(dbPath);
+    const ok = await engine.init();
     if (ok) {
-      sqliteReader = reader;
-      console.log('[OmnySystem Explorer] SQLite reader ready (sql.js WASM)');
+      sqliteEngine = engine;
+      console.log('[OmnySystem Explorer] SQLite engine ready (sql.js WASM)');
 
       // Watch for DB changes → auto-refresh panel
-      reader.onDbChange(() => {
+      engine.onDbChange(() => {
         console.log('[OmnySystem Explorer] DB changed, refreshing panel...');
         OmnyPanel.currentPanel?.refreshData();
       });
@@ -44,7 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Commands
   context.subscriptions.push(
     vscode.commands.registerCommand('omnysystem.openDashboard', () => {
-      OmnyPanel.createOrShow(context.extensionUri, mcpClient, sqliteReader, projectPath);
+      OmnyPanel.createOrShow(context.extensionUri, mcpClient, sqliteEngine, projectPath);
     }),
     vscode.commands.registerCommand('omnysystem.showFileAtoms', () => {
       const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
@@ -52,7 +52,7 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showWarningMessage('No active file to analyze');
         return;
       }
-      OmnyPanel.createOrShow(context.extensionUri, mcpClient, sqliteReader, projectPath);
+      OmnyPanel.createOrShow(context.extensionUri, mcpClient, sqliteEngine, projectPath);
       setTimeout(() => {
         OmnyPanel.currentPanel?.sendMessage({
           type: 'navigateToFile',
@@ -86,13 +86,11 @@ export async function activate(context: vscode.ExtensionContext) {
         statusBarItem.backgroundColor = undefined;
 
         // Check sync between SQLite and MCP
-        if (sqliteReader && health.background) {
-          const syncInfo = sqliteReader.getSyncInfo();
-          const mcpSocieties = health.background.societiesCount || 0;
+        if (sqliteEngine && health.background) {
           // If DB was modified, check staleness
-          if (sqliteReader.isStale()) {
+          if (sqliteEngine.isStale()) {
             statusBarItem.text = '$(sync~spin) OmnySystem ↻';
-            sqliteReader.reload();
+            sqliteEngine.reload();
           }
         }
       } else {
@@ -116,7 +114,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
   if (pollInterval) clearInterval(pollInterval);
-  sqliteReader?.close();
+  sqliteEngine?.close();
   OmnyPanel.currentPanel?.dispose();
 }
 

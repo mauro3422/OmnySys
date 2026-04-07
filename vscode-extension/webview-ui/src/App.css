@@ -49,37 +49,41 @@ body {
 .app-header {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 16px;
-  background: var(--bg-surface);
+  gap: 20px;
+  padding: 10px 24px;
+  background: rgba(24, 24, 37, 0.8);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  z-index: 10;
-  min-height: 44px;
+  z-index: 100;
+  min-height: 56px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .app-logo {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
 .logo-icon {
-  font-size: 20px;
+  font-size: 24px;
   color: var(--accent-blue);
+  filter: drop-shadow(0 0 8px var(--accent-blue));
   animation: pulse 3s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.1); }
+  0%, 100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 8px var(--accent-blue)); }
+  50% { opacity: 0.8; transform: scale(1.15); filter: drop-shadow(0 0 15px var(--accent-blue)); }
 }
 
 .logo-text {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  background: linear-gradient(135deg, var(--accent-blue), var(--accent-mauve));
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-mauve), var(--accent-pink));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -89,61 +93,66 @@ body {
 
 .app-tabs {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
+  justify-content: center;
 }
 
 .tab {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: none;
+  gap: 8px;
+  padding: 8px 18px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--fg-subtext);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  border-radius: 6px;
-  transition: all var(--transition);
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
 }
 
 .tab:hover {
-  background: var(--border-subtle);
+  background: rgba(69, 71, 90, 0.3);
   color: var(--fg-text);
+  border-color: var(--border-subtle);
 }
 
 .tab.active {
-  background: var(--border-subtle);
+  background: rgba(137, 180, 250, 0.1);
   color: var(--accent-blue);
-  font-weight: 600;
+  font-weight: 700;
+  border-color: rgba(137, 180, 250, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .tab.active::after {
   content: '';
   position: absolute;
-  bottom: -1px;
-  left: 12px;
-  right: 12px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   height: 2px;
-  background: var(--accent-blue);
-  border-radius: 2px 2px 0 0;
+  background: linear-gradient(90deg, transparent, var(--accent-blue), transparent);
 }
 
-.tab-icon { font-size: 14px; }
+.tab-icon { font-size: 16px; }
 
 .tab-badge {
-  font-size: 9px;
-  background: var(--accent-blue);
-  color: var(--bg-base);
-  padding: 1px 6px;
-  border-radius: 8px;
-  font-weight: 700;
-  max-width: 80px;
+  font-size: 10px;
+  background: var(--accent-mauve);
+  color: var(--bg-overlay);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 800;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
 }
 
 /* ── Stats Bar ──────────────────────────────────────── */

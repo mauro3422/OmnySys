@@ -8,6 +8,8 @@ export interface FileInfo {
   culture: string;
   atomCount: number;
   totalComplexity: number;
+  avgFragility?: number;
+  maxPropagation?: number;
 }
 
 export interface FileDependency {

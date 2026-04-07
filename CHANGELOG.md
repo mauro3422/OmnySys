@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here as a release index. Detailed per-version notes live in `changelogs/`.
 
+## v0.9.286
+
+- **Monolith extraction:** 5 compiler monoliths (~3,550 líneas) redistribuidos
+  en 44 módulos dedicados dentro de carpetas folderizadas. Barrel pattern en
+  archivos originales que delegan a `index.js`. Sin cambios funcionales.
+  - `compiler-health-archive.js` → 8 módulos (`compiler-health-archive/`)
+  - `folderization-report.js` → 9 módulos (`folderization-report/`)
+  - `propagation-engine.js` → 14 módulos (`propagation-engine/`)
+  - `split-large-file-helpers.js` → 7 módulos (`split-large-file-helpers/`)
+  - `tool-run-telemetry/index.js` → 6 módulos (`tool-run-telemetry/`)
+
+- **VSCode Extension:** `SqliteReader` (382L) → `SqliteEngine` + `Queries`
+  (separación engine/data). DependencyGraph: `react-force-graph-2d` →
+  `@xyflow/react` + `dagre` (layout DAG automático). UI: glassmorphism header.
+
 ## Unreleased
 
 - **Startup regression fix: 34s → 1.7s (95% reduction).** El fast path de
