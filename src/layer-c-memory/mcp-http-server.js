@@ -483,6 +483,22 @@ if (process.send) {
   });
 }
 
+// CRITICAL: Patch core.initialize to track boot completion and clear timer
+const _origCoreInit = core.initialize.bind(core);
+core.initialize = async function() {
+  try {
+    const result = await _origCoreInit();
+    bootComplete = true;
+    clearTimeout(bootTimer);
+    return result;
+  } catch (error) {
+    bootComplete = false;
+    clearTimeout(bootTimer);
+    process.stderr.write(`[WORKER BOOT FAILED] core.initialize() threw: ${error.message}\n${error.stack || ''}\n`);
+    throw error;
+  }
+};
+
 core.initialize().then(async () => {
   try {
     const sessionManager = await getSessionManager();
@@ -524,19 +540,3 @@ async function gracefulHttpShutdown() {
 
 process.once('SIGINT', gracefulHttpShutdown);
 process.once('SIGTERM', gracefulHttpShutdown);
-
-// CRITICAL: Patch core.initialize to track boot completion and clear timer
-const _origCoreInit = core.initialize.bind(core);
-core.initialize = async function() {
-  try {
-    const result = await _origCoreInit();
-    bootComplete = true;
-    clearTimeout(bootTimer);
-    return result;
-  } catch (error) {
-    bootComplete = false;
-    clearTimeout(bootTimer);
-    process.stderr.write(`[WORKER BOOT FAILED] core.initialize() threw: ${error.message}\n${error.stack || ''}\n`);
-    throw error;
-  }
-};
