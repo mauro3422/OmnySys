@@ -257,6 +257,13 @@ export {
 } from './compiler-drift-assessment.js';
 
 export {
+  validateMetricCoherence,
+  validateDatabaseCoherence,
+  validateReportingCoherence,
+  validateDerivedMetricsCoherence
+} from './metric-coherence-validator.js';
+
+export {
   runAsyncBoundary
 } from './async-boundary.js';
 

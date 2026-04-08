@@ -3,6 +3,7 @@ import { summarizeAnalysisGeneration } from './counts-generation.js';
 import { summarizeDataGatewayContract } from './contract.js';
 import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import { buildPropagationCompletenessSignal } from './propagation-completeness-scanner.js';
+import { validateMetricCoherence } from './metric-coherence-validator.js';
 
 const signal = (value) => value;
 
@@ -183,6 +184,63 @@ function fileUniverseSignal(fileUniverseGranularity = null) {
   return signal({ key: 'file_universe_granularity', label: 'File universe granularity', sourceOfTruth: 'compiler_scanned_files + live index', state: healthy ? 'fresh' : 'stale', healthy, trustworthy: healthy || fileUniverseGranularity.contract?.trustworthy === true, severity: healthy ? 'low' : 'medium', reason: healthy ? 'Scanner, manifest and live file universes are aligned.' : 'Scanner, manifest and live file universes are not aligned.', recommendation: healthy ? 'Keep scanner, manifest and live indexed files aligned.' : 'Reconcile the persisted manifest and live file universe before trusting downstream reads.', evidence: fileUniverseGranularity });
 }
 
+function metricCoherenceSignal(coherenceReport = null, compilerExplainability = null, repo = null) {
+  if (!coherenceReport && compilerExplainability) {
+    try {
+      coherenceReport = validateMetricCoherence({ compilerExplainability, repo });
+    } catch {
+      coherenceReport = null;
+    }
+  }
+
+  if (!coherenceReport) {
+    return signal({
+      key: 'metric_coherence',
+      label: 'Metric coherence',
+      sourceOfTruth: 'cross-surface metric validation',
+      state: 'missing',
+      healthy: false,
+      trustworthy: false,
+      severity: 'medium',
+      reason: 'No metric coherence validation is available.',
+      recommendation: 'Run metric coherence validation to ensure all reporting surfaces report consistent values.',
+      evidence: null
+    });
+  }
+
+  const healthy = coherenceReport.coherent === true;
+  const severity = coherenceReport.severity;
+  const state = severity === 'critical' || severity === 'high'
+    ? 'blocked'
+    : severity === 'medium'
+    ? 'stale'
+    : healthy ? 'fresh' : 'partial';
+
+  const affectedMetrics = coherenceReport.database?.affectedMetrics
+    || coherenceReport.reporting?.findings?.map(f => f.metric).filter(Boolean)
+    || [];
+
+  return signal({
+    key: 'metric_coherence',
+    label: 'Metric coherence',
+    sourceOfTruth: 'cross-surface metric validation',
+    state,
+    healthy,
+    trustworthy: healthy,
+    severity,
+    reason: coherenceReport.summary || 'Metric surfaces are drifting.',
+    recommendation: coherenceReport.recommendation || 'Validate metric coherence across all reporting surfaces.',
+    evidence: coherenceReport,
+    counts: {
+      totalFindings: coherenceReport.totalFindings || 0,
+      criticalFindings: coherenceReport.database?.criticalFindings?.length || 0,
+      highFindings: coherenceReport.database?.highFindings?.length || 0,
+      affectedMetrics: affectedMetrics.length,
+      affectedMetricNames: affectedMetrics.slice(0, 5)
+    }
+  });
+}
+
 export function buildCompilerDriftAssessment({
   analysisGeneration = null,
   policySummary = null,
@@ -193,7 +251,10 @@ export function buildCompilerDriftAssessment({
   liveRowSync = null,
   systemMapPersistenceCoverage = null,
   semanticSurfaceGranularity = null,
-  fileUniverseGranularity = null
+  fileUniverseGranularity = null,
+  metricCoherence = null,
+  compilerExplainability = null,
+  repo = null
 } = {}) {
   const signals = [
     propagationExpansionSignal(policySummary || {}, metadataExtractionCoverage, metadataSurfaceParity),
@@ -207,7 +268,8 @@ export function buildCompilerDriftAssessment({
     systemMapSignal(systemMapPersistenceCoverage),
     semanticSurfaceSignal(semanticSurfaceGranularity),
     fileUniverseSignal(fileUniverseGranularity),
-    analysisGenerationSignal(analysisGeneration)
+    analysisGenerationSignal(analysisGeneration),
+    metricCoherenceSignal(metricCoherence, compilerExplainability, repo)
   ];
   const summary = countSignals(signals);
   const issue = primaryIssue(signals);

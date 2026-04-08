@@ -10,6 +10,7 @@ import { getLiveFileTotal } from './live-row-utils.js';
 import { ensureLiveRowSync } from './live-row-reconciliation.js';
 import { buildResolvedCanonicalAdoptions } from './compiler-diagnostics-snapshot-contracts-adoptions.js';
 import { loadCompilerDiagnosticsSnapshot } from './snapshot.js';
+import { validateMetricCoherence } from './metric-coherence-validator.js';
 
 export function buildCompilerDiagnosticsSnapshotContracts({
   projectPath,
@@ -109,7 +110,19 @@ export function buildCompilerDiagnosticsSnapshotContracts({
     liveRowSync: dbSurfaces.databaseHealth?.metrics?.liveRowSync || null,
     systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
     semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
-    fileUniverseGranularity
+    fileUniverseGranularity,
+    metricCoherence: db ? validateMetricCoherence({
+      compilerExplainability: {
+        databaseHealth: dbSurfaces.databaseHealth,
+        fileUniverseGranularity
+      },
+      repo: { db }
+    }) : null,
+    compilerExplainability: {
+      databaseHealth: dbSurfaces.databaseHealth,
+      fileUniverseGranularity
+    },
+    repo: db ? { db } : null
   });
 
   return {

@@ -10,7 +10,10 @@
 
 import { AggregateMetricsTool } from '../aggregate-metrics.js';
 import { getRepository } from '../../../storage/repository/index.js';
-import { buildCompilerMetricsSnapshot } from '../../../../shared/compiler/index.js';
+import {
+  buildCompilerMetricsSnapshot,
+  loadCompilerExplainability
+} from '../../../../shared/compiler/index.js';
 import {
   TECHNICAL_DEBT_SNAPSHOT_KIND,
   buildTechnicalDebtFingerprint,
@@ -21,6 +24,32 @@ import {
   buildTechnicalDebtReportResult,
   loadTechnicalDebtReportDetails
 } from './report-core.js';
+import { loadNotifications, buildRecentErrorsResponse } from '../status-notifications.js';
+import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../../core/governance-alerts.js';
+
+/**
+ * Loads compilerExplainability with notifications and governance alerts.
+ * Extracted to reduce complexity of getTechnicalDebtReport.
+ */
+async function loadCompilerExplainabilityWithContext(projectPath, context, folderizationOptions) {
+  const notifications = projectPath && context.server
+    ? await loadNotifications(projectPath, context.server, false)
+    : { watcherAlerts: [], watcherLifecycle: null };
+  const compilerExplainability = projectPath
+    ? await loadCompilerExplainability(
+        projectPath,
+        notifications.watcherAlerts || [],
+        context.server?.sharedState || {},
+        context.server?.fileWatcher?.getFileWatcherStats?.() || null,
+        folderizationOptions
+      )
+    : null;
+  const recentErrors = buildRecentErrorsResponse(notifications);
+  const governanceAlerts = buildGovernanceAlerts({ compilerExplainability, source: 'technical_debt' });
+  const mergedNotifications = mergeRecentNotificationsWithGovernanceAlerts(notifications, governanceAlerts);
+
+  return { compilerExplainability, recentErrors, mergedNotifications };
+}
 
 export async function getTechnicalDebtReport(args, context) {
   try {
@@ -30,6 +59,10 @@ export async function getTechnicalDebtReport(args, context) {
       focusPath: args?.focusPath || null
     };
     const repo = projectPath ? getRepository(projectPath) : null;
+
+    const { compilerExplainability, recentErrors, mergedNotifications } =
+      await loadCompilerExplainabilityWithContext(projectPath, context, folderizationOptions);
+
     const currentSnapshot = buildCompilerMetricsSnapshot({
       projectPath,
       scopePath: folderizationOptions.scopePath,
@@ -37,6 +70,9 @@ export async function getTechnicalDebtReport(args, context) {
       captureSource: 'mcp.tool.get_technical_debt_report',
       snapshotKind: TECHNICAL_DEBT_SNAPSHOT_KIND,
       repo,
+      compilerExplainability,
+      watcherAlerts: mergedNotifications.watcherAlerts || [],
+      recentErrors,
       persist: false,
       compareDays: 3,
       historyLimit: 3,

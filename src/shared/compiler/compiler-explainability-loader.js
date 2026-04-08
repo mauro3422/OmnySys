@@ -6,6 +6,7 @@ import { summarizeCompilerPolicyDrift } from './policy-conformance-summary.js';
 import { buildFolderizationReportFromRepo } from './folderization-report.js';
 import { buildFolderizationAutomationSummaryFromReport } from './folderization-automation-summary.js';
 import { getDatabaseHealthSummary } from './database-health-summary.js';
+import { validateMetricCoherence } from './metric-coherence-validator.js';
 
 function buildFolderizationPropagationAdoptionTargets({
   snapshot,
@@ -98,6 +99,16 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       propagationAdoptionRequiredSystems
     });
 
+    const metricCoherence = repo?.db
+      ? validateMetricCoherence({
+          compilerExplainability: {
+            databaseHealth,
+            fileUniverseGranularity: snapshot.fileUniverseGranularity
+          },
+          repo
+        })
+      : null;
+
     return {
       policySummary,
       standardization: snapshot.standardizationReport,
@@ -116,6 +127,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       databaseHealth,
       driftAssessment: snapshot.driftAssessment,
       surfaceAudit: snapshot.surfaceAudit,
+      metricCoherence,
       inventorySignals: sharedState.inventorySignals || null,
       folderization: {
         candidateReport: folderizationReport.candidateReport,
