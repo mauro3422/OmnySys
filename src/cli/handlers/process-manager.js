@@ -9,6 +9,7 @@ import os from 'os';
 import path from 'path';
 import { PORTS } from '../utils/port-checker.js';
 import { repoRoot } from '../utils/paths.js';
+import { readDaemonOwnerLock, waitForDaemonOwner } from '../../shared/compiler/index.js';
 
 const PROCESSES = {
   llm: null,
@@ -42,6 +43,21 @@ export async function startLLM() {
  */
 export async function startMCP() {
   const mcpHttpServerPath = path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-http-proxy.js');
+  const ownerLock = await readDaemonOwnerLock(process.cwd(), PORTS.mcp);
+  if (ownerLock) {
+    const ownerReady = await waitForDaemonOwner(process.cwd(), {
+      port: PORTS.mcp,
+      checkDaemon: checkMCP,
+      timeoutMs: 20000,
+      pollMs: 500,
+      log: (message) => console.log(message)
+    });
+
+    if (ownerReady) {
+      return true;
+    }
+  }
+
   PROCESSES.mcp = spawn('node', [mcpHttpServerPath, process.cwd(), String(PORTS.mcp)], {
     detached: true,
     stdio: 'ignore',

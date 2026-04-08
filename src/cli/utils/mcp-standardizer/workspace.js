@@ -81,20 +81,15 @@ export async function writeUnifiedConfig(projectPath, url) {
     return targetPath;
 }
 
-export function buildDaemonTask(options = {}) {
-    const task = {
+export function buildDaemonTask() {
+    return {
         label: VSCODE_DAEMON_TASK_LABEL,
         type: 'shell',
         command: VSCODE_DAEMON_TASK_COMMAND,
         options: { cwd: '${workspaceFolder}' },
+        runOptions: { runOn: 'folderOpen' },
         presentation: { reveal: 'always', panel: 'dedicated', clear: false, focus: false }
     };
-
-    if (options.runOnFolderOpen === true) {
-        task.runOptions = { runOn: 'folderOpen' };
-    }
-
-    return task;
 }
 
 export async function applyWorkspaceMcpConfig(options = {}) {
@@ -117,8 +112,7 @@ export async function applyVsCodeAutostartConfig(options = {}) {
     try {
         const projectPath = path.resolve(options.projectPath || process.cwd());
         const paths = getVsCodeConfigPaths(projectPath);
-        const runOnFolderOpen = options.runOnFolderOpen === true;
-        const daemonTask = buildDaemonTask({ runOnFolderOpen });
+        const daemonTask = buildDaemonTask();
 
         const tasksConfig = await readJsonSafe(paths.tasks, { version: '2.0.0', tasks: [] });
 
@@ -146,11 +140,9 @@ export async function applyVsCodeAutostartConfig(options = {}) {
 
         await writeJsonNoBom(paths.mcp, buildVsCodeMcpPayload(projectPath, true));
 
-        if (runOnFolderOpen) {
-            const settings = await readJsonSafe(paths.settings, {});
-            settings['task.allowAutomaticTasks'] = 'on';
-            await writeJsonNoBom(paths.settings, settings);
-        }
+        const settings = await readJsonSafe(paths.settings, {});
+        settings['task.allowAutomaticTasks'] = 'on';
+        await writeJsonNoBom(paths.settings, settings);
 
         return { success: true, paths };
     } catch (error) {

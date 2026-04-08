@@ -49,6 +49,9 @@ if (!Number.isFinite(portNum) || portNum < 0 || portNum >= 65536) {
 }
 
 const bugModeEnabled = process.argv.includes('--bug-mode') || process.env.OMNYSYS_BUG_MODE === '1';
+const START_LOCK_DIR = path.join(projectRoot, '.omnysysdata');
+const START_LOCK_PATH = path.join(START_LOCK_DIR, `daemon-start-${port}.lock`);
+const START_LOCK_STALE_MS = 30000;
 
 if (bugModeEnabled) {
     process.env.OMNYSYS_BUG_MODE = '1';
@@ -62,6 +65,7 @@ let restartCount = 0;
 let respawnTimer = null;
 let shutdownInProgress = false;
 let proxyTelemetry = readProxyRuntimeTelemetry(projectRoot) || null;
+let startupLockHandle = null;
 
 // Restart cooldown to prevent loops after processRestart.
 // When the worker respawns with fresh ESM cache, the file watcher may detect
@@ -90,6 +94,74 @@ function writeOwnerLock(state) {
 
 function removeOwnerLock() {
     removeDaemonOwnerLockSync(projectRoot, port);
+}
+
+function releaseStartupLock() {
+    if (!startupLockHandle) {
+        return;
+    }
+
+    try {
+        fs.closeSync(startupLockHandle);
+    } catch {
+        // ignore close errors
+    }
+    startupLockHandle = null;
+
+    try {
+        fs.unlinkSync(START_LOCK_PATH);
+    } catch {
+        // ignore unlink errors
+    }
+}
+
+function acquireStartupLock() {
+    try {
+        fs.mkdirSync(START_LOCK_DIR, { recursive: true });
+        startupLockHandle = fs.openSync(START_LOCK_PATH, 'wx');
+        fs.writeFileSync(START_LOCK_PATH, JSON.stringify({
+            pid: process.pid,
+            port,
+            projectPath,
+            createdAt: nowIso()
+        }, null, 2));
+        return true;
+    } catch (error) {
+        if (error?.code !== 'EEXIST') {
+            log(`Warning: unable to acquire daemon start lock: ${error.message}`);
+            return false;
+        }
+
+        try {
+            const stats = fs.statSync(START_LOCK_PATH);
+            if (Date.now() - stats.mtimeMs > START_LOCK_STALE_MS) {
+                fs.unlinkSync(START_LOCK_PATH);
+                return acquireStartupLock();
+            }
+        } catch {
+            return false;
+        }
+
+        return false;
+    }
+}
+
+async function waitForStartupLockRelease(timeoutMs = 20000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const daemonHealth = await detectHealthyDaemon(port, projectPath);
+        if (daemonHealth.healthy) {
+            return true;
+        }
+
+        if (!fs.existsSync(START_LOCK_PATH)) {
+            return false;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    return false;
 }
 
 function clearRespawnTimer() {
@@ -320,6 +392,7 @@ const shutdown = createShutdownHandler(worker, 'Proxy', () => {
     shutdownInProgress = true;
     clearRespawnTimer();
     removeOwnerLock();
+    releaseStartupLock();
     recordProxyEvent('proxy-shutdown', { shutdownInProgress: true });
 });
 
@@ -341,6 +414,20 @@ process.on('uncaughtException', (error) => {
 log(`OmnySys MCP HTTP Proxy starting — project: ${projectPath}, port: ${port}`);
 log(`Worker: ${workerPath}`);
 
+if (!acquireStartupLock()) {
+    log('Another proxy startup is already in progress. Waiting for it to become healthy...');
+    const startLockResolved = await waitForStartupLockRelease();
+    if (startLockResolved) {
+        log('Existing daemon became healthy while waiting for start lock. Exiting duplicate proxy.');
+        process.exit(0);
+    }
+
+    if (!acquireStartupLock()) {
+        log('Could not obtain daemon start lock. Exiting to avoid duplicate startup.');
+        process.exit(0);
+    }
+}
+
 // CLEANUP: Detect and kill zombie processes from previous restarts before spawning.
 await cleanupZombieProcesses(process.pid, log);
 
@@ -355,6 +442,7 @@ if (existingDaemon.healthy) {
     const ownerLock = await readDaemonOwnerLock(projectRoot, port);
     if (ownerLock && ownerLock.pid && ownerLock.pid !== process.pid) {
         log(`ℹ️  Another proxy (PID ${ownerLock.pid}) is managing this daemon. This proxy will exit.`);
+        releaseStartupLock();
         process.exit(0);
     }
     
@@ -363,6 +451,7 @@ if (existingDaemon.healthy) {
     
     // Set up periodic health checks to detect daemon failures
     startDaemonWatchdogHealthCheck();
+    releaseStartupLock();
 }
 
 /**
@@ -443,3 +532,4 @@ ensureCompilerRuntimeDirSync(projectRoot);
 writeOwnerLock('starting');
 persistProxyTelemetry({ state: 'booting' });
 spawnWorker();
+releaseStartupLock();

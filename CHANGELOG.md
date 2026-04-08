@@ -40,11 +40,12 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
-- **Daemon ownership cleanup and autostart simplification.** Removed the standalone shell-profile hook script and made terminal autostart call the system CLI entrypoint (`omny.js up`) directly. VS Code workspace setup no longer auto-runs the daemon on folder open by default, while explicit CLI client configs remain intact for Codex/Qwen/OpenCode/Cline.
+- **Daemon ownership cleanup and autostart centralization.** Removed the standalone shell-profile hook script and made terminal autostart call the system CLI entrypoint (`omny.js up`) directly. Project standardization now restores VS Code folder-open startup and terminal auto-start through one centralized installer flow, while explicit CLI client configs remain intact for Codex/Qwen/OpenCode/Cline.
   - `scripts/mcp-autostart.js` removed
   - `src/cli/utils/mcp-standardizer/terminal-autostart.js` now targets `omny.js`
-  - `src/cli/utils/mcp-standardizer/workspace.js` no longer forces folder-open daemon startup
-  - `src/cli/utils/mcp-standardizer/index.js` stops auto-applying terminal autostart during normal standardization
+  - `src/cli/utils/mcp-standardizer/workspace.js` restores folder-open daemon startup
+  - `src/cli/utils/mcp-standardizer/index.js` reapplies terminal autostart during normal standardization
+  - `src/layer-c-memory/mcp-http-proxy.js` now uses a startup lock to avoid duplicate supervisors
 
 - **Startup stabilization.** Cache preload now degrades to a safe in-memory fallback instead of killing the worker, hot-reload startup is non-fatal, and crash traces are persisted for worker diagnosis.
   - `src/layer-c-memory/mcp/core/initialization/steps/cache-init-step.js`
