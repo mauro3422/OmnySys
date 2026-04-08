@@ -6,6 +6,7 @@
  * explicitly instead of falling back to filesystem/runtime inspection.
  */
 
+import path from 'path';
 import { getFileAnalysis, getFileExports } from '#layer-c/query/apis/file-api.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { buildPropagationPlan, summarizePropagationPlan } from '#shared/compiler/index.js';
@@ -15,6 +16,28 @@ export { normalizeComparablePath };
 
 function createCacheKey(projectPath, filePath) {
     return `${normalizeComparablePath(projectPath)}::${normalizeComparablePath(filePath)}`;
+}
+
+/**
+ * Resolves a relative import path against the importing file's directory.
+ * If the modulePath is already absolute/fully-qualified, returns it as-is.
+ */
+function resolveImportModulePath(projectPath, importingFilePath, modulePath) {
+    if (!modulePath) return '';
+
+    // If it's already a full path (starts with src/ or is absolute), return normalized
+    const normalized = normalizePath(modulePath, projectPath);
+    if (!modulePath.startsWith('.') && !modulePath.startsWith('/')) {
+        // External module or already-resolved
+        return normalized;
+    }
+
+    // Resolve relative path against the importing file's directory
+    const importingDir = path.posix.dirname(importingFilePath);
+    const resolved = path.posix.join(importingDir, modulePath);
+    // Add .js extension if missing (ESM convention in this project)
+    const withExtension = resolved.endsWith('.js') ? resolved : `${resolved}.js`;
+    return normalizePath(withExtension, projectPath);
 }
 
 async function loadModuleExportsFromDb(projectPath, modulePath, exportsByModule) {
@@ -137,18 +160,20 @@ function createBrokenEntry(source, missingExport, reason = 'missing_named_export
     };
 }
 
-async function inspectImportEntryAgainstDb(projectPath, entry, exportsByModule) {
-    const fromModule = entry?.resolvedPath || entry?.resolved || entry?.source || entry?.fromModule;
+async function inspectImportEntryAgainstDb(projectPath, importingFilePath, entry, exportsByModule) {
+    const rawModulePath = entry?.resolvedPath || entry?.resolved || entry?.source || entry?.fromModule;
     const { names, namespaceImport } = extractImportNames(entry);
 
-    if (!fromModule || namespaceImport || names.length === 0) {
+    if (!rawModulePath || namespaceImport || names.length === 0) {
         return [];
     }
 
-    const moduleExports = await loadModuleExportsFromDb(projectPath, fromModule, exportsByModule);
+    // Resolve relative imports against the importing file's directory
+    const resolvedModulePath = resolveImportModulePath(projectPath, importingFilePath, rawModulePath);
+    const moduleExports = await loadModuleExportsFromDb(projectPath, resolvedModulePath, exportsByModule);
     return names
         .filter((name) => !moduleExports.has(name))
-        .map((missingName) => createBrokenEntry(fromModule, missingName));
+        .map((missingName) => createBrokenEntry(rawModulePath, missingName));
 }
 
 export async function collectDatabaseImportState(projectPath, filePath, repo = null) {
@@ -177,7 +202,7 @@ export async function collectDatabaseImportState(projectPath, filePath, repo = n
     };
 
     for (const entry of imports) {
-        const brokenEntries = await inspectImportEntryAgainstDb(projectPath, entry, exportsByModule);
+        const brokenEntries = await inspectImportEntryAgainstDb(projectPath, indexedFilePath, entry, exportsByModule);
         for (const brokenEntry of brokenEntries) {
             pushBroken(brokenEntry);
         }

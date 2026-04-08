@@ -25,11 +25,14 @@ const logger = createLogger('OmnySys:mcp:detect_folderization_opportunities');
 
 /**
  * Detecta archivos monolíticos (>= threshold líneas)
+ * Excluye barrel/coordinator files que tienen una carpeta folderizada hermana
+ * con el mismo nombre (son archivos delegadores, no implementaciones).
  */
 function detectMonoliths(repo, threshold = 300) {
   if (!repo?.db) return [];
   try {
-    const monoliths = repo.db.prepare(`
+    // Primero obtenemos todos los candidatos
+    const candidates = repo.db.prepare(`
       SELECT
         f.path,
         f.total_lines,
@@ -40,22 +43,39 @@ function detectMonoliths(repo, threshold = 300) {
         AND f.total_lines >= ?
         AND (f.is_removed IS NULL OR f.is_removed = 0)
       ORDER BY f.total_lines DESC
-      LIMIT 20
+      LIMIT 50
     `).all(threshold);
 
-    return monoliths.map(m => {
-      const severity = m.total_lines >= 600 ? 'high' : m.total_lines >= 400 ? 'medium' : 'low';
-      return {
+    // Filtramos los que son barrels de familias folderizadas
+    const monoliths = [];
+    for (const c of candidates) {
+      // Un barrel folderizado tiene: una carpeta hermana con el mismo nombre base
+      // Y tiene atom_count = 0 o muy bajo comparado con total_lines
+      const basePath = c.path.replace(/\.js$/, '');
+      const hasSiblingFolder = repo.db.prepare(
+        "SELECT 1 FROM files WHERE path LIKE ? || '/%' AND (is_removed IS NULL OR is_removed = 0) LIMIT 1"
+      ).get(basePath);
+
+      // Si tiene carpeta hermana y (no tiene átomos propios O tiene muy pocas líneas de código real)
+      // es un barrel delegador, no un monolito real
+      if (hasSiblingFolder && (c.atom_count === 0 || c.atom_count <= 5)) {
+        continue; // Skip: es barrel folderizado
+      }
+
+      const severity = c.total_lines >= 600 ? 'high' : c.total_lines >= 400 ? 'medium' : 'low';
+      monoliths.push({
         type: 'monolith',
         severity,
-        file: m.path,
-        lines: m.total_lines,
-        atoms: m.atom_count,
-        complexity: m.total_complexity,
-        message: `Monolítico ${severity}: ${m.path} (${m.total_lines}L, ${m.atom_count} átomos)`,
+        file: c.path,
+        lines: c.total_lines,
+        atoms: c.atom_count,
+        complexity: c.total_complexity,
+        message: `Monolítico ${severity}: ${c.path} (${c.total_lines}L, ${c.atom_count} átomos)`,
         suggestion: 'split_large_file o folderize_family'
-      };
-    });
+      });
+    }
+
+    return monoliths.slice(0, 20);
   } catch (error) {
     logger.warn(`[Detect] Could not scan monoliths: ${error.message}`);
     return [];
