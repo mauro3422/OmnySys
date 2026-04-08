@@ -76,12 +76,12 @@ export function isResponseMessage(message) {
 
 export function shouldTriggerRecovery(error) {
     const message = String(error?.message || error || '');
-    return /Server not initialized|SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(message);
+    return /Server not initialized|SESSION_EXPIRED|session expired|Invalid session|session not found|Failed to open SSE stream: Conflict|session conflict|\bConflict\b/i.test(message);
 }
 
 export function isSessionExpiredError(error) {
     const message = String(error?.message || error || '');
-    return /SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(message);
+    return /SESSION_EXPIRED|session expired|Invalid session|session not found|Failed to open SSE stream: Conflict|session conflict|\bConflict\b/i.test(message);
 }
 
 function getTrimmedClientField(clientInfo, field) {

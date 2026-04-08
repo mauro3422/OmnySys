@@ -34,6 +34,7 @@ export class FileWatcher {
     this._debounceTimeout = null;
     this._startedAt = 0;
     this._startupNoiseSuppressed = 0;
+    this._lastChangeEvents = new Map();
     // CRITICAL: Post-restart warmup period to ignore ALL events from files
     // that were modified before/during the restart. Prevents false restarts
     // when fs.watch emits stale events on Windows.
@@ -51,6 +52,7 @@ export class FileWatcher {
     }
 
     try {
+      this._lastChangeEvents.clear();
       const srcPath = path.resolve(this.projectPath, 'src');
       this._startedAt = Date.now();
 
@@ -76,6 +78,7 @@ export class FileWatcher {
    */
   stop() {
     this._clearDebounce();
+    this._lastChangeEvents.clear();
 
     if (this.fsWatcher) {
       this.fsWatcher.close();
@@ -95,6 +98,7 @@ export class FileWatcher {
       return;
     }
 
+    const normalizedFilename = path.normalize(filename).replace(/\\/g, '/');
     const timeSinceStart = Date.now() - this._startedAt;
 
     // Phase 1: Ignore startup noise (Windows fs.watch bootstrap churn)
@@ -117,7 +121,7 @@ export class FileWatcher {
     // Phase 3: Normal operation - verify file was actually modified after watcher started
     // This catches edge cases where warmup period wasn't enough
     try {
-      const fullPath = path.resolve(this.projectPath, 'src', filename);
+      const fullPath = path.resolve(this.projectPath, 'src', normalizedFilename);
       const fs = await import('fs/promises');
       const stats = await fs.stat(fullPath);
       const fileModifiedAt = stats.mtimeMs;
@@ -133,13 +137,22 @@ export class FileWatcher {
       logger.debug(`Could not stat file ${filename}: ${error.message}`);
     }
 
+    const dedupeKey = normalizedFilename.toLowerCase();
+    const now = Date.now();
+    const lastEventAt = this._lastChangeEvents.get(dedupeKey) || 0;
+    const duplicateWindowMs = Math.max(this.debounceMs, 750);
+    if (lastEventAt > 0 && (now - lastEventAt) < duplicateWindowMs) {
+      return;
+    }
+    this._lastChangeEvents.set(dedupeKey, now);
+
     // If we reach here, this is a legitimate post-warmup file change
-    logger.info(`📝 File change detected: ${filename} (${timeSinceStart}ms after watcher start)`);
+    logger.info(`📝 File change detected: ${normalizedFilename} (${timeSinceStart}ms after watcher start)`);
 
     this._clearDebounce();
 
     this._debounceTimeout = setTimeout(() => {
-      const fullPath = path.normalize(path.join('src', filename)).replace(/\\/g, '/');
+      const fullPath = path.normalize(path.join('src', normalizedFilename)).replace(/\\/g, '/');
       this.onChange(eventType, fullPath);
     }, this.debounceMs);
 

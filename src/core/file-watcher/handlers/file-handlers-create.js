@@ -15,7 +15,6 @@ export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPat
   const analysis = await collectAndIndexFile.call(fileWatcher, filePath, fullPath, false);
   const atoms = analysis.moleculeAtoms || analysis.atoms || [];
 
-  await guardRegistry.initializeDefaultGuards();
   await guardRegistry.runImpactGuards(fileWatcher.rootPath, filePath, fileWatcher, {
     fullPath,
     atoms,

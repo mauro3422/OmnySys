@@ -5,6 +5,22 @@ import { registerGuard } from './registration.js';
 import { runGuardMap } from './execution.js';
 import { initializeDefaultGuards as initializeDefaultGuardsImpl } from './initialization.js';
 
+const GUARD_INIT_STATE_KEY = Symbol.for('omnysys.fileWatcher.defaultGuardsInitState');
+
+function getGlobalGuardInitState() {
+  const existing = globalThis[GUARD_INIT_STATE_KEY];
+  if (existing) {
+    return existing;
+  }
+
+  const state = {
+    initialized: false,
+    initializationPromise: null
+  };
+  globalThis[GUARD_INIT_STATE_KEY] = state;
+  return state;
+}
+
 export function createGuardRegistryStats(registry) {
   return {
     ...buildRegistryStats(registry.semanticGuards, registry.impactGuards, registry.metadata),
@@ -42,29 +58,37 @@ export async function runGuardGroup(registry, guardMap, type, rootPath, filePath
 }
 
 export async function initializeDefaultGuards(registry) {
-  if (registry.initialized) {
+  const globalState = getGlobalGuardInitState();
+
+  if (registry.initialized || globalState.initialized) {
     return;
   }
 
-  if (registry.initializationPromise) {
-    await registry.initializationPromise;
+  if (registry.initializationPromise || globalState.initializationPromise) {
+    await (registry.initializationPromise || globalState.initializationPromise);
     return;
   }
 
-  const { registerAllDefaultSemanticGuards, registerAllDefaultImpactGuards } = await import('../default-guards.js');
-  registry.initializationPromise = initializeDefaultGuardsImpl({
-    semanticGuards: registry.semanticGuards,
-    impactGuards: registry.impactGuards,
-    logger: registry.logger,
-    registerAllDefaultSemanticGuards,
-    registerAllDefaultImpactGuards,
-    registry
-  });
+  const initializationPromise = (async () => {
+    const { registerAllDefaultSemanticGuards, registerAllDefaultImpactGuards } = await import('../default-guards.js');
+    return initializeDefaultGuardsImpl({
+      semanticGuards: registry.semanticGuards,
+      impactGuards: registry.impactGuards,
+      logger: registry.logger,
+      registerAllDefaultSemanticGuards,
+      registerAllDefaultImpactGuards,
+      registry
+    });
+  })();
+  registry.initializationPromise = initializationPromise;
+  globalState.initializationPromise = initializationPromise;
 
   try {
-    await registry.initializationPromise;
+    await initializationPromise;
     registry.initialized = true;
+    globalState.initialized = true;
   } finally {
     registry.initializationPromise = null;
+    globalState.initializationPromise = null;
   }
 }

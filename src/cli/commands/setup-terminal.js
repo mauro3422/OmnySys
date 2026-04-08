@@ -12,7 +12,7 @@ import { log } from '../utils/logger.js';
 export const aliases = ['terminal-setup', 'setup-terminal'];
 
 export async function execute() {
-    log('Configuring terminal auto-start for MCP daemon...', 'loading');
+    log('Configuring terminal auto-start for the OmnySys CLI entrypoint...', 'loading');
     
     try {
         const result = await applyTerminalAutoStartConfig();
@@ -41,7 +41,7 @@ export async function execute() {
         log('Next steps:', 'info');
         console.log('  1. Close all terminal windows');
         console.log('  2. Open a new terminal');
-        console.log('  3. The MCP daemon will start automatically');
+        console.log('  3. The OmnySys CLI will start the MCP daemon automatically');
         console.log('  4. Then you can use Qwen CLI, Claude CLI, Gemini CLI, etc.');
         
         return { success: true, result };

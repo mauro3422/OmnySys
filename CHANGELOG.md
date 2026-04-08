@@ -40,6 +40,22 @@ All notable changes to this project are documented here as a release index. Deta
 
 ## Unreleased
 
+- **Daemon ownership cleanup and autostart simplification.** Removed the standalone shell-profile hook script and made terminal autostart call the system CLI entrypoint (`omny.js up`) directly. VS Code workspace setup no longer auto-runs the daemon on folder open by default, while explicit CLI client configs remain intact for Codex/Qwen/OpenCode/Cline.
+  - `scripts/mcp-autostart.js` removed
+  - `src/cli/utils/mcp-standardizer/terminal-autostart.js` now targets `omny.js`
+  - `src/cli/utils/mcp-standardizer/workspace.js` no longer forces folder-open daemon startup
+  - `src/cli/utils/mcp-standardizer/index.js` stops auto-applying terminal autostart during normal standardization
+
+- **Startup stabilization.** Cache preload now degrades to a safe in-memory fallback instead of killing the worker, hot-reload startup is non-fatal, and crash traces are persisted for worker diagnosis.
+  - `src/layer-c-memory/mcp/core/initialization/steps/cache-init-step.js`
+  - `src/layer-c-memory/mcp/core/server-class.js`
+  - `src/layer-c-memory/mcp-http-server.js`
+
+- **Watcher and validation cleanup.** Guard registry initialization is now idempotent, duplicate file-watcher events are deduped, and export validation no longer flags namespace imports as broken.
+  - `src/core/file-watcher/*`
+  - `src/core/meta-detector/pipeline-integrity-detector/runtime-checks.js`
+  - `src/layer-c-memory/mcp/tools/validate-exports-chain*.js`
+
 - **Startup regression fix: 34s → 1.7s (95% reduction).** El fast path de
   Layer A verificaba `index.json` que NO existe (el sistema usa `omnysys.db`).
   Esto causaba que cada boot cayera al slow path que abre el repo SQLite (~30s)

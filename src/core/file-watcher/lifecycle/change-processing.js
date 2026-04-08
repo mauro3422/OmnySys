@@ -105,6 +105,18 @@ export async function processChange(change) {
     source = null
   } = change;
 
+  const dedupeKey = `${filePath}:${type}:${origin}`;
+  const lastProcessedAt = this.lastProcessedChanges?.get(dedupeKey) || 0;
+  const now = Date.now();
+  const duplicateWindowMs = Math.max(this.options?.debounceMs || 500, 1000);
+
+  if (lastProcessedAt > 0 && (now - lastProcessedAt) < duplicateWindowMs) {
+    if (this.options.verbose) {
+      logger.debug(`${filePath} - duplicate change suppressed (${Math.round((duplicateWindowMs - (now - lastProcessedAt)))}ms remaining)`);
+    }
+    return;
+  }
+
   // Evitar procesar el mismo archivo concurrentemente
   if (this.processingFiles.has(filePath)) {
     if (this.options.verbose) {
@@ -141,6 +153,9 @@ export async function processChange(change) {
     this.stats.processedChanges++;
     this.stats.lastProcessedAt = new Date().toISOString();
     this.stats.lastProcessedOrigin = origin;
+    if (this.lastProcessedChanges) {
+      this.lastProcessedChanges.set(dedupeKey, Date.now());
+    }
     logger.info(`File change processed: ${filePath}`);
   } catch (error) {
     logger.error(`Error processing ${filePath}:`, error);

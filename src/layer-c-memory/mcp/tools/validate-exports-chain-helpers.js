@@ -75,3 +75,16 @@ export function buildSkippedImportResult(imp, fromModule) {
     chain: []
   };
 }
+
+export function buildSkippedNamespaceImportResult(imp, fromModule) {
+  return {
+    importName: fromModule || '*',
+    exportName: '* as namespace',
+    fromModule,
+    line: imp.line || imp.loc?.start?.line || 0,
+    valid: true,
+    skipped: true,
+    reason: 'namespace_import',
+    chain: []
+  };
+}

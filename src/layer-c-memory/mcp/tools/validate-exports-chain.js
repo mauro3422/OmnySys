@@ -12,6 +12,7 @@ import { createLogger } from '#utils/logger.js';
 import {
   buildMissingDatabaseResult,
   buildSkippedImportResult,
+  buildSkippedNamespaceImportResult,
   buildSkippedTestFactoryResult,
   isBuiltinModuleSpecifier,
   isExternalNonCanonicalModule,
@@ -48,12 +49,21 @@ function getImportTargets(imp = {}) {
   return [];
 }
 
+function isNamespaceImport(imp = {}) {
+  const specifiers = Array.isArray(imp?.specifiers) ? imp.specifiers : [];
+  return specifiers.some((specifier) => specifier?.type === 'namespace' || String(specifier?.name || '').startsWith('* as '));
+}
+
 async function buildValidationResultsForImport(projectPath, filePath, imp) {
   const fromModule = imp?.resolvedPath || imp?.resolved || imp?.source || imp?.fromModule;
   const skippedResult = buildSkippedImportResult(imp, fromModule);
 
   if (skippedResult) {
     return [skippedResult];
+  }
+
+  if (isNamespaceImport(imp)) {
+    return [buildSkippedNamespaceImportResult(imp, fromModule)];
   }
 
   const results = [];

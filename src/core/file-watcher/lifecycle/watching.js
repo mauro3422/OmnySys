@@ -119,6 +119,7 @@ export function stopWatching() {
       this.fsWatcher.close();
     }
     this.fsWatcher = null;
+    this.lastProcessedChanges?.clear?.();
     if (this.options.verbose) {
       logger.info('File watcher stopped');
     }

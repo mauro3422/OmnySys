@@ -34,7 +34,7 @@ The system does not have a single "startup path". It has several layers that
 touch lifecycle:
 
 - `install.js` standardizes client configs, workspace files, VS Code task
-  settings, and terminal autostart.
+  settings, and optional terminal autostart via the OmnySys CLI entrypoint.
 - `src/cli/commands/up.js` is the CLI entrypoint that starts or gracefully
   restarts the daemon.
 - `src/layer-c-memory/mcp-http-proxy.js` is the long-lived parent supervisor.
@@ -50,7 +50,7 @@ touch lifecycle:
   `client_id` and can re-adopt a client session after a restart.
 - `src/cli/utils/mcp-standardizer/*` writes client configs and workspace
   config for the supported IDEs/CLIs.
-- `scripts/mcp-autostart.js` is the shell-profile auto-start hook.
+- `omny.js` is the system CLI entrypoint used by shell-profile auto-start hooks.
 - `src/core/unified-server/initialization/*` is a separate internal startup
   pipeline used by the unified server stack.
 - `src/layer-c-memory/mcp/restart-runtime.js` is the controlled runtime
@@ -67,7 +67,7 @@ client:
 - workspace `.mcp.json`
 - `mcp-servers.json`
 - VS Code task/settings
-- shell profile autostart
+- shell profile autostart via `omny.js`
 
 This is performed by `install.js` or by the dedicated CLI setup commands.
 
@@ -568,7 +568,7 @@ The next architecture step should be a single daemon-managed restart boundary:
 - `src/cli/utils/mcp-standardizer/index.js`
 - `src/cli/utils/mcp-standardizer/workspace.js`
 - `src/cli/utils/mcp-standardizer/clients.js`
-- `scripts/mcp-autostart.js`
+- `omny.js`
 - `.vscode/tasks.json`
 - `.vscode/settings.json`
 - `src/core/unified-server/initialization/index.js`

@@ -71,10 +71,17 @@ export class OmnySysMCPServer extends EventEmitter {
         if (!result.enabled || !this.hotReloadManager) {
           logger.info('   Continuing without hot-reload...\n');
         } else {
-          await this.hotReloadManager.start();
-          logger.info('🔥 Hot-reload enabled - System can self-improve');
-          logger.info(`   Runtime restart mode: ${this.runtimeRestartMode}`);
-          logger.info('   Watching for code changes in src/\n');
+          try {
+            await this.hotReloadManager.start();
+            logger.info('🔥 Hot-reload enabled - System can self-improve');
+            logger.info(`   Runtime restart mode: ${this.runtimeRestartMode}`);
+            logger.info('   Watching for code changes in src/\n');
+          } catch (error) {
+            logger.warn(`⚠️  Hot-reload disabled after startup failure: ${error.message}`);
+            logger.debug?.(error.stack || '');
+            this.hotReloadManager = null;
+            logger.info('   Continuing without hot-reload...\n');
+          }
         }
       } else {
         logger.error(`\n❌ Initialization failed at: ${result.failedAt || result.haltedAt}`);

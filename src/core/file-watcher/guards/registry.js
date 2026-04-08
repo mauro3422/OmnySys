@@ -53,6 +53,7 @@ class GuardRegistry {
   }
 
   async runSemanticGuards(rootPath, filePath, context, atoms, options = {}) {
+    await this.initializeDefaultGuards();
     return runGuardGroup(
       this,
       this.semanticGuards,
@@ -64,6 +65,7 @@ class GuardRegistry {
   }
 
   async runImpactGuards(rootPath, filePath, context, options = {}) {
+    await this.initializeDefaultGuards();
     return runGuardGroup(
       this,
       this.impactGuards,
@@ -79,4 +81,7 @@ class GuardRegistry {
   }
 }
 
-export const guardRegistry = new GuardRegistry();
+const GUARD_REGISTRY_GLOBAL_KEY = Symbol.for('omnysys.fileWatcher.guardRegistry');
+const globalGuardRegistryState = globalThis[GUARD_REGISTRY_GLOBAL_KEY] || (globalThis[GUARD_REGISTRY_GLOBAL_KEY] = {});
+
+export const guardRegistry = globalGuardRegistryState.instance || (globalGuardRegistryState.instance = new GuardRegistry());

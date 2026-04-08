@@ -28,6 +28,7 @@ export async function initialize() {
 
   // Cargar estado actual del proyecto (hashes para dedup)
   await this.loadCurrentState();
+  this.lastProcessedChanges?.clear?.();
 
   this.isRunning = true;
 

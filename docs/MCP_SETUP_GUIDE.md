@@ -133,7 +133,7 @@ When you open the OmnySystem workspace in VS Code, a background task automatical
    - Bash: `cat ~/.bashrc`
    
 2. **Verify script path is correct:**
-   The auto-start script should point to: `C:\Dev\OmnySystem\scripts\mcp-autostart.js`
+   The auto-start hook should point to the system CLI entrypoint: `C:\Dev\OmnySystem\omny.js`
 
 3. **Re-run setup:**
    ```bash

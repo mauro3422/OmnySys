@@ -28,16 +28,11 @@ const SHELL_PROFILES = {
 };
 
 /**
- * Get the path to the mcp-autostart script
+ * Get the path to the OmnySys CLI entrypoint used for terminal auto-start.
  */
 export function getAutostartScriptPath() {
-    // This file is at: src/cli/utils/mcp-standardizer/terminal-autostart.js
-    // The autostart script is at: scripts/mcp-autostart.js
-    // So we need to go up 4 levels and then to scripts/
     const repoRoot = path.resolve(__dirname, '../../../..');
-    const scriptPath = path.join(repoRoot, 'scripts', 'mcp-autostart.js');
-    
-    return scriptPath;
+    return path.join(repoRoot, 'omny.js');
 }
 
 /**
@@ -54,41 +49,46 @@ async function getProfileContent(profilePath) {
 /**
  * Check if auto-start is already configured in a profile
  */
-function hasAutoStartConfig(content, scriptPath) {
-    const scriptName = path.basename(scriptPath, '.js');
-    return content.includes(scriptName) || content.includes('mcp-autostart');
+function hasAutoStartConfig(content, entryPath) {
+    const normalized = String(entryPath || '').replace(/\\/g, '/');
+    return content.includes(normalized)
+        || content.includes('omny.js')
+        || content.includes('omny.js" up')
+        || content.includes('omny.js\' up')
+        || content.includes('omny.js up')
+        || content.includes('mcp-autostart');
 }
 
 /**
  * Add auto-start configuration to a shell profile
  */
-export function addAutoStartConfig(content, scriptPath, shell) {
+export function addAutoStartConfig(content, entryPath, shell) {
     // Normalize path for the shell
-    let normalizedPath = scriptPath;
+    let normalizedPath = entryPath;
     
     if (shell === 'powershell' || shell === 'pwsh') {
         // PowerShell uses backslashes on Windows
-        normalizedPath = scriptPath.replace(/\//g, '\\');
+        normalizedPath = entryPath.replace(/\//g, '\\');
         
         const config = `
 # OmnySys MCP Auto-Start
 # Ensures MCP daemon is running when terminal opens
-$omnyScript = "${normalizedPath}"
-if (Test-Path $omnyScript) {
-    Start-Process node -ArgumentList $omnyScript -WindowStyle Hidden -NoNewWindow
+$omnyCli = "${normalizedPath}"
+if (Test-Path $omnyCli) {
+    Start-Process node -ArgumentList @($omnyCli, 'up') -WindowStyle Hidden
 }
 `;
         return content + config;
     } else {
         // Bash/Zsh use forward slashes even on Windows (via WSL or Git Bash)
-        normalizedPath = scriptPath.replace(/\\/g, '/');
+        normalizedPath = entryPath.replace(/\\/g, '/');
         
         const config = `
 # OmnySys MCP Auto-Start
 # Ensures MCP daemon is running when terminal opens
-omny_script="${normalizedPath}"
-if [ -f "$omny_script" ]; then
-    node "$omny_script" > /dev/null 2>&1 &
+omny_cli="${normalizedPath}"
+if [ -f "$omny_cli" ]; then
+    node "$omny_cli" up > /dev/null 2>&1 &
 fi
 `;
         return content + config;
@@ -98,7 +98,7 @@ fi
 /**
  * Apply auto-start configuration to a specific shell profile
  */
-async function applyShellConfig(shell, scriptPath) {
+async function applyShellConfig(shell, entryPath) {
     const profiles = SHELL_PROFILES[shell] || [];
     const results = [];
 
@@ -106,7 +106,7 @@ async function applyShellConfig(shell, scriptPath) {
         try {
             const content = await getProfileContent(profilePath);
             
-            if (hasAutoStartConfig(content, scriptPath)) {
+            if (hasAutoStartConfig(content, entryPath)) {
                 results.push({
                     shell,
                     profile: profilePath,
@@ -116,7 +116,7 @@ async function applyShellConfig(shell, scriptPath) {
                 continue;
             }
 
-            const updatedContent = addAutoStartConfig(content, scriptPath, shell);
+            const updatedContent = addAutoStartConfig(content, entryPath, shell);
             
             // Ensure directory exists
             await fs.mkdir(path.dirname(profilePath), { recursive: true });
@@ -179,7 +179,7 @@ export async function applyTerminalAutoStartConfig(options = {}) {
  * Remove auto-start configuration from shell profiles
  */
 export async function removeTerminalAutoStartConfig() {
-    const scriptName = 'mcp-autostart';
+    const scriptName = 'omny.js';
     const allResults = [];
 
     for (const [shell, profiles] of Object.entries(SHELL_PROFILES)) {
@@ -211,7 +211,7 @@ export async function removeTerminalAutoStartConfig() {
                         inOmnyBlock = false;
                         continue;
                     }
-                    if (!inOmnyBlock && !line.includes('omny_script') && !line.includes('omnyScript') && !line.includes('mcp-autostart')) {
+                    if (!inOmnyBlock && !line.includes('omny_cli') && !line.includes('omnyCli') && !line.includes('mcp-autostart') && !line.includes('omny.js')) {
                         filteredLines.push(line);
                     }
                 }

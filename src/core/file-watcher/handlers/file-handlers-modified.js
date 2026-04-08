@@ -31,7 +31,6 @@ async function validateExportsForModifiedFile(fileWatcher, filePath) {
 }
 
 async function runImpactGuardsForModifiedFile(fileWatcher, filePath, fullPath, previousAtoms, analysis) {
-  await guardRegistry.initializeDefaultGuards();
   await guardRegistry.runImpactGuards(fileWatcher.rootPath, filePath, fileWatcher, {
     fullPath,
     previousAtoms,

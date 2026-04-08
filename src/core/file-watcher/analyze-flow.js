@@ -52,8 +52,7 @@ export async function runFileWatcherSemanticGuards(context, filePath, moleculeAt
       return;
     }
 
-    const { guardRegistry } = await import(`./guards/registry.js?bust=${Date.now()}`);
-    await guardRegistry.initializeDefaultGuards();
+    const { guardRegistry } = await import('./guards/registry.js');
     await guardRegistry.runSemanticGuards(context.rootPath, filePath, context, moleculeAtoms, { verbose: true });
     logger.info(`🛡️  Semantic guards checked: ${filePath}`);
   } catch (guardError) {

@@ -24,7 +24,7 @@ function shouldForceFreshSession(trigger, options = {}) {
     return true;
   }
 
-  return /transport closed|server rejected request after daemon restart|SESSION_EXPIRED|session expired|Invalid session|session not found/i.test(trigger);
+  return /transport closed|server rejected request after daemon restart|SESSION_EXPIRED|session expired|Invalid session|session not found|Conflict/i.test(trigger);
 }
 
 function getRecoverySignature(trigger, options = {}) {

@@ -29,6 +29,7 @@ class FileWatcher extends EventEmitter {
     this.pendingChanges = new Map();   // Cambios pendientes: path -> changeInfo
     this.fileHashes = new Map();       // Cache de hashes: filePath -> hash
     this.fileStats = new Map();        // Snapshot ligero: filePath -> { mtimeMs, size }
+    this.lastProcessedChanges = new Map(); // Dedup de re-procesamiento por archivo
     this.isRunning = false;
     this.fsWatcher = null;             // Instancia de fs.watch
     this.batchProcessor = null;        // SmartBatchProcessor instance

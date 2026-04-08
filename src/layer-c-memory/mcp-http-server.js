@@ -22,20 +22,40 @@
 * ========================================================================= */
 
 import v8 from 'v8';
+import fs from 'fs';
 import { spawn } from 'child_process';
 import { sanitizeLogText } from '../utils/logger.js';
+
+function appendWorkerCrashTrace(kind, message, stack = '') {
+  try {
+    const tracePath = `${process.cwd()}\\logs\\mcp-worker-crash-trace.log`;
+    fs.mkdirSync(`${process.cwd()}\\logs`, { recursive: true });
+    fs.appendFileSync(
+      tracePath,
+      `${new Date().toISOString()} [${kind}] ${message}\n${stack ? `${stack}\n` : ''}\n`
+    );
+  } catch {
+    // Best effort only.
+  }
+}
 
 // CRITICAL: Register error handlers BEFORE any async code runs
 // This catches errors that occur during module evaluation / startup
 process.on('uncaughtException', (error) => {
   const msg = `[WORKER UNCAUGHT EXCEPTION] ${error.message}\n${error.stack || ''}`;
   process.stderr.write(msg + '\n');
+  appendWorkerCrashTrace('uncaughtException', error.message || 'unknown', error.stack || '');
   // Don't exit immediately — let proxy handle the restart
 });
 
 process.on('unhandledRejection', (reason) => {
   const msg = `[WORKER UNHANDLED REJECTION] ${reason?.message || reason?.stack || String(reason)}`;
   process.stderr.write(msg + '\n');
+  appendWorkerCrashTrace(
+    'unhandledRejection',
+    reason?.message || String(reason || 'unknown'),
+    reason?.stack || ''
+  );
 });
 
 const heapLimitMB = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;

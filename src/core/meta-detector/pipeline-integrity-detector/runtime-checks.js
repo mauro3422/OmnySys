@@ -43,7 +43,7 @@ export function reconcileLiveRows(detector) {
 
 export async function checkGuardExecution(detector) {
     try {
-        const { guardRegistry } = await import(`../../file-watcher/guards/registry.js?bust=${Date.now()}`);
+        const { guardRegistry } = await import('../../file-watcher/guards/registry.js');
         await guardRegistry.initializeDefaultGuards();
 
         const stats = guardRegistry.getGuardRegistryStats();
