@@ -86,6 +86,30 @@ function recordBridgeEvent(type, details = {}) {
     });
 }
 
+function parseRestartRecoveryHint(message) {
+    const content = message?.result?.content;
+    if (!Array.isArray(content)) {
+        return null;
+    }
+
+    for (const item of content) {
+        if (item?.type !== 'text' || typeof item.text !== 'string') {
+            continue;
+        }
+
+        try {
+            const payload = JSON.parse(item.text);
+            if (payload?.processRestart === true && payload?.restartType === 'true_process_restart') {
+                return payload;
+            }
+        } catch {
+            // Ignore non-JSON tool output.
+        }
+    }
+
+    return null;
+}
+
 async function connectBridgeTransport(state, options = {}) {
     const sessionId = Object.prototype.hasOwnProperty.call(options, 'sessionId')
         ? options.sessionId
@@ -130,6 +154,26 @@ async function connectBridgeTransport(state, options = {}) {
             }
 
             await state.stdioTransport.send(message);
+
+            const restartRecoveryHint = parseRestartRecoveryHint(message);
+            if (restartRecoveryHint && !state.isReconnecting) {
+                const trigger = restartRecoveryHint?.bridgeRecovery?.trigger || 'server rejected request after daemon restart';
+                recordBridgeEvent('bridge-recovery-needed', {
+                    trigger,
+                    reason: 'restart_server response requested process restart',
+                    sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
+                    transportGeneration
+                });
+                void scheduleBridgeRecovery(
+                    state,
+                    trigger,
+                    connectBridgeTransport,
+                    {
+                        forceFreshSession: restartRecoveryHint?.bridgeRecovery?.forceFreshSession === true,
+                        backoffMs: restartRecoveryHint?.bridgeRecovery?.retryAfterMs ?? 250
+                    }
+                );
+            }
         } catch (err) {
             log(`Error forwarding daemon->IDE: ${err.message}`);
         }

@@ -215,9 +215,9 @@ What happened:
   • NO reindex triggered — file watcher handles changed files automatically
 
 What to expect:
-  • Brief MCP disconnect (~1-2s) while IDE reconnects
-  • DO NOT call other MCP tools until the reconnect completes
-  • Tell user to continue once their IDE shows "connected"
+  • Brief MCP disconnect while the bridge replays initialize and reconnects
+  • The bridge should recover automatically; wait until it reports reconnected
+  • If your client still does not reconnect, reload the IDE extension once
 ================================================================================
 `.trim();
 

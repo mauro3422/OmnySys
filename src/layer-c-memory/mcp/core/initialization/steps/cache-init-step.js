@@ -11,7 +11,11 @@
 
 import { InitializationStep } from './base-step.js';
 import { getCacheManager } from '#core/cache/singleton.js';
-import { initializeEmptyCache } from '#core/unified-server/initialization/cache-manager.js';
+import {
+  applyCriticalCacheData,
+  countAssessmentIssues,
+  createHydratedEmptyCache
+} from './cache-init-helpers.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:cache:init:step');
@@ -32,66 +36,36 @@ export class CacheInitStep extends InitializationStep {
 
     try {
       server.cache = await getCacheManager(server.projectPath);
-      try {
-        const preload = await this.loadCriticalData(server.projectPath);
-
-        server.metadata = preload.metadata;
-        server.cache.set('metadata', preload.metadata);
-        logger.info('  Metadata cached');
-
-        server.cache.set('connections', preload.connections);
-        logger.info(`  Connections cached (${preload.connections.total} total)`);
-
-        server.cache.set('assessment', preload.assessment);
-        const totalIssues = this.countIssues(preload.assessment);
-        logger.info(`  Risk assessment cached (${totalIssues} issues)`);
-
-        const elapsed = (performance.now() - startTime).toFixed(2);
-        logger.info(`\n  Cache load time: ${elapsed}ms`);
-
-        return true;
-      } catch (preloadError) {
-        logger.warn(`  Cache preload failed, continuing with empty cache: ${preloadError.message}`);
-        initializeEmptyCache(server.cache);
-        server.metadata = server.cache.get?.('metadata') || null;
-        const elapsed = (performance.now() - startTime).toFixed(2);
-        logger.info(`\n  Cache load time: ${elapsed}ms (empty fallback)`);
-        return true;
-      }
     } catch (error) {
       logger.error(`Cache initialization failed: ${error.message}`);
-      try {
-        server.cache = {
-          index: { entries: {}, metadata: { totalFiles: 0, totalDependencies: 0 } },
-          ramCache: new Map(),
-          set(key, value) {
-            this[key] = value;
-          },
-          setRamCache(key, value) {
-            this.ramCache.set(key, value);
-          },
-          get(key) {
-            if (this.ramCache?.has?.(key)) {
-              return this.ramCache.get(key);
-            }
-            return this[key];
-          },
-          purge() {
-            this.index = { entries: {}, metadata: { totalFiles: 0, totalDependencies: 0 } };
-            this.ramCache = new Map();
-          },
-          getCacheStats() {
-            return { status: 'fallback', totalFiles: 0, totalDependencies: 0 };
-          }
-        };
-        initializeEmptyCache(server.cache);
-        server.metadata = server.cache.get('metadata');
-        logger.warn('  Cache fallback created in memory; continuing startup.');
-        return true;
-      } catch (fallbackError) {
-        await this.rollback(server, error);
-        throw new Error(`CacheInitStep failed: ${error.message}; fallback failed: ${fallbackError.message}`);
-      }
+      server.cache = createHydratedEmptyCache();
+      server.metadata = server.cache.get('metadata') || null;
+      logger.warn('  Cache fallback created in memory; continuing startup.');
+      logger.info(`\n  Cache load time: ${(performance.now() - startTime).toFixed(2)}ms (empty fallback)`);
+      return true;
+    }
+
+    try {
+      const preload = await this.loadCriticalData(server.projectPath);
+
+      applyCriticalCacheData(server, preload);
+      logger.info('  Metadata cached');
+      logger.info(`  Connections cached (${preload.connections.total} total)`);
+
+      const totalIssues = countAssessmentIssues(preload.assessment);
+      logger.info(`  Risk assessment cached (${totalIssues} issues)`);
+
+      const elapsed = (performance.now() - startTime).toFixed(2);
+      logger.info(`\n  Cache load time: ${elapsed}ms`);
+
+      return true;
+    } catch (preloadError) {
+      logger.warn(`  Cache preload failed, continuing with empty cache: ${preloadError.message}`);
+      server.cache = createHydratedEmptyCache();
+      server.metadata = server.cache.get('metadata') || null;
+      const elapsed = (performance.now() - startTime).toFixed(2);
+      logger.info(`\n  Cache load time: ${elapsed}ms (empty fallback)`);
+      return true;
     }
   }
 
@@ -105,13 +79,6 @@ export class CacheInitStep extends InitializationStep {
     const assessment = await getRiskAssessment(projectPath);
 
     return { metadata, connections, assessment };
-  }
-
-  countIssues(assessment) {
-    if (!assessment?.report?.summary) return 0;
-    const s = assessment.report.summary;
-    return (s.criticalCount || 0) + (s.highCount || 0) +
-           (s.mediumCount || 0) + (s.lowCount || 0);
   }
 
   async rollback(server, error) {

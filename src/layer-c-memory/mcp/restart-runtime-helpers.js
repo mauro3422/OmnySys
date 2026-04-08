@@ -138,6 +138,11 @@ export function buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly,
     success: true,
     restarting: true,
     restartType: 'true_process_restart',
+    bridgeRecovery: {
+      trigger: 'server rejected request after daemon restart',
+      forceFreshSession: true,
+      retryAfterMs: 250
+    },
     lifecycle: buildRestartLifecycleGuidance({
       restartType: 'true_process_restart',
       proxyMode: true,
