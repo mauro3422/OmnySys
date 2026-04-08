@@ -62,8 +62,6 @@ let restartCount = 0;
 let respawnTimer = null;
 let shutdownInProgress = false;
 let proxyTelemetry = readProxyRuntimeTelemetry(projectRoot) || null;
-let recentWorkerStderr = ''; // CRITICAL: Buffer last 5KB of stderr for crash diagnosis
-const MAX_STDERR_BUFFER = 5000;
 
 // Restart cooldown to prevent loops after processRestart.
 // When the worker respawns with fresh ESM cache, the file watcher may detect
@@ -219,13 +217,6 @@ async function handleWorkerCrash(code, signal) {
     log(`⚠️  WORKER CRASH HANDLER TRIGGERED - code: ${code}, signal: ${signal}`);
     persistProxyTelemetry({ state: 'crashed', crashCount: (proxyTelemetry?.crashCount || 0) + 1, unexpectedExitCount: (proxyTelemetry?.unexpectedExitCount || 0) + 1 });
     recordProxyEvent('worker-crash', { workerPid: worker?.pid || null, workerExitCode: code, workerExitSignal: signal, restartCount });
-
-    // CRITICAL: Log recent stderr for crash diagnosis
-    if (recentWorkerStderr) {
-        log(`[CRASH DIAGNOSIS] Last stderr from worker (before crash):\n${recentWorkerStderr.slice(-2000)}`);
-        // Also forward as error so it appears in _recentErrors
-        global._omnysysLastWorkerCrashStderr = recentWorkerStderr.slice(-2000);
-    }
     
     try {
         const daemonCheck = await detectHealthyDaemon(port, projectPath);
@@ -305,31 +296,7 @@ function spawnWorker(extraArgs = []) {
 
     // spawnWorkerProcess already adds workerPath, so only pass projectPath and port
     const workerArgs = [projectPath, String(port), ...extraArgs];
-    worker = spawnWorkerProcess(workerPath, workerArgs, {
-        proxyModeEnv: '1',
-        onStderr: (chunk) => {
-            // Append to crash diagnosis buffer
-            recentWorkerStderr += chunk;
-            if (recentWorkerStderr.length > MAX_STDERR_BUFFER) {
-                recentWorkerStderr = recentWorkerStderr.slice(-MAX_STDERR_BUFFER);
-            }
-            // Log errors/warnings so they appear in _recentErrors
-            const line = chunk.trim();
-            if (line) {
-                if (line.includes('Error') || line.includes('ReferenceError') || line.includes('SyntaxError') || line.includes('TypeError')) {
-                    log(`[WORKER STDERR] ERROR: ${line}`);
-                } else if (line.includes('WARN') || line.includes('warn')) {
-                    log(`[WORKER STDERR] WARN: ${line}`);
-                }
-                // Forward to daemon via IPC so it appears in AI agent's _recentErrors
-                if (worker?.connected) {
-                    try {
-                        worker.send({ type: 'worker-stderr', message: line });
-                    } catch { /* ignore */ }
-                }
-            }
-        }
-    });
+    worker = spawnWorkerProcess(workerPath, workerArgs, { proxyModeEnv: '1' });
 
     log(`Worker PID: ${worker.pid}`);
     const spawnCount = restartCount + 1;

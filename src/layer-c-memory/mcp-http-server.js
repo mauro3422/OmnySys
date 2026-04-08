@@ -480,9 +480,6 @@ if (process.send) {
         global._omnysysPendingRuntimeErrors = global._omnysysPendingRuntimeErrors.slice(-20);
       }
     }
-    if (msg?.type === 'worker-stderr') {
-      logger.warn(`[WORKER STDERR via IPC] ${msg.message || 'unknown'}`);
-    }
   });
 }
 

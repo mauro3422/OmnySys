@@ -35,18 +35,14 @@ export function buildExecArgv() {
  * @param {Object} options - Additional spawn options
  * @param {string} [options.proxyModeEnv] - Value for OMNYSYS_PROXY_MODE
  * @param {string[]} [options.extraEnv] - Additional environment variable pairs ["KEY=VALUE"]
- * @param {string} [options.stdioConfig] - stdio config, default: ['pipe', 'pipe', 'pipe', 'ipc']
- * @param {Function} [options.onStdout] - Optional stdout handler
- * @param {Function} [options.onStderr] - Optional stderr handler (CRITICAL for crash diagnosis)
+ * @param {string} [options.stdioConfig] - stdio config, default: ['ignore', 'inherit', 'inherit', 'ipc']
  * @returns {import('child_process').ChildProcess}
  */
 export function spawnWorkerProcess(workerPath, workerArgs = [], options = {}) {
     const {
         proxyModeEnv = null,
         extraEnv = [],
-        stdioConfig = ['pipe', 'pipe', 'pipe', 'ipc'],
-        onStdout = null,
-        onStderr = null
+        stdioConfig = ['ignore', 'inherit', 'inherit', 'ipc']
     } = options;
 
     const execArgv = buildExecArgv();
@@ -60,27 +56,11 @@ export function spawnWorkerProcess(workerPath, workerArgs = [], options = {}) {
         env[key] = value;
     }
 
-    const worker = spawn(process.execPath, [...execArgv, workerPath, ...workerArgs], {
+    return spawn(process.execPath, [...execArgv, workerPath, ...workerArgs], {
         stdio: stdioConfig,
         windowsHide: true,
         env
     });
-
-    // CRITICAL: Capture stderr for crash diagnosis
-    if (onStderr && worker.stderr) {
-        worker.stderr.on('data', (chunk) => {
-            onStderr(chunk.toString());
-        });
-    }
-
-    // Forward stdout if handler provided
-    if (onStdout && worker.stdout) {
-        worker.stdout.on('data', (chunk) => {
-            onStdout(chunk.toString());
-        });
-    }
-
-    return worker;
 }
 
 /**
