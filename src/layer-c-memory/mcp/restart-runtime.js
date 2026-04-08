@@ -183,7 +183,8 @@ async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, s
   }
 
   // Proxy mode: signal proxy to kill worker and respawn with --processRestart flag
-  // CRITICAL: Include file/reason metadata to prevent "File: unknown" in cooldown logs
+  // CRITICAL: Don't log here — proxy will log if it actually executes.
+  // The proxy may block this due to its own cooldown (survives across worker restarts).
   recordRestartTime();
   if (process.send) {
     process.send({
