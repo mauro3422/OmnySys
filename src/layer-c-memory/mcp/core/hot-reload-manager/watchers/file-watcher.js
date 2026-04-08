@@ -34,6 +34,10 @@ export class FileWatcher {
     this._debounceTimeout = null;
     this._startedAt = 0;
     this._startupNoiseSuppressed = 0;
+    // CRITICAL: Post-restart warmup period to ignore ALL events from files
+    // that were modified before/during the restart. Prevents false restarts
+    // when fs.watch emits stale events on Windows.
+    this._warmupPeriodMs = Number(process.env.OMNYSYS_WATCHER_WARMUP_MS || 30000);
   }
 
   /**
@@ -86,26 +90,55 @@ export class FileWatcher {
    * @param {string} eventType - Type of change
    * @param {string} filename - Changed file path (relative to src/)
    */
-  _handleChange(eventType, filename) {
+  async _handleChange(eventType, filename) {
     if (!filename || !filename.endsWith('.js')) {
       return;
     }
 
-    // Windows fs.watch can emit a burst of stale "change" events when the
-    // watcher first attaches. Ignore that startup noise so runtime freshness
-    // is driven by real edits, not by watcher bootstrap churn.
-    if (Date.now() - this._startedAt < 1500) {
+    const timeSinceStart = Date.now() - this._startedAt;
+
+    // Phase 1: Ignore startup noise (Windows fs.watch bootstrap churn)
+    if (timeSinceStart < 1500) {
       this._startupNoiseSuppressed += 1;
       logger.debug(`Ignoring startup watcher noise: ${filename}`);
       return;
     }
 
+    // Phase 2: CRITICAL - Post-restart warmup period
+    // After a processRestart, the file watcher may receive stale events from
+    // files that were modified during the restart sequence. We ignore ALL
+    // events during the warmup period to prevent false restarts.
+    if (timeSinceStart < this._warmupPeriodMs) {
+      const remaining = Math.round((this._warmupPeriodMs - timeSinceStart) / 1000);
+      logger.debug(`Ignoring post-restart warmup event: ${filename} (${remaining}s remaining in warmup)`);
+      return;
+    }
+
+    // Phase 3: Normal operation - verify file was actually modified after watcher started
+    // This catches edge cases where warmup period wasn't enough
+    try {
+      const fullPath = path.resolve(this.projectPath, 'src', filename);
+      const fs = await import('fs/promises');
+      const stats = await fs.stat(fullPath);
+      const fileModifiedAt = stats.mtimeMs;
+      
+      // If file was modified before watcher started (+2s grace), ignore it
+      if (fileModifiedAt < this._startedAt - 2000) {
+        const ageMs = this._startedAt - fileModifiedAt;
+        logger.debug(`Ignoring pre-restart file change: ${filename} (modified ${Math.round(ageMs / 1000)}s before watcher)`);
+        return;
+      }
+    } catch (error) {
+      // If we can't stat the file, assume it's valid (might have been deleted)
+      logger.debug(`Could not stat file ${filename}: ${error.message}`);
+    }
+
+    // If we reach here, this is a legitimate post-warmup file change
+    logger.info(`📝 File change detected: ${filename} (${timeSinceStart}ms after watcher start)`);
+
     this._clearDebounce();
 
     this._debounceTimeout = setTimeout(() => {
-      // fs.watch returns paths relative to the watched directory. Normalize to
-      // a stable project-relative path so downstream reload logic and metrics
-      // do not depend on platform-specific separators.
       const fullPath = path.normalize(path.join('src', filename)).replace(/\\/g, '/');
       this.onChange(eventType, fullPath);
     }, this.debounceMs);

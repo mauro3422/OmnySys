@@ -17,6 +17,7 @@ import { fileURLToPath } from 'url';
 import {
     ensureCompilerRuntimeDirSync,
     readProxyRuntimeTelemetry,
+    readDaemonOwnerLock,
     removeDaemonOwnerLockSync,
     writeDaemonOwnerLockSync,
     writeProxyRuntimeTelemetrySync
@@ -61,6 +62,8 @@ let restartCount = 0;
 let respawnTimer = null;
 let shutdownInProgress = false;
 let proxyTelemetry = readProxyRuntimeTelemetry(projectRoot) || null;
+let recentWorkerStderr = ''; // CRITICAL: Buffer last 5KB of stderr for crash diagnosis
+const MAX_STDERR_BUFFER = 5000;
 
 // Restart cooldown to prevent loops after processRestart.
 // When the worker respawns with fresh ESM cache, the file watcher may detect
@@ -128,13 +131,31 @@ function attachWorkerIPCListeners(worker) {
             const timeSinceLastRestart = now - _lastRestartAt;
             if (_lastRestartAt > 0 && timeSinceLastRestart < RESTART_COOLDOWN_MS) {
                 const remaining = Math.round((RESTART_COOLDOWN_MS - timeSinceLastRestart) / 1000);
-                log(`⏳ RESTART BLOCKED by cooldown (${remaining}s remaining). File: ${msg.file || 'unknown'}. Reason: ${msg.reason || 'unknown'}`);
+                const cooldownMsg = `⏳ RESTART BLOCKED by cooldown (${remaining}s remaining). File: ${msg.file || 'unknown'}. Reason: ${msg.reason || 'unknown'}`;
+                log(cooldownMsg);
                 recordProxyEvent('restart-suppressed-cooldown', {
                     remainingSeconds: remaining,
                     file: msg.file || null,
                     reason: msg.reason || null,
                     timeSinceLastRestart
                 });
+                
+                // CRITICAL: Forward cooldown warning to daemon so it appears in recent errors
+                // This allows AI agents to see and report these warnings
+                if (worker && worker.connected) {
+                    try {
+                        worker.send({
+                            type: 'cooldown-warning',
+                            message: cooldownMsg,
+                            file: msg.file || 'unknown',
+                            reason: msg.reason || 'unknown',
+                            remainingSeconds: remaining
+                        });
+                    } catch (err) {
+                        // Ignore if worker can't receive
+                    }
+                }
+                
                 // CRITICAL: This return MUST exit the message handler entirely.
                 // The cooldown is the gatekeeper — nothing below executes.
                 return;
@@ -195,29 +216,50 @@ async function handlePlannedRestart(code, signal, nextArgs) {
 }
 
 async function handleWorkerCrash(code, signal) {
+    log(`⚠️  WORKER CRASH HANDLER TRIGGERED - code: ${code}, signal: ${signal}`);
     persistProxyTelemetry({ state: 'crashed', crashCount: (proxyTelemetry?.crashCount || 0) + 1, unexpectedExitCount: (proxyTelemetry?.unexpectedExitCount || 0) + 1 });
     recordProxyEvent('worker-crash', { workerPid: worker?.pid || null, workerExitCode: code, workerExitSignal: signal, restartCount });
-    if (await detectHealthyDaemon()) {
-        log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
-        removeOwnerLock();
-        process.exit(0);
+
+    // CRITICAL: Log recent stderr for crash diagnosis
+    if (recentWorkerStderr) {
+        log(`[CRASH DIAGNOSIS] Last stderr from worker (before crash):\n${recentWorkerStderr.slice(-2000)}`);
+        // Also forward as error so it appears in _recentErrors
+        global._omnysysLastWorkerCrashStderr = recentWorkerStderr.slice(-2000);
     }
+    
+    try {
+        const daemonCheck = await detectHealthyDaemon(port, projectPath);
+        log(`Daemon health check after crash: ${JSON.stringify(daemonCheck)}`);
+        
+        if (daemonCheck.healthy) {
+            log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
+            removeOwnerLock();
+            process.exit(0);
+        }
+    } catch (error) {
+        log(`⚠️  Error checking daemon health: ${error.message}. Will respawn anyway.`);
+    }
+    
     writeOwnerLock('restarting');
     log(`⚠️  Worker crashed (code=${code}). Respawning in 5s...`);
     scheduleRespawn(5000);
 }
 
-function handleCleanExit(code, signal) {
-    persistProxyTelemetry({ state: 'clean-exit', cleanExitCount: (proxyTelemetry?.cleanExitCount || 0) + 1 });
-    recordProxyEvent('worker-exit-clean', { workerPid: worker?.pid || null, workerExitCode: code, workerExitSignal: signal, restartCount });
-    log('Worker exited cleanly. Proxy shutting down.');
-    removeOwnerLock();
-    process.exit(0);
-}
-
 async function handleWorkerClose(code, signal) {
     log(`Worker exited (code=${code}, signal=${signal})`);
     persistProxyTelemetry({ workerExitAt: nowIso(), workerExitCode: code, workerExitSignal: signal });
+
+    // If this is a monitoring proxy (no worker ever spawned), check if daemon is still healthy
+    if (restartCount === 0) {
+        const daemonHealth = await detectHealthyDaemon(port, projectPath);
+        if (daemonHealth.healthy) {
+            log('✅ Daemon is healthy. Proxy staying running as watchdog.');
+            writeOwnerLock('monitoring');
+            return; // Don't exit, stay monitoring
+        }
+        log('⚠️  Daemon is not healthy. Spawning new worker...');
+        // Fall through to spawn logic below
+    }
 
     if (restartScheduled) {
         const nextArgs = Array.isArray(restartScheduled) ? restartScheduled : [];
@@ -258,9 +300,36 @@ function spawnWorker(extraArgs = []) {
     writeOwnerLock(restartCount === 0 ? 'starting' : 'restarting');
     log(`Spawning mcp-http-server.js (restart #${restartCount})...`);
 
+    // CRITICAL: Clear stderr buffer before spawning
+    recentWorkerStderr = '';
+
     // spawnWorkerProcess already adds workerPath, so only pass projectPath and port
     const workerArgs = [projectPath, String(port), ...extraArgs];
-    worker = spawnWorkerProcess(workerPath, workerArgs, { proxyModeEnv: '1' });
+    worker = spawnWorkerProcess(workerPath, workerArgs, {
+        proxyModeEnv: '1',
+        onStderr: (chunk) => {
+            // Append to crash diagnosis buffer
+            recentWorkerStderr += chunk;
+            if (recentWorkerStderr.length > MAX_STDERR_BUFFER) {
+                recentWorkerStderr = recentWorkerStderr.slice(-MAX_STDERR_BUFFER);
+            }
+            // Log errors/warnings so they appear in _recentErrors
+            const line = chunk.trim();
+            if (line) {
+                if (line.includes('Error') || line.includes('ReferenceError') || line.includes('SyntaxError') || line.includes('TypeError')) {
+                    log(`[WORKER STDERR] ERROR: ${line}`);
+                } else if (line.includes('WARN') || line.includes('warn')) {
+                    log(`[WORKER STDERR] WARN: ${line}`);
+                }
+                // Forward to daemon via IPC so it appears in AI agent's _recentErrors
+                if (worker?.connected) {
+                    try {
+                        worker.send({ type: 'worker-stderr', message: line });
+                    } catch { /* ignore */ }
+                }
+            }
+        }
+    });
 
     log(`Worker PID: ${worker.pid}`);
     const spawnCount = restartCount + 1;
@@ -293,6 +362,17 @@ const shutdown = createShutdownHandler(worker, 'Proxy', () => {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+// CRITICAL: Prevent unhandled rejection crashes
+process.on('unhandledRejection', (reason, promise) => {
+    log(`⚠️  UNHANDLED REJECTION (non-fatal): ${reason}`);
+    // Don't exit - just log it
+});
+
+process.on('uncaughtException', (error) => {
+    log(`⚠️  UNCAUGHT EXCEPTION: ${error.message}`);
+    // Don't exit - let the proxy stay alive
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 log(`OmnySys MCP HTTP Proxy starting — project: ${projectPath}, port: ${port}`);
 log(`Worker: ${workerPath}`);
@@ -300,9 +380,99 @@ log(`Worker: ${workerPath}`);
 // CLEANUP: Detect and kill zombie processes from previous restarts before spawning.
 await cleanupZombieProcesses(process.pid, log);
 
-if (await detectHealthyDaemon()) {
-    log('✅ Existing healthy OmnySys daemon detected. Proxy will not spawn a duplicate worker.');
-    process.exit(0);
+const existingDaemon = await detectHealthyDaemon(port, projectPath);
+if (existingDaemon.healthy) {
+    log(`✅ Existing healthy OmnySys daemon detected (PID ${existingDaemon.processInfo?.pid}). Proxy will monitor it.`);
+    log('⚠️  Proxy will stay running as backup in case the daemon dies.');
+    
+    // CRITICAL FIX: Don't exit here! Stay running as a watchdog.
+    // If the daemon dies later, we can respawn it.
+    // Exit only if another PROXY is managing this daemon.
+    const ownerLock = await readDaemonOwnerLock(projectRoot, port);
+    if (ownerLock && ownerLock.pid && ownerLock.pid !== process.pid) {
+        log(`ℹ️  Another proxy (PID ${ownerLock.pid}) is managing this daemon. This proxy will exit.`);
+        process.exit(0);
+    }
+    
+    // No other proxy owns this daemon - stay running as watchdog
+    log('👀 No proxy owns this daemon - staying as watchdog manager.');
+    
+    // Set up periodic health checks to detect daemon failures
+    startDaemonWatchdogHealthCheck();
+}
+
+/**
+ * Periodically checks daemon health and respawns if needed.
+ * Runs every 10 seconds to detect daemon failures.
+ * Includes circuit breaker to prevent restart loops.
+ */
+function startDaemonWatchdogHealthCheck() {
+    const HEALTH_CHECK_INTERVAL_MS = 10000; // 10 seconds
+    const MAX_RESPONSE_TIME_MS = 3000; // 3 seconds timeout
+    const CONSECUTIVE_FAILURES_THRESHOLD = 3; // Require 3 consecutive failures before respawn
+    
+    let respawnAttempted = false;
+    let consecutiveFailures = 0;
+    let lastSuccessfulCheck = Date.now();
+    
+    setInterval(async () => {
+        if (shutdownInProgress || respawnAttempted) return;
+        
+        try {
+            const daemonHealth = await detectHealthyDaemon(port, projectPath, MAX_RESPONSE_TIME_MS);
+            
+            if (daemonHealth.healthy) {
+                // Reset failure counter on success
+                if (consecutiveFailures > 0) {
+                    log(`✅ Health check recovered (was ${consecutiveFailures} failures)`);
+                }
+                consecutiveFailures = 0;
+                lastSuccessfulCheck = Date.now();
+                
+                // Log slow responses as warnings (but don't respawn yet)
+                if (daemonHealth.responseTimeMs > 1000) {
+                    log(`⚠️  Daemon responding slowly: ${daemonHealth.responseTimeMs}ms`);
+                }
+                return;
+            }
+            
+            // Daemon is unhealthy or frozen
+            consecutiveFailures++;
+            const failureType = daemonHealth.isFrozen ? 'FROZEN' : daemonHealth.isTimeout ? 'TIMEOUT' : 'UNHEALTHY';
+            const detail = daemonHealth.message || `responseTime: ${daemonHealth.responseTimeMs}ms`;
+            
+            log(`⚠️  Watchdog health check #${consecutiveFailures} failed (${failureType}): ${detail}`);
+            
+            // Circuit breaker: only respawn after N consecutive failures
+            if (consecutiveFailures >= CONSECUTIVE_FAILURES_THRESHOLD) {
+                log(`🚨 CIRCUIT BREAKER: ${consecutiveFailures} consecutive failures. Respawning worker...`);
+                recordProxyEvent('watchdog-circuit-breaker-triggered', {
+                    failureType,
+                    consecutiveFailures,
+                    lastResponseTime: daemonHealth.responseTimeMs
+                });
+                respawnAttempted = true;
+                
+                // Clear restart cooldown for watchdog-initiated respawns
+                _lastRestartAt = 0;
+                scheduleRespawn(2000);
+            }
+        } catch (error) {
+            log(`⚠️  Watchdog health check error: ${error.message}`);
+            consecutiveFailures++;
+            
+            if (consecutiveFailures >= CONSECUTIVE_FAILURES_THRESHOLD) {
+                log(`🚨 CIRCUIT BREAKER: Health check errors. Respawning worker...`);
+                recordProxyEvent('watchdog-health-check-error');
+                respawnAttempted = true;
+                _lastRestartAt = 0;
+                scheduleRespawn(2000);
+            }
+        }
+    }, HEALTH_CHECK_INTERVAL_MS).unref();
+    
+    // Log initial state
+    log(`👀 Watchdog health check started (interval: ${HEALTH_CHECK_INTERVAL_MS / 1000}s, timeout: ${MAX_RESPONSE_TIME_MS}ms, threshold: ${CONSECUTIVE_FAILURES_THRESHOLD} failures)`);
 }
 
 ensureCompilerRuntimeDirSync(projectRoot);

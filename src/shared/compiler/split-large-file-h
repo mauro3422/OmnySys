@@ -1,0 +1,36 @@
+/**
+ * @fileoverview Code extraction utilities for splitting large files.
+ * @module shared/compiler/split-large-file-helpers/code-extraction
+ */
+
+/**
+ * Extrae código real de un átomo desde el archivo original
+ *
+ * Usa line_start/line_end de los metadatos para extraer el contenido exacto.
+ * Agrega prefijo export si el átomo está exportado.
+ */
+export function extractRealAtomCode(atom, originalContent, originalLines) {
+    if (!atom.line_start || !atom.line_end) {
+        return null;
+    }
+
+    // Extraer líneas reales del archivo original
+    const startIdx = atom.line_start - 1; // 0-indexed
+    const endIdx = atom.line_end; // slice es exclusivo
+    const codeLines = originalLines.slice(startIdx, endIdx);
+
+    if (codeLines.length === 0) {
+        return null;
+    }
+
+    // Si es exportado y no tiene 'export' en la primera línea, agregarlo
+    let result = codeLines.join('\n');
+    if (atom.is_exported && !result.trimStart().startsWith('export ')) {
+        const firstLine = result.trimStart();
+        if (firstLine.startsWith('function ') || firstLine.startsWith('const ') || firstLine.startsWith('let ') || firstLine.startsWith('var ')) {
+            result = 'export ' + result;
+        }
+    }
+
+    return result;
+}

@@ -183,6 +183,7 @@ async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, s
   }
 
   // Proxy mode: signal proxy to kill worker and respawn with --processRestart flag
+  // CRITICAL: Include file/reason metadata to prevent "File: unknown" in cooldown logs
   recordRestartTime();
   if (process.send) {
     process.send({
@@ -190,7 +191,9 @@ async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, s
       clearCache: false,       // DON'T clear analysis cache
       reanalyze: false,         // DON'T delete DB
       reindexOnly: false,       // DON'T force reindex
-      processRestart: true      // JUST kill and respawn worker
+      processRestart: true,     // JUST kill and respawn worker
+      file: 'user_requested_process_restart',
+      reason: 'manual_process_restart_via_mcp_tool'
     });
   }
 
@@ -299,7 +302,15 @@ async function handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindex
   }
 
   if (process.send) {
-    process.send({ type: 'restart', clearCache, reanalyze, clearCacheOnly, reindexOnly });
+    process.send({
+      type: 'restart',
+      clearCache,
+      reanalyze,
+      clearCacheOnly,
+      reindexOnly,
+      file: 'user_requested',
+      reason: clearCacheOnly ? 'clear_cache_only' : reindexOnly ? 'reindex_only' : reanalyze ? 'reanalyze' : 'manual_restart'
+    });
   }
 
   const warningMessage = `

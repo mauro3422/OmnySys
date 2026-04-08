@@ -78,6 +78,40 @@ export async function collectToolRecentErrors(server, { clearLoggerBuffer = true
     server
   }));
 
+  // CRITICAL: Merge pending runtime errors (proxy cooldown, worker crashes, etc.)
+  // These are errors that occurred outside tool call context but need to appear in _recentErrors
+  if (global._omnysysPendingRuntimeErrors && global._omnysysPendingRuntimeErrors.length > 0) {
+    const pendingAlerts = global._omnysysPendingRuntimeErrors.map((err, i) => ({
+      id: `pending-${i}`,
+      source: 'runtime',
+      level: err.type === 'cooldown-warning' ? 'warn' : 'error',
+      severity: 'medium',
+      issueType: `runtime_${err.type || 'error'}`,
+      filePath: err.file || null,
+      message: err.message || 'unknown',
+      detectedAt: err.timestamp || new Date().toISOString(),
+      lifecycle: { status: 'active', stale: false },
+      confidence: { level: 'high_confidence', score: 90, signal: 'high_signal', role: 'bridge' },
+      context: { suggestedAction: err.reason || 'Check recent runtime events' }
+    }));
+
+    // Merge into collected watcherAlerts
+    if (!collected.watcherAlerts) collected.watcherAlerts = [];
+    collected.watcherAlerts = [...pendingAlerts, ...collected.watcherAlerts].slice(0, 10);
+
+    // Update summary counts
+    if (collected.summary) {
+      const warnCount = pendingAlerts.filter(a => a.level === 'warn').length;
+      const errCount = pendingAlerts.filter(a => a.level === 'error').length;
+      collected.summary.warnings = (collected.summary.warnings || 0) + warnCount;
+      collected.summary.errors = (collected.summary.errors || 0) + errCount;
+      collected.summary.total = (collected.summary.total || 0) + pendingAlerts.length;
+    }
+
+    // Clear after merging (so they don't appear again)
+    global._omnysysPendingRuntimeErrors = [];
+  }
+
   return compactRecentNotifications(collected, {
     maxLogs: 3,
     maxWatcherAlerts: 3

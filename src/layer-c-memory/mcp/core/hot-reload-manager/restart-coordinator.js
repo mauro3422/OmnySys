@@ -99,7 +99,7 @@ function requestProxyManagedRestart(server, filename, reason, eventName) {
       reanalyze: false,
       clearCacheOnly: false,
       reindexOnly: false,
-      reason: 'hot_reload_runtime_change',
+      reason: reason || 'hot_reload_runtime_change',
       file: filename,
       files: touchedFiles,
       lifecycle

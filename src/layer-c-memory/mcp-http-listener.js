@@ -1,4 +1,7 @@
-const bindRetryDelayMs = process.platform === 'win32' ? 1000 : 300;
+// Windows needs longer retry delays due to TIME_WAIT behavior
+const bindRetryDelayMs = process.platform === 'win32' ? 1500 : 300;
+// Initial delay before first bind attempt — lets previous process fully release port
+const bindInitialDelayMs = process.platform === 'win32' ? 2000 : 0;
 
 function closeBindAttempt(server) {
   if (!server) {
@@ -51,7 +54,13 @@ function tryListen(app, host, port, logger, attempt, bindRetryLimit, isProxyMode
 }
 
 export async function startHttpServer({ app, host, port, logger, isProxyMode = false }) {
-  const bindRetryLimit = isProxyMode ? (process.platform === 'win32' ? 8 : 3) : 0;
+  // CRITICAL: On Windows, wait before first attempt to let previous process release port
+  if (bindInitialDelayMs > 0) {
+    logger.info(`⏳ Waiting ${bindInitialDelayMs}ms for port ${port} to be released...`);
+    await new Promise(resolve => setTimeout(resolve, bindInitialDelayMs));
+  }
+
+  const bindRetryLimit = isProxyMode ? (process.platform === 'win32' ? 15 : 5) : 0;
 
   for (let attempt = 0; ; attempt += 1) {
     try {

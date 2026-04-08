@@ -7,7 +7,8 @@
  */
 
 import { log } from '../../shared/logger-system.js';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
+import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,6 +21,11 @@ import {
     waitForDaemonHealthy,
     waitMs
 } from './stdio-bridge-health.js';
+import {
+    detectHealthyDaemon
+} from '../mcp-http-proxy-health.js';
+
+const execAsync = promisify(exec);
 
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
 const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
@@ -35,6 +41,118 @@ const START_LOCK_STALE_MS = 30000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export { log };
+
+/**
+ * Identifica si un proceso Node.js es un daemon/proxy/bridge de OmnySys
+ * @param {string} commandLine - Línea de comando del proceso
+ * @param {string} projectPath - Ruta del proyecto para verificar coincidencia
+ * @returns {{isOmnySys: boolean, type: string, isSameProject: boolean}}
+ */
+function identifyOmnySysProcess(commandLine, projectPath) {
+    const normalizedProjectPath = projectPath.replace(/\\/g, '/');
+    const normalizedCommandLine = commandLine.replace(/\\/g, '/');
+    
+    // Verificar si es un proceso de OmnySys
+    const isProxy = /mcp-http-proxy\.js/.test(normalizedCommandLine);
+    const isServer = /mcp-http-server\.js/.test(normalizedCommandLine);
+    const isBridge = /mcp-stdio-bridge\.js/.test(normalizedCommandLine);
+    
+    if (!isProxy && !isServer && !isBridge) {
+        return { isOmnySys: false, type: 'unknown', isSameProject: false };
+    }
+    
+    // Determinar el tipo
+    let type = 'unknown';
+    if (isProxy) type = 'proxy';
+    else if (isServer) type = 'daemon';
+    else if (isBridge) type = 'bridge';
+    
+    // Verificar si es del mismo proyecto
+    const isSameProject = normalizedCommandLine.includes(normalizedProjectPath);
+    
+    return { isOmnySys: true, type, isSameProject };
+}
+
+/**
+ * Busca procesos Node.js huérfanos del mismo proyecto y los limpia
+ * para evitar duplicación de daemons.
+ */
+async function cleanupOrphanedDaemons() {
+  try {
+    log('Checking for orphaned daemon processes...');
+    
+    // Buscar todos los procesos node.exe
+    const { stdout } = await execAsync(
+      'wmic process where "name=\'node.exe\'" get commandline,processid /format:csv',
+      { windowsHide: true }
+    );
+    
+    const lines = stdout.split('\n');
+    const orphanedProcesses = [];
+    const currentPid = process.pid;
+    
+    for (const line of lines) {
+      // Extraer PID de la línea (último campo en formato CSV)
+      const pidMatch = line.match(/,(\d+)\s*$/);
+      if (!pidMatch) continue;
+      
+      const pid = parseInt(pidMatch[1]);
+      if (!pid || pid === currentPid) continue;
+      
+      // Identificar el tipo de proceso
+      const identification = identifyOmnySysProcess(line, PROJECT_PATH);
+      
+      // Solo nos interesan los procesos del mismo proyecto que sean proxy o daemon
+      if (identification.isOmnySys && identification.isSameProject && 
+          (identification.type === 'proxy' || identification.type === 'daemon')) {
+        orphanedProcesses.push({ 
+          pid, 
+          type: identification.type,
+          line: line.trim() 
+        });
+      }
+    }
+    
+    if (orphanedProcesses.length === 0) {
+      log('No orphaned daemons found.');
+      return;
+    }
+    
+    log(`Found ${orphanedProcesses.length} potential orphaned daemon/proxy process(es):`);
+    
+    for (const { pid, type } of orphanedProcesses) {
+      log(`  - PID ${pid} (${type}) - checking if healthy...`);
+      
+      // Verificar si el proceso es un daemon healthy de ESTE proyecto
+      try {
+        const result = await detectHealthyDaemon(parseInt(DAEMON_PORT), PROJECT_PATH);
+        
+        if (result.healthy && !result.isDifferentProject && result.processInfo?.pid === pid) {
+          log(`  ✓ PID ${pid} is a healthy ${type} for this project - keeping it`);
+          continue;
+        }
+        
+        if (result.healthy && result.processInfo?.pid !== pid) {
+          log(`  ⚠ PID ${pid} is healthy but has different PID (${result.processInfo?.pid}) - may be orphaned`);
+        }
+      } catch {
+        // Si no podemos conectar, probablemente está muerto o no responde
+      }
+      
+      // Si llegamos aquí, el proceso no es healthy o es de otro proyecto
+      log(`  ✗ PID ${pid} (${type}) appears to be orphaned or unhealthy - cleaning up`);
+      try {
+        await execAsync(`taskkill /F /PID ${pid}`, { windowsHide: true });
+        log(`  ✓ Successfully terminated PID ${pid}`);
+      } catch (killError) {
+        log(`  ⚠ Failed to terminate PID ${pid}: ${killError.message}`);
+      }
+    }
+  } catch (error) {
+    log(`Warning: Could not check for orphaned daemons: ${error.message}`);
+    // No fallar, solo advertir
+  }
+}
 
 async function checkDaemon() {
     return (await readDaemonHealth(DAEMON_HEALTH)).healthy;
@@ -103,9 +221,11 @@ async function acquireStartLock() {
         const handle = await fs.open(START_LOCK_PATH, 'wx');
         await handle.writeFile(JSON.stringify({
             pid: process.pid,
+            type: 'bridge-auto-start',
             port: DAEMON_PORT,
             projectPath: PROJECT_PATH,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            nodeVersion: process.version
         }));
         return handle;
     } catch (error) {
@@ -164,6 +284,15 @@ export async function startDaemon() {
 
     if (await checkDaemon()) {
         log('Daemon became healthy before auto-start. Skipping spawn.');
+        return true;
+    }
+
+    // Limpiar procesos huérfanos ANTES de intentar iniciar
+    await cleanupOrphanedDaemons();
+    
+    // Re-verificar si hay un daemon healthy después de limpieza
+    if (await checkDaemon()) {
+        log('Daemon became healthy after orphan cleanup. Skipping spawn.');
         return true;
     }
 

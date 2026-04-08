@@ -23,6 +23,20 @@
 
 import v8 from 'v8';
 import { spawn } from 'child_process';
+import { sanitizeLogText } from '../utils/logger.js';
+
+// CRITICAL: Register error handlers BEFORE any async code runs
+// This catches errors that occur during module evaluation / startup
+process.on('uncaughtException', (error) => {
+  const msg = `[WORKER UNCAUGHT EXCEPTION] ${error.message}\n${error.stack || ''}`;
+  process.stderr.write(msg + '\n');
+  // Don't exit immediately — let proxy handle the restart
+});
+
+process.on('unhandledRejection', (reason) => {
+  const msg = `[WORKER UNHANDLED REJECTION] ${reason?.message || reason?.stack || String(reason)}`;
+  process.stderr.write(msg + '\n');
+});
 
 const heapLimitMB = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
 const hasMaxOldSpace = process.env.NODE_OPTIONS && process.env.NODE_OPTIONS.includes('max-old-space-size');
@@ -49,7 +63,7 @@ if (!hasMaxOldSpace && heapLimitMB < 7000) {
 import path from 'path';
 import express from 'express';
 import { OmnySysMCPServer } from './mcp/core/server-class.js';
-import { createLogger, sanitizeLogText } from '../utils/logger.js';
+import { createLogger } from '../utils/logger.js';
 import { handleRuntimeRestart } from './mcp/restart-runtime.js';
 import { startHttpServer } from './mcp-http-listener.js';
 import {
@@ -60,6 +74,7 @@ import {
   normalizeMcpRequestHeaders
 } from './mcp-http-session-routing.js';
 import { buildInventoryReport, buildInventorySnapshot } from './mcp/tools/list-tools.js';
+import { handleHealthApiRequest } from './mcp/api/health.js';
 
 const logger = createLogger('OmnySys:mcp:http');
 
@@ -194,8 +209,11 @@ export function buildHealthSnapshot({
     status: initError ? 'degraded' : (initialized ? 'healthy' : 'starting'),
     ready: Boolean(initialized && !initError),
     service: 'omnysys-mcp-http',
-    initialized: Boolean(initialized),
+    processType: 'daemon',
+    pid: process.pid,
+    port,
     projectPath,
+    initialized: Boolean(initialized),
     sessions: sessionCount ?? 0,
     background,
     transport: 'streamable-http',
@@ -318,13 +336,63 @@ app.get('/health', async (req, res) => {
     background = null;
   }
 
-  res.json(buildHealthSnapshot({
+  // CRITICAL: Add memory metrics to health check for leak detection
+  const memoryUsage = process.memoryUsage();
+  const heapUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+  const heapTotalMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+  const rssMB = Math.round(memoryUsage.rss / 1024 / 1024);
+
+  // Memory leak detection: Use ABSOLUTE thresholds (MB), not percentages
+  // OmnySystem legitimately uses 600-900MB after initialization
+  // Percentages are misleading because V8 grows heap dynamically
+  const MEMORY_WARNING_MB = 2000;   // 2GB - start monitoring
+  const MEMORY_CRITICAL_MB = 3500;  // 3.5GB - immediate action needed
+
+  const isMemoryWarning = heapUsedMB > MEMORY_WARNING_MB;
+  const isMemoryCritical = heapUsedMB > MEMORY_CRITICAL_MB;
+
+  // CRITICAL: Rate limit memory warnings to avoid log spam
+  // Only log once per 5 minutes max
+  const MEMORY_LOG_COOLDOWN_MS = 5 * 60 * 1000;
+  const lastWarningAt = global._omnysysLastMemoryWarningAt || 0;
+  const now = Date.now();
+
+  if ((isMemoryWarning || isMemoryCritical) && (now - lastWarningAt > MEMORY_LOG_COOLDOWN_MS)) {
+    const level = isMemoryCritical ? 'error' : 'warn';
+    const message = isMemoryCritical
+      ? `MEMORY CRITICAL: Heap at ${heapUsedMB}MB (threshold: ${MEMORY_CRITICAL_MB}MB). Possible leak. GC recommended.`
+      : `MEMORY WARNING: Heap at ${heapUsedMB}MB (threshold: ${MEMORY_WARNING_MB}MB). Monitor for growth.`;
+
+    logger[level](message);
+    global._omnysysLastMemoryWarningAt = now;
+  }
+
+  // Calculate percentage for health status (still useful for trending)
+  const heapUsagePercent = heapTotalMB > 0 ? Math.round((heapUsedMB / heapTotalMB) * 100) : 0;
+  const isMemoryDegraded = isMemoryCritical;
+
+  const healthSnapshot = buildHealthSnapshot({
     initialized: core.initialized,
     initError,
     projectPath,
     sessionCount: sessions.size,
     background
-  }));
+  });
+
+  // Add memory info to response
+  res.json({
+    ...healthSnapshot,
+    memory: {
+      heapUsedMB,
+      heapTotalMB,
+      rssMB,
+      heapUsagePercent,
+      isDegraded: isMemoryDegraded
+    },
+    // Override status if memory is critically high
+    status: isMemoryDegraded ? 'degraded' : healthSnapshot.status,
+    ready: isMemoryDegraded ? false : healthSnapshot.ready
+  });
 });
 
 app.get('/tools', async (req, res) => {
@@ -343,6 +411,11 @@ app.get('/tools', async (req, res) => {
     logger.error(`Error loading tool definitions: ${error.message}`);
     res.status(500).json({ error: 'Unable to load tool definitions' });
   }
+});
+
+// CRITICAL: Centralized Health API with memory diagnostics
+app.get('/api/health', async (req, res) => {
+  await handleHealthApiRequest(req, res, core);
 });
 
 app.post('/restart', express.json(), async (req, res) => {
@@ -375,6 +448,43 @@ const httpServer = await startHttpServer({
   isProxyMode: process.env.OMNYSYS_PROXY_MODE === '1'
 });
 logger.info(`Project: ${projectPath}`);
+
+// CRITICAL: Boot timeout diagnostic — must be set BEFORE core.initialize() starts
+const BOOT_TIMEOUT_MS = 45000;
+let bootComplete = false;
+const bootTimer = setTimeout(() => {
+  if (!bootComplete) {
+    process.stderr.write(`[WORKER BOOT TIMEOUT] Initialization exceeded ${BOOT_TIMEOUT_MS}ms. Core initialized: ${core.initialized}\n`);
+  }
+}, BOOT_TIMEOUT_MS);
+bootTimer.unref();
+
+// CRITICAL: Handle IPC messages from proxy (cooldown warnings, etc.)
+// This allows proxy-side warnings to appear in AI agent's _recentErrors
+if (process.send) {
+  process.on('message', (msg) => {
+    if (msg?.type === 'cooldown-warning') {
+      const cooldownMsg = `[PROXY COOLDOWN] ${msg.message || 'unknown'}`;
+      logger.warn(cooldownMsg);
+      // CRITICAL: Also push to global pending errors buffer so next tool call picks it up
+      if (!global._omnysysPendingRuntimeErrors) global._omnysysPendingRuntimeErrors = [];
+      global._omnysysPendingRuntimeErrors.push({
+        type: 'cooldown-warning',
+        message: cooldownMsg,
+        file: msg.file || null,
+        reason: msg.reason || null,
+        timestamp: new Date().toISOString()
+      });
+      // Keep buffer capped
+      if (global._omnysysPendingRuntimeErrors.length > 20) {
+        global._omnysysPendingRuntimeErrors = global._omnysysPendingRuntimeErrors.slice(-20);
+      }
+    }
+    if (msg?.type === 'worker-stderr') {
+      logger.warn(`[WORKER STDERR via IPC] ${msg.message || 'unknown'}`);
+    }
+  });
+}
 
 core.initialize().then(async () => {
   try {
@@ -417,3 +527,19 @@ async function gracefulHttpShutdown() {
 
 process.once('SIGINT', gracefulHttpShutdown);
 process.once('SIGTERM', gracefulHttpShutdown);
+
+// CRITICAL: Patch core.initialize to track boot completion and clear timer
+const _origCoreInit = core.initialize.bind(core);
+core.initialize = async function() {
+  try {
+    const result = await _origCoreInit();
+    bootComplete = true;
+    clearTimeout(bootTimer);
+    return result;
+  } catch (error) {
+    bootComplete = false;
+    clearTimeout(bootTimer);
+    process.stderr.write(`[WORKER BOOT FAILED] core.initialize() threw: ${error.message}\n${error.stack || ''}\n`);
+    throw error;
+  }
+};
