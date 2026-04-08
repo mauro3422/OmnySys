@@ -30,6 +30,7 @@ export async function get_health_panel(args, context) {
       success: true,
       aggregationType: 'health_panel',
       panel: result.healthPanel,
+      observability: result.observability || null,
       status: {
         healthScore: result.healthPanel?.now?.healthScore || 0,
         healthGrade: result.healthPanel?.now?.healthGrade || 'F',

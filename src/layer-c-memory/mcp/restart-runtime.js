@@ -1,14 +1,17 @@
 import { createLogger } from '../../utils/logger.js';
 import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
-import { reloadMetadata as reloadServerMetadata } from '../../core/unified-server/initialization/analysis-manager.js';
 import { clearPendingRuntimeRestart } from './core/hot-reload-manager/restart-coordinator.js';
-import { shouldPreserveHistoryArtifact } from '#shared/utils/normalize-helpers.js';
 import {
   buildProxyRestartResult,
+  buildProcessRestartWarningMessage,
   fastRestartOrchestrator,
   invalidateIncrementalState,
+  handleClearCacheOnly,
+  handleRefreshOnly,
+  clearStandaloneCache,
   refreshRegistry,
   purgeRuntimeCache,
+  performSoftReload,
   refreshToolRegistrySafely,
   runFullPipeline,
   stopOrchestrator
@@ -52,7 +55,7 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
     if (refreshOnly) return await handleRefreshOnly(server, cache, refreshToolRegistry);
     if (softReload) return await handleSoftReload(server, orchestrator, cache, refreshToolRegistry);
     if (clearCacheOnly) return await handleClearCacheOnly(cache, refreshToolRegistry);
-    if (processRestart) return await handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, server);
+    if (processRestart) return await handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, server, refreshToolRegistry);
     if (reindexOnly) {
       const result = {
         restarting: false,
@@ -114,20 +117,6 @@ function clearPendingHotReloadRestart(server) {
   clearPendingRuntimeRestart(server);
 }
 
-async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
-  logger.info('Cache-only flush requested...');
-  await purgeRuntimeCache(cache, 'In-memory cache cleared');
-  await refreshToolRegistrySafely(refreshToolRegistryFn, 'Tool registry refreshed');
-  return {
-    success: true,
-    restarting: false,
-    restartType: 'cache_only_flush',
-    lifecycle: buildRestartLifecycleGuidance({ restartType: 'cache_only_flush', clearCacheOnly: true }),
-    message: 'In-memory cache flushed and tool registry refreshed. No reindex needed.',
-    timestamp: new Date().toISOString()
-  };
-}
-
 /**
  * Process restart: kills the Node.js process and respawns it via the proxy.
  *
@@ -148,7 +137,7 @@ async function handleClearCacheOnly(cache, refreshToolRegistryFn) {
  *   ESM module cache is still serving stale code. The file watcher will
  *   reindex modified files automatically — no manual reindex needed.
  */
-async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, server) {
+async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, server, refreshToolRegistryFn) {
   // COOLDOWN CHECK: Prevent restart loops. After a processRestart, the file
   // watcher may detect residual changes (new files from refactor, etc.).
   // We suppress restarts for 60s to let Phase 2 settle.
@@ -170,7 +159,7 @@ async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, s
   if (!isProxyMode()) {
     logger.warn('processRestart=true requires proxy mode. In standalone mode, only cache can be cleared.');
     await purgeRuntimeCache(cache, 'Standalone cache cleared');
-    await refreshToolRegistrySafely(context?.refreshToolRegistry, 'Tool registry refreshed');
+    await refreshToolRegistrySafely(refreshToolRegistryFn, 'Tool registry refreshed');
     return {
       success: true,
       restarting: false,
@@ -204,23 +193,6 @@ async function handleProcessRestart(clearCache, reanalyze, reindexOnly, cache, s
     processRestart: true
   });
 
-  const warningMessage = `
-================================================================================
-PROCESS RESTART INITIATED (processRestart=true)
-
-What happened:
-  • Worker process is being killed and respawned by the proxy
-  • Fresh ESM module cache — your code changes are now loaded
-  • ALL databases preserved (omnysys.db, atom-history.db, health-history.db)
-  • NO reindex triggered — file watcher handles changed files automatically
-
-What to expect:
-  • Brief MCP disconnect while the bridge replays initialize and reconnects
-  • The bridge should recover automatically; wait until it reports reconnected
-  • If your client still does not reconnect, reload the IDE extension once
-================================================================================
-`.trim();
-
   return {
     success: true,
     restarting: true,
@@ -228,34 +200,7 @@ What to expect:
     processRestart: true,
     databasesPreserved: ['omnysys.db', 'atom-history.db', 'health-history.db'],
     lifecycle,
-    message: warningMessage,
-    timestamp: new Date().toISOString()
-  };
-}
-
-async function handleRefreshOnly(server, cache, refreshToolRegistryFn) {
-  logger.info('Refresh-only requested...');
-
-  await purgeRuntimeCache(cache, 'Runtime cache cleared');
-
-  try {
-    await reloadServerMetadata({
-      cache,
-      projectPath: server?.projectPath,
-      wsManager: server?.wsManager
-    });
-  } catch (error) {
-    logger.warn('Metadata refresh skipped:', error.message);
-  }
-
-  await refreshToolRegistrySafely(refreshToolRegistryFn, 'Tool registry refreshed');
-
-  return {
-    success: true,
-    restarting: false,
-    restartType: 'refresh_only',
-    lifecycle: buildRestartLifecycleGuidance({ restartType: 'refresh_only', refreshOnly: true }),
-    message: 'Runtime refreshed without restart. Cache and metadata reloaded.',
+    message: buildProcessRestartWarningMessage(),
     timestamp: new Date().toISOString()
   };
 }
@@ -263,28 +208,24 @@ async function handleRefreshOnly(server, cache, refreshToolRegistryFn) {
 async function handleSoftReload(server, orchestrator, cache, refreshToolRegistryFn) {
   logger.info('Soft reload requested...');
 
-  await stopOrchestrator(orchestrator);
-  if (orchestrator) {
-    await fastRestartOrchestrator(server, {});
+  try {
+    return await performSoftReload({
+      server,
+      orchestrator,
+      cache,
+      refreshToolRegistryFn
+    });
+  } catch (error) {
+    logger.warn('Soft reload failed:', error.message);
+    return {
+      success: false,
+      restarting: false,
+      restartType: 'soft_reload_failed',
+      lifecycle: buildRestartLifecycleGuidance({ restartType: 'soft_reload', softReload: true }),
+      message: `Soft reload failed: ${error.message}`,
+      timestamp: new Date().toISOString()
+    };
   }
-
-  if (cache?.initialize) {
-    await cache.initialize();
-    if (server.metadata && cache.set) {
-      cache.set('metadata', server.metadata);
-    }
-  }
-
-  await refreshToolRegistrySafely(refreshToolRegistryFn);
-
-  return {
-    success: true,
-    restarting: false,
-    restartType: 'soft_reload',
-    lifecycle: buildRestartLifecycleGuidance({ restartType: 'soft_reload', softReload: true }),
-    message: 'Soft reload complete. Orchestrator and runtime state refreshed without process restart.',
-    timestamp: new Date().toISOString()
-  };
 }
 
 function isProxyMode() {
@@ -333,36 +274,6 @@ Any subsequent MCP tool calls you make right now will silently hang forever.
     ...buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly, reindexOnly }),
     message: warningMessage
   };
-}
-
-async function clearStandaloneCache(cache, reanalyze, server, result) {
-  logger.info('Clearing cache...');
-  await purgeRuntimeCache(cache, null);
-
-  if (reanalyze) {
-    logger.warn('Deleting previous analysis for reanalyze=true. This resets progress and starts a full reindex from scratch.');
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    const dataDir = path.join(server.projectPath, '.omnysysdata');
-
-    try {
-      const dbFiles = ['omnysys.db', 'omnysys.db-wal', 'omnysys.db-shm'];
-      const legacyFiles = ['index.json', 'atom-versions.json'];
-      for (const file of dbFiles) {
-        if (shouldPreserveHistoryArtifact(file)) continue;
-        await fs.unlink(path.join(dataDir, file)).catch(() => {});
-      }
-      for (const file of legacyFiles) {
-        if (shouldPreserveHistoryArtifact(file)) continue;
-        await fs.unlink(path.join(dataDir, file)).catch(() => {});
-      }
-      logger.info('Previous analysis deleted (SQLite DB + legacy files)');
-      result.analysisCleared = true;
-    } catch (err) {
-      logger.warn('Could not delete previous analysis:', err.message);
-    }
-  }
-  result.cacheCleared = true;
 }
 
 async function handleReindexOnly(server, cache, result) {

@@ -28,38 +28,50 @@ export async function readDaemonHealth(healthUrl) {
             healthy,
             status,
             initialized,
+            pid: Number.isFinite(Number(json?.pid)) ? Number(json.pid) : null,
+            sessions: Number.isFinite(Number(json?.sessions)) ? Number(json.sessions) : 0,
             service: json?.service || null,
+            transport: json?.transport || null,
             error: null
           });
         } catch {
           resolve({
-            reachable: true,
-            healthy: false,
-            status: 'invalid-response',
-            initialized: false,
-            service: null,
-            error: 'invalid JSON response'
-          });
+          reachable: true,
+          healthy: false,
+          status: 'invalid-response',
+          initialized: false,
+          pid: null,
+          sessions: 0,
+          service: null,
+          transport: null,
+          error: 'invalid JSON response'
+        });
         }
       });
     });
     req.on('error', (error) => resolve({
-      reachable: false,
-      healthy: false,
-      status: 'unreachable',
-      initialized: false,
-      service: null,
-      error: error.message
-    }));
+    reachable: false,
+    healthy: false,
+    status: 'unreachable',
+    initialized: false,
+    pid: null,
+    sessions: 0,
+    service: null,
+    transport: null,
+    error: error.message
+  }));
     req.on('timeout', () => {
       req.destroy();
       resolve({
-        reachable: false,
-        healthy: false,
-        status: 'timeout',
-        initialized: false,
-        service: null,
-        error: 'timeout'
+      reachable: false,
+      healthy: false,
+      status: 'timeout',
+      initialized: false,
+      pid: null,
+      sessions: 0,
+      service: null,
+      transport: null,
+      error: 'timeout'
       });
     });
   });
@@ -74,6 +86,7 @@ export async function waitForDaemonHealthy(healthUrl, {
   const deadline = Date.now() + timeoutMs;
   let attempt = 0;
   let lastStatus = null;
+  const trace = typeof log === 'function' ? log : () => {};
 
   while (Date.now() < deadline) {
     const health = await readDaemonHealth(healthUrl);
@@ -86,7 +99,7 @@ export async function waitForDaemonHealthy(healthUrl, {
       : health.error || 'unreachable';
 
     if (statusLabel !== lastStatus) {
-      log(`${label} not ready yet (${statusLabel}); waiting for healthy state...`);
+      trace(`${label} not ready yet (${statusLabel}); waiting for healthy state...`);
       lastStatus = statusLabel;
     }
 

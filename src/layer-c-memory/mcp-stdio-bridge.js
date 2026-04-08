@@ -9,19 +9,28 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
-import { nowIso } from '#shared/utils/normalize-helpers.js';
 import {
     createBridgeState,
     log,
     waitForDaemonReady,
     sendBridgeRetryableError
 } from './mcp/stdio-bridge-lifecycle.js';
+import { readDaemonHealth } from './mcp/stdio-bridge-health.js';
 import {
     startBridgeRecovery,
-    scheduleBridgeRecovery
+    scheduleBridgeRecovery,
+    ensureBridgeTransportReady,
+    sendBridgeMessageWithRecovery
 } from './mcp/stdio-bridge-recovery.js';
 import {
+    createBridgeTelemetryController,
+    parseRestartRecoveryHint
+} from './mcp/stdio-bridge-telemetry.js';
+import {
     getDaemonUrl,
+    buildInitializeResponse,
+    buildRestartAcceptedResponse,
+    isRestartServerToolCall,
     isRequestMessage,
     isResponseMessage,
     isSessionExpiredError,
@@ -29,85 +38,128 @@ import {
     shouldTriggerRecovery,
     waitForBridgeSessionId
 } from './mcp/stdio-bridge-helpers.js';
-import {
-    readBridgeRuntimeTelemetry,
-    writeBridgeRuntimeTelemetrySync
-} from '../shared/compiler/index.js';
 
 const DAEMON_URL = getDaemonUrl();
+const DAEMON_HEALTH_URL = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
 const PROJECT_PATH = process.env.OMNYSYS_PROJECT_PATH || process.cwd();
+const PROCESS_RESTART_RECOVERY_BACKOFF_MS = Number(process.env.OMNYSYS_PROCESS_RESTART_RECOVERY_BACKOFF_MS || 5000);
 
-let bridgeTelemetry = readBridgeRuntimeTelemetry(PROJECT_PATH) || null;
+const {
+    recordBridgeEvent,
+    recordBridgeHealthCheck,
+    persistBridgeTelemetry,
+    getBridgeTelemetrySnapshot
+} = createBridgeTelemetryController({
+    projectPath: PROJECT_PATH,
+    log
+});
 
-function persistBridgeTelemetry(patch = {}) {
-    bridgeTelemetry = {
-        ...(bridgeTelemetry || {}),
-        projectPath: PROJECT_PATH,
-        updatedAt: nowIso(),
-        ...patch
+let bridgeTraceCounter = 0;
+
+function persistBridgeSessionSnapshot(state, patch = {}) {
+    persistBridgeTelemetry({
+        ...patch,
+        lastSessionId: state.lastSessionId || null,
+        cachedInitializeRequest: state.cachedInitializeRequest || null,
+        cachedInitializeResponse: state.cachedInitializeResponse || null,
+        cachedInitializedNotification: state.cachedInitializedNotification || null,
+        lastDaemonPid: state.lastDaemonPid || null,
+        lastDaemonHealth: state.lastDaemonHealth || null,
+        lastDaemonHealthAt: state.lastDaemonHealthAt || null,
+        bridgeSessionStateUpdatedAt: new Date().toISOString()
+    });
+}
+
+function createBridgeTraceId(label = 'bridge') {
+    bridgeTraceCounter += 1;
+    return `${label}-${Date.now()}-${bridgeTraceCounter}`;
+}
+
+function getBridgeClientRouteId(state) {
+    return state.cachedInitializeRequest?.params?.clientInfo?.client_route_id
+        || state.cachedInitializeRequest?.params?.clientInfo?.original_client_route_id
+        || null;
+}
+
+function traceBridgeFlow(state, traceId, step, details = {}) {
+    const sessionId = state.lastSessionId || state.httpTransport?._sessionId || null;
+    const payload = {
+        traceId,
+        step,
+        sessionId,
+        clientRouteId: getBridgeClientRouteId(state),
+        transportGeneration: state.transportGeneration || 0,
+        isReconnecting: Boolean(state.isReconnecting),
+        ...details
     };
 
+    log(`[bridge-trace:${traceId}] ${step} :: ${JSON.stringify(payload)}`);
+    recordBridgeEvent('bridge-trace', payload);
+    persistBridgeSessionSnapshot(state, {
+        bridgeTraceId: traceId,
+        bridgeTraceStep: step
+    });
+    return payload;
+}
+
+function hydrateBridgeStateFromTelemetry(state) {
+    const snapshot = getBridgeTelemetrySnapshot();
+    if (!snapshot || typeof snapshot !== 'object') {
+        return;
+    }
+
+    if (snapshot.lastSessionId) {
+        state.lastSessionId = snapshot.lastSessionId;
+    }
+
+    if (snapshot.cachedInitializeRequest?.params) {
+        state.cachedInitializeRequest = snapshot.cachedInitializeRequest;
+    }
+
+    if (snapshot.cachedInitializeResponse?.result) {
+        state.cachedInitializeResponse = snapshot.cachedInitializeResponse;
+    }
+
+    if (snapshot.cachedInitializedNotification) {
+        state.cachedInitializedNotification = snapshot.cachedInitializedNotification;
+    }
+
+    if (Number.isFinite(Number(snapshot.lastDaemonPid))) {
+        state.lastDaemonPid = Number(snapshot.lastDaemonPid);
+    }
+}
+
+async function flushCachedInitializedNotification(state) {
+    if (!state.cachedInitializedNotification || !state.httpTransport) {
+        return false;
+    }
+
+    if ((state.lastSessionId || state.httpTransport?._sessionId) && state.localInitializeHandled) {
+        log('Skipping notifications/initialized replay for an already-initialized live session.');
+        return false;
+    }
+
+    const sessionId = state.lastSessionId
+        || state.httpTransport?._sessionId
+        || await waitForBridgeSessionId(state, 10000);
+
+    if (!sessionId) {
+        log('Deferring notifications/initialized until the HTTP session is established.');
+        return false;
+    }
+
+    state.lastSessionId = sessionId;
+
     try {
-        writeBridgeRuntimeTelemetrySync(PROJECT_PATH, bridgeTelemetry);
+        await state.httpTransport.send(state.cachedInitializedNotification);
+        persistBridgeSessionSnapshot(state, {
+            bridgeTransportState: 'initialized-notification-flushed'
+        });
+        return true;
     } catch (error) {
-        log(`bridge telemetry persist failed: ${error.message}`);
+        log(`Failed to flush initialized notification: ${error.message}`);
+        return false;
     }
-
-    return bridgeTelemetry;
-}
-
-function recordBridgeEvent(type, details = {}) {
-    const current = bridgeTelemetry || { events: [] };
-    const events = Array.isArray(current.events) ? current.events.slice(-29) : [];
-    events.push({
-      type,
-      at: nowIso(),
-      ...details
-    });
-
-    const connectCount = (current.connectCount || 0) + (type === 'bridge-connect' ? 1 : 0);
-    const reconnectCount = (current.reconnectCount || 0) + (type === 'bridge-reconnect' ? 1 : 0);
-    const transportClosedCount = (current.transportClosedCount || 0) + (type === 'transport-closed' ? 1 : 0);
-    const sessionExpiredCount = (current.sessionExpiredCount || 0) + (type === 'session-expired' ? 1 : 0);
-    const retryableErrorCount = (current.retryableErrorCount || 0) + (type === 'bridge-recovery-needed' ? 1 : 0);
-    const stdioCloseCount = (current.stdioCloseCount || 0) + (type === 'stdio-close' ? 1 : 0);
-
-    return persistBridgeTelemetry({
-        connectCount,
-        reconnectCount,
-        transportClosedCount,
-        sessionExpiredCount,
-        retryableErrorCount,
-        stdioCloseCount,
-        events,
-        lastEventType: type,
-        lastEventAt: events[events.length - 1]?.at || nowIso(),
-        ...details
-    });
-}
-
-function parseRestartRecoveryHint(message) {
-    const content = message?.result?.content;
-    if (!Array.isArray(content)) {
-        return null;
-    }
-
-    for (const item of content) {
-        if (item?.type !== 'text' || typeof item.text !== 'string') {
-            continue;
-        }
-
-        try {
-            const payload = JSON.parse(item.text);
-            if (payload?.processRestart === true && payload?.restartType === 'true_process_restart') {
-                return payload;
-            }
-        } catch {
-            // Ignore non-JSON tool output.
-        }
-    }
-
-    return null;
 }
 
 async function connectBridgeTransport(state, options = {}) {
@@ -116,16 +168,31 @@ async function connectBridgeTransport(state, options = {}) {
         : state.lastSessionId;
     const transportGeneration = (state.transportGeneration || 0) + 1;
     state.transportGeneration = transportGeneration;
+    const traceId = state.activeBridgeTraceId || createBridgeTraceId('bridge-connect');
+    state.activeBridgeTraceId = traceId;
 
     const transport = new StreamableHTTPClientTransport(
         DAEMON_URL,
         sessionId ? { sessionId } : undefined
     );
     state.httpTransport = transport;
-    recordBridgeEvent(state.transportGeneration <= 1 ? 'bridge-connect' : 'bridge-reconnect', {
+    traceBridgeFlow(state, traceId, 'transport-create', {
         sessionId: sessionId || null,
         transportGeneration,
         hasSessionId: Boolean(sessionId)
+    });
+    recordBridgeEvent(state.transportGeneration <= 1 ? 'bridge-connect' : 'bridge-reconnect', {
+        traceId,
+        sessionId: sessionId || null,
+        transportGeneration,
+        hasSessionId: Boolean(sessionId)
+    });
+    persistBridgeSessionSnapshot(state, {
+        bridgeTransportGeneration: transportGeneration,
+        bridgeTransportSessionId: sessionId || null,
+        bridgeTransportState: 'connected',
+        bridgeTraceId: traceId,
+        bridgeTraceStep: 'transport-create'
     });
 
     const isStaleTransport = () => state.httpTransport !== transport || state.transportGeneration !== transportGeneration;
@@ -150,7 +217,23 @@ async function connectBridgeTransport(state, options = {}) {
             }
 
             if (isResponseMessage(message)) {
+                const pendingRequest = state.pendingRequests.get(message.id);
+                if (pendingRequest?.method === 'initialize' && message.result) {
+                    state.cachedInitializeResponse = {
+                        jsonrpc: message.jsonrpc || '2.0',
+                        id: message.id,
+                        result: message.result
+                    };
+                    persistBridgeSessionSnapshot(state, {
+                        bridgeTransportState: 'initialize-response-cached'
+                    });
+                }
                 state.pendingRequests.delete(message.id);
+                traceBridgeFlow(state, traceId, 'daemon-response', {
+                    messageId: message.id,
+                    hasError: Boolean(message.error),
+                    hasResult: Boolean(message.result)
+                });
             }
 
             await state.stdioTransport.send(message);
@@ -182,7 +265,11 @@ async function connectBridgeTransport(state, options = {}) {
     transport.onerror = (err) => {
         if (!isStaleTransport()) {
             log(`http error: ${err.message}`);
+            traceBridgeFlow(state, traceId, 'transport-error', {
+                message: String(err?.message || err || '')
+            });
             recordBridgeEvent('bridge-http-error', {
+                traceId,
                 message: String(err?.message || err || ''),
                 sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
                 transportGeneration
@@ -194,18 +281,34 @@ async function connectBridgeTransport(state, options = {}) {
             return;
         }
 
-    log('Daemon disconnected.');
-    recordBridgeEvent('transport-closed', {
-        sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
-        transportGeneration
-    });
-    recordBridgeEvent('bridge-recovery-needed', {
-        trigger: 'transport closed',
-        sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
-        transportGeneration
-    });
-    await startBridgeRecovery(state, 'transport closed', connectBridgeTransport);
-};
+        const closedSessionId = state.lastSessionId || state.httpTransport?._sessionId || null;
+        state.httpTransport = null;
+
+        log('Daemon disconnected.');
+        traceBridgeFlow(state, traceId, 'transport-close', {
+            sessionId: closedSessionId,
+            transportGeneration
+        });
+        recordBridgeEvent('transport-closed', {
+            traceId,
+            sessionId: closedSessionId,
+            transportGeneration
+        });
+        recordBridgeEvent('bridge-recovery-needed', {
+            traceId,
+            trigger: 'transport closed',
+            sessionId: closedSessionId,
+            transportGeneration
+        });
+        persistBridgeSessionSnapshot(state, {
+            bridgeTransportGeneration: transportGeneration,
+            bridgeTransportSessionId: closedSessionId,
+            bridgeTransportState: 'closed',
+            bridgeTraceId: traceId,
+            bridgeTraceStep: 'transport-close'
+        });
+        await startBridgeRecovery(state, 'transport closed', connectBridgeTransport);
+    };
 
     await transport.start();
 }
@@ -216,11 +319,133 @@ async function handleBridgeStdioMessage(state, message) {
     try {
         if (normalizedMessage?.method === 'initialize' && isRequestMessage(normalizedMessage)) {
             state.cachedInitializeRequest = normalizedMessage;
+            persistBridgeSessionSnapshot(state, {
+                bridgeTransportState: 'initialize-cached'
+            });
+
+            const daemonSessionCount = Number(state.lastDaemonHealth?.sessions || 0);
+            const daemonHealthIsFresh = Boolean(
+                state.lastDaemonHealth?.healthy &&
+                Number.isFinite(daemonSessionCount) &&
+                daemonSessionCount > 0
+            );
+            const liveSessionId = daemonHealthIsFresh
+                ? (state.lastSessionId || state.httpTransport?._sessionId || null)
+                : null;
+
+            if (!daemonHealthIsFresh) {
+                state.lastSessionId = null;
+                state.cachedInitializeResponse = null;
+                state.localInitializeHandled = false;
+            }
+
+            if (liveSessionId) {
+                const initializeResponse = buildInitializeResponse(
+                    normalizedMessage.id,
+                    state.cachedInitializeResponse
+                );
+                state.cachedInitializeResponse = initializeResponse;
+                state.localInitializeHandled = true;
+                persistBridgeSessionSnapshot(state, {
+                    bridgeTransportState: 'initialize-responded-locally'
+                });
+                await state.stdioTransport.send(initializeResponse);
+                log(`Responded to initialize locally for live MCP session ${liveSessionId}.`);
+                return;
+            }
         } else if (
             normalizedMessage?.method === 'notifications/initialized' &&
             !Object.prototype.hasOwnProperty.call(normalizedMessage, 'id')
         ) {
             state.cachedInitializedNotification = normalizedMessage;
+            persistBridgeSessionSnapshot(state, {
+                bridgeTransportState: 'initialized-notification-cached'
+            });
+
+            if (state.localInitializeHandled && (state.lastSessionId || state.httpTransport?._sessionId)) {
+                log('Dropping notifications/initialized for already-initialized live session.');
+                return;
+            }
+        }
+
+        const restartToolArgs = normalizedMessage?.params?.arguments
+            || normalizedMessage?.params?.args
+            || normalizedMessage?.params
+            || {};
+        const isProcessRestartRequest =
+            isRestartServerToolCall(normalizedMessage) &&
+            Boolean(restartToolArgs?.processRestart);
+
+        if (isProcessRestartRequest) {
+            const restartTraceId = createBridgeTraceId('restart');
+            state.activeBridgeTraceId = restartTraceId;
+            // The restart request must ACK locally before the daemon is torn down,
+            // otherwise the client sees a transport error instead of a valid tool result.
+            traceBridgeFlow(state, restartTraceId, 'restart-request-received', {
+                method: normalizedMessage.method || 'tools/call',
+                toolName: normalizedMessage?.params?.name || normalizedMessage?.params?.tool || 'mcp_omnysystem_restart_server',
+                processRestart: Boolean(restartToolArgs?.processRestart),
+                restartType: restartToolArgs?.processRestart ? 'true_process_restart' : 'restart'
+            });
+
+            const restartTimeout = setTimeout(() => {
+                state.internalRequests.delete(normalizedMessage.id);
+            }, 30000);
+            restartTimeout.unref?.();
+
+            state.internalRequests.set(normalizedMessage.id, {
+                resolve: () => {},
+                reject: () => {},
+                timeout: restartTimeout
+            });
+
+            const restartAck = buildRestartAcceptedResponse(normalizedMessage.id, restartToolArgs, {
+                retryAfterMs: PROCESS_RESTART_RECOVERY_BACKOFF_MS,
+                estimatedReadyAt: new Date(Date.now() + PROCESS_RESTART_RECOVERY_BACKOFF_MS).toISOString()
+            });
+            await state.stdioTransport.send(restartAck);
+            traceBridgeFlow(state, restartTraceId, 'restart-ack-sent', {
+                processRestart: Boolean(restartToolArgs?.processRestart),
+                ackHasStructuredContent: Boolean(restartAck?.result?.structuredContent),
+                ackHasTextContent: Boolean(Array.isArray(restartAck?.result?.content) && restartAck.result.content.length > 0)
+            });
+            persistBridgeSessionSnapshot(state, {
+                bridgeTransportState: 'restart-acknowledged-locally',
+                bridgeTraceId: restartTraceId,
+                bridgeTraceStep: 'restart-ack-sent'
+            });
+
+            log(`Restart request acknowledged locally before forwarding process restart for session ${state.lastSessionId || state.httpTransport?._sessionId || 'unknown'}. Trace ${restartTraceId}.`);
+            if (state.httpTransport) {
+                traceBridgeFlow(state, restartTraceId, 'restart-forward-queued', {
+                    sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
+                    transportGeneration: state.transportGeneration || 0
+                });
+                void state.httpTransport.send(normalizedMessage).catch((error) => {
+                    traceBridgeFlow(state, restartTraceId, 'restart-forward-failed', {
+                        message: String(error?.message || error || '')
+                    });
+                    log(`Restart forward failed after local ACK: ${error.message}`);
+                });
+            }
+
+            traceBridgeFlow(state, restartTraceId, 'restart-recovery-scheduled', {
+                forceFreshSession: true,
+                backoffMs: PROCESS_RESTART_RECOVERY_BACKOFF_MS,
+                estimatedReadyAt: new Date(Date.now() + PROCESS_RESTART_RECOVERY_BACKOFF_MS).toISOString()
+            });
+            // Recovery runs asynchronously so the ACK path stays stable even if the daemon
+            // temporarily drops the underlying HTTP transport during SIGTERM/respawn.
+            void scheduleBridgeRecovery(state, 'process restart requested', connectBridgeTransport, {
+                forceFreshSession: true,
+                backoffMs: PROCESS_RESTART_RECOVERY_BACKOFF_MS
+            }).catch((error) => {
+                traceBridgeFlow(state, restartTraceId, 'restart-recovery-schedule-failed', {
+                    message: String(error?.message || error || '')
+                });
+                log(`Restart recovery scheduling failed after local ACK: ${error.message}`);
+            });
+            return;
         }
 
         if (state.isReconnecting) {
@@ -237,6 +462,19 @@ async function handleBridgeStdioMessage(state, message) {
             } else {
                 log('Dropping notification while daemon is restarting.');
                 return;
+            }
+        }
+
+        if (!state.httpTransport) {
+            log(`No active HTTP transport for ${normalizedMessage?.method || 'unknown'} — attempting session recovery.`);
+            try {
+                await ensureBridgeTransportReady(state, connectBridgeTransport, {
+                    trigger: normalizedMessage?.method || 'bridge request',
+                    forceFreshSession: false,
+                    backoffMs: 0
+                });
+            } catch (error) {
+                log(`Bridge transport recovery failed: ${error.message}`);
             }
         }
 
@@ -264,9 +502,19 @@ async function handleBridgeStdioMessage(state, message) {
             }
         }
 
-        await state.httpTransport.send(normalizedMessage);
+        await sendBridgeMessageWithRecovery(state, normalizedMessage, connectBridgeTransport, {
+            trigger: normalizedMessage?.method || 'bridge send',
+            backoffMs: 0
+        });
         if (state.httpTransport?._sessionId) {
             state.lastSessionId = state.httpTransport._sessionId;
+            persistBridgeSessionSnapshot(state, {
+                bridgeTransportState: 'message-sent'
+            });
+        }
+
+        if (normalizedMessage?.method === 'initialize') {
+            await flushCachedInitializedNotification(state);
         }
     } catch (err) {
         if (isSessionExpiredError(err)) {
@@ -286,6 +534,10 @@ async function handleBridgeStdioMessage(state, message) {
                 method: normalizedMessage?.method || null,
                 message: String(err?.message || err || ''),
                 transportGeneration
+            });
+            persistBridgeSessionSnapshot(state, {
+                lastSessionId: null,
+                bridgeTransportState: 'session-expired'
             });
             void startBridgeRecovery(
                 state,
@@ -307,6 +559,10 @@ async function handleBridgeStdioMessage(state, message) {
                 message: String(err?.message || err || ''),
                 transportGeneration
             });
+            persistBridgeSessionSnapshot(state, {
+                lastSessionId: null,
+                bridgeTransportState: 'recovering'
+            });
             void scheduleBridgeRecovery(
                 state,
                 'server rejected request after daemon restart',
@@ -316,6 +572,26 @@ async function handleBridgeStdioMessage(state, message) {
 
         if (isRequestMessage(normalizedMessage)) {
             state.pendingRequests.delete(normalizedMessage.id);
+            if (normalizedMessage?.method === 'restart_server' && shouldTriggerRecovery(err)) {
+                const restartResponse = {
+                    jsonrpc: '2.0',
+                    id: normalizedMessage.id,
+                    result: {
+                        success: true,
+                        restarting: true,
+                        processRestart: Boolean(normalizedMessage?.params?.processRestart),
+                        restartType: normalizedMessage?.params?.processRestart
+                            ? 'true_process_restart'
+                            : 'restart',
+                        message: 'Restart request accepted. The bridge is recovering and will reconnect automatically.',
+                        timestamp: new Date().toISOString()
+                    }
+                };
+
+                await state.stdioTransport.send(restartResponse);
+                log('Restart request acknowledged locally while bridge recovery continues.');
+                return;
+            }
             await sendBridgeRetryableError(
                 state,
                 normalizedMessage.id,
@@ -333,6 +609,9 @@ function handleBridgeStdioClose(state) {
     log('IDE disconnected - shutting down bridge.');
     recordBridgeEvent('stdio-close', {
         sessionId: state.lastSessionId || null
+    });
+    persistBridgeSessionSnapshot(state, {
+        bridgeTransportState: 'stdio-close'
     });
     if (state.httpTransport && !state.isReconnecting) {
         state.httpTransport.close().catch(() => {});
@@ -361,6 +640,33 @@ const main = createCliOrchestrator({
 
         const stdioTransport = new StdioServerTransport();
         sharedState = createBridgeState(stdioTransport);
+        sharedState.persistBridgeSessionSnapshot = (patch = {}) => persistBridgeSessionSnapshot(sharedState, patch);
+        hydrateBridgeStateFromTelemetry(sharedState);
+
+        const previousDaemonPid = Number(sharedState.lastDaemonPid || sharedState.lastDaemonHealth?.pid || 0);
+        const daemonHealth = await readDaemonHealth(DAEMON_HEALTH_URL);
+        sharedState.lastDaemonHealth = daemonHealth || null;
+        sharedState.lastDaemonHealthAt = new Date().toISOString();
+        const currentDaemonPid = Number(daemonHealth?.pid || 0);
+        const daemonPidChanged = Boolean(previousDaemonPid && currentDaemonPid && previousDaemonPid !== currentDaemonPid);
+        if (Number.isFinite(currentDaemonPid) && currentDaemonPid > 0) {
+            sharedState.lastDaemonPid = currentDaemonPid;
+        }
+        recordBridgeHealthCheck(daemonHealth, {
+            bridgeTransportState: daemonHealth?.healthy ? 'daemon-health-ok' : 'daemon-health-unhealthy'
+        });
+        if (daemonHealth?.healthy && (daemonPidChanged || daemonHealth.sessions === 0) && sharedState.lastSessionId) {
+            const reason = daemonPidChanged
+                ? `daemon pid changed (${previousDaemonPid} -> ${currentDaemonPid})`
+                : 'daemon reported zero active sessions';
+            log(`No active daemon session continuity detected; clearing stale bridge session ${sharedState.lastSessionId} (${reason}).`);
+            sharedState.lastSessionId = null;
+            sharedState.cachedInitializeResponse = null;
+            sharedState.localInitializeHandled = false;
+            persistBridgeSessionSnapshot(sharedState, {
+                bridgeTransportState: daemonPidChanged ? 'daemon-pid-changed' : 'stale-session-cleared'
+            });
+        }
 
         await connectBridgeTransport(sharedState);
 

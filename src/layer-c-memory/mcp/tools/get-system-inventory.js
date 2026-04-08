@@ -23,6 +23,7 @@ function buildSystemInventoryResponse(result) {
       || null,
     snapshot: result.compactSnapshot,
     dashboard: result.healthDashboard,
+    observability: result.observability || null,
     summary: result.systemInventory?.summaryText || result.systemInventory?.summary?.summaryText || null,
     topSystems: result.systemInventory?.topSystems || [],
     promotionCandidates: result.systemInventory?.topPromotionCandidates || [],

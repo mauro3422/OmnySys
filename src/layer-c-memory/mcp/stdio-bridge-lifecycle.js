@@ -249,33 +249,39 @@ async function acquireStartLock() {
 }
 
 export async function waitForDaemonReady() {
-    const initialHealth = await readDaemonHealth(DAEMON_HEALTH);
-    if (!initialHealth.healthy && AUTO_START) {
-        const started = await startDaemon();
-        if (!started) {
-            log('ERROR: Daemon auto-start failed');
+    while (true) {
+        const initialHealth = await readDaemonHealth(DAEMON_HEALTH);
+        if (!initialHealth.healthy && AUTO_START) {
+            const started = await startDaemon();
+            if (started) {
+                return;
+            }
+
+            log('WARN: Daemon auto-start failed. Will keep waiting and retry.');
+            log(`Health URL: ${DAEMON_HEALTH}`);
+        }
+
+        if (!initialHealth.healthy) {
+            log('Waiting for daemon to reach healthy state...');
+            const health = await waitForDaemonHealthy(DAEMON_HEALTH, {
+                timeoutMs: DAEMON_READY_TIMEOUT_MS,
+                pollMs: DAEMON_READY_POLL_MS,
+                label: 'daemon',
+                log
+            });
+
+            if (health?.healthy) {
+                return;
+            }
+
+            log('WARN: Daemon not reachable yet. Retrying bridge readiness...');
             log(`Health URL: ${DAEMON_HEALTH}`);
             log(`Manual start: node src/layer-c-memory/mcp-http-proxy.js ${PROJECT_PATH} ${DAEMON_PORT}`);
-            process.exit(1);
+            await waitMs(Math.max(DAEMON_READY_POLL_MS, 1000));
+            continue;
         }
+
         return;
-    }
-
-    if (!initialHealth.healthy) {
-        log('Waiting for daemon to reach healthy state...');
-        const health = await waitForDaemonHealthy(DAEMON_HEALTH, {
-            timeoutMs: DAEMON_READY_TIMEOUT_MS,
-            pollMs: DAEMON_READY_POLL_MS,
-            label: 'daemon',
-            log
-        });
-
-        if (!health?.healthy) {
-            log('ERROR: Daemon not reachable');
-            log(`Health URL: ${DAEMON_HEALTH}`);
-            log(`Manual start: node src/layer-c-memory/mcp-http-proxy.js ${PROJECT_PATH} ${DAEMON_PORT}`);
-            process.exit(1);
-        }
     }
 }
 
@@ -380,7 +386,18 @@ export function createBridgeState(stdioTransport) {
         pendingRequests: new Map(),
         internalRequests: new Map(),
         cachedInitializeRequest: null,
+        cachedInitializeResponse: null,
         cachedInitializedNotification: null,
+        localInitializeHandled: false,
+        lastDaemonHealth: null,
+        lastDaemonHealthAt: null,
+        bridgeHealthState: null,
+        bridgeRiskLevel: null,
+        bridgeWarningReasons: [],
+        bridgeWarningSignals: [],
+        bridgeHealthSummary: null,
+        bridgeHealthRecommendation: null,
+        lastDaemonPid: null,
         lastRecoverySignature: null,
         lastRecoveryAt: 0
     };

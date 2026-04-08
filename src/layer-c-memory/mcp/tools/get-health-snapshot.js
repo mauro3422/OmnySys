@@ -18,6 +18,7 @@ function buildHealthSnapshotResponse(result) {
     dashboard: result.healthDashboard,
     panel: result.healthPanel,
     snapshot: result.compactSnapshot,
+    observability: result.observability || null,
     summary: result.snapshot.summary,
     history: result.snapshot.history,
     trend: result.snapshot.trend,

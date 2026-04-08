@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here as a release index. Detailed per-version notes live in `changelogs/`.
 
+## v0.9.431
+
+- **MCP restart recovery and observability consolidation:** the restart ACK/recovery flow now survives `processRestart` cycles, the canonical observability contract aggregates propagation/policy/gateway/inventory/readiness/telemetry, and the compiler dashboard was split into a thin coordinator plus section builders to keep the watcher below the file-size threshold.
+  - `restart_server({ processRestart: true })` now returns a logical ACK while recovery continues asynchronously.
+  - `get_server_status()`, `get_metrics_snapshot()`, `get_health_panel()`, and `get_system_inventory_report()` share a single observability surface.
+  - `src/shared/compiler/dashboard.js` was reduced below the watcher threshold by extracting section builders to `dashboard-sections.js`.
+  - Regression coverage added for the restart path, bridge health, observability contract, and dashboard wiring.
+
 ## v0.9.287
 
 - **Storage cleanup — deprecate `files.hash`:** columna duplicada (58/2,755
@@ -418,6 +426,7 @@ All notable changes to this project are documented here as a release index. Deta
 - [v0.9.291 - Sprint 16: Invalidator File Status Rename](changelogs/v0.9.291.md)
 - [v0.9.290 - Sprint 16: Orchestrator Server Health Delegation](changelogs/v0.9.290.md)
 - [v0.9.289 - Sprint 16: Cache, Atom Tracking, and PatternMatcher Helper Extraction](changelogs/v0.9.289.md)
+- [v0.9.431 - Sprint 16: MCP Restart Recovery, Observability Contract, and Dashboard Split](changelogs/v0.9.431.md)
 - [v0.9.288 - Sprint 16: Canonical Batch Consolidation & Detector Export Fix](changelogs/v0.9.288.md)
 - [v0.9.287 - Sprint 16: Runtime Canonicalization & Stability Hardening](changelogs/v0.9.287.md)
 - [v0.9.286 - Sprint 16: Canonical System Map Test Coverage & Zombie Eradication](changelogs/v0.9.286.md)

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   canonicalizeClientInfo,
-  normalizeBridgeInitializeMessage
+  buildInitializeResponse,
+  buildRestartAcceptedResponse,
+  isRestartServerToolCall,
+  normalizeBridgeInitializeMessage,
+  shouldTriggerRecovery,
+  isSessionExpiredError
 } from '../../../../src/layer-c-memory/mcp/stdio-bridge-helpers.js';
 
 describe('stdio-bridge-helpers', () => {
@@ -13,6 +18,7 @@ describe('stdio-bridge-helpers', () => {
 
     expect(clientInfo.transport_origin).toBe('stdio_bridge');
     expect(clientInfo.transport_origin_source).toBe('stdio_bridge');
+    expect(clientInfo.client_route_id).toMatch(/^claude::\d+$/);
   });
 
   it('preserves transport provenance when normalizing initialize requests', () => {
@@ -30,5 +36,85 @@ describe('stdio-bridge-helpers', () => {
 
     expect(message.params.clientInfo.transport_origin).toBe('stdio_bridge');
     expect(message.params.clientInfo.transport_origin_source).toBe('stdio_bridge');
+  });
+
+  it('treats invalid or missing MCP session as a recoverable session error', () => {
+    const error = new Error('Bad Request: invalid or missing MCP session');
+
+    expect(shouldTriggerRecovery(error)).toBe(true);
+    expect(isSessionExpiredError(error)).toBe(true);
+  });
+
+  it('treats fetch failures during restart as recoverable session errors', () => {
+    const error = new Error('BRIDGE_FORWARD_FAILED: fetch failed');
+
+    expect(shouldTriggerRecovery(error)).toBe(true);
+    expect(isSessionExpiredError(error)).toBe(true);
+  });
+
+  it('builds a local initialize response from cached daemon data', () => {
+    const response = buildInitializeResponse(42, {
+      result: {
+        protocolVersion: '2025-11-25',
+        capabilities: { tools: {}, resources: {} },
+        serverInfo: { name: 'omnysys', version: '3.0.0' }
+      }
+    });
+
+    expect(response).toEqual({
+      jsonrpc: '2.0',
+      id: 42,
+      result: {
+        protocolVersion: '2025-11-25',
+        capabilities: { tools: {}, resources: {} },
+        serverInfo: { name: 'omnysys', version: '3.0.0' }
+      }
+    });
+  });
+
+  it('builds a local restart acknowledgement for process restarts', () => {
+    const response = buildRestartAcceptedResponse(7, {
+      processRestart: true
+    }, {
+      retryAfterMs: 5000,
+      estimatedReadyAt: '2026-04-08T20:52:50.000Z'
+    });
+
+    expect(response).toEqual(expect.objectContaining({
+      jsonrpc: '2.0',
+      id: 7,
+      result: expect.objectContaining({
+        structuredContent: expect.objectContaining({
+          success: true,
+          restarting: true,
+          processRestart: true,
+          restartType: 'true_process_restart',
+          message: 'Restart request accepted. The bridge is recovering and will reconnect automatically. Estimated ready in about 5s.',
+          bridgeRecovery: expect.objectContaining({
+            state: 'recovering',
+            retryAfterMs: 5000,
+            estimatedReadyAt: '2026-04-08T20:52:50.000Z'
+          })
+        }),
+        content: [
+          expect.objectContaining({
+            type: 'text'
+          })
+        ]
+      })
+    }));
+    expect(typeof response.result.structuredContent.timestamp).toBe('string');
+  });
+
+  it('detects restart tool calls routed through tools/call', () => {
+    expect(isRestartServerToolCall({
+      jsonrpc: '2.0',
+      method: 'tools/call',
+      params: {
+        name: 'mcp_omnysystem_restart_server',
+        arguments: { processRestart: true }
+      },
+      id: 9
+    })).toBe(true);
   });
 });

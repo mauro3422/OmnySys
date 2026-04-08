@@ -65,6 +65,27 @@ describe('SessionManager', () => {
     });
   });
 
+  it('prefers client_route_id over client_id so separate launcher routes do not collide', () => {
+    manager.findSessionByClientId = vi.fn(() => null);
+
+    const result = manager.reserveSession({
+      name: 'VS Code AI',
+      client_id: 'codex',
+      client_route_id: 'vscode-ai::1234'
+    }, 'new-session');
+
+    expect(manager.findSessionByClientId).toHaveBeenCalledWith('vscode-ai::1234');
+    expect(result).toEqual({
+      sessionId: 'new-session',
+      reused: false,
+      source: 'new'
+    });
+    expect(manager.pendingSessions.get('vscode-ai::1234')).toMatchObject({
+      id: 'new-session',
+      clientId: 'vscode-ai::1234'
+    });
+  });
+
   it('bypasses deduplication when a fresh recovery session is requested', () => {
     manager.findSessionByClientId = vi.fn(() => ({ id: 'active-session' }));
 
@@ -87,21 +108,24 @@ describe('SessionManager', () => {
     });
   });
 
-  it('reuses a stale active session instead of creating a new bucket', () => {
+  it('does not reuse an inactive stale session when no active session exists', () => {
     const staleSession = {
       id: 'stale-session',
       updated_at: new Date(Date.now() - (10 * 60 * 1000)).toISOString()
     };
-    manager.findLatestSessionByClientId = vi.fn(() => staleSession);
+    manager.findSessionByClientId = vi.fn(() => null);
 
     const result = manager.reserveSession({ name: 'Claude' }, 'new-session');
 
     expect(result).toEqual({
-      sessionId: 'stale-session',
-      reused: true,
-      source: 'active'
+      sessionId: 'new-session',
+      reused: false,
+      source: 'new'
     });
-    expect(manager.pendingSessions.has('Claude')).toBe(false);
+    expect(manager.pendingSessions.get('Claude')).toMatchObject({
+      id: 'new-session',
+      clientId: 'Claude'
+    });
   });
 
   it('reuses the existing active session id when saveSession deduplicates', () => {
@@ -128,13 +152,10 @@ describe('SessionManager', () => {
     expect(manager.statements.upsert.run).not.toHaveBeenCalled();
   });
 
-  it('deduplicates stale sessions by latest client session even when the session is old', () => {
+  it('stores a new session when the persisted client session is inactive', () => {
     manager.ensureInitialized = vi.fn(() => true);
     manager.releasePendingSession = vi.fn();
-    manager.findLatestSessionByClientId = vi.fn(() => ({
-      id: 'stale-session',
-      updated_at: new Date(Date.now() - (10 * 60 * 1000)).toISOString()
-    }));
+    manager.findLatestSessionByClientId = vi.fn(() => null);
     manager.getSession = vi.fn(() => null);
     manager.updateActivity = vi.fn();
     manager.deleteSession = vi.fn();
@@ -147,12 +168,17 @@ describe('SessionManager', () => {
 
     const result = manager.saveSession('fresh-session', { name: 'Claude' }, { source: 'test' });
 
-    expect(result).toBe('stale-session');
+    expect(result).toBe('fresh-session');
     expect(manager.findLatestSessionByClientId).toHaveBeenCalledWith('Claude');
-    expect(manager.updateActivity).toHaveBeenCalledWith('stale-session');
-    expect(manager.deleteSession).toHaveBeenCalledWith('fresh-session');
-    expect(manager.deduplicateSessions).toHaveBeenCalledWith('Claude', 'stale-session');
+    expect(manager.updateActivity).not.toHaveBeenCalled();
+    expect(manager.deleteSession).not.toHaveBeenCalled();
+    expect(manager.deduplicateSessions).not.toHaveBeenCalled();
     expect(manager.statements.upsert.run).not.toHaveBeenCalled();
+    expect(manager.activeSessions.get('Claude')).toMatchObject({
+      id: 'fresh-session',
+      client_id: 'Claude',
+      transport_origin: 'native_mcp'
+    });
   });
 
   it('stores a fresh recovery session without reusing an existing client session', () => {

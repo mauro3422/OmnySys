@@ -8,6 +8,8 @@ import {
   buildCompilerMetricsSnapshot,
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
+  buildCompilerObservabilityContract,
+  summarizeCompilerObservabilityContract,
   buildCanonicalPromotionReport,
   buildCanonicalPromotionSnapshot,
   buildCompilerToolInventorySnapshot,
@@ -218,11 +220,27 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.healthSnapshot.systemInventoryDetail = systemInventoryDetail;
   status.healthSnapshot.canonicalPromotion = canonicalPromotion;
   status.healthSnapshot.canonicalPromotionDetail = canonicalPromotionDetail;
+  status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
+  const observability = buildCompilerObservabilityContract({
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    compilerExplainability,
+    systemInventory,
+    canonicalPromotion,
+    metricsSnapshot,
+    healthDashboard: status.healthSnapshot,
+    healthPanel: status.healthPanel,
+    startupTelemetry: server?.startupTelemetry || null,
+    proxyRuntimeTelemetry,
+    bridgeRuntimeTelemetry
+  });
+  const observabilitySummary = summarizeCompilerObservabilityContract(observability);
   status.propagation = canonicalPromotionDetail?.folderization?.propagation
     || metricsSnapshot?.current?.folderizationPropagation
     || metricsSnapshot?.folderizationPropagation
     || null;
-  status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
+  status.healthPanel.observability = observabilitySummary;
   status.toolInventory = {
     snapshot: toolInventorySnapshot,
     report: buildCompilerToolInventoryReport(toolInventorySnapshot)
@@ -231,9 +249,15 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.systemInventoryDetail = systemInventoryDetail;
   status.canonicalPromotion = canonicalPromotion;
   status.canonicalPromotionDetail = canonicalPromotionDetail;
+  status.systemInventory.observability = observabilitySummary;
+  status.systemInventoryDetail.observability = observability;
+  status.canonicalPromotion.observability = observabilitySummary;
+  status.canonicalPromotionDetail.observability = observability;
   status.startupTelemetry = server?.startupTelemetry || null;
   status.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
   status.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
+  status.observability = observability;
+  status.observabilitySummary = observabilitySummary;
   status.metricsSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
   status.metricsSnapshot.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
   if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
@@ -243,9 +267,11 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   if (status.healthSnapshot && typeof status.healthSnapshot === 'object') {
     status.healthSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
     status.healthSnapshot.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
+    status.healthSnapshot.observability = observability;
   }
   if (status.metricsSnapshot && typeof status.metricsSnapshot === 'object') {
     status.metricsSnapshot.propagation = status.propagation;
+    status.metricsSnapshot.observability = observability;
   }
   return {
     repo,

@@ -33,6 +33,14 @@ function getDuplicateWindowMs(debounceMs) {
   return Math.max(debounceMs, DUPLICATE_WINDOW_FLOOR_MS);
 }
 
+export function buildFileWatcherStats(startupNoiseSuppressed, isWatching) {
+  return {
+    startupNoiseSuppressed,
+    startupSuppressionWindowMs: STARTUP_SUPPRESSION_WINDOW_MS,
+    isWatching
+  };
+}
+
 export async function processFileWatcherChange({
   eventType,
   filename,

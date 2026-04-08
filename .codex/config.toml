@@ -1,3 +1,5 @@
+approval_policy = "untrusted"
+sandbox_mode = "danger-full-access"
 [projects.'\\?\C:\Dev\OmnySystem']
 trust_level = "trusted"
 
@@ -29,6 +31,36 @@ approval_mode = "approve"
 approval_mode = "approve"
 
 [mcp_servers.omnysystem.tools.mcp_omnysystem_get_edit_context]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_list_tools]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_server_status]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_technical_debt_report]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_system_inventory_report]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_canonical_promotion_report]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_restart_server]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_detect_performance_hotspots]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_get_tool_inventory_report]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_execute_solid_split]
+approval_mode = "approve"
+
+[mcp_servers.omnysystem.tools.mcp_omnysystem_split_large_file]
 approval_mode = "approve"
 
 [mcp_servers.omnysystem]

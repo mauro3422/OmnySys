@@ -17,4 +17,6 @@
  * @module omny
  */
 
-import './src/cli/index.js';
+import { main } from './src/cli/index.js';
+
+await main();

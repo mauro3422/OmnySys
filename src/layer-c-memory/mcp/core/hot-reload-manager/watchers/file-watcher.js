@@ -1,32 +1,12 @@
-/**
- * @fileoverview File Watcher
- *
- * Monitors file system changes for hot-reload functionality.
- * Uses Node.js fs.watch API with debouncing support.
- *
- * @module hot-reload-manager/watchers/file-watcher
- */
-
 import { watch } from 'fs';
 import path from 'path';
+
 import { createLogger } from '../../../../utils/logger.js';
-import { processFileWatcherChange } from './file-watcher-helpers.js';
+import { buildFileWatcherStats, processFileWatcherChange } from './file-watcher-helpers.js';
 
 const logger = createLogger('OmnySys:hot-reload:watcher');
 
-/**
- * File system watcher for hot-reload
- *
- * @class FileWatcher
- */
 export class FileWatcher {
-  /**
-   * Creates a file watcher instance
-   * @param {Object} options - Configuration options
-   * @param {string} options.projectPath - Path to watch
-   * @param {Function} options.onChange - Callback for file changes
-   * @param {number} [options.debounceMs=500] - Debounce timeout
-   */
   constructor(options) {
     this.projectPath = options.projectPath;
     this.onChange = options.onChange;
@@ -39,10 +19,6 @@ export class FileWatcher {
     this._warmupPeriodMs = Number(process.env.OMNYSYS_WATCHER_WARMUP_MS || 30000);
   }
 
-  /**
-   * Starts watching for file changes
-   * @returns {Promise<void>}
-   */
   async start() {
     if (this.fsWatcher) {
       logger.warn('File watcher already started');
@@ -69,9 +45,6 @@ export class FileWatcher {
     }
   }
 
-  /**
-   * Stops watching for file changes
-   */
   stop() {
     this._clearDebounce();
     this._lastChangeEvents.clear();
@@ -83,12 +56,6 @@ export class FileWatcher {
     }
   }
 
-  /**
-   * Handles file change events with debouncing
-   * @private
-   * @param {string} eventType - Type of change
-   * @param {string} filename - Changed file path (relative to src/)
-   */
   async _handleChange(eventType, filename) {
     return processFileWatcherChange({
       eventType,
@@ -107,10 +74,6 @@ export class FileWatcher {
     });
   }
 
-  /**
-   * Clears pending debounce timeout
-   * @private
-   */
   _clearDebounce() {
     if (this._debounceTimeout) {
       clearTimeout(this._debounceTimeout);
@@ -118,20 +81,12 @@ export class FileWatcher {
     }
   }
 
-  /**
-   * Checks if watcher is active
-   * @returns {boolean}
-   */
   isWatching() {
     return !!this.fsWatcher;
   }
 
   getFileWatcherStats() {
-    return {
-      startupNoiseSuppressed: this._startupNoiseSuppressed,
-      startupSuppressionWindowMs: 1500,
-      isWatching: this.isWatching()
-    };
+    return buildFileWatcherStats(this._startupNoiseSuppressed, this.isWatching());
   }
 }
 

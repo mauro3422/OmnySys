@@ -144,7 +144,7 @@ export function findLatestSessionByClientId(clientId) {
     }
 
     const row = runWithBusyRetry(
-      () => this.statements.getByClientId.get(clientId),
+      () => this.statements.getActiveByClientId.get(clientId),
       `findLatestSessionByClientId(${clientId})`
     );
     if (!row) return null;

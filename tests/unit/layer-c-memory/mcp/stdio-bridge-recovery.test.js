@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   failBridgePendingRequests: vi.fn(async () => undefined),
   sendBridgeRetryableError: vi.fn(async () => undefined),
-  waitForDaemonHealthy: vi.fn(async () => ({ healthy: true })),
+  waitForDaemonHealthy: vi.fn(async () => ({ healthy: true, pid: 2222 })),
+  waitForBridgeSessionId: vi.fn(async () => null),
   log: vi.fn()
 }));
 
@@ -12,6 +13,10 @@ vi.mock('../../../../src/layer-c-memory/mcp/stdio-bridge-lifecycle.js', () => ({
   sendBridgeRetryableError: mocks.sendBridgeRetryableError,
   waitForDaemonHealthy: mocks.waitForDaemonHealthy,
   log: mocks.log
+}));
+
+vi.mock('../../../../src/layer-c-memory/mcp/stdio-bridge-helpers.js', () => ({
+  waitForBridgeSessionId: mocks.waitForBridgeSessionId
 }));
 
 import {
@@ -67,6 +72,89 @@ describe('replayBridgeSession', () => {
           bridge_recovery_trigger: 'transport closed'
         })
       })
+    }));
+  });
+
+  it('defers initialized notification replay until a bridge session exists', async () => {
+    const state = {
+      internalRequests: new Map(),
+      cachedInitializeRequest: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Codex',
+            client_id: 'codex'
+          }
+        },
+        id: 1
+      },
+      cachedInitializedNotification: {
+        jsonrpc: '2.0',
+        method: 'notifications/initialized'
+      },
+      lastSessionId: null,
+      httpTransport: {
+        _sessionId: null,
+        send: vi.fn(async (message) => {
+          const pending = state.internalRequests.get(message.id);
+          if (pending) {
+            pending.resolve({ id: message.id });
+          }
+          return undefined;
+        })
+      },
+      persistBridgeSessionSnapshot: vi.fn()
+    };
+
+    await replayBridgeSession(state, {
+      forceFreshSession: true,
+      trigger: 'transport closed'
+    });
+
+    expect(state.httpTransport.send).toHaveBeenCalledTimes(1);
+    expect(state.httpTransport.send).toHaveBeenCalledWith(expect.objectContaining({
+      method: 'initialize'
+    }));
+    expect(state.persistBridgeSessionSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      bridgeTransportState: 'initialize-replayed'
+    }));
+  });
+
+  it('skips initialize replay when the bridge session is already initialized', async () => {
+    const state = {
+      internalRequests: new Map(),
+      cachedInitializeRequest: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Codex',
+            client_id: 'codex'
+          }
+        },
+        id: 1
+      },
+      cachedInitializedNotification: {
+        jsonrpc: '2.0',
+        method: 'notifications/initialized'
+      },
+      lastSessionId: 'session-already-live',
+      httpTransport: {
+        _sessionId: 'session-already-live',
+        send: vi.fn()
+      },
+      persistBridgeSessionSnapshot: vi.fn()
+    };
+
+    await replayBridgeSession(state, {
+      forceFreshSession: false,
+      trigger: 'transport closed'
+    });
+
+    expect(state.httpTransport.send).not.toHaveBeenCalled();
+    expect(state.persistBridgeSessionSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      bridgeTransportState: 'session-reused'
     }));
   });
 });
@@ -138,6 +226,58 @@ describe('scheduleBridgeRecovery', () => {
       pendingRequests: new Map(),
       stdioTransport: { send: vi.fn() },
       lastSessionId: 'session-old'
+    };
+    const recoverFn = vi.fn(async (bridgeState, trigger, connectBridgeTransport, options) => {
+      expect(trigger).toBe('transport closed');
+      expect(options.forceFreshSession).toBe(true);
+      expect(connectBridgeTransport).toBeInstanceOf(Function);
+      return 'recovered';
+    });
+    const connectBridgeTransport = vi.fn();
+
+    await expect(scheduleBridgeRecovery(state, 'transport closed', connectBridgeTransport, {
+      backoffMs: 0,
+      recoverFn
+    })).resolves.toBe('recovered');
+
+    expect(recoverFn).toHaveBeenCalledTimes(1);
+    expect(state.lastSessionId).toBe(null);
+  });
+
+  it('forces a fresh bridge session after a fetch failure from restart', async () => {
+    const state = {
+      isReconnecting: false,
+      reconnectPromise: null,
+      pendingRequests: new Map(),
+      stdioTransport: { send: vi.fn() },
+      lastSessionId: 'session-old'
+    };
+    const recoverFn = vi.fn(async (bridgeState, trigger, connectBridgeTransport, options) => {
+      expect(trigger).toBe('BRIDGE_FORWARD_FAILED: fetch failed');
+      expect(options.forceFreshSession).toBe(true);
+      expect(connectBridgeTransport).toBeInstanceOf(Function);
+      return 'recovered';
+    });
+    const connectBridgeTransport = vi.fn();
+
+    await expect(scheduleBridgeRecovery(state, 'BRIDGE_FORWARD_FAILED: fetch failed', connectBridgeTransport, {
+      backoffMs: 0,
+      recoverFn
+    })).resolves.toBe('recovered');
+
+    expect(recoverFn).toHaveBeenCalledTimes(1);
+    expect(state.lastSessionId).toBe(null);
+  });
+
+  it('forces a fresh bridge session when the daemon pid changes', async () => {
+    const state = {
+      isReconnecting: false,
+      reconnectPromise: null,
+      pendingRequests: new Map(),
+      stdioTransport: { send: vi.fn() },
+      lastSessionId: 'session-old',
+      lastDaemonPid: 1111,
+      lastDaemonHealth: { healthy: true, sessions: 1, pid: 1111 }
     };
     const recoverFn = vi.fn(async (bridgeState, trigger, connectBridgeTransport, options) => {
       expect(trigger).toBe('transport closed');

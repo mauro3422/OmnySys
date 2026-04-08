@@ -12,6 +12,8 @@ import {
   buildCompilerMetricsSnapshot,
   buildCanonicalPromotionReport,
   buildCanonicalPromotionSnapshot,
+  buildCompilerObservabilityContract,
+  summarizeCompilerObservabilityContract,
   buildCompilerSystemInventoryReport,
   buildCompilerSystemInventorySnapshot,
   summarizeCompilerMetricsSnapshot,
@@ -103,6 +105,28 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
   healthDashboard.canonicalPromotion = canonicalPromotion;
   healthDashboard.canonicalPromotionDetail = canonicalPromotionDetail;
   const healthPanel = buildCompilerHealthPanel(healthDashboard);
+  const observability = buildCompilerObservabilityContract({
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    compilerExplainability,
+    systemInventory,
+    canonicalPromotion,
+    metricsSnapshot: snapshot,
+    healthDashboard,
+    healthPanel,
+    startupTelemetry: context.server?.startupTelemetry || null
+  });
+  const observabilitySummary = summarizeCompilerObservabilityContract(observability);
+  snapshot.observability = observability;
+  snapshot.current.observability = observabilitySummary;
+  compactSnapshot.observability = observabilitySummary;
+  healthDashboard.observability = observability;
+  healthPanel.observability = observabilitySummary;
+  systemInventory.observability = observabilitySummary;
+  systemInventoryDetail.observability = observability;
+  canonicalPromotion.observability = observabilitySummary;
+  canonicalPromotionDetail.observability = observability;
 
   return {
     success: true,
@@ -118,6 +142,8 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     systemInventoryDetail,
     canonicalPromotion,
     canonicalPromotionDetail,
+    observability,
+    observabilitySummary,
     healthDashboard,
     healthPanel
   };

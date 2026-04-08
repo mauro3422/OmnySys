@@ -132,11 +132,14 @@ function buildProxyRow(status) {
 }
 
 function buildBridgeRow(status) {
+  const warningReasons = Array.isArray(status.bridgeRuntimeTelemetry?.warningReasons)
+    ? status.bridgeRuntimeTelemetry.warningReasons.slice(0, 2)
+    : [];
   return {
     area: 'Bridge',
-    state: status.bridgeRuntimeTelemetry?.state || 'unknown',
+    state: status.bridgeRuntimeTelemetry?.healthState || status.bridgeRuntimeTelemetry?.state || 'unknown',
     detail: status.bridgeRuntimeTelemetry
-      ? `connects=${normalizeCount(status.bridgeRuntimeTelemetry.connectCount || 0)} | reconnects=${normalizeCount(status.bridgeRuntimeTelemetry.reconnectCount || 0)} | closed=${normalizeCount(status.bridgeRuntimeTelemetry.transportClosedCount || 0)} | expired=${normalizeCount(status.bridgeRuntimeTelemetry.sessionExpiredCount || 0)} | retryable=${normalizeCount(status.bridgeRuntimeTelemetry.retryableErrorCount || 0)} | stdioClose=${normalizeCount(status.bridgeRuntimeTelemetry.stdioCloseCount || 0)} | last=${status.bridgeRuntimeTelemetry.lastEventType || 'n/a'}`
+      ? `connects=${normalizeCount(status.bridgeRuntimeTelemetry.connectCount || 0)} | reconnects=${normalizeCount(status.bridgeRuntimeTelemetry.reconnectCount || 0)} | closed=${normalizeCount(status.bridgeRuntimeTelemetry.transportClosedCount || 0)} | expired=${normalizeCount(status.bridgeRuntimeTelemetry.sessionExpiredCount || 0)} | retryable=${normalizeCount(status.bridgeRuntimeTelemetry.retryableErrorCount || 0)} | stdioClose=${normalizeCount(status.bridgeRuntimeTelemetry.stdioCloseCount || 0)} | risk=${status.bridgeRuntimeTelemetry.riskLevel || 'unknown'} | warns=${warningReasons.join('; ') || 'none'} | last=${status.bridgeRuntimeTelemetry.lastEventType || 'n/a'}`
       : 'bridge runtime telemetry not available',
     source: '.omnysysdata/bridge-runtime-telemetry.json'
   };

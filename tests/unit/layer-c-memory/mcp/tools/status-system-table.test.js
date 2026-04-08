@@ -83,6 +83,10 @@ describe('status system table', () => {
         sessionExpiredCount: 1,
         retryableErrorCount: 2,
         stdioCloseCount: 0,
+        riskLevel: 'high',
+        warningReasons: [
+          'Daemon reports zero active sessions while the bridge still has session state.'
+        ],
         lastEventType: 'bridge-recovery-needed'
       },
       compilerExplainability: {
@@ -343,6 +347,8 @@ describe('status system table', () => {
     expect(bridgeRow.detail).toContain('closed=1');
     expect(bridgeRow.detail).toContain('expired=1');
     expect(bridgeRow.detail).toContain('retryable=2');
+    expect(bridgeRow.detail).toContain('risk=high');
+    expect(bridgeRow.detail).toContain('warns=Daemon reports zero active sessions while the bridge still has session state.');
     expect(bridgeRow.detail).toContain('last=bridge-recovery-needed');
     const aduanaRow = summary.rows.find((row) => row.area === 'Aduana');
     expect(aduanaRow).toMatchObject({

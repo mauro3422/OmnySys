@@ -31,6 +31,7 @@ export async function get_metrics_snapshot(args, context) {
       aggregationType: 'metrics_snapshot',
       snapshot: result.compactSnapshot,
       dashboard: result.healthDashboard,
+      observability: result.observability || null,
       summary: result.snapshot.summary,
       history: result.snapshot.history,
       trend: result.snapshot.trend,

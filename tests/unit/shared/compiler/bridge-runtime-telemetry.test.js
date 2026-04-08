@@ -57,6 +57,7 @@ describe('bridge runtime telemetry', () => {
     });
     expect(summary).toMatchObject({
       state: 'thrashing',
+      riskLevel: 'critical',
       connectCount: 1,
       reconnectCount: 2,
       transportClosedCount: 1,
@@ -65,5 +66,40 @@ describe('bridge runtime telemetry', () => {
     });
     expect(summary.summary).toContain('connects=1');
     expect(summary.summary).toContain('reconnects=2');
+    expect(summary.summary).toContain('risk=critical');
+    expect(summary.warningSignals).toContain('recovery-thrashing');
+  });
+
+  it('flags zero-session daemon health as a bridge risk when session state still exists', () => {
+    const summary = summarizeBridgeRuntimeTelemetry({
+      projectPath: '/tmp/omnysys-bridge',
+      connectCount: 1,
+      reconnectCount: 0,
+      transportClosedCount: 0,
+      sessionExpiredCount: 0,
+      retryableErrorCount: 0,
+      stdioCloseCount: 0,
+      lastSessionId: 'session-live',
+      lastDaemonHealth: {
+        reachable: true,
+        healthy: true,
+        status: 'healthy',
+        initialized: true,
+        sessions: 0,
+        service: 'omnysys-mcp-http',
+        transport: 'streamable-http'
+      },
+      events: [
+        {
+          type: 'bridge-connect',
+          at: new Date().toISOString()
+        }
+      ]
+    });
+
+    expect(summary.state).toBe('stable');
+    expect(summary.riskLevel).toBe('high');
+    expect(summary.warningReasons.join(' ')).toContain('zero active sessions');
+    expect(summary.summary).toContain('risk=high');
   });
 });

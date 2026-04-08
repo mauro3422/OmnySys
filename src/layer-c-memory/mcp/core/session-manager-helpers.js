@@ -11,6 +11,12 @@ export function extractClientId(clientInfo) {
     return normalizeClientIdentityValue(clientInfo) || 'unknown';
   }
 
+  const routeId = normalizeClientIdentityValue(clientInfo.client_route_id);
+  if (routeId) return routeId;
+
+  const originalRouteId = normalizeClientIdentityValue(clientInfo.original_client_route_id);
+  if (originalRouteId) return originalRouteId;
+
   const clientId = normalizeClientIdentityValue(clientInfo.client_id);
   if (clientId) return clientId;
 

@@ -23,7 +23,7 @@ import { createCliOrchestrator } from '../shared/cli/base-orchestrator.js';
 /**
  * Main CLI entry point
  */
-const main = createCliOrchestrator({
+export const main = createCliOrchestrator({
   name: 'cli',
   logger: console,
   run: async ({ logger }) => {

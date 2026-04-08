@@ -198,6 +198,11 @@ export {
 } from './dashboard.js';
 
 export {
+  buildCompilerObservabilityContract,
+  summarizeCompilerObservabilityContract
+} from './compiler-observability-contract.js';
+
+export {
   buildUpdateSurfaceSummary
 } from './update-surface-summary.js';
 
