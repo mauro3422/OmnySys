@@ -291,9 +291,6 @@ function spawnWorker(extraArgs = []) {
     writeOwnerLock(restartCount === 0 ? 'starting' : 'restarting');
     log(`Spawning mcp-http-server.js (restart #${restartCount})...`);
 
-    // CRITICAL: Clear stderr buffer before spawning
-    recentWorkerStderr = '';
-
     // spawnWorkerProcess already adds workerPath, so only pass projectPath and port
     const workerArgs = [projectPath, String(port), ...extraArgs];
     worker = spawnWorkerProcess(workerPath, workerArgs, { proxyModeEnv: '1' });
