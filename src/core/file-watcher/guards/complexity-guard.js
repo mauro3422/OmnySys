@@ -12,7 +12,10 @@
 import { createLogger } from '../../../utils/logger.js';
 import { StandardThresholds } from './guard-standards.js';
 import { classifyFileOperationalRole } from '../../../shared/compiler/index.js';
-import { collectComplexityIssues } from './complexity-guard/analysis.js';
+import {
+    collectComplexityIssues,
+    summarizeComplexityPropagation
+} from './complexity-guard/analysis.js';
 import { clearComplexityIssues, persistComplexityIssues } from './complexity-guard/persistence.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:complexity');
@@ -61,16 +64,20 @@ export async function detectHighComplexity(rootPath, filePath, EventEmitterConte
 }
 
 function emitComplexityEvent(EventEmitterContext, filePath, issues, highIssues, mediumIssues) {
+    const severity = highIssues.length > 0 ? 'high' : 'medium';
+    const propagation = summarizeComplexityPropagation(filePath, issues, severity);
     EventEmitterContext.emit('code:complexity', {
         filePath,
         totalIssues: issues.length,
         high: highIssues.length,
         medium: mediumIssues.length,
+        propagation,
         issues: issues.map((issue) => ({
             atomName: issue.atomName,
             severity: issue.severity,
             metricType: issue.metricType,
-            value: issue.context.metricValue
+            value: issue.context.metricValue,
+            propagation: issue.context.propagation || null
         }))
     });
 }

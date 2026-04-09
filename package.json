@@ -17,7 +17,7 @@
     "setup": "node install.js",
     "setup:terminal": "node scripts/mcp-autostart.js",
     "analyze": "node src/cli/index.js analyze",
-    "analyze:full": "node --max-old-space-size=8192 run-layer-a.js",
+    "analyze:full": "node --max-old-space-size=8192 scripts/run-layer-a.js",
     "dev": "node omny.js up",
     "smoke": "node tests/smoke-test.js",
     "test": "vitest run",

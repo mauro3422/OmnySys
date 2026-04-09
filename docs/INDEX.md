@@ -1,9 +1,9 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.71  
-**Última actualización**: 2026-02-28  
-**Estado**: ✅ **SQLite Unificado + Tree-sitter High-Precision Extraction**  
-**Próximo**: 🚧 Análisis de Flujo de Datos Fractal + Layer B Optimization
+**Versión**: v0.9.87+
+**Última actualización**: 2026-04-09
+**Estado**: ✅ **Semantic Algebra + Propagation Engine + 45 MCP Tools**
+**Próximo**: 🚧 Data Flow Graph + Event Graph Integration
 
 ---
 
@@ -15,10 +15,14 @@ docs/
 ├── 02-architecture/   🏗️ Arquitectura técnica
 ├── 03-orchestrator/   ⚙️ Orquestador y flujo de datos
 ├── 04-guides/         🛠️ Guías prácticas
-├── 04-maintenance/    🔧 Issues y mejoras
-├── 05-roadmap/        🔮 Roadmap e investigación
-├── 06-reference/      📚 Referencia técnica
-└── archive/           🗄️ Archivo histórico
+├── 05-maintenance/    🔧 Issues, backlogs y mejoras
+├── 06-roadmap/        🔮 Roadmap e investigación
+├── 07-reference/      📚 Referencia técnica
+├── archive/           🗄️ Archivo histórico
+│   └── archive-early/ 📦 Historial de sesiones y audits tempranos
+├── bugs-mcp/          🐛 Evidencia de bugs recurrentes del daemon MCP
+├── reports/           📋 Reportes de coverage y audits puntuales
+└── development/       🧪 TODOs técnicos y evidencia de sesiones
 ```
 
 ---
@@ -38,8 +42,8 @@ docs/
 | Ruta | Documento | Descripción |
 |------|-----------|-------------|
 | **(raíz)** | [AGENTS.md](../AGENTS.md) | **⭐ Guía rápida de herramientas MCP** |
-| **04-guides/** | [tools.md](04-guides/tools.md) | **30 herramientas MCP** disponibles |
-| **06-reference/mcp/** | [mcp-tools-detailed.md](06-reference/mcp/mcp-tools-detailed.md) | Referencia detallada |
+| **04-guides/** | [tools.md](04-guides/tools.md) | **45 herramientas MCP** disponibles |
+| **07-reference/mcp/** | [mcp-tools-detailed.md](07-reference/mcp/mcp-tools-detailed.md) | Referencia detallada |
 
 ---
 
@@ -47,16 +51,22 @@ docs/
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  OMNYSYS v0.9.61 — Estado del Sistema                     │
+│  OMNYSYS v0.9.87+ — Estado del Sistema                    │
 ├─────────────────────────────────────────────────────────────┤
-│  Átomos:         13,485 funciones analizadas              │
-│  Archivos:       1,860                                    │
-│  Health Score:   99/100 (Grade A)                        │
-│  Test Coverage:  79%                                      │
-│  God Functions:  193 (complejidad > 15)                  │
-│  Dead Code:      42 casos (85% menos falsos positivos)   │
-│  Duplicados:     118 exactos, 694 contextuales           │
-│  Debt Arch:      15 archivos críticos                    │
+│  Átomos:         14,209 funciones analizadas              │
+│  Archivos:       2,812                                    │
+│  Health Score:   97/100 (Grade A)                        │
+│  Database:       100/100 (Grade A+)                      │
+│  Pipeline:       100/100 (Grade A+) — 9/9 checks         │
+│  MCP Tools:      45 herramientas                          │
+│  Call Links:     9,677 relaciones de llamada              │
+│  Semantic Links: 129 conexiones semánticas                │
+│  Duplicados:     5 grupos estructurales                   │
+│  LLM Usage:      0% - 100% ESTÁTICO                      │
+│  Storage:        SQLite (WAL mode, 19 tablas)            │
+│  Startup:        ~3.9s (budget: 15s)                     │
+│  Semantic Algebra: ✅ PageRank, Cohesion, Coupling, etc.  │
+│  Propagation Engine: ✅ 8 tipos de planes                │
 └─────────────────────────────────────────────────────────────┘
 ```
 

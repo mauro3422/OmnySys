@@ -1,4 +1,4 @@
-import { runAsyncBoundary } from '../../shared/compiler/index.js';
+import { runAsyncBoundary } from '../../shared/compiler/async-boundary.js';
 import { normalizeTransportOrigin } from './transport-provenance.js';
 import { execSync } from 'child_process';
 const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
@@ -27,9 +27,11 @@ function detectClientFromParentProcess() {
     try {
         const ppid = process.ppid;
         if (!ppid) return null;
-        
-        // Get parent process name on Windows
-        const output = execSync(`wmic process where ProcessId=${ppid} get Name`, { encoding: 'utf8', timeout: 2000 });
+
+        const command = process.platform === 'win32'
+            ? `wmic process where ProcessId=${ppid} get Name`
+            : `ps -o command= -p ${ppid}`;
+        const output = execSync(command, { encoding: 'utf8', timeout: 2000 });
         const parentName = output.toLowerCase();
         
         // Detect based on parent process
@@ -40,7 +42,12 @@ function detectClientFromParentProcess() {
         if (parentName.includes('cursor')) return { id: 'cursor', name: 'Cursor' };
         
         // If parent is VS Code, check grandparent or use heuristic
-        if (parentName.includes('code.exe') || parentName.includes('visual studio code')) {
+        if (
+            parentName.includes('code.exe') ||
+            parentName.includes('visual studio code') ||
+            /\bcode(\s|$)/.test(parentName) ||
+            parentName.includes('vscode')
+        ) {
             // Running under VS Code - could be any AI extension
             // Default to 'vscode-ai' since we can't determine which one
             return { id: 'vscode-ai', name: 'VS Code AI' };

@@ -68,12 +68,40 @@ function printTerminalResults(terminal) {
   }
 }
 
+function printWslCodexSyncResult(syncResult) {
+  if (!syncResult) return;
+
+  console.log('');
+  installerLog('info', 'WSL Codex MCP sync:');
+
+  if (syncResult.applied) {
+    installerLog('ok', `Synced ${syncResult.tableCount || 0} MCP table(s) from Windows Codex config into WSL.`);
+    if (Array.isArray(syncResult.adaptedTables) && syncResult.adaptedTables.length > 0) {
+      installerLog('info', `WSL-adapted tables: ${syncResult.adaptedTables.join(', ')}`);
+    }
+    installerLog('info', `Windows config: ${syncResult.windowsConfigPath}`);
+    installerLog('info', `WSL config: ${syncResult.wslConfigPath}`);
+    return;
+  }
+
+  installerLog('info', `${syncResult.reason || 'not applied'}`);
+  if (Array.isArray(syncResult.adaptedTables) && syncResult.adaptedTables.length > 0) {
+    installerLog('info', `WSL-adapted tables: ${syncResult.adaptedTables.join(', ')}`);
+  }
+  if (syncResult.windowsConfigPath) {
+    installerLog('info', `Windows config: ${syncResult.windowsConfigPath}`);
+  }
+  if (syncResult.wslConfigPath) {
+    installerLog('info', `WSL config: ${syncResult.wslConfigPath}`);
+  }
+}
+
 function printNextSteps(result) {
   console.log('');
   installerLog('info', 'Next steps:');
-  console.log('  1) Open VS Code in this workspace (daemon task auto-runs).');
-  console.log('  2) Or start manually: node src/layer-c-memory/mcp-http-proxy.js');
-  console.log('  3) Re-apply standard anytime: npm run setup');
+  console.log('  1) Prefer opening the workspace/client normally (bridge/task auto-start will reuse the shared daemon).');
+  console.log('  2) Re-apply the standard from the current runtime anytime: npm run setup');
+  console.log('  3) Use a manual proxy start only as a diagnostic fallback: node src/layer-c-memory/mcp-http-proxy.js');
   console.log('  4) Terminal auto-start will run when you open a new terminal');
 }
 
@@ -98,6 +126,7 @@ async function main() {
   printAgentsResult(distributeAgentsTemplate(projectPath));
   printClientResults(result.clientResults);
   printTerminalResults(result.terminal);
+  printWslCodexSyncResult(result.wslCodexSync);
 
   if (!result.success) {
     installerLog('err', 'MCP standardization finished with errors.');

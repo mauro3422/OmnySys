@@ -85,7 +85,8 @@ export function buildDaemonTask() {
     return {
         label: VSCODE_DAEMON_TASK_LABEL,
         type: 'shell',
-        command: VSCODE_DAEMON_TASK_COMMAND,
+        command: getNodeCommand(),
+        args: ['src/layer-c-memory/mcp-http-proxy.js'],
         options: { cwd: '${workspaceFolder}' },
         runOptions: { runOn: 'folderOpen' },
         presentation: { reveal: 'always', panel: 'dedicated', clear: false, focus: false }

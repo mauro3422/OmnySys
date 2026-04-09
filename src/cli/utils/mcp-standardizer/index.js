@@ -4,6 +4,7 @@ import { CONFIG_PATHS } from './constants.js';
 import { getWorkspaceConfigPaths, getVsCodeConfigPaths, getUnifiedConfigPath, getClientConfigPath } from './paths.js';
 import { applyWorkspaceMcpConfig, applyVsCodeAutostartConfig, writeUnifiedConfig } from './workspace.js';
 import { applyTerminalAutoStartConfig } from './terminal-autostart.js';
+import { syncWindowsCodexMcpToWsl } from './wsl-codex-sync.js';
 import {
     applyCodexConfig,
     applyClineConfig,
@@ -67,6 +68,7 @@ export async function standardizeMcpInstallation(options = {}) {
     });
     const vscode = await applyVsCodeAutostartConfig({ projectPath });
     const terminal = await applyTerminalAutoStartConfig({ projectPath });
+    const wslCodexSync = await syncWindowsCodexMcpToWsl();
 
     return {
         success: clients.success && workspace.success && vscode.success && terminal.success,
@@ -76,7 +78,8 @@ export async function standardizeMcpInstallation(options = {}) {
         clientResults: clients.results,
         workspace,
         vscode,
-        terminal
+        terminal,
+        wslCodexSync
     };
 }
 

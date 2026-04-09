@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 import {
     readDaemonOwnerLock,
     waitForDaemonOwner
-} from '../../shared/compiler/index.js';
+} from '../../shared/compiler/runtime-ownership.js';
 import {
     readDaemonHealth,
     waitForDaemonHealthy,
@@ -73,6 +73,71 @@ function identifyOmnySysProcess(commandLine, projectPath) {
     return { isOmnySys: true, type, isSameProject };
 }
 
+function parseWindowsProcessRows(stdout = '') {
+  const lines = stdout.split('\n');
+  const currentPid = process.pid;
+  const rows = [];
+
+  for (const line of lines) {
+    const pidMatch = line.match(/,(\d+)\s*$/);
+    if (!pidMatch) continue;
+
+    const pid = parseInt(pidMatch[1], 10);
+    if (!pid || pid === currentPid) continue;
+
+    rows.push({ pid, commandLine: line.trim() });
+  }
+
+  return rows;
+}
+
+function parseUnixProcessRows(stdout = '') {
+  const lines = stdout.split('\n').filter(Boolean);
+  const currentPid = process.pid;
+  const rows = [];
+
+  for (const line of lines) {
+    const match = line.trim().match(/^(\d+)\s+(.*)$/);
+    if (!match) continue;
+
+    const pid = parseInt(match[1], 10);
+    const commandLine = match[2] || '';
+    if (!pid || pid === currentPid || !commandLine) continue;
+
+    rows.push({ pid, commandLine });
+  }
+
+  return rows;
+}
+
+async function listCandidateProcessRows() {
+  if (process.platform === 'win32') {
+    const { stdout } = await execAsync(
+      'wmic process where "name=\'node.exe\'" get commandline,processid /format:csv',
+      { windowsHide: true }
+    );
+    return parseWindowsProcessRows(stdout);
+  }
+
+  const { stdout } = await execAsync('ps -eo pid=,args=');
+  return parseUnixProcessRows(stdout);
+}
+
+async function terminateProcess(pid) {
+  if (process.platform === 'win32') {
+    await execAsync(`taskkill /F /PID ${pid}`, { windowsHide: true });
+    return;
+  }
+
+  try {
+    process.kill(pid, 'SIGTERM');
+  } catch (error) {
+    if (error?.code !== 'ESRCH') {
+      throw error;
+    }
+  }
+}
+
 /**
  * Busca procesos Node.js huérfanos del mismo proyecto y los limpia
  * para evitar duplicación de daemons.
@@ -80,35 +145,20 @@ function identifyOmnySysProcess(commandLine, projectPath) {
 async function cleanupOrphanedDaemons() {
   try {
     log('Checking for orphaned daemon processes...');
-    
-    // Buscar todos los procesos node.exe
-    const { stdout } = await execAsync(
-      'wmic process where "name=\'node.exe\'" get commandline,processid /format:csv',
-      { windowsHide: true }
-    );
-    
-    const lines = stdout.split('\n');
     const orphanedProcesses = [];
-    const currentPid = process.pid;
-    
-    for (const line of lines) {
-      // Extraer PID de la línea (último campo en formato CSV)
-      const pidMatch = line.match(/,(\d+)\s*$/);
-      if (!pidMatch) continue;
-      
-      const pid = parseInt(pidMatch[1]);
-      if (!pid || pid === currentPid) continue;
-      
+    const rows = await listCandidateProcessRows();
+
+    for (const { pid, commandLine } of rows) {
       // Identificar el tipo de proceso
-      const identification = identifyOmnySysProcess(line, PROJECT_PATH);
-      
+      const identification = identifyOmnySysProcess(commandLine, PROJECT_PATH);
+
       // Solo nos interesan los procesos del mismo proyecto que sean proxy o daemon
       if (identification.isOmnySys && identification.isSameProject && 
           (identification.type === 'proxy' || identification.type === 'daemon')) {
         orphanedProcesses.push({ 
           pid, 
           type: identification.type,
-          line: line.trim() 
+          line: commandLine.trim() 
         });
       }
     }
@@ -142,7 +192,7 @@ async function cleanupOrphanedDaemons() {
       // Si llegamos aquí, el proceso no es healthy o es de otro proyecto
       log(`  ✗ PID ${pid} (${type}) appears to be orphaned or unhealthy - cleaning up`);
       try {
-        await execAsync(`taskkill /F /PID ${pid}`, { windowsHide: true });
+        await terminateProcess(pid);
         log(`  ✓ Successfully terminated PID ${pid}`);
       } catch (killError) {
         log(`  ⚠ Failed to terminate PID ${pid}: ${killError.message}`);
@@ -276,7 +326,7 @@ export async function waitForDaemonReady() {
 
             log('WARN: Daemon not reachable yet. Retrying bridge readiness...');
             log(`Health URL: ${DAEMON_HEALTH}`);
-            log(`Manual start: node src/layer-c-memory/mcp-http-proxy.js ${PROJECT_PATH} ${DAEMON_PORT}`);
+            log(`Manual start: ${process.execPath} src/layer-c-memory/mcp-http-proxy.js ${PROJECT_PATH} ${DAEMON_PORT}`);
             await waitMs(Math.max(DAEMON_READY_POLL_MS, 1000));
             continue;
         }

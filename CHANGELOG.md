@@ -63,6 +63,12 @@ All notable changes to this project are documented here as a release index. Deta
   - `src/cli/utils/mcp-standardizer/index.js` reapplies terminal autostart during normal standardization
   - `src/layer-c-memory/mcp-http-proxy.js` now uses a startup lock to avoid duplicate supervisors
 
+- **WSL/Linux MCP readiness.** The bridge/proxy lifecycle now recognizes and cleans OmnySys processes on Linux too, parent-client detection no longer depends only on `wmic`, and the workspace MCP configs can target the WSL project paths instead of a hardcoded Windows `node.exe`.
+  - `src/layer-c-memory/mcp/stdio-bridge-lifecycle.js`
+  - `src/layer-c-memory/mcp/stdio-bridge-helpers.js`
+  - `src/layer-c-memory/mcp-http-proxy-zombies.js`
+  - `.mcp.json`, `mcp-servers.json`, `mcp-servers.schema.json`, `.vscode/mcp.json`
+
 - **Startup stabilization.** Cache preload now degrades to a safe in-memory fallback instead of killing the worker, hot-reload startup is non-fatal, and crash traces are persisted for worker diagnosis.
   - `src/layer-c-memory/mcp/core/initialization/steps/cache-init-step.js`
   - `src/layer-c-memory/mcp/core/server-class.js`

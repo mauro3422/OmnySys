@@ -26,41 +26,88 @@ const OMNYSYS_PATTERNS = [
 const WORKER_MEMORY_THRESHOLD_MB = 350;
 const PROXY_MEMORY_THRESHOLD_MB = 50;
 
+function isOmnySysCommand(command = '') {
+  return OMNYSYS_PATTERNS.some((pattern) => command.includes(pattern));
+}
+
+function parseWindowsTaskList(stdout = '') {
+  const lines = stdout.trim().split('\n').filter(Boolean);
+  const rows = [];
+
+  for (const line of lines) {
+    const match = line.match(/"([^"]+)","(\d+)","[^"]*","[^"]*","([^"]+)"/);
+    if (!match) {
+      continue;
+    }
+
+    const [, name, pid, memoryStr] = match;
+    if (name !== 'node.exe') {
+      continue;
+    }
+
+    rows.push({
+      pid: parseInt(pid, 10),
+      memoryMB: Math.round(parseInt(memoryStr.replace(/,/g, ''), 10) / 1024)
+    });
+  }
+
+  return rows;
+}
+
+function parseUnixProcessList(stdout = '') {
+  const lines = stdout.trim().split('\n').filter(Boolean);
+  const rows = [];
+
+  for (const line of lines) {
+    const match = line.trim().match(/^(\d+)\s+(\d+)\s+(.*)$/);
+    if (!match) {
+      continue;
+    }
+
+    rows.push({
+      pid: parseInt(match[1], 10),
+      memoryMB: Math.round(parseInt(match[2], 10) / 1024),
+      command: match[3] || ''
+    });
+  }
+
+  return rows;
+}
+
 /**
  * Find all Node.js processes related to OmnySys.
  * @returns {Promise<Array<{pid: number, memoryMB: number, command: string}>>}
  */
 export async function findOmnySysProcesses() {
   try {
-    const { stdout } = await execAsync('tasklist /FI "IMAGENAME eq node.exe" /FO CSV /NH');
-    const lines = stdout.trim().split('\n').filter(Boolean);
-    const processes = [];
+    if (process.platform === 'win32') {
+      const { stdout } = await execAsync('tasklist /FI "IMAGENAME eq node.exe" /FO CSV /NH');
+      const processes = [];
 
-    for (const line of lines) {
-      // Parse CSV: "node.exe","1234","Console","1","40,000 K"
-      const match = line.match(/"([^"]+)","(\d+)","[^"]*","[^"]*","([^"]+)"/);
-      if (match) {
-        const [, name, pid, memoryStr] = match;
-        if (name === 'node.exe') {
-          const memoryKB = parseInt(memoryStr.replace(/,/g, ''));
-          const command = await getProcessCommand(parseInt(pid)).catch(() => 'unknown');
-
-          // Only include OmnySys-related processes
-          if (command.includes('mcp-http-proxy') ||
-              command.includes('mcp-http-server') ||
-              command.includes('omnysys') ||
-              command.includes('omny.js')) {
-            processes.push({
-              pid: parseInt(pid),
-              memoryMB: Math.round(memoryKB / 1024),
-              command
-            });
-          }
+      for (const row of parseWindowsTaskList(stdout)) {
+        const command = await getProcessCommand(row.pid).catch(() => 'unknown');
+        if (!isOmnySysCommand(command)) {
+          continue;
         }
+
+        processes.push({
+          pid: row.pid,
+          memoryMB: row.memoryMB,
+          command
+        });
       }
+
+      return processes;
     }
 
-    return processes;
+    const { stdout } = await execAsync('ps -eo pid=,rss=,args=');
+    return parseUnixProcessList(stdout)
+      .filter((row) => isOmnySysCommand(row.command))
+      .map((row) => ({
+        pid: row.pid,
+        memoryMB: row.memoryMB,
+        command: row.command
+      }));
   } catch {
     return [];
   }
@@ -71,6 +118,11 @@ export async function findOmnySysProcesses() {
  */
 async function getProcessCommand(pid) {
   try {
+    if (process.platform !== 'win32') {
+      const { stdout } = await execAsync(`ps -o command= -p ${pid}`);
+      return stdout.trim() || 'unknown';
+    }
+
     const { stdout } = await execAsync(`wmic process where ProcessId=${pid} get CommandLine /FORMAT:VALUE`);
     const match = stdout.match(/CommandLine=(.+)/);
     return match ? match[1].trim() : 'unknown';
@@ -125,14 +177,21 @@ export async function killZombies(zombies, logFn = console.log) {
 
   for (const zombie of zombies) {
     try {
-      // Try graceful shutdown first
-      await execAsync(`taskkill /PID ${zombie.pid} /T`);
+      if (process.platform === 'win32') {
+        await execAsync(`taskkill /PID ${zombie.pid} /T`);
+      } else {
+        await execAsync(`kill ${zombie.pid}`);
+      }
       logFn(`  ✅ Killed zombie PID ${zombie.pid} (${zombie.memoryMB}MB, ${zombie.type})`);
       results.push({ pid: zombie.pid, killed: true, type: zombie.type });
     } catch {
       // Force kill if graceful fails
       try {
-        await execAsync(`taskkill /PID ${zombie.pid} /F /T`);
+        if (process.platform === 'win32') {
+          await execAsync(`taskkill /PID ${zombie.pid} /F /T`);
+        } else {
+          await execAsync(`kill -9 ${zombie.pid}`);
+        }
         logFn(`  ✅ Force-killed zombie PID ${zombie.pid} (${zombie.memoryMB}MB, ${zombie.type})`);
         results.push({ pid: zombie.pid, killed: true, type: zombie.type, forceKilled: true });
       } catch (forceError) {

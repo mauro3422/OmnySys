@@ -8,7 +8,11 @@ import {
     extractAtomMetrics
 } from '../guard-standards.js';
 import { StandardSuggestions } from '../guard-standards/suggestions.js';
-import { resolveArchitecturalRecommendation } from '../../../../shared/compiler/index.js';
+import {
+    buildPropagationPlan,
+    resolveArchitecturalRecommendation,
+    summarizePropagationPlan
+} from '../../../../shared/compiler/index.js';
 
 const RELEVANT_PURPOSES = [
     'API_EXPORT',
@@ -20,6 +24,72 @@ const RELEVANT_PURPOSES = [
     'ENTRY_POINT',
     'WORKER_ENTRY'
 ];
+
+export function buildComplexityPropagation({
+    filePath,
+    atomName,
+    severity = 'medium',
+    metricType = 'complexity',
+    metricValue = 0,
+    threshold = 0,
+    issueCount = 1
+}) {
+    return summarizePropagationPlan(buildPropagationPlan({
+        changeType: 'policy_drift',
+        scopePath: filePath || null,
+        focusPath: filePath || null,
+        severity,
+        impactedFileCount: filePath ? 1 : 0,
+        rewriteCount: issueCount,
+        candidateCount: Math.max(issueCount, 1),
+        validationTargetCount: 1,
+        topCandidates: atomName ? [{
+            name: atomName,
+            filePath: filePath || null
+        }] : [],
+        topImpactedFiles: filePath ? [{ filePath }] : [],
+        guidance: 'Surface complexity findings to watcher persistence, health snapshots, and refactoring governance before trusting coordinator growth.',
+        recommendationStrategy: 'complexity_guard',
+        drift: {
+            state: issueCount > 0 ? 'watch' : 'stable',
+            reason: `${metricType}=${metricValue} threshold=${threshold}`
+        }
+    }));
+}
+
+export function summarizeComplexityPropagation(filePath, issues = [], severity = 'medium') {
+    const topIssue = issues[0];
+    if (!topIssue) {
+        return buildComplexityPropagation({
+            filePath,
+            severity,
+            metricType: 'complexity',
+            issueCount: 0
+        });
+    }
+
+    return summarizePropagationPlan(buildPropagationPlan({
+        changeType: 'policy_drift',
+        scopePath: filePath || null,
+        focusPath: filePath || null,
+        severity,
+        impactedFileCount: filePath ? 1 : 0,
+        rewriteCount: issues.length,
+        candidateCount: issues.length,
+        validationTargetCount: 1,
+        topCandidates: issues.slice(0, 5).map((issue) => ({
+            name: issue.atomName,
+            filePath: filePath || null
+        })),
+        topImpactedFiles: filePath ? [{ filePath }] : [],
+        guidance: 'Surface complexity findings to watcher persistence, health snapshots, and refactoring governance before trusting coordinator growth.',
+        recommendationStrategy: 'complexity_guard',
+        drift: {
+            state: issues.length > 0 ? 'watch' : 'stable',
+            reason: `${issues.length} complexity finding(s) across ${topIssue.metricType}`
+        }
+    }));
+}
 
 export function collectComplexityIssues(filePath, atoms, thresholds) {
     const issues = [];
@@ -55,6 +125,15 @@ function addComplexityIssue(issues, filePath, metrics, thresholds, coordinatorRe
     if (!severity) {
         return;
     }
+    const threshold = severity === 'high' ? thresholds.complexityHigh : thresholds.complexityMedium;
+    const propagation = buildComplexityPropagation({
+        filePath,
+        atomName: metrics.name,
+        severity,
+        metricType: 'cyclomatic_complexity',
+        metricValue: metrics.complexity,
+        threshold
+    });
 
     const recommendation = resolveArchitecturalRecommendation({
         issueType: createIssueType(IssueDomains.CODE, 'complexity', severity),
@@ -85,7 +164,7 @@ function addComplexityIssue(issues, filePath, metrics, thresholds, coordinatorRe
             atomId: metrics.id,
             atomName: metrics.name,
             metricValue: metrics.complexity,
-            threshold: severity === 'high' ? thresholds.complexityHigh : thresholds.complexityMedium,
+            threshold,
             severity,
             suggestedAction,
             suggestedAlternatives,
@@ -94,7 +173,8 @@ function addComplexityIssue(issues, filePath, metrics, thresholds, coordinatorRe
                 linesOfCode: metrics.linesOfCode,
                 isAsync: metrics.isAsync,
                 functionType: metrics.type,
-                operationalRole
+                operationalRole,
+                propagation
             }
         })
     });
@@ -105,6 +185,15 @@ function addFunctionLengthIssue(issues, filePath, metrics, thresholds, coordinat
     if (!severity || alreadyReported(issues, metrics.id, severity)) {
         return;
     }
+    const threshold = severity === 'high' ? thresholds.linesHigh : thresholds.linesMedium;
+    const propagation = buildComplexityPropagation({
+        filePath,
+        atomName: metrics.name,
+        severity,
+        metricType: 'lines_of_code',
+        metricValue: metrics.linesOfCode,
+        threshold
+    });
 
     const recommendation = resolveArchitecturalRecommendation({
         issueType: createIssueType(IssueDomains.CODE, 'function_length', severity),
@@ -132,7 +221,7 @@ function addFunctionLengthIssue(issues, filePath, metrics, thresholds, coordinat
             atomId: metrics.id,
             atomName: metrics.name,
             metricValue: metrics.linesOfCode,
-            threshold: severity === 'high' ? thresholds.linesHigh : thresholds.linesMedium,
+            threshold,
             severity,
             suggestedAction,
             suggestedAlternatives,
@@ -141,7 +230,8 @@ function addFunctionLengthIssue(issues, filePath, metrics, thresholds, coordinat
                 complexity: metrics.complexity,
                 isAsync: metrics.isAsync,
                 functionType: metrics.type,
-                operationalRole
+                operationalRole,
+                propagation
             }
         })
     });

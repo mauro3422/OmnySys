@@ -52,7 +52,11 @@ export async function applyCodexConfig(url, projectPath = repoRoot) {
     projectContent = removeTomlTable(projectContent, `mcp_servers.${SERVER_KEY}.env`);
     projectContent = removeTomlTable(projectContent, `mcp_servers.${SERVER_KEY}`);
 
-    const updatedProject = upsertTomlTable(projectContent, `mcp_servers.${SERVER_KEY}`, codexTableBody);
+    const updatedProject = upsertTomlTable(
+        projectContent,
+        buildCodexProjectTableName(projectPath),
+        ['trust_level = "trusted"']
+    );
     await fs.mkdir(path.dirname(projectConfigPath), { recursive: true });
     await fs.writeFile(projectConfigPath, updatedProject, 'utf8');
 

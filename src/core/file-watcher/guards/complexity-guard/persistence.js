@@ -1,4 +1,5 @@
 import { clearWatcherIssue, persistWatcherIssue } from '../../watcher-issue-persistence.js';
+import { summarizeComplexityPropagation } from './analysis.js';
 
 export async function clearComplexityIssues(rootPath, filePath) {
     try {
@@ -16,6 +17,7 @@ export async function persistComplexityIssues(rootPath, filePath, issues) {
     try {
         if (highIssues.length > 0) {
             const primary = highIssues[0];
+            const propagation = summarizeComplexityPropagation(filePath, highIssues, 'high');
             await persistWatcherIssue(
                 rootPath,
                 filePath,
@@ -24,7 +26,8 @@ export async function persistComplexityIssues(rootPath, filePath, issues) {
                 `[${highIssues.length} HIGH complexity issues] ${primary.message}`,
                 {
                     issues: highIssues.map((issue) => issue.context),
-                    byType: countIssuesByMetric(highIssues)
+                    byType: countIssuesByMetric(highIssues),
+                    propagation
                 }
             );
         } else {
@@ -33,13 +36,17 @@ export async function persistComplexityIssues(rootPath, filePath, issues) {
 
         if (mediumIssues.length > 0) {
             const primary = mediumIssues[0];
+            const propagation = summarizeComplexityPropagation(filePath, mediumIssues, 'medium');
             await persistWatcherIssue(
                 rootPath,
                 filePath,
                 primary.issueType,
                 'medium',
                 `[${mediumIssues.length} MEDIUM complexity issues] ${primary.message}`,
-                { issues: mediumIssues.map((issue) => issue.context) }
+                {
+                    issues: mediumIssues.map((issue) => issue.context),
+                    propagation
+                }
             );
         } else {
             await clearWatcherIssue(rootPath, filePath, 'code_complexity_medium');
