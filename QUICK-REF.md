@@ -1,6 +1,6 @@
 # OmnySys — Referencia Rápida
 
-> Cheat sheet para agentes IA trabajando con OmnySys. Actualizado abril 2026 (v0.9.285).
+> Cheat sheet para agentes IA trabajando con OmnySys. Actualizado abril 2026 (v0.9.434).
 
 ---
 

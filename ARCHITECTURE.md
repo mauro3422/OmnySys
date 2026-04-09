@@ -1,6 +1,6 @@
 # OmnySys — Arquitectura Técnica
 
-**Versión**: v0.9.285
+**Versión**: v0.9.434
 **Última actualización**: 2026-04-09
 **Estado**: ✅ **100% Estático, 0% LLM** — Tree-sitter + SQLite + Schema Unificado + MCP
 
