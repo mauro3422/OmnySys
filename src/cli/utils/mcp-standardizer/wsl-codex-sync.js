@@ -5,17 +5,24 @@ import { stripBom, upsertTomlTable } from './utils.js';
 
 const OMNYSYSTEM_TABLE = 'mcp_servers.omnysystem';
 
-function isWslEnvironment() {
-    return process.platform === 'linux' && Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
+function isWslEnvironment(runtime = {}) {
+    const platform = runtime.platform || process.platform;
+    const env = runtime.env || process.env;
+    return platform === 'linux' && Boolean(env.WSL_DISTRO_NAME || env.WSL_INTEROP);
 }
 
-function getWindowsCodexConfigPath() {
-    const userProfile = String(process.env.USERPROFILE || '').trim();
+function getWindowsCodexConfigPath(runtime = {}) {
+    if (runtime.windowsConfigPath) {
+        return runtime.windowsConfigPath;
+    }
+
+    const env = runtime.env || process.env;
+    const userProfile = String(env.USERPROFILE || '').trim();
     if (userProfile) {
         return path.join(userProfile, '.codex', 'config.toml');
     }
 
-    const username = String(process.env.USERNAME || '').trim();
+    const username = String(env.USERNAME || '').trim();
     if (username) {
         return path.join('/mnt/c/Users', username, '.codex', 'config.toml');
     }
@@ -23,8 +30,13 @@ function getWindowsCodexConfigPath() {
     return '';
 }
 
-function getWslCodexConfigPath() {
-    return path.join(process.env.HOME || '', '.codex', 'config.toml');
+function getWslCodexConfigPath(runtime = {}) {
+    if (runtime.wslConfigPath) {
+        return runtime.wslConfigPath;
+    }
+
+    const env = runtime.env || process.env;
+    return path.join(env.HOME || '', '.codex', 'config.toml');
 }
 
 function getTableHeaders(content = '') {
@@ -222,16 +234,23 @@ function isLegacyWslNodeBridgeTable(tableBody = []) {
         && (env.OMNYSYS_PROJECT_PATH || '').startsWith('/mnt/');
 }
 
-export async function syncWindowsCodexMcpToWsl() {
-    if (!isWslEnvironment()) {
+export async function syncWindowsCodexMcpToWsl(options = {}) {
+    const runtime = {
+        platform: options.platform || process.platform,
+        env: options.env || process.env,
+        windowsConfigPath: options.windowsConfigPath || '',
+        wslConfigPath: options.wslConfigPath || ''
+    };
+
+    if (!isWslEnvironment(runtime)) {
         return {
             applied: false,
             reason: 'not_wsl'
         };
     }
 
-    const windowsConfigPath = getWindowsCodexConfigPath();
-    const wslConfigPath = getWslCodexConfigPath();
+    const windowsConfigPath = getWindowsCodexConfigPath(runtime);
+    const wslConfigPath = getWslCodexConfigPath(runtime);
 
     if (!windowsConfigPath || !wslConfigPath) {
         return {
