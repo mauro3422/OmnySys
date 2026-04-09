@@ -1,9 +1,8 @@
 ﻿# Arquitectura Unificada - OmnySys (Layer A + Orchestrator)
 
-**Versión**: v0.9.61  
-**Última actualización**: 2026-02-25  
-**Estado**: ✅ SQLite + Bulk Operations + CalledBy Linkage + File Cultures + Dead Code Detection 85% preciso  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Versión**: v0.9.434
+**Última actualización**: 2026-04-09
+**Estado**: ✅ SQLite + Bulk Operations + CalledBy Linkage + File Cultures + 45 MCP Tools + Propagation Engine
 
 ---
 
@@ -409,7 +408,12 @@ OMNY_DUAL_WRITE=true
 
 ---
 
-## Decisiones de LLM (Tres Gates)
+## Decisiones LLM (Histórico — DEPRECATED desde v0.9.61)
+
+> **Nota**: Esta sección documenta el sistema de gates LLM que fue **eliminado** en v0.9.61.
+> Desde entonces, OmnySys es 100% estático, 0% LLM.
+
+### Contexto Histórico
 
 ### Gate 1: Archetypes
 
@@ -514,19 +518,20 @@ omnysys serve <project>
 
 | Componente | Estado | Notas |
 |------------|--------|-------|
-| **Scanner** | ✅ Comple | scanProjectFiles |
-| **Parser** | ✅ Completo | @babel/parser |
-| **Extractor** | ✅ Completo | 17 extractores activos |
+| **Scanner** | ✅ Completo | scanProjectFiles |
+| **Parser** | ✅ Completo | @babel/parser + Tree-sitter |
+| **Extractor** | ✅ Completo | 18+ extractores activos |
 | **Linker** | ✅ Completo | 6 sub-pasos de calledBy |
 | **Graph** | ✅ Completo | buildSystemGraph |
 | **Culture** | ✅ Completo | enrichWithCulture (ZERO LLM) |
 | **Storage** | ✅ Completo | SQLite + bulk operations |
-| **MCP Tools** | ✅ Completo | 28-30 tools |
-| **Dead Code Detection** | ✅ 85% preciso | 273 → 42 casos |
-| **Tree-sitter** | 🚧 Pendiente | Q2 2026 |
+| **MCP Tools** | ✅ Completo | 45 tools (6Q + 21A + 18Admin) |
+| **Propagation Engine** | ✅ Completo | 8 tipos de planes |
+| **Control Plane** | ✅ Completo | 8 señales, 22 sistemas |
+| **Tree-sitter** | ✅ Implementado | JavaScript, TypeScript, SQL |
 
 ---
 
-**Última actualización**: 2026-02-25 (v0.9.61)  
-**Mantenimiento**: OmnySys Team  
+**Última actualización**: 2026-04-09 (v0.9.434)
+**Mantenimiento**: OmnySys Team
 **Estado**: ✅ Producción

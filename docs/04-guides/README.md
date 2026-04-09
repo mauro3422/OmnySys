@@ -1,6 +1,6 @@
 # Guías Prácticas
 
-**Versión**: v0.7.1  
+**Versión**: v0.9.434
 **Propósito**: Guías paso a paso para usar y desarrollar con OmnySys
 
 ---
@@ -11,7 +11,7 @@
 | Documento | Descripción |
 |-----------|-------------|
 | [quickstart.md](./quickstart.md) | **⭐ Primera vez**: Instalación y primeros pasos en 5 minutos |
-| [tools.md](./tools.md) | **14 herramientas MCP**: Referencia completa con ejemplos |
+| [tools.md](./tools.md) | **45 herramientas MCP**: Referencia completa con ejemplos |
 | [mcp-integration.md](./mcp-integration.md) | **Integrar con tu IDE**: Claude, VS Code, Cline |
 
 ### Para Desarrollar
@@ -29,7 +29,7 @@ NUEVO USUARIO?
     ↓
 [quickstart.md] ──► Instalar y correr en 5 minutos
     ↓
-[tools.md] ──► Aprender las 14 herramientas MCP
+[tools.md] ──► Aprender las 45 herramientas MCP
     ↓
 [mcp-integration.md] ──► Integrar con tu IDE favorito
 

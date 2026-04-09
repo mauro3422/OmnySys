@@ -1,8 +1,7 @@
-# OmnySys — Arquitectura del Sistema (v0.9.61)
+# OmnySys — Arquitectura del Sistema (v0.9.434)
 
-**Última actualización**: 2026-02-25  
-**Estado**: ✅ **100% Estático, 0% LLM** - SQLite Determinístico + Dead Code Detection 85% preciso  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Última actualización**: 2026-04-09
+**Estado**: ✅ **100% Estático, 0% LLM** — SQLite + 45 MCP Tools + Propagation Engine + Control Plane
 
 ---
 
@@ -78,7 +77,7 @@ El sistema sigue un flujo **100% determinístico** desde que detecta un cambio h
 | **utils** | 5 | 42 | 20 | 2.6 |
 | **services** | 19 | 131 | 22 | 3.0 |
 
-**Total**: 1,860 archivos, 13,485 átomos (funciones)
+**Total**: 2,813 archivos, 14,241 átomos (funciones)
 
 ---
 
@@ -219,21 +218,16 @@ CREATE INDEX idx_relations_callee ON atom_relations(callee_id);
 
 ---
 
-## 6. MCP Tools: Las 28-30 Herramientas
+## 6. MCP Tools: Las 45 Herramientas
 
 ### Por Categoría
 
-| Categoría | Tools | Cantidad |
-|-----------|-------|----------|
-| **Impacto** | get_impact_map, analyze_change, trace_variable_impact, trace_data_journey, explain_connection, analyze_signature_change | 6 |
-| **Código** | get_call_graph, explain_value_flow, get_function_details, get_molecule_summary, find_symbol_instances | 5 |
-| **Métricas** | get_risk_assessment, get_health_metrics, detect_patterns, get_async_analysis, detect_race_conditions | 5 |
-| **Sociedad** | get_atom_society, get_atom_history, get_removed_atoms | 3 |
-| **Sistema** | search_files, get_server_status, restart_server, get_atom_schema | 4 |
-| **Editor** | atomic_edit, atomic_write | 2 |
-| **Refactoring** | suggest_refactoring, validate_imports | 2 |
-| **Testing** | generate_tests, generate_batch_tests | 2 |
-| **TOTAL** | | **29** |
+| Categoría | Cantidad | Ejemplos |
+|-----------|----------|----------|
+| **Query** | 6 | query_graph, traverse_graph, impact_atomic |
+| **Action** | 21 | atomic_edit, atomic_write, move_file, folderize_family |
+| **Admin** | 18 | get_server_status, get_health_panel, execute_sql |
+| **TOTAL** | **45** | |
 
 ---
 
@@ -355,22 +349,21 @@ CREATE INDEX idx_relations_callee ON atom_relations(callee_id);
 
 ---
 
-## 13. Métricas del Sistema (v0.9.61)
+## 13. Métricas del Sistema (v0.9.434)
 
 | Métrica | Valor | Estado |
 |---------|-------|--------|
-| **Archivos analizados** | 1,860 | ✅ |
-| **Átomos extraídos** | 13,485 | ✅ |
-| **Health Score** | 99/100 (Grade A) | ✅ Excelente |
-| **Test Coverage** | 79% | 🟡 Casi 80% |
-| **God Functions** | 193 | 🔴 En progreso |
-| **Dead Code** | 42 | ✅ 85% mejora |
-| **Duplicados** | 118 exactos | 🔴 En progreso |
-| **Deuda Arquitectónica** | 15 archivos | ✅ 3 refactorizados |
-| **Base de datos** | SQLite (WAL mode) | ✅ |
-| **Tablas** | 10 | ✅ |
-| **Índices** | 6+ | ✅ |
-| **Herramientas MCP** | 29 | ✅ |
+| **Archivos analizados** | 2,813 | ✅ |
+| **Átomos extraídos** | 14,241 | ✅ |
+| **Health Score** | 62/100 (D-) | 🔴 Bloqueado por policy drift |
+| **Database Health** | 76/100 (C+) | ✅ Schema A (0 drift) |
+| **Duplicados estructurales** | 5 grupos | ✅ Bajo control |
+| **MCP Tools** | 45 | ✅ |
+| **Call graph edges** | 11,202 | ✅ |
+| **Semantic connections** | 135 | ✅ |
+| **Societies** | 1,780 | ✅ |
+| **SQLite tables** | 20 | ✅ |
+| **LLM Usage** | 0% | ✅ |
 
 ---
 
@@ -424,4 +417,4 @@ repo.saveManyBulk(allExtractedAtoms, 500);  // ✅ Rápido, 27 batches
 
 ---
 
-*Documento generado con datos reales del sistema via MCP tools - v0.9.61*
+*Documento generado con datos reales del sistema via MCP tools - v0.9.434*

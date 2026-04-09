@@ -1,10 +1,9 @@
 # Los 4 Pilares de OmnySys
 
-**Documento**: principles.md  
-**Versión**: v0.9.61  
-**Estado**: ✅ Fundamentos activos - **100% Estático, 0% LLM**  
-**Última actualización**: 2026-02-25  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Documento**: principles.md
+**Versión**: v0.9.434
+**Estado**: ✅ Fundamentos activos - **100% Estático, 0% LLM**
+**Última actualización**: 2026-04-09
 
 ---
 
@@ -377,10 +376,11 @@ Pilar 4: Fractal Architecture
 | Versión | Pilares | Innovación Clave | LLM Usage |
 |---------|---------|------------------|-----------|
 | v0.5.0 | 1-2 | Box Test + Metadata Insights | 30% |
-| v0.5.4 | 1-2 | 8 nuevos extractores, 57 campos metadata | 15% |
 | v0.6.0 | 1-4 | Molecular architecture + Fractal A→B→C | 10% |
 | v0.9.0 | 1-4 | SQLite migration + bulk operations | 5% |
 | v0.9.61 | 1-4 | **Dead Code Detection 85% preciso** | **0%** ✅ |
+| v0.9.285+ | 1-4 | Propagation Engine + Control Plane + 45 MCP Tools | **0%** ✅ |
+| v0.9.434 | 1-4 | **14,241 átomos · 2,813 archivos · 45 tools** | **0%** ✅ |
 
 ---
 
@@ -475,7 +475,6 @@ detector: (metadata) =>
 
 ---
 
-**Última actualización**: 2026-02-25 (v0.9.61)  
-**Maintainer**: OmnySys Team  
-**Status**: Active - **100% Estático, 0% LLM**  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Última actualización**: 2026-04-09 (v0.9.434)
+**Maintainer**: OmnySys Team
+**Status**: Active - **100% Estático, 0% LLM**

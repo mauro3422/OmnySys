@@ -4,9 +4,10 @@
 
 Este documento describe la base teórica para un sistema de edición de código basado en operaciones matemáticas determinísticas sobre grafos. El objetivo es transformar la edición de código de una operación text-based probabilística a una operación graph-based algebraica.
 
-**Autor**: Mauro (creador de OmnySystem)  
-**Fecha**: Febrero 2026  
+**Autor**: Mauro (creador de OmnySystem)
+**Fecha**: Febrero 2026
 **Estado**: ✅ **IMPLEMENTADO EN PRODUCCIÓN** (v0.9.61+)
+**Actualizado**: Abril 2026 (v0.9.434) — 45 MCP Tools, 14,241 átomos, 2,813 archivos
 
 > **Nota importante**: Este documento describe la teoría que fundamenta OmnySys. **Las operaciones descritas ya están implementadas** en el sistema SQLite como vectores matemáticos determinísticos. Este no es un roadmap conceptual — es la base técnica del sistema actual.
 
@@ -587,6 +588,5 @@ ORDER BY avg_coupling DESC;
 
 ---
 
-**Última actualización**: 2026-02-25 (v0.9.61)  
-**Estado**: ✅ **100% Implementado en SQLite**  
-**Próximo**: 🚧 Tree-sitter integration (Q2 2026)
+**Última actualización**: 2026-04-09 (v0.9.434)
+**Estado**: ✅ **100% Implementado en SQLite**

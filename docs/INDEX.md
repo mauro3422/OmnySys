@@ -1,9 +1,8 @@
 # Índice de Documentación - OmnySys
 
-**Versión**: v0.9.87+
+**Versión**: v0.9.434
 **Última actualización**: 2026-04-09
-**Estado**: ✅ **Semantic Algebra + Propagation Engine + 45 MCP Tools**
-**Próximo**: 🚧 Data Flow Graph + Event Graph Integration
+**Estado**: ✅ **Semantic Algebra + Propagation Engine + Control Plane + 45 MCP Tools**
 
 ---
 
@@ -42,33 +41,28 @@ docs/
 | Ruta | Documento | Descripción |
 |------|-----------|-------------|
 | **(raíz)** | [AGENTS.md](../AGENTS.md) | **⭐ Guía rápida de herramientas MCP** |
+| **(raíz)** | [QUICK-REF.md](../QUICK-REF.md) | **⭐ Referencia rápida** (cheat sheet) |
 | **04-guides/** | [tools.md](04-guides/tools.md) | **45 herramientas MCP** disponibles |
 | **07-reference/mcp/** | [mcp-tools-detailed.md](07-reference/mcp/mcp-tools-detailed.md) | Referencia detallada |
 
 ---
 
-## 📊 Estado Actual del Sistema (Medido con MCP)
+## 📊 Estado Actual del Sistema (v0.9.434 — Abril 2026)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  OMNYSYS v0.9.87+ — Estado del Sistema                    │
-├─────────────────────────────────────────────────────────────┤
-│  Átomos:         14,209 funciones analizadas              │
-│  Archivos:       2,812                                    │
-│  Health Score:   97/100 (Grade A)                        │
-│  Database:       100/100 (Grade A+)                      │
-│  Pipeline:       100/100 (Grade A+) — 9/9 checks         │
-│  MCP Tools:      45 herramientas                          │
-│  Call Links:     9,677 relaciones de llamada              │
-│  Semantic Links: 129 conexiones semánticas                │
-│  Duplicados:     5 grupos estructurales                   │
-│  LLM Usage:      0% - 100% ESTÁTICO                      │
-│  Storage:        SQLite (WAL mode, 19 tablas)            │
-│  Startup:        ~3.9s (budget: 15s)                     │
-│  Semantic Algebra: ✅ PageRank, Cohesion, Coupling, etc.  │
-│  Propagation Engine: ✅ 8 tipos de planes                │
-└─────────────────────────────────────────────────────────────┘
-```
+| Métrica | Valor |
+|---------|-------|
+| **Átomos activos** | 14,241 |
+| **Archivos activos** | 2,813 |
+| **Call graph edges** | 11,202 |
+| **Semantic connections** | 135 |
+| **Societies** | 1,780 |
+| **MCP Tools** | 45 (6 query · 21 action · 18 admin) |
+| **SQLite tables** | 20 (0 schema drift) |
+| **Health Score** | 62/100 (D-) — bloqueado por 136 policy drifts |
+| **Database Health** | 76/100 (C+) — Schema: A |
+| **Duplicados estructurales** | 5 grupos (10 instancias) |
+| **LLM Usage** | 0% — 100% estático |
+| **DBs totales** | 3 (omnysys.db 344MB + atom-history.db 384MB + health-history.db 20MB) |
 
 ---
 
@@ -203,38 +197,24 @@ Documentos consolidados, auditorías pasadas y material histórico:
 
 | Métrica | Objetivo | Actual | Estado |
 |---------|----------|--------|--------|
-| **Health Score** | >95/100 | 99/100 | ✅ Excelente |
-| **Test Coverage** | >80% | 79% | 🟡 Casi |
-| **God Functions** | <100 | 193 | 🔴 En progreso |
-| **Dead Code** | 0 | 42 | 🟡 En progreso |
-| **Duplicados** | <50 | 118 exactos | 🔴 En progreso |
-| **Deuda Arquitectónica** | 0 | 15 archivos | 🔴 En progreso |
+| **Health Score** | > 80/100 | 62/100 (D-) | 🔴 Bloqueado por policy drift |
+| **Database Health** | > 90/100 | 76/100 (C+) | 🟡 Schema A, drift en proyecciones |
+| **MCP Tools** | 45 | 45 | ✅ |
+| **Duplicados** | < 50 | 5 grupos (10 instancias) | ✅ Bajo control |
+| **LLM Usage** | 0% | 0% | ✅ |
 
 ---
 
 ## 🎯 Próximos Pasos
 
 1. **Nuevo usuario**: Empezar en [01-core/problem.md](01-core/problem.md)
-2. **Desarrollador**: Ver [04-guides/quickstart.md](04-guides/quickstart.md)
-3. **Investigador**: Explorar [05-roadmap/vision-future.md](05-roadmap/vision-future.md)
+2. **Desarrollador**: Ver [QUICK-REF.md](../QUICK-REF.md)
+3. **Investigador**: Explorar [06-roadmap/OMNYSYS_POSITIONING.md](06-roadmap/OMNYSYS_POSITIONING.md)
 4. **Debugger**: Ver [03-orchestrator/04-troubleshooting.md](03-orchestrator/04-troubleshooting.md)
 
 ---
 
-## ✅ Migración a Tree-sitter (Completado)
-
-**Estado**: Implementado y Mandatorio (v0.9.70+)
-
-**Por qué**: Superamos las limitaciones de Babel en:
-- ✅ Detección precisa de `isExported` y ámbito de variables.
-- ✅ Análisis de Shared State y Event Patterns con alta precisión.
-- ✅ Performance optimizada mediante cacheo AST.
-
-**Impacto**: Las herramientas MCP (`detect_race_conditions`, `explain_value_flow`) ahora operan sobre datos de alta fidelidad extraídos directamente mediante el `treeSitter` extractor.
-
----
-
-## 📊 Estadísticas
+## 📊 Estadísticas de Documentación
 
 - **Documentos activos**: ~45
 - **Documentos archivados**: ~60

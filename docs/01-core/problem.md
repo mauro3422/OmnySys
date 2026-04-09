@@ -1,10 +1,8 @@
 # El Problema: Visión de Túnel en IAs
 
-**Fecha**: 2026-02-12  
-**Actualizado**: 2026-02-25 (v0.9.61)  
-**Estado**: ✅ **Dead Code Detection 85% más preciso + MCP Tools + 0% LLM**  
-**Próximo**: [La Solución (OmnySys)](./philosophy.md)  
-**Futuro**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Fecha**: 2026-02-12
+**Actualizado**: 2026-04-09 (v0.9.434)
+**Estado**: ✅ **45 MCP Tools · 14,241 átomos · 100% Estático**
 
 ---
 
@@ -287,11 +285,10 @@ OmnySys actúa como **memoria externa persistente** que:
 - Archivos que IA considera vs necesita considerar
 - Proyectos que pueden seguir creciendo
 
-**Resultados actuales (v0.9.61)**:
-- ✅ Dead code detection 85% más preciso (273 → 42 casos)
-- ✅ 13,485 funciones analizadas con 50+ campos de metadata
-- ✅ 29 MCP tools disponibles para IAs
-- ✅ Health score: 99/100 (Grade A)
+**Resultados actuales (v0.9.434)**:
+- ✅ 14,241 funciones analizadas con 66 campos de metadata
+- ✅ 45 MCP tools disponibles para IAs
+- ✅ 11,202 relaciones en grafo de llamadas
 - ✅ 0% LLM - 100% determinístico
 
 ---
@@ -318,6 +315,5 @@ El problema de visión de túnel no es un "bug" de los modelos, es una **limitac
 
 ---
 
-**Última actualización**: 2026-02-25 (v0.9.61)  
-**Estado**: ✅ 100% Estático, 0% LLM  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Última actualización**: 2026-04-09 (v0.9.434)
+**Estado**: ✅ 100% Estático, 0% LLM

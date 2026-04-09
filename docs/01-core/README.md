@@ -46,31 +46,18 @@ Modelamos el software como un sistema físico:
 
 ---
 
-## 📊 Estado Actual (v0.9.61)
+## 📊 Estado Actual (v0.9.434 — Abril 2026)
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  OMNYSYS v0.9.61 — Estado del Sistema                     │
-├─────────────────────────────────────────────────────────────┤
-│  Átomos:         13,485 funciones analizadas              │
-│  Archivos:       1,860                                    │
-│  Health Score:   99/100 (Grade A)                        │
-│  Test Coverage:  79%                                      │
-│  God Functions:  193 (complejidad > 15)                  │
-│  Dead Code:      42 casos (85% menos falsos positivos)   │
-│  Duplicados:     118 exactos, 694 contextuales           │
-│  Debt Arch:      15 archivos críticos                    │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚧 Próximamente
-
-**Migración a Tree-sitter** (Q2 2026):
-- Mejor detección de exports para arrow functions
-- Análisis de tipos TypeScript más preciso
-- Performance mejorado en proyectos grandes
+| Métrica | Valor |
+|---------|-------|
+| **Átomos activos** | 14,241 |
+| **Archivos activos** | 2,813 |
+| **Call graph edges** | 11,202 |
+| **Semantic connections** | 135 |
+| **Societies** | 1,780 |
+| **MCP Tools** | 45 |
+| **LLM Usage** | 0% |
+| **SQLite tables** | 20 (0 drift) |
 
 ---
 

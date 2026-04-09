@@ -1,8 +1,8 @@
 # Orchestrator - OmnySys
 
-**Versión**: v0.9.61  
-**Última actualización**: 2026-02-25  
-**Estado**: ✅ **100% Estático, 0% LLM**
+**Versión**: v0.9.434
+**Última actualización**: 2026-04-09
+**Estado**: ✅ **100% Estático, 0% LLM** — 45 MCP Tools · 14,241 átomos · 2,813 archivos
 
 ---
 
@@ -182,12 +182,12 @@ Problemas comunes y soluciones.
 
 ---
 
-## Métricas del Orchestrator (v0.9.61)
+## Métricas del Orchestrator (v0.9.434)
 
 | Métrica | Valor |
 |---------|-------|
-| **Startup** | ~1.5 segundos |
-| **Análisis inicial** | ~30-60 segundos (13,485 átomos) |
+| **Startup total** | ~4,550ms |
+| **Análisis inicial (Layer A desde caché)** | 34ms |
 | **Cambio incremental** | <1 segundo por archivo |
 | **Persistencia** | ~3 segundos (bulk insert) |
 | **Memory cleanup** | ~50-100MB liberados |
@@ -252,20 +252,13 @@ npm run analyze
 
 ## Próximas Mejoras
 
-### Q2 2026 - Tree-sitter Migration
+### Lazy Indexing (Fase 2 Background)
 
-- Reemplazar Babel con Tree-sitter
-- Mejor performance en detección de cambios
-- Soporte para más lenguajes
-
-### Q3 2026 - Intra-File Caching
-
-- Caché a nivel de función, no solo archivo
-- Invalidación más granular
-- Mejor performance en cambios pequeños
+- Mover Extractores Semánticos a Phase 2 (Background Queue)
+- Analysis "On-Demand" (cuando una tool MCP solicita un archivo específico)
+- Intra-File Caching: caché a nivel de función, no solo archivo
 
 ---
 
-**Última actualización**: 2026-02-25 (v0.9.61)  
-**Estado**: ✅ **100% Estático, 0% LLM**  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Última actualización**: 2026-04-09 (v0.9.434)
+**Estado**: ✅ **100% Estático, 0% LLM**

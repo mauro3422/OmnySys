@@ -1,10 +1,9 @@
 # Filosofía de OmnySys - Física del Software + Omnisciencia
 
-**Versión**: v0.9.61  
-**Estado**: ✅ **100% Estático, 0% LLM** - Semantic Algebra en Producción  
-**Creado**: 2026-02-18  
-**Última actualización**: 2026-02-25  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Versión**: v0.9.434
+**Estado**: ✅ **100% Estático, 0% LLM** — Semantic Algebra + Propagation Engine + Control Plane
+**Creado**: 2026-02-18
+**Última actualización**: 2026-04-09
 
 ---
 
@@ -17,28 +16,6 @@ OmnySys no es solo un "analizador de código". Es un **sistema de física del so
 **Meta final**: Implementar **Omnisciencia** = conciencia completa del código a través de **Intuición Artificial** — la capacidad de predecir consecuencias y reconocer patrones sin razonamiento explícito.
 
 **IMPORTANTE**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. No usamos inteligencia artificial para extraer metadata, solo AST + regex + álgebra de grafos.
-
----
-
-## 📊 Estado Actual del Sistema (Medido con MCP)
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  OMNYSYS v0.9.61 — Estado del Sistema                     │
-├─────────────────────────────────────────────────────────────┤
-│  Átomos:         13,485 funciones analizadas              │
-│  Archivos:       1,860                                    │
-│  Health Score:   99/100 (Grade A)                        │
-│  Test Coverage:  79%                                      │
-│  God Functions:  193 (complejidad > 15)                  │
-│  Dead Code:      42 casos (85% menos falsos positivos)   │
-│  Duplicados:     118 exactos, 694 contextuales           │
-│  Debt Arch:      15 archivos críticos                    │
-│  Storage:        SQLite (WAL mode)                        │
-│  MCP Tools:      29 herramientas                          │
-│  LLM Usage:      0% - 100% ESTÁTICO                      │
-└─────────────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -520,6 +497,6 @@ app.get('/api/user/:id', handler);
 
 ---
 
-**OmnySys v0.9.61** - Modelando el software como un sistema físico observable.  
-**Implementando Intuición Artificial 100% estática para ingeniería de software.**  
+**OmnySys v0.9.434** - Modelando el software como un sistema físico observable.
+**Implementando Intuición Artificial 100% estática para ingeniería de software.**
 **0% LLM, 100% AST + regex + álgebra de grafos.**
