@@ -22,13 +22,13 @@ import {
   shouldMuteBootstrapTrend,
   summarizeCompilerMetricDictionary,
   summarizeCurrentSnapshotRow
-} from './compiler-metrics-snapshot-helpers.js';
+} from './index.js';
 import {
   loadCompilerHealthArchiveSummary,
   persistCompilerHealthArchiveSnapshot,
   persistCompilerMetricsArchiveSnapshot
-} from './compiler-health-archive.js';
-import { summarizeCompilerMetricsSnapshot } from './compiler-metrics-snapshot-summary.js';
+} from '../compiler-health-archive.js';
+import { summarizeCompilerMetricsSnapshot } from './snapshot-summary.js';
 
 export { summarizeCompilerMetricsSnapshot };
 

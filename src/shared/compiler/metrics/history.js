@@ -3,10 +3,10 @@ import Database from 'better-sqlite3';
 import {
   loadCompilerHealthArchiveHistory,
   loadCompilerMetricsArchiveHistory
-} from './compiler-health-archive.js';
-import { summarizeHistoryRow } from './compiler-metrics-current.js';
-import { asNumber } from './core-utils.js';
-import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
+} from '../compiler-health-archive.js';
+import { summarizeHistoryRow } from '../metrics-current/index.js';
+import { asNumber } from '../core-utils.js';
+import { normalizeSnapshotPath } from '../snapshot-path.js';
 
 export { asNumber, normalizeSnapshotPath };
 

@@ -2,12 +2,12 @@
  * Compact snapshot summary helpers for compiler metrics.
  */
 
-import { takeSample } from './sample-helpers.js';
+import { takeSample } from '../sample-helpers.js';
 import {
   buildMetricsSnapshotDaily,
   buildMetricsSnapshotIdentity,
   buildMetricsSnapshotLifetime
-} from './compiler-metrics-snapshot-summary-helpers.js';
+} from './snapshot-summary-helpers.js';
 
 function valueOr(value, fallback) {
   return value ?? fallback;

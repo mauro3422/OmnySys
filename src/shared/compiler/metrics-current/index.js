@@ -7,15 +7,15 @@
  * @module shared/compiler/compiler-metrics-current
  */
 
-import { normalizeFolderizationPath } from './directory-structure-folderization-data.js';
+import { normalizeFolderizationPath } from '../directory-structure-folderization-data.js';
 import {
   buildBehaviorScore,
   summarizeCurrentSnapshotRow,
   summarizeHistoryRow
-} from './compiler-metrics-current-helpers.js';
-import { buildCurrentSummaries } from './compiler-metrics-current-summaries.js';
-import { asNumber } from './core-utils.js';
-import { buildStartupRegressionSummary } from './startup-regression-summary.js';
+} from './helpers.js';
+import { buildCurrentSummaries } from './summaries.js';
+import { asNumber } from '../core-utils.js';
+import { buildStartupRegressionSummary } from '../startup-regression-summary.js';
 import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
 function compactFolderizationPropagation(propagation = null) {

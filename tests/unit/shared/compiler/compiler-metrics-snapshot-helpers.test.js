@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { getCompilerHistoryDbPath } from '../../../../src/shared/compiler/compiler-persistence-paths.js';
 import {
   persistCompilerMetricsSnapshot
-} from '../../../../src/shared/compiler/compiler-metrics-snapshot-helpers.js';
+} from '../../../../src/shared/compiler/metrics/index.js';
 import {
   loadCompilerHealthArchiveHistory,
   loadCompilerHealthArchiveSummary,

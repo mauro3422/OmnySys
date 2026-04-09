@@ -238,22 +238,23 @@ export async function rewriteFolderizedFamilyImports({
   impactedFiles = [],
   context = {}
 }) {
-  // Build moveMap from the plan
-  const planMoveMap = buildMoveMap(projectPath, moveTargets);
-  // Also build actual moveMap from disk to handle rename mismatches
-  const actualMoveMap = await buildActualMoveMap(projectPath, moveTargets);
+  // Build moveMap from the plan — this is the source of truth for folderize.
+  // NOTE: We intentionally do NOT use buildActualMoveMap here because it was
+  // designed for single-file moves and produces wrong matches during batch
+  // folderize (e.g., "compiler-metrics-snapshot-helpers" matched to
+  // "snapshot-summary-helpers" because both share "snapshot" and "helpers" tokens).
+  // The plan already knows the exact target for every file.
+  const moveMap = buildMoveMap(projectPath, moveTargets);
 
-  // Merge: actual map takes precedence for moved files
-  const moveMap = new Map([...planMoveMap, ...actualMoveMap]);
-
-  // Build reverse map: old basename → new actual path (for intra-family imports)
+  // Build reverse map: OLD basename → new absolute path (for intra-family imports)
+  // When skipSelfRewrite is used, the moved files still have imports pointing
+  // to the OLD basenames, so we need to map old → new.
   const internalRenameMap = new Map();
   for (const target of moveTargets) {
     if (!target?.from || !target?.to) continue;
     const oldBasename = path.basename(target.from);
-    const oldKey = normalizeComparablePath(path.resolve(projectPath, target.from));
-    const actualPath = actualMoveMap.get(oldKey) || path.resolve(projectPath, target.to);
-    internalRenameMap.set(oldBasename.replace(/\.js$/, ''), actualPath);
+    const newPath = path.resolve(projectPath, target.to);
+    internalRenameMap.set(oldBasename.replace(/\.js$/, ''), newPath);
   }
 
   const rewriteTargets = collectRewriteTargets(moveTargets, impactedFiles);
@@ -335,8 +336,8 @@ async function rewriteIntraFamilyImports(filePath, projectPath, moveTargets, int
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Match relative imports: from './something.js' or from "../something.js"
-    const match = line.match(/from\s+['"](\.\/[^'"]+|\.\\[^'"]+)['"]/);
+    // Match relative imports: from './something.js', '../something.js' or with backslashes
+    const match = line.match(/from\s+['"](\.\.\/[^'"]+|\.\/[^'"]+|\.\\[^'"]+|\.\\.\\[^'"]+)['"]/);
     if (!match) continue;
 
     const importSource = match[1].replace(/\\/g, '/');

@@ -6,6 +6,21 @@ All notable changes are documented as individual files in [`changelogs/`](change
 
 ---
 
+## v0.9.435 — Folderize Family Naming Repair (2026-04-09)
+
+- Fixed `folderize_family` producing redundant folder names (`compiler/compiler-metrics-snapshot/` → `compiler/metrics/`)
+- Fixed `folderize_family` keeping redundant file basenames (`compiler-metrics-snapshot-helpers.js` → `metrics/helpers.js`)
+- Added `history` and `snapshot` to `FOLDERIZATION_SUFFIXES` for correct family detection
+- Added `skipSelfRewrite` to `MoveOrchestrator` to defer import rewriting to folderize rewriter
+- Removed `buildActualMoveMap` from folderize flow (was matching wrong files by token similarity)
+- Expanded `rewriteIntraFamilyImports` regex to match `../` relative imports
+- Folderized `src/shared/compiler/metrics/` (5 files from `compiler-metrics-snapshot*`)
+- Folderized `src/shared/compiler/metrics-current/` (3 files from `compiler-metrics-current*`)
+
+**Detalle completo**: [changelogs/v0.9.435.md](changelogs/v0.9.435.md)
+
+---
+
 ## v0.9.434 — Propagation Drift & Control-Plane Repair (2026-04-09)
 
 - Repaired `consolidate_policy_drifts` batch resolution path

@@ -2,13 +2,13 @@
  * @fileoverview Current metric aggregation helpers.
  */
 
-import { buildBehaviorScore, buildStructuralDuplicateGroups } from './compiler-metrics-current-helpers.js';
-import { getGraphCoverageSummary, getIssueSummary, getConceptualDuplicateSummary } from './compiler-runtime-metrics/summary.js';
-import { getPhase2PendingFiles } from './compiler-runtime-metrics-db.js';
-import { getPipelineOrphanSummary } from './pipeline-orphans.js';
-import { buildPipelineTimingTelemetrySummary } from './pipeline-timing-telemetry.js';
-import { buildToolRunTelemetrySummary } from './tool-run-telemetry/telemetry.js';
-import { asNumber } from './core-utils.js';
+import { buildBehaviorScore, buildStructuralDuplicateGroups } from './helpers.js';
+import { getGraphCoverageSummary, getIssueSummary, getConceptualDuplicateSummary } from '../compiler-runtime-metrics/summary.js';
+import { getPhase2PendingFiles } from '../compiler-runtime-metrics-db.js';
+import { getPipelineOrphanSummary } from '../pipeline-orphans.js';
+import { buildPipelineTimingTelemetrySummary } from '../pipeline-timing-telemetry.js';
+import { buildToolRunTelemetrySummary } from '../tool-run-telemetry/telemetry.js';
+import { asNumber } from '../core-utils.js';
 import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
 export function buildCurrentSummaries({

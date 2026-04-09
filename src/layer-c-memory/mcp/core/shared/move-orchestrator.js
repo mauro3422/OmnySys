@@ -153,6 +153,10 @@ async function executeMoveMutation(oldPath, newPath, projectPath, context, depen
     const absOld = path.resolve(projectPath, oldPath);
     const absNew = path.resolve(projectPath, newPath);
     const mutationServer = context.server || context.orchestrator?.server || null;
+    // When skipSelfRewrite is true, defer import rewriting to the caller
+    // (e.g., folderize-family-import-rewriter) which has the complete picture
+    // of all moves and renames in the batch.
+    const skipSelfRewrite = context?.skipSelfRewrite === true;
 
     return await withMutationBatch(mutationServer, {
         reason: 'move_file',
@@ -162,7 +166,9 @@ async function executeMoveMutation(oldPath, newPath, projectPath, context, depen
         await fs.rename(absOld, absNew);
         logger.info('[MoveOrchestrator] Physical move successful');
 
-        const selfRewrites = await rewriteMovedFileReferences(oldPath, newPath, projectPath, context);
+        const selfRewrites = skipSelfRewrite
+            ? []
+            : await rewriteMovedFileReferences(oldPath, newPath, projectPath, context);
 
         await Promise.allSettled([
             removePersistedFileMetadata(projectPath, oldPath),

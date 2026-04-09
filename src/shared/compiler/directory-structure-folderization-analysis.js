@@ -30,6 +30,7 @@ const FOLDERIZATION_SUFFIXES = new Set([
   'growth',
   'helper',
   'helpers',
+  'history',
   'issue',
   'issues',
   'lifecycle',
@@ -57,6 +58,7 @@ const FOLDERIZATION_SUFFIXES = new Set([
   'shape',
   'skip',
   'slow',
+  'snapshot',
   'state',
   'stats',
   'summary',
@@ -310,7 +312,15 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
     0,
     Math.min(100, sizeScore + densityScore + exportScore + barrelPresenceScore + namingPressure - externalPenalty)
   );
-  const recommendedFolder = `${group.directory}/${group.familyRoot}`;
+  // FIX: Strip directory context prefix from familyRoot to avoid redundant folder names.
+  // E.g., directory="src/shared/compiler" + familyRoot="compiler-metrics-snapshot"
+  // → folder="src/shared/compiler/metrics-snapshot" (not "compiler-metrics-snapshot")
+  const directoryBasename = group.directory.split('/').pop() || '';
+  const directoryPrefix = `${directoryBasename}-`;
+  const normalizedFamilyRoot = group.familyRoot.startsWith(directoryPrefix)
+    ? group.familyRoot.slice(directoryPrefix.length)
+    : group.familyRoot;
+  const recommendedFolder = `${group.directory}/${normalizedFamilyRoot}`;
   const hasStrongNameFamily = enrichedMembers.length >= minFileCount && confidence >= 30;
 
   return {

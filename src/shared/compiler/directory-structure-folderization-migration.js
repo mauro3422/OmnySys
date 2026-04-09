@@ -10,15 +10,33 @@ function getMemberBasename(filePath = '') {
   return baseName || '';
 }
 
+/**
+ * Strip the family prefix from a basename when it's redundant.
+ * E.g., "compiler-metrics-snapshot-helpers.js" with familyRoot "compiler-metrics-snapshot"
+ * becomes "helpers.js".
+ */
+function normalizeMemberBasename(basename, familyRoot) {
+  const stem = basename.replace(/\.js$/i, '');
+  const ext = basename.slice(stem.length); // ".js" or ""
+  const familyPrefix = `${familyRoot}-`;
+
+  if (stem.startsWith(familyPrefix)) {
+    return `${stem.slice(familyPrefix.length)}${ext}`;
+  }
+
+  return basename;
+}
+
 function buildMoveTarget(candidate, memberPath, barrelPath) {
   const normalizedMemberPath = normalizeFolderizationPath(memberPath);
   const normalizedBarrelPath = normalizeFolderizationPath(barrelPath || '');
   const isBarrel = normalizedBarrelPath && normalizedMemberPath === normalizedBarrelPath;
-  const basename = getMemberBasename(memberPath);
+  const rawBasename = getMemberBasename(memberPath);
+  const normalizedBasename = normalizeMemberBasename(rawBasename, candidate.familyRoot);
 
   return isBarrel
     ? `${candidate.recommendedFolder}/index.js`
-    : `${candidate.recommendedFolder}/${basename}`;
+    : `${candidate.recommendedFolder}/${normalizedBasename}`;
 }
 
 function parseImportTargets(row) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildBehaviorScore } from '../../../../src/shared/compiler/compiler-metrics-current.js';
+import { buildBehaviorScore } from '../../../../src/shared/compiler/metrics-current/index.js';
 
 describe('compiler metrics behavior score', () => {
   it('surfaces explicit blocker gates when drift is blocked', () => {

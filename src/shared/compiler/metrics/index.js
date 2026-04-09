@@ -5,10 +5,10 @@
 import path from 'path';
 import Database from 'better-sqlite3';
 import { createHash } from 'node:crypto';
-import { safeJsonStringify } from './safe-json.js';
-import { normalizeCount } from './contract-helpers.js';
-import { summarizeCompilerMetricDictionary, buildCompilerMetricDictionary } from './compiler-metric-dictionary.js';
-import { buildCompilerLayerReliability } from './compiler-metric-reliability.js';
+import { safeJsonStringify } from '../safe-json.js';
+import { normalizeCount } from '../contract-helpers.js';
+import { summarizeCompilerMetricDictionary, buildCompilerMetricDictionary } from '../compiler-metric-dictionary.js';
+import { buildCompilerLayerReliability } from '../compiler-metric-reliability.js';
 import {
   asNumber,
   buildCompilerMetricsTrend,
@@ -18,9 +18,9 @@ import {
   resolveMinStableTrendDays,
   normalizeSnapshotPath,
   shouldMuteBootstrapTrend
-} from './compiler-metrics-snapshot-history.js';
-import { buildBehaviorScore, buildCurrentMetrics, summarizeCurrentSnapshotRow, summarizeHistoryRow } from './compiler-metrics-current.js';
-import { clampScore } from '#shared/utils/normalize-helpers.js';
+} from './history.js';
+import { buildBehaviorScore, buildCurrentMetrics, summarizeCurrentSnapshotRow, summarizeHistoryRow } from '../metrics-current/index.js';
+import { clampScore } from '../../utils/normalize-helpers.js';
 
 function gradeFromScore(score = 0) {
   if (score >= 97) return 'A+';
