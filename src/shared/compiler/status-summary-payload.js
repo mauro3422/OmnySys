@@ -119,6 +119,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     healthSnapshot,
     healthPanel,
     systemTable,
+    controlPlane: controlPlaneContracts.controlPlane,
     systemInventory: controlPlaneContracts.systemInventory,
     canonicalPromotion: controlPlaneContracts.canonicalPromotion,
     folderizationAutomation: controlPlaneContracts.folderizationAutomation,

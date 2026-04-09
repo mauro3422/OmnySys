@@ -208,6 +208,28 @@ function buildSystemsRow(controlPlaneContracts) {
   };
 }
 
+function buildRegistryRow(controlPlane) {
+  return {
+    area: 'Registry',
+    state: controlPlane?.state || 'watching',
+    detail: controlPlane
+      ? `systems=${normalizeCount(controlPlane.systems?.total || 0)} | contracts=${normalizeCount(controlPlane.counts?.contractCount || 0)} | signals=${normalizeCount(controlPlane.counts?.signalCount || 0)} | gaps=${normalizeCount(controlPlane.counts?.gapCount || 0)} | next=${controlPlane.nextAction || 'n/a'}`
+      : 'control-plane registry not available',
+    source: 'compiler control plane'
+  };
+}
+
+function buildTelemetryGateRow(controlPlane) {
+  return {
+    area: 'Telemetry Gate',
+    state: controlPlane?.telemetry?.state || 'watching',
+    detail: controlPlane?.telemetry
+      ? `required=${normalizeCount(controlPlane.telemetry.requiredSatisfiedCount || 0)}/${normalizeCount(controlPlane.telemetry.requiredCount || 0)} | missing=${normalizeCount(controlPlane.telemetry.requiredMissingCount || 0)} | optionalMissing=${normalizeCount(controlPlane.telemetry.optionalMissingCount || 0)} | blocked=${normalizeCount(controlPlane.telemetry.blockedCount || 0)} | next=${controlPlane.telemetry.nextAction || 'n/a'}`
+      : 'telemetry obligations not available',
+    source: 'compiler control plane telemetry'
+  };
+}
+
 function buildAduanaRow(policyCoverage, controlPlaneContracts) {
   return {
     area: 'Aduana',
@@ -302,6 +324,8 @@ export function buildSystemTableSummary(status = {}) {
     buildSessionsRow(ctx.current, ctx.mcpSessions),
     buildToolsRow(ctx.toolInventory),
     buildSystemsRow(ctx.controlPlaneContracts),
+    buildRegistryRow(ctx.controlPlaneContracts.controlPlane),
+    buildTelemetryGateRow(ctx.controlPlaneContracts.controlPlane),
     buildAduanaRow(ctx.policyCoverage, ctx.controlPlaneContracts),
     buildPromotionRow(ctx.controlPlaneContracts),
     buildAutomationRow(ctx.folderizationAutomation),

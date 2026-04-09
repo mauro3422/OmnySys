@@ -45,6 +45,8 @@ export class InitializationPipeline {
       currentStep++;
       logger.info(`\n[${currentStep}/${totalSteps}] ${step.name}...`);
       const stepStartedAt = Date.now();
+      server.currentInitializationStep = step.name;
+      server.currentInitializationDetail = null;
 
       try {
         const shouldContinue = await step.execute(server);
@@ -67,9 +69,12 @@ export class InitializationPipeline {
         }
 
         logger.info(`   ✅ ${step.name} complete`);
+        server.currentInitializationStep = null;
+        server.currentInitializationDetail = null;
 
       } catch (error) {
         logger.error(`   ❌ ${step.name} failed: ${error.message}`);
+        server.currentInitializationStep = step.name;
 
         // Rollback
         await this.rollback(server, error);

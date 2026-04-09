@@ -88,24 +88,18 @@ export function detectCompilerPolicyDriftFromSource(filePath, source = '') {
     return [];
   }
 
-  // HEURÍSTICA 1: Si es parte del canonical layer o infraestructura, exempt
-  if (isCanonicalLayerModule(normalizedPath)) {
-    return [];
-  }
+  const conformanceFindings = collectConformanceFindings(normalizedPath, source);
+  const skipManualReuseFindings = isCanonicalLayerModule(normalizedPath)
+    || isInfrastructureModule(normalizedPath, source)
+    || usesGoodPractices(source);
 
-  // HEURÍSTICA 2: Si es módulo de infraestructura legítima, exempt
-  if (isInfrastructureModule(normalizedPath, source)) {
-    return [];
-  }
-
-  // HEURÍSTICA 3: Si ya usa buenas prácticas, exempt
-  if (usesGoodPractices(source)) {
-    return [];
+  if (skipManualReuseFindings) {
+    return conformanceFindings;
   }
 
   const policyImports = buildPolicyImportMap(source);
   return [
     ...collectManualPolicyFindingsForCompiler(normalizedPath, source, policyImports),
-    ...collectConformanceFindings(normalizedPath, source)
+    ...conformanceFindings
   ];
 }

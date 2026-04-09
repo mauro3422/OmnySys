@@ -3,17 +3,20 @@ import http from 'http';
 import { isPortAcceptingConnections } from '../shared/utils/port-probe.js';
 
 /**
- * Detecta si hay un daemon saludable corriendo en el puerto especificado
+ * Detecta si hay un daemon OmnySys respondiendo en el puerto especificado
  * y valida que sea del mismo proyecto para evitar duplicados.
+ *
+ * `healthy` significa listo para servir herramientas.
+ * `alive` significa que el daemon existe y pertenece a OmnySys, aunque siga arrancando.
  *
  * @param {number} port - Puerto a verificar
  * @param {string} expectedProjectPath - Ruta del proyecto esperada (opcional)
- * @param {number} maxResponseTimeMs - Tiempo máximo aceptable de respuesta (default 3000ms)
- * @returns {Promise<{healthy: boolean, responseTimeMs?: number, processInfo?: {pid: number, projectPath: string, processType: string}}>}
+ * @param {number} maxResponseTimeMs - Tiempo maximo aceptable de respuesta
+ * @returns {Promise<{healthy: boolean, alive?: boolean, responseTimeMs?: number, processInfo?: {pid: number, projectPath: string, processType: string}, state?: string}>}
  */
 export async function detectHealthyDaemon(port = 9999, expectedProjectPath = null, maxResponseTimeMs = 3000) {
   const startTime = Date.now();
-  
+
   return await new Promise((resolve) => {
     try {
       const req = http.get(`http://127.0.0.1:${port}/health`, { timeout: maxResponseTimeMs }, (res) => {
@@ -21,70 +24,71 @@ export async function detectHealthyDaemon(port = 9999, expectedProjectPath = nul
         res.on('data', (chunk) => { body += chunk; });
         res.on('end', () => {
           const responseTimeMs = Date.now() - startTime;
-          
+
           try {
             const json = JSON.parse(body);
-            const isHealthy = json?.status === 'healthy' && json?.service === 'omnysys-mcp-http';
+            const state = String(json?.status || '').toLowerCase();
+            const isKnownDaemon = json?.service === 'omnysys-mcp-http';
+            const isAlive = isKnownDaemon && ['healthy', 'starting', 'degraded'].includes(state);
+            const isHealthy = isKnownDaemon && state === 'healthy';
 
-            // Si no es healthy, retornar false
-            if (!isHealthy) {
-              resolve({ healthy: false, responseTimeMs });
+            if (!isAlive) {
+              resolve({ healthy: false, alive: false, responseTimeMs, state });
               return;
             }
-            
-            // CRITICAL: Check if daemon is responding too slowly (frozen state)
+
             if (responseTimeMs > maxResponseTimeMs) {
               resolve({
                 healthy: false,
+                alive: true,
                 isFrozen: true,
                 responseTimeMs,
+                state,
                 message: `Daemon responded too slowly (${responseTimeMs}ms > ${maxResponseTimeMs}ms threshold)`
               });
               return;
             }
 
-            // Si se proporcionó una ruta de proyecto esperada, verificar coincidencia
             const processInfo = {
               pid: json.pid || null,
               projectPath: json.projectPath || null,
               processType: json.processType || 'daemon'
             };
 
-            // Si no se espera un proyecto específico, solo verificar que es healthy
             if (!expectedProjectPath) {
-              resolve({ healthy: true, responseTimeMs, processInfo });
+              resolve({ healthy: isHealthy, alive: true, responseTimeMs, processInfo, state });
               return;
             }
 
-            // Verificar si es del mismo proyecto
             const normalizedExpected = expectedProjectPath.replace(/\\/g, '/');
             const normalizedActual = (json.projectPath || '').replace(/\\/g, '/');
 
             if (normalizedActual && normalizedActual !== normalizedExpected) {
-              // Daemon existe pero es de otro proyecto
               resolve({
                 healthy: false,
+                alive: true,
                 isDifferentProject: true,
                 responseTimeMs,
+                state,
                 processInfo
               });
               return;
             }
 
-            resolve({ healthy: true, responseTimeMs, processInfo });
+            resolve({ healthy: isHealthy, alive: true, responseTimeMs, processInfo, state });
           } catch {
-            resolve({ healthy: false, responseTimeMs });
+            resolve({ healthy: false, alive: false, responseTimeMs });
           }
         });
       });
 
-      req.on('error', () => resolve({ healthy: false, responseTimeMs: Date.now() - startTime }));
+      req.on('error', () => resolve({ healthy: false, alive: false, responseTimeMs: Date.now() - startTime }));
       req.on('timeout', () => {
         req.destroy();
-        resolve({ healthy: false, responseTimeMs: Date.now() - startTime, isTimeout: true });
+        resolve({ healthy: false, alive: false, responseTimeMs: Date.now() - startTime, isTimeout: true });
       });
     } catch {
-      resolve({ healthy: false, responseTimeMs: Date.now() - startTime });
+      resolve({ healthy: false, alive: false, responseTimeMs: Date.now() - startTime });
     }
   });
 }

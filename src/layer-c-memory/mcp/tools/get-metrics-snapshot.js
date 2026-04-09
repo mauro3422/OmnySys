@@ -32,6 +32,7 @@ export async function get_metrics_snapshot(args, context) {
       snapshot: result.compactSnapshot,
       dashboard: result.healthDashboard,
       observability: result.observability || null,
+      controlPlane: result.controlPlane || null,
       summary: result.snapshot.summary,
       history: result.snapshot.history,
       trend: result.snapshot.trend,

@@ -200,6 +200,24 @@ function isRecoverableBridgeSendError(error) {
   return /Transport closed|SESSION_EXPIRED|session expired|Invalid session|session not found|invalid or missing MCP session|missing MCP session|Conflict|server rejected request after daemon restart|BRIDGE_FORWARD_FAILED|fetch failed|Failed to fetch|socket hang up|terminated/i.test(message);
 }
 
+async function verifyRecoveredBridgeSession(state, trigger = 'bridge recovery') {
+  const verificationId = `bridge-verify-${Date.now()}`;
+  const response = await sendBridgeInternalRequest(state, {
+    jsonrpc: '2.0',
+    id: verificationId,
+    method: 'tools/list',
+    params: {}
+  }, 15000);
+
+  if (response?.error) {
+    throw new Error(response.error.message || `Recovered bridge session verification failed during ${trigger}.`);
+  }
+
+  state.persistBridgeSessionSnapshot?.({
+    bridgeTransportState: 'session-verified'
+  });
+}
+
 export async function ensureBridgeTransportReady(state, connectBridgeTransport, options = {}) {
   if (state.isReconnecting && state.reconnectPromise) {
     await state.reconnectPromise.catch(() => {});
@@ -207,7 +225,7 @@ export async function ensureBridgeTransportReady(state, connectBridgeTransport, 
 
   const currentTransport = state.httpTransport;
   const currentSessionId = getCurrentBridgeSessionId(state);
-  const transportUsable = Boolean(currentTransport) && !isBridgeTransportAborted(currentTransport) && Boolean(currentSessionId);
+  const transportUsable = Boolean(currentTransport) && !isBridgeTransportAborted(currentTransport);
 
   if (transportUsable && !options.forceFreshSession) {
     return state.httpTransport;
@@ -335,6 +353,8 @@ export async function replayBridgeSession(state, options = {}) {
       log(`Failed to replay initialized notification: ${error.message}`);
     }
   }
+
+  await verifyRecoveredBridgeSession(state, trigger);
 }
 
 export async function startBridgeRecovery(state, trigger, connectBridgeTransport, options = {}) {

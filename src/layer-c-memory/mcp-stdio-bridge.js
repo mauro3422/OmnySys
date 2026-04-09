@@ -27,14 +27,20 @@ import {
     parseRestartRecoveryHint
 } from './mcp/stdio-bridge-telemetry.js';
 import {
+    shouldPreconnectBridgeTransport,
+    shouldPromoteBridgeTransportToSessionBound
+} from './mcp/stdio-bridge-startup.js';
+import {
     getDaemonUrl,
     buildInitializeResponse,
     buildRestartAcceptedResponse,
+    isProxyManagedRestartArgs,
     isRestartServerToolCall,
     isRequestMessage,
     isResponseMessage,
     isSessionExpiredError,
     normalizeBridgeInitializeMessage,
+    resolveRestartType,
     shouldTriggerRecovery,
     waitForBridgeSessionId
 } from './mcp/stdio-bridge-helpers.js';
@@ -162,6 +168,31 @@ async function flushCachedInitializedNotification(state) {
     }
 }
 
+async function promoteBridgeTransportToSessionBound(state) {
+    const sessionId = state.lastSessionId
+        || state.httpTransport?._sessionId
+        || await waitForBridgeSessionId(state, 10000);
+
+    if (!state.transportBootstrappedSessionlessly || !sessionId) {
+        return false;
+    }
+
+    const currentTransport = state.httpTransport;
+    state.httpTransport = null;
+    if (currentTransport) {
+        currentTransport.close().catch(() => {});
+    }
+
+    await connectBridgeTransport(state, { sessionId });
+    state.lastSessionId = sessionId;
+    state.transportBootstrappedSessionlessly = false;
+    persistBridgeSessionSnapshot(state, {
+        bridgeTransportState: 'session-bound-upgrade',
+        bridgeTransportSessionId: sessionId
+    });
+    return true;
+}
+
 async function connectBridgeTransport(state, options = {}) {
     const sessionId = Object.prototype.hasOwnProperty.call(options, 'sessionId')
         ? options.sessionId
@@ -176,6 +207,7 @@ async function connectBridgeTransport(state, options = {}) {
         sessionId ? { sessionId } : undefined
     );
     state.httpTransport = transport;
+    state.transportBootstrappedSessionlessly = !Boolean(sessionId);
     traceBridgeFlow(state, traceId, 'transport-create', {
         sessionId: sessionId || null,
         transportGeneration,
@@ -243,7 +275,7 @@ async function connectBridgeTransport(state, options = {}) {
                 const trigger = restartRecoveryHint?.bridgeRecovery?.trigger || 'server rejected request after daemon restart';
                 recordBridgeEvent('bridge-recovery-needed', {
                     trigger,
-                    reason: 'restart_server response requested process restart',
+                    reason: 'restart_server response requested proxy-managed restart',
                     sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
                     transportGeneration
                 });
@@ -372,12 +404,16 @@ async function handleBridgeStdioMessage(state, message) {
             || normalizedMessage?.params?.args
             || normalizedMessage?.params
             || {};
-        const isProcessRestartRequest =
+        const isProxyManagedRestartRequest =
             isRestartServerToolCall(normalizedMessage) &&
-            Boolean(restartToolArgs?.processRestart);
+            isProxyManagedRestartArgs(restartToolArgs);
 
-        if (isProcessRestartRequest) {
+        if (isProxyManagedRestartRequest) {
             const restartTraceId = createBridgeTraceId('restart');
+            const restartType = resolveRestartType(restartToolArgs);
+            const recoveryBackoffMs = restartToolArgs?.reanalyze
+                ? 15000
+                : PROCESS_RESTART_RECOVERY_BACKOFF_MS;
             state.activeBridgeTraceId = restartTraceId;
             // The restart request must ACK locally before the daemon is torn down,
             // otherwise the client sees a transport error instead of a valid tool result.
@@ -385,7 +421,7 @@ async function handleBridgeStdioMessage(state, message) {
                 method: normalizedMessage.method || 'tools/call',
                 toolName: normalizedMessage?.params?.name || normalizedMessage?.params?.tool || 'mcp_omnysystem_restart_server',
                 processRestart: Boolean(restartToolArgs?.processRestart),
-                restartType: restartToolArgs?.processRestart ? 'true_process_restart' : 'restart'
+                restartType
             });
 
             const restartTimeout = setTimeout(() => {
@@ -400,8 +436,8 @@ async function handleBridgeStdioMessage(state, message) {
             });
 
             const restartAck = buildRestartAcceptedResponse(normalizedMessage.id, restartToolArgs, {
-                retryAfterMs: PROCESS_RESTART_RECOVERY_BACKOFF_MS,
-                estimatedReadyAt: new Date(Date.now() + PROCESS_RESTART_RECOVERY_BACKOFF_MS).toISOString()
+                retryAfterMs: recoveryBackoffMs,
+                estimatedReadyAt: new Date(Date.now() + recoveryBackoffMs).toISOString()
             });
             await state.stdioTransport.send(restartAck);
             traceBridgeFlow(state, restartTraceId, 'restart-ack-sent', {
@@ -415,7 +451,7 @@ async function handleBridgeStdioMessage(state, message) {
                 bridgeTraceStep: 'restart-ack-sent'
             });
 
-            log(`Restart request acknowledged locally before forwarding process restart for session ${state.lastSessionId || state.httpTransport?._sessionId || 'unknown'}. Trace ${restartTraceId}.`);
+            log(`Restart request acknowledged locally before forwarding proxy-managed restart for session ${state.lastSessionId || state.httpTransport?._sessionId || 'unknown'}. Trace ${restartTraceId}.`);
             if (state.httpTransport) {
                 traceBridgeFlow(state, restartTraceId, 'restart-forward-queued', {
                     sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
@@ -431,14 +467,14 @@ async function handleBridgeStdioMessage(state, message) {
 
             traceBridgeFlow(state, restartTraceId, 'restart-recovery-scheduled', {
                 forceFreshSession: true,
-                backoffMs: PROCESS_RESTART_RECOVERY_BACKOFF_MS,
-                estimatedReadyAt: new Date(Date.now() + PROCESS_RESTART_RECOVERY_BACKOFF_MS).toISOString()
+                backoffMs: recoveryBackoffMs,
+                estimatedReadyAt: new Date(Date.now() + recoveryBackoffMs).toISOString()
             });
             // Recovery runs asynchronously so the ACK path stays stable even if the daemon
             // temporarily drops the underlying HTTP transport during SIGTERM/respawn.
-            void scheduleBridgeRecovery(state, 'process restart requested', connectBridgeTransport, {
+            void scheduleBridgeRecovery(state, `${restartType} requested`, connectBridgeTransport, {
                 forceFreshSession: true,
-                backoffMs: PROCESS_RESTART_RECOVERY_BACKOFF_MS
+                backoffMs: recoveryBackoffMs
             }).catch((error) => {
                 traceBridgeFlow(state, restartTraceId, 'restart-recovery-schedule-failed', {
                     message: String(error?.message || error || '')
@@ -499,6 +535,14 @@ async function handleBridgeStdioMessage(state, message) {
             const sessionId = state.lastSessionId || state.httpTransport?._sessionId || await waitForBridgeSessionId(state);
             if (sessionId) {
                 state.lastSessionId = sessionId;
+            }
+
+            if (shouldPromoteBridgeTransportToSessionBound({
+                transportBootstrappedSessionlessly: state.transportBootstrappedSessionlessly,
+                sessionId: state.lastSessionId,
+                messageMethod: normalizedMessage?.method || null
+            })) {
+                await promoteBridgeTransportToSessionBound(state);
             }
         }
 
@@ -572,21 +616,15 @@ async function handleBridgeStdioMessage(state, message) {
 
         if (isRequestMessage(normalizedMessage)) {
             state.pendingRequests.delete(normalizedMessage.id);
-            if (normalizedMessage?.method === 'restart_server' && shouldTriggerRecovery(err)) {
-                const restartResponse = {
-                    jsonrpc: '2.0',
-                    id: normalizedMessage.id,
-                    result: {
-                        success: true,
-                        restarting: true,
-                        processRestart: Boolean(normalizedMessage?.params?.processRestart),
-                        restartType: normalizedMessage?.params?.processRestart
-                            ? 'true_process_restart'
-                            : 'restart',
-                        message: 'Restart request accepted. The bridge is recovering and will reconnect automatically.',
-                        timestamp: new Date().toISOString()
-                    }
-                };
+            if (isRestartServerToolCall(normalizedMessage) && shouldTriggerRecovery(err)) {
+                const restartArgs = normalizedMessage?.params?.arguments
+                    || normalizedMessage?.params?.args
+                    || normalizedMessage?.params
+                    || {};
+                const restartResponse = buildRestartAcceptedResponse(normalizedMessage.id, restartArgs, {
+                    retryAfterMs: restartArgs?.reanalyze ? 15000 : PROCESS_RESTART_RECOVERY_BACKOFF_MS,
+                    estimatedReadyAt: new Date(Date.now() + (restartArgs?.reanalyze ? 15000 : PROCESS_RESTART_RECOVERY_BACKOFF_MS)).toISOString()
+                });
 
                 await state.stdioTransport.send(restartResponse);
                 log('Restart request acknowledged locally while bridge recovery continues.');
@@ -668,7 +706,16 @@ const main = createCliOrchestrator({
             });
         }
 
-        await connectBridgeTransport(sharedState);
+        if (shouldPreconnectBridgeTransport({
+            lastSessionId: sharedState.lastSessionId,
+            lastDaemonHealth: daemonHealth
+        })) {
+            await connectBridgeTransport(sharedState);
+        } else {
+            persistBridgeSessionSnapshot(sharedState, {
+                bridgeTransportState: 'cold-start-awaiting-initialize'
+            });
+        }
 
         stdioTransport.onmessage = async (message) => {
             await handleBridgeStdioMessage(sharedState, message);

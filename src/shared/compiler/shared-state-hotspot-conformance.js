@@ -10,7 +10,7 @@
 
 import {
   countMatches,
-  createPositionalFinding as createFinding
+  createGuidedFinding
 } from './conformance-utils.js';
 import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
@@ -48,15 +48,13 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
       const runtimeEnvConfigurationOnly = isRuntimeEnvConfigurationOnly(currentSource);
 
       if (referencesHotspotKeys(currentSource) && !usesCanonicalLayer) {
-        findings.push(createFinding(
-          {
-            rule: 'manual_shared_state_hotspot_key',
-            severity,
-            policyArea,
-            message: 'Module references known shared-state hotspot keys directly',
-            recommendation: getRecommendation({ type: 'shared_state_hotspot' }).message
-          }
-        ));
+        findings.push(createGuidedFinding({
+          rule: 'manual_shared_state_hotspot_key',
+          severity,
+          policyArea,
+          message: 'Module references known shared-state hotspot keys directly',
+          recommendation: getRecommendation({ type: 'shared_state_hotspot' }).message
+        }));
       }
 
       if (
@@ -65,15 +63,13 @@ export function detectSharedStateHotspotConformanceFromSource(filePath, source =
         !usesCanonicalLayer &&
         !runtimeEnvConfigurationOnly
       ) {
-        findings.push(createFinding(
-          {
-            rule: 'manual_shared_state_hotspot_scan',
-            severity,
-            policyArea,
-            message: `Module performs shared-state hotspot logic with ${sharedStateSignals} shared-state signals`,
-            recommendation: getRecommendation({ type: 'shared_state_hotspot' }).message
-          }
-        ));
+        findings.push(createGuidedFinding({
+          rule: 'manual_shared_state_hotspot_scan',
+          severity,
+          policyArea,
+          message: `Module performs shared-state hotspot logic with ${sharedStateSignals} shared-state signals`,
+          recommendation: getRecommendation({ type: 'shared_state_hotspot' }).message
+        }));
       }
     }
   );

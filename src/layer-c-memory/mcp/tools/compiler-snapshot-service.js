@@ -12,8 +12,10 @@ import {
   buildCompilerMetricsSnapshot,
   buildCanonicalPromotionReport,
   buildCanonicalPromotionSnapshot,
+  buildCompilerControlPlane,
   buildCompilerObservabilityContract,
   summarizeCompilerObservabilityContract,
+  summarizeCompilerControlPlane,
   buildCompilerSystemInventoryReport,
   buildCompilerSystemInventorySnapshot,
   summarizeCompilerMetricsSnapshot,
@@ -118,15 +120,40 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     startupTelemetry: context.server?.startupTelemetry || null
   });
   const observabilitySummary = summarizeCompilerObservabilityContract(observability);
+  const controlPlane = buildCompilerControlPlane({
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    compilerExplainability,
+    systemInventoryDetail,
+    systemInventory,
+    canonicalPromotion,
+    metricsSnapshot: snapshot,
+    healthDashboard,
+    healthPanel,
+    observability,
+    startupTelemetry: context.server?.startupTelemetry || null
+  });
+  const controlPlaneSummary = summarizeCompilerControlPlane(controlPlane);
   snapshot.observability = observability;
   snapshot.current.observability = observabilitySummary;
+  snapshot.controlPlane = controlPlane;
+  snapshot.current.controlPlane = controlPlaneSummary;
   compactSnapshot.observability = observabilitySummary;
+  compactSnapshot.controlPlane = controlPlaneSummary;
   healthDashboard.observability = observability;
+  healthDashboard.controlPlane = controlPlaneSummary;
   healthPanel.observability = observabilitySummary;
+  healthPanel.controlPlane = controlPlaneSummary;
   systemInventory.observability = observabilitySummary;
+  systemInventory.controlPlane = controlPlaneSummary;
   systemInventoryDetail.observability = observability;
+  systemInventoryDetail.controlPlane = controlPlane;
   canonicalPromotion.observability = observabilitySummary;
+  canonicalPromotion.controlPlane = controlPlaneSummary;
   canonicalPromotionDetail.observability = observability;
+  canonicalPromotionDetail.controlPlane = controlPlane;
+  compilerExplainability.controlPlane = controlPlane;
 
   return {
     success: true,
@@ -144,6 +171,8 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     canonicalPromotionDetail,
     observability,
     observabilitySummary,
+    controlPlane,
+    controlPlaneSummary,
     healthDashboard,
     healthPanel
   };

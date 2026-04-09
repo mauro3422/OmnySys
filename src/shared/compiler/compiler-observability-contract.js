@@ -13,6 +13,12 @@ import {
   resolveControlPlaneContracts,
   resolveDashboardControlPlaneContracts
 } from './status-control-plane-contracts.js';
+import {
+  isBlockedState,
+  isDriftingState,
+  isWatchingState,
+  normalizeState
+} from './signal-state-helpers.js';
 
 function firstDefined(...values) {
   for (const value of values) {
@@ -24,21 +30,8 @@ function firstDefined(...values) {
   return null;
 }
 
-function normalizeState(value, fallback = 'missing') {
-  const state = String(value || '').trim().toLowerCase();
-  return state || fallback;
-}
-
-function isBlockedState(state) {
-  return ['blocked', 'thrashing', 'failed', 'unhealthy'].includes(normalizeState(state));
-}
-
-function isDriftingState(state) {
-  return ['stale', 'partial', 'missing', 'degraded', 'incomplete'].includes(normalizeState(state));
-}
-
 function isWatchfulState(state) {
-  return ['watchful', 'watching', 'settling', 'review', 'pending', 'deferred'].includes(normalizeState(state));
+  return isWatchingState(state) || normalizeState(state) === 'deferred';
 }
 
 function compactHealthPanelHealth(healthPanel = null) {

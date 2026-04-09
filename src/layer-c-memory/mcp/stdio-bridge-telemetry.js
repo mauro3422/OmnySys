@@ -106,7 +106,11 @@ export function parseRestartRecoveryHint(message) {
 
     try {
       const payload = JSON.parse(item.text);
-      if (payload?.processRestart === true && payload?.restartType === 'true_process_restart') {
+      if (
+        payload?.restarting === true &&
+        payload?.bridgeRecovery?.state === 'recovering' &&
+        payload?.bridgeRecovery?.forceFreshSession === true
+      ) {
         return payload;
       }
     } catch {

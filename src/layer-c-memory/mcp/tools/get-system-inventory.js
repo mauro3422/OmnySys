@@ -24,6 +24,7 @@ function buildSystemInventoryResponse(result) {
     snapshot: result.compactSnapshot,
     dashboard: result.healthDashboard,
     observability: result.observability || null,
+    controlPlane: result.controlPlane || null,
     summary: result.systemInventory?.summaryText || result.systemInventory?.summary?.summaryText || null,
     topSystems: result.systemInventory?.topSystems || [],
     promotionCandidates: result.systemInventory?.topPromotionCandidates || [],
@@ -34,6 +35,7 @@ function buildSystemInventoryResponse(result) {
       standardization: result.compilerExplainability.standardization || null,
       compilerContractLayer: result.compilerExplainability.compilerContractLayer || null,
       canonicalPromotion: result.compilerExplainability.canonicalPromotion || null,
+      controlPlane: result.compilerExplainability.controlPlane || null,
       surfaceAudit: result.compilerExplainability.surfaceAudit || null,
       driftAssessment: result.compilerExplainability.driftAssessment || null
     } : null

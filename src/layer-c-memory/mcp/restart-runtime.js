@@ -33,6 +33,14 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
   } = args;
   const { cache, server, orchestrator, refreshToolRegistry } = context;
   const proxyMode = isProxyMode();
+  const requestedMode = getRequestedRestartMode({
+    reanalyze,
+    reindexOnly,
+    clearCacheOnly,
+    refreshOnly,
+    softReload,
+    processRestart
+  });
 
   try {
     logger.info('Restarting OmnySys server...');
@@ -74,7 +82,15 @@ export async function handleRuntimeRestart(args = {}, context = {}) {
       return await handleReindexOnly(server, cache, result);
     }
     if (isProxyMode()) {
-      return await handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindexOnly, cache, server);
+      return await handleProxyRestart({
+        clearCache,
+        reanalyze,
+        clearCacheOnly,
+        reindexOnly,
+        cache,
+        server,
+        requestedMode
+      });
     }
 
     logger.info('Running in standalone mode (no proxy). True ESM cache clear requires proxy.');
@@ -117,6 +133,31 @@ function clearPendingHotReloadRestart(server) {
   clearPendingRuntimeRestart(server);
 }
 
+function getRequestedRestartMode({
+  reanalyze = false,
+  reindexOnly = false,
+  clearCacheOnly = false,
+  refreshOnly = false,
+  softReload = false,
+  processRestart = false
+} = {}) {
+  if (refreshOnly) return 'refresh_only';
+  if (softReload) return 'soft_reload';
+  if (clearCacheOnly) return 'cache_only_flush';
+  if (processRestart) return 'true_process_restart';
+  if (reindexOnly) return 'reindex_only';
+  if (reanalyze) return 'proxy_reanalyze';
+  return null;
+}
+
+function buildLegacyProxyRestartMessage(clearCache) {
+  const variant = clearCache
+    ? 'Legacy proxy restart requested with clearCache=true.'
+    : 'Legacy proxy restart requested without an explicit mode.';
+
+  return `${variant} This path kills and respawns the worker via the proxy, may briefly disconnect MCP clients, and should be replaced with an explicit mode such as processRestart=true, clearCacheOnly=true, reindexOnly=true, or clearCache+reanalyze=true.`;
+}
+
 async function handleSoftReload(server, orchestrator, cache, refreshToolRegistryFn) {
   logger.info('Soft reload requested...');
 
@@ -144,8 +185,17 @@ function isProxyMode() {
   return process.env.OMNYSYS_PROXY_MODE === '1' || typeof process.send === 'function';
 }
 
-async function handleProxyRestart(clearCache, reanalyze, clearCacheOnly, reindexOnly, cache, server) {
+async function handleProxyRestart({
+  clearCache,
+  reanalyze,
+  clearCacheOnly,
+  reindexOnly,
+  cache,
+  server,
+  requestedMode = null
+}) {
   logger.info('Sending restart signal to proxy (true Node.js restart)...');
+  const legacyMode = !requestedMode;
 
   if (clearCache && cache) {
     logger.info('Clearing local cache before restart...');
@@ -182,9 +232,15 @@ Any subsequent MCP tool calls you make right now will silently hang forever.
 ================================================================================
 `.trim();
 
+  const baseResult = buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly, reindexOnly });
+
   return {
-    ...buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly, reindexOnly }),
-    message: warningMessage
+    ...baseResult,
+    restartType: requestedMode || (clearCache ? 'legacy_proxy_restart_with_clear_cache' : 'legacy_proxy_restart'),
+    legacyMode,
+    explicitModeRecommended: legacyMode,
+    requestedMode,
+    message: legacyMode ? buildLegacyProxyRestartMessage(clearCache) : warningMessage
   };
 }
 

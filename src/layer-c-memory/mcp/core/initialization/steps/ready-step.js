@@ -23,6 +23,7 @@ export class ReadyStep extends InitializationStep {
   }
 
   async execute(server) {
+    server.currentInitializationDetail = 'startup-telemetry';
     // Display stats
     const uptime = ((Date.now() - server.startTime) / 1000).toFixed(2);
     const startupTelemetry = buildStartupRegressionSummary({
@@ -41,10 +42,12 @@ export class ReadyStep extends InitializationStep {
     }
 
     // Categorize and display tools
+    server.currentInitializationDetail = 'display-tools';
     await this.displayTools();
 
     // 📊 Print Diagnostics Dashboard (FINAL initialization output)
     try {
+      server.currentInitializationDetail = 'diagnostics-dashboard';
       const { printDiagnosticsDashboard } = await import('../dashboard-reporter.js');
       await printDiagnosticsDashboard(server.projectPath, {
         isFinal: true,
@@ -54,6 +57,7 @@ export class ReadyStep extends InitializationStep {
       logger.warn('   ⚠️ Failed to display Diagnostics Dashboard:', err.message);
     }
 
+    server.currentInitializationDetail = 'mark-initialized';
     server.initialized = true;
     return true;
   }

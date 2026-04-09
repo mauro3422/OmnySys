@@ -203,6 +203,11 @@ export {
 } from './compiler-observability-contract.js';
 
 export {
+  buildCompilerControlPlane,
+  summarizeCompilerControlPlane
+} from './compiler-control-plane.js';
+
+export {
   buildUpdateSurfaceSummary
 } from './update-surface-summary.js';
 

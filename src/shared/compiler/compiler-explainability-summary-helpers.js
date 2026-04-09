@@ -1,4 +1,5 @@
 import { summarizeCompilerDriftAssessment } from './compiler-drift-assessment.js';
+import { summarizeCompilerControlPlane } from './compiler-control-plane.js';
 import { summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import { summarizeDataGatewayContract } from './contract.js';
 import { summarizeSurfaceAuditForStatus } from './surface-audit/summary.js';
@@ -306,4 +307,8 @@ export function compactDriftAssessment(driftAssessment = null) {
 
 export function compactDataGatewayContract(dataGatewayContract = null) {
   return summarizeDataGatewayContract(dataGatewayContract);
+}
+
+export function compactControlPlane(controlPlane = null) {
+  return summarizeCompilerControlPlane(controlPlane);
 }

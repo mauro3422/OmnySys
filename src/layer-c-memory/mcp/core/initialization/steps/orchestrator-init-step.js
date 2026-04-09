@@ -28,6 +28,7 @@ export class OrchestratorInitStep extends InitializationStep {
 
   async execute(server) {
     logger.info('Initialize Orchestrator');
+    server.currentInitializationDetail = 'construct-orchestrator';
 
     // Pass the server's cache to the orchestrator to avoid duplication
     server.orchestrator = new Orchestrator(server.projectPath, {
@@ -37,7 +38,9 @@ export class OrchestratorInitStep extends InitializationStep {
       cache: server.cache  // Share cache with server to avoid duplication
     });
 
+    server.currentInitializationDetail = 'initialize-orchestrator';
     await server.orchestrator.initialize();
+    server.currentInitializationDetail = 'announce-orchestrator-ready';
     logger.info('  ✅ Orchestrator ready');
     logger.info('     Shared cache: Enabled');
     logger.info('     FileWatcher: Active');

@@ -5,6 +5,7 @@
 import {
   compactAnalysisGeneration,
   compactCountPair,
+  compactControlPlane,
   compactDataGatewayContract,
   compactDriftAssessment,
   compactFolderization,
@@ -40,6 +41,7 @@ export function summarizeCompilerExplainability(explainability) {
     folderization: compactFolderization(explainability.folderization),
     canonicalPromotion: compactCanonicalPromotion(explainability.canonicalPromotion),
     policyCoverage: compactPolicyCoverage(explainability.policyCoverage),
+    controlPlane: compactControlPlane(explainability.controlPlane),
     databaseHealth: explainability.databaseHealth || null
   };
 }

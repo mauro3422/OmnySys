@@ -13,8 +13,11 @@ import { InitializationStep } from './base-step.js';
 import { getCacheManager } from '#core/cache/singleton.js';
 import {
   applyCriticalCacheData,
+  scheduleDeferredCachePreload,
+  seedDeferredCachePlaceholders,
   countAssessmentIssues,
-  createHydratedEmptyCache
+  createHydratedEmptyCache,
+  shouldDeferCriticalCachePreload
 } from './cache-init-helpers.js';
 import { createLogger } from '../../../../../utils/logger.js';
 
@@ -42,6 +45,16 @@ export class CacheInitStep extends InitializationStep {
       server.metadata = server.cache.get('metadata') || null;
       logger.warn('  Cache fallback created in memory; continuing startup.');
       logger.info(`\n  Cache load time: ${(performance.now() - startTime).toFixed(2)}ms (empty fallback)`);
+      return true;
+    }
+
+    if (shouldDeferCriticalCachePreload(server)) {
+      seedDeferredCachePlaceholders(server, server.cache);
+      server.cachePreloadDeferred = true;
+      logger.warn('  Critical cache preload deferred after full Layer A rebuild; continuing with lightweight cache bootstrap.');
+      void scheduleDeferredCachePreload(server, (projectPath) => this.loadCriticalData(projectPath), logger);
+      const elapsed = (performance.now() - startTime).toFixed(2);
+      logger.info(`\n  Cache load time: ${elapsed}ms (deferred preload)`);
       return true;
     }
 

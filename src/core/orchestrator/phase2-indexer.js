@@ -102,7 +102,10 @@ export class Phase2Indexer {
                     // Advisory telemetry only.
                 }
             }
-            void runPhase2CompletionTasks(this.projectPath, logger);
+            void runPhase2CompletionTasks(this.projectPath, logger, {
+                allowFinalDashboard: false,
+                initialDelayMs: 2000
+            });
         }
     }
 

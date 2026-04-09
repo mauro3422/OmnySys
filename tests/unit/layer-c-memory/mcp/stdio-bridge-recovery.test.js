@@ -20,6 +20,7 @@ vi.mock('../../../../src/layer-c-memory/mcp/stdio-bridge-helpers.js', () => ({
 }));
 
 import {
+  ensureBridgeTransportReady,
   replayBridgeSession,
   scheduleBridgeRecovery
 } from '../../../../src/layer-c-memory/mcp/stdio-bridge-recovery.js';
@@ -44,11 +45,12 @@ describe('replayBridgeSession', () => {
         id: 1
       },
       cachedInitializedNotification: null,
+      lastSessionId: 'session-recovered',
       httpTransport: {
         send: vi.fn(async (message) => {
           const pending = state.internalRequests.get(message.id);
           if (pending) {
-            pending.resolve({ id: message.id });
+            pending.resolve({ id: message.id, result: message.method === 'tools/list' ? { tools: [] } : {} });
           }
           return undefined;
         })
@@ -60,8 +62,8 @@ describe('replayBridgeSession', () => {
       trigger: 'transport closed'
     });
 
-    expect(state.httpTransport.send).toHaveBeenCalledTimes(1);
-    expect(state.httpTransport.send).toHaveBeenCalledWith(expect.objectContaining({
+    expect(state.httpTransport.send).toHaveBeenCalledTimes(2);
+    expect(state.httpTransport.send).toHaveBeenNthCalledWith(1, expect.objectContaining({
       method: 'initialize',
       params: expect.objectContaining({
         clientInfo: expect.objectContaining({
@@ -72,6 +74,9 @@ describe('replayBridgeSession', () => {
           bridge_recovery_trigger: 'transport closed'
         })
       })
+    }));
+    expect(state.httpTransport.send).toHaveBeenNthCalledWith(2, expect.objectContaining({
+      method: 'tools/list'
     }));
   });
 
@@ -99,7 +104,7 @@ describe('replayBridgeSession', () => {
         send: vi.fn(async (message) => {
           const pending = state.internalRequests.get(message.id);
           if (pending) {
-            pending.resolve({ id: message.id });
+            pending.resolve({ id: message.id, result: {} });
           }
           return undefined;
         })
@@ -119,6 +124,104 @@ describe('replayBridgeSession', () => {
     expect(state.persistBridgeSessionSnapshot).toHaveBeenCalledWith(expect.objectContaining({
       bridgeTransportState: 'initialize-replayed'
     }));
+  });
+
+  it('verifies a recovered session after replaying initialized notification', async () => {
+    const sentMethods = [];
+    const state = {
+      internalRequests: new Map(),
+      cachedInitializeRequest: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Codex',
+            client_id: 'codex'
+          }
+        },
+        id: 1
+      },
+      cachedInitializedNotification: {
+        jsonrpc: '2.0',
+        method: 'notifications/initialized'
+      },
+      lastSessionId: 'session-recovered',
+      httpTransport: {
+        _sessionId: 'session-recovered',
+        send: vi.fn(async (message) => {
+          sentMethods.push(message.method);
+          const pending = state.internalRequests.get(message.id);
+          if (pending) {
+            pending.resolve({
+              id: message.id,
+              result: message.method === 'tools/list' ? { tools: [] } : {}
+            });
+          }
+          return undefined;
+        })
+      },
+      persistBridgeSessionSnapshot: vi.fn()
+    };
+
+    await replayBridgeSession(state, {
+      forceFreshSession: true,
+      trigger: 'transport closed'
+    });
+
+    expect(sentMethods).toEqual([
+      'initialize',
+      'notifications/initialized',
+      'tools/list'
+    ]);
+    expect(state.persistBridgeSessionSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      bridgeTransportState: 'session-verified'
+    }));
+  });
+
+  it('fails replay when the recovered session is not actually initialized', async () => {
+    const state = {
+      internalRequests: new Map(),
+      cachedInitializeRequest: {
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          clientInfo: {
+            name: 'Codex',
+            client_id: 'codex'
+          }
+        },
+        id: 1
+      },
+      cachedInitializedNotification: {
+        jsonrpc: '2.0',
+        method: 'notifications/initialized'
+      },
+      lastSessionId: 'session-recovered',
+      httpTransport: {
+        _sessionId: 'session-recovered',
+        send: vi.fn(async (message) => {
+          const pending = state.internalRequests.get(message.id);
+          if (pending) {
+            if (message.method === 'tools/list') {
+              pending.resolve({
+                id: message.id,
+                error: {
+                  message: 'Bad Request: Server not initialized'
+                }
+              });
+            } else {
+              pending.resolve({ id: message.id, result: {} });
+            }
+          }
+          return undefined;
+        })
+      }
+    };
+
+    await expect(replayBridgeSession(state, {
+      forceFreshSession: true,
+      trigger: 'transport closed'
+    })).rejects.toThrow('Bad Request: Server not initialized');
   });
 
   it('skips initialize replay when the bridge session is already initialized', async () => {
@@ -316,6 +419,28 @@ describe('scheduleBridgeRecovery', () => {
     })).resolves.toBeUndefined();
 
     expect(recoverFn).not.toHaveBeenCalled();
+    expect(connectBridgeTransport).not.toHaveBeenCalled();
+  });
+});
+
+describe('ensureBridgeTransportReady', () => {
+  it('reuses an active sessionless transport during the initialize handshake', async () => {
+    const state = {
+      isReconnecting: false,
+      reconnectPromise: null,
+      httpTransport: {
+        _sessionId: null,
+        _abortController: {
+          signal: {
+            aborted: false
+          }
+        }
+      },
+      lastSessionId: null
+    };
+    const connectBridgeTransport = vi.fn();
+
+    await expect(ensureBridgeTransportReady(state, connectBridgeTransport)).resolves.toBe(state.httpTransport);
     expect(connectBridgeTransport).not.toHaveBeenCalled();
   });
 });

@@ -3,8 +3,10 @@ import {
   canonicalizeClientInfo,
   buildInitializeResponse,
   buildRestartAcceptedResponse,
+  isProxyManagedRestartArgs,
   isRestartServerToolCall,
   normalizeBridgeInitializeMessage,
+  resolveRestartType,
   shouldTriggerRecovery,
   isSessionExpiredError
 } from '../../../../src/layer-c-memory/mcp/stdio-bridge-helpers.js';
@@ -104,6 +106,50 @@ describe('stdio-bridge-helpers', () => {
       })
     }));
     expect(typeof response.result.structuredContent.timestamp).toBe('string');
+  });
+
+  it('builds a recovering acknowledgement for destructive proxy reanalyze', () => {
+    const response = buildRestartAcceptedResponse(8, {
+      clearCache: true,
+      reanalyze: true
+    });
+
+    expect(response.result.structuredContent).toEqual(expect.objectContaining({
+      processRestart: false,
+      proxyManagedRestart: true,
+      restartType: 'proxy_reanalyze',
+      bridgeRecovery: expect.objectContaining({
+        state: 'recovering',
+        forceFreshSession: true,
+        retryAfterMs: 15000
+      })
+    }));
+  });
+
+  it('does not mark cache-only flush as a proxy-managed restart', () => {
+    const response = buildRestartAcceptedResponse(9, {
+      clearCacheOnly: true
+    });
+
+    expect(response.result.structuredContent).toEqual(expect.objectContaining({
+      proxyManagedRestart: false,
+      restartType: 'cache_only_flush',
+      bridgeRecovery: expect.objectContaining({
+        state: 'accepted',
+        retryAfterMs: 0
+      })
+    }));
+  });
+
+  it('classifies restart modes consistently for bridge decisions', () => {
+    expect(resolveRestartType({ processRestart: true })).toBe('true_process_restart');
+    expect(resolveRestartType({ clearCache: true, reanalyze: true })).toBe('proxy_reanalyze');
+    expect(resolveRestartType({ clearCacheOnly: true })).toBe('cache_only_flush');
+    expect(resolveRestartType({})).toBe('legacy_proxy_restart');
+    expect(isProxyManagedRestartArgs({ processRestart: true })).toBe(true);
+    expect(isProxyManagedRestartArgs({ clearCache: true, reanalyze: true })).toBe(true);
+    expect(isProxyManagedRestartArgs({ clearCacheOnly: true })).toBe(false);
+    expect(isProxyManagedRestartArgs({ reindexOnly: true })).toBe(false);
   });
 
   it('detects restart tool calls routed through tools/call', () => {

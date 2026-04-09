@@ -1,13 +1,29 @@
 import { getPhase2FileCounts } from '#shared/compiler/index.js';
 
-export async function runPhase2CompletionTasks(projectPath, logger) {
+async function runPhase2TaskSafely(label, task, logger) {
     try {
-        await persistFinalGraphMetrics(projectPath, logger);
-        await persistSharedStateRelations(projectPath);
-        await persistTechnicalDebtSummary(projectPath);
-        await printFinalDiagnosticsDashboard(projectPath, logger);
+        await task();
     } catch (error) {
-        logger.debug('Post-Phase2 completion tasks failed:', error.message);
+        logger.debug(`Post-Phase2 task "${label}" failed: ${error.message}`);
+    }
+}
+
+export async function runPhase2CompletionTasks(projectPath, logger, options = {}) {
+    const {
+        allowFinalDashboard = false,
+        initialDelayMs = 0
+    } = options;
+
+    if (initialDelayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, initialDelayMs));
+    }
+
+    await runPhase2TaskSafely('persist_final_graph_metrics', () => persistFinalGraphMetrics(projectPath, logger), logger);
+    await runPhase2TaskSafely('persist_shared_state_relations', () => persistSharedStateRelations(projectPath), logger);
+    await runPhase2TaskSafely('persist_technical_debt_summary', () => persistTechnicalDebtSummary(projectPath), logger);
+
+    if (allowFinalDashboard) {
+        await runPhase2TaskSafely('print_final_diagnostics_dashboard', () => printFinalDiagnosticsDashboard(projectPath, logger), logger);
     }
 }
 

@@ -27,6 +27,7 @@ import {
     waitForPortRelease
 } from './mcp-http-proxy-health.js';
 import { cleanupZombieProcesses } from './mcp-http-proxy-zombies.js';
+import { resolveInitialProxyAction } from './mcp-http-proxy-bootstrap.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
@@ -150,7 +151,7 @@ async function waitForStartupLockRelease(timeoutMs = 20000) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const daemonHealth = await detectHealthyDaemon(port, projectPath);
-        if (daemonHealth.healthy) {
+        if (daemonHealth.alive) {
             return true;
         }
 
@@ -174,7 +175,8 @@ function scheduleRespawn(delayMs, extraArgs = []) {
         respawnTimer = null;
         waitForPortRelease(port, process.platform === 'win32' ? 12 : 6, process.platform === 'win32' ? 750 : 400)
             .then(async (released) => {
-                if (!released && await detectHealthyDaemon()) {
+                const daemonHealth = !released ? await detectHealthyDaemon(port, projectPath) : null;
+                if (!released && daemonHealth?.alive) {
                     log('✅ Healthy daemon detected while waiting for port release. Proxy will not respawn a duplicate worker.');
                     removeOwnerLock();
                     process.exit(0);
@@ -294,7 +296,7 @@ async function handleWorkerCrash(code, signal) {
         const daemonCheck = await detectHealthyDaemon(port, projectPath);
         log(`Daemon health check after crash: ${JSON.stringify(daemonCheck)}`);
         
-        if (daemonCheck.healthy) {
+        if (daemonCheck.alive) {
             log('✅ Another healthy OmnySys daemon already owns the port. Proxy exiting without respawn loop.');
             removeOwnerLock();
             process.exit(0);
@@ -315,7 +317,7 @@ async function handleWorkerClose(code, signal) {
     // If this is a monitoring proxy (no worker ever spawned), check if daemon is still healthy
     if (restartCount === 0) {
         const daemonHealth = await detectHealthyDaemon(port, projectPath);
-        if (daemonHealth.healthy) {
+        if (daemonHealth.alive) {
             log('✅ Daemon is healthy. Proxy staying running as watchdog.');
             writeOwnerLock('monitoring');
             return; // Don't exit, stay monitoring
@@ -432,26 +434,43 @@ if (!acquireStartupLock()) {
 await cleanupZombieProcesses(process.pid, log);
 
 const existingDaemon = await detectHealthyDaemon(port, projectPath);
-if (existingDaemon.healthy) {
+let shouldSpawnInitialWorker = true;
+if (existingDaemon.alive) {
     log(`✅ Existing healthy OmnySys daemon detected (PID ${existingDaemon.processInfo?.pid}). Proxy will monitor it.`);
     log('⚠️  Proxy will stay running as backup in case the daemon dies.');
-    
-    // CRITICAL FIX: Don't exit here! Stay running as a watchdog.
-    // If the daemon dies later, we can respawn it.
-    // Exit only if another PROXY is managing this daemon.
+
     const ownerLock = await readDaemonOwnerLock(projectRoot, port);
-    if (ownerLock && ownerLock.pid && ownerLock.pid !== process.pid) {
+    const initialAction = resolveInitialProxyAction({
+        existingDaemonAlive: true,
+        ownerPid: ownerLock?.pid || null,
+        currentPid: process.pid
+    });
+
+    if (initialAction.action === 'exit') {
         log(`ℹ️  Another proxy (PID ${ownerLock.pid}) is managing this daemon. This proxy will exit.`);
         releaseStartupLock();
         process.exit(0);
     }
-    
-    // No other proxy owns this daemon - stay running as watchdog
-    log('👀 No proxy owns this daemon - staying as watchdog manager.');
-    
-    // Set up periodic health checks to detect daemon failures
-    startDaemonWatchdogHealthCheck();
-    releaseStartupLock();
+
+    if (initialAction.action === 'monitor') {
+        log('👀 No proxy owns this daemon - staying as watchdog manager.');
+        writeOwnerLock('monitoring');
+        persistProxyTelemetry({
+            state: 'monitoring',
+            workerPid: existingDaemon.processInfo?.pid || null,
+            workerStartedAt: null,
+            workerExitAt: null,
+            workerExitCode: null,
+            workerExitSignal: null
+        });
+        recordProxyEvent('proxy-monitoring-existing-daemon', {
+            workerPid: existingDaemon.processInfo?.pid || null,
+            restartCount
+        });
+        startDaemonWatchdogHealthCheck();
+        shouldSpawnInitialWorker = false;
+        releaseStartupLock();
+    }
 }
 
 /**
@@ -474,7 +493,7 @@ function startDaemonWatchdogHealthCheck() {
         try {
             const daemonHealth = await detectHealthyDaemon(port, projectPath, MAX_RESPONSE_TIME_MS);
             
-            if (daemonHealth.healthy) {
+            if (daemonHealth.alive) {
                 // Reset failure counter on success
                 if (consecutiveFailures > 0) {
                     log(`✅ Health check recovered (was ${consecutiveFailures} failures)`);
@@ -529,7 +548,9 @@ function startDaemonWatchdogHealthCheck() {
 }
 
 ensureCompilerRuntimeDirSync(projectRoot);
-writeOwnerLock('starting');
-persistProxyTelemetry({ state: 'booting' });
-spawnWorker();
-releaseStartupLock();
+if (shouldSpawnInitialWorker) {
+    writeOwnerLock('starting');
+    persistProxyTelemetry({ state: 'booting' });
+    spawnWorker();
+    releaseStartupLock();
+}

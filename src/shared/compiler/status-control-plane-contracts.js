@@ -99,6 +99,14 @@ export function resolveControlPlaneContracts(status = {}) {
     metricsSnapshot.propagation,
     metricsSnapshot.current?.folderizationPropagation
   );
+  const controlPlane = firstDefined(
+    status.controlPlane,
+    compilerExplainability.controlPlane,
+    healthSnapshot.controlPlane,
+    metricsSnapshot.controlPlane,
+    systemInventory?.controlPlane,
+    canonicalPromotion?.controlPlane
+  );
 
   return {
     systemInventory: systemInventory || null,
@@ -108,6 +116,7 @@ export function resolveControlPlaneContracts(status = {}) {
     folderizationAdoption: folderizationAdoption || null,
     integrationCoveragePct: Number(systemInventory?.integrationCoveragePct || systemInventory?.summary?.integrationCoveragePct || 0) || 0,
     propagation,
+    controlPlane: controlPlane || null,
     historyStores: firstDefined(
       systemInventory?.historyStores,
       systemInventory?.summary?.historyStores,
@@ -130,6 +139,7 @@ export function resolveDashboardControlPlaneContracts(snapshot = null, compilerE
     folderizationPropagation,
     canonicalPromotion,
     policyCoverage,
+    controlPlane: normalizedSnapshot.controlPlane || normalizedSnapshot.current?.controlPlane || compilerExplainability?.controlPlane || null,
     folderizationAdoption: current.folderizationAutomation?.propagationAdoption || null,
     integrationCoveragePct: Number(compilerExplainability?.systemInventory?.integrationCoveragePct || compilerExplainability?.systemInventory?.summary?.integrationCoveragePct || 0) || 0,
     propagationExpansion,

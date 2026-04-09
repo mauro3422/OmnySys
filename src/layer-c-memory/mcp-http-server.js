@@ -26,6 +26,11 @@ import fs from 'fs';
 import { spawn } from 'child_process';
 import { sanitizeLogText } from '../utils/logger.js';
 
+let coreRef = null;
+let initError = null;
+let bootComplete = false;
+let shutdownInProgress = false;
+
 function appendWorkerCrashTrace(kind, message, stack = '') {
   try {
     const tracePath = `${process.cwd()}\\logs\\mcp-worker-crash-trace.log`;
@@ -39,12 +44,33 @@ function appendWorkerCrashTrace(kind, message, stack = '') {
   }
 }
 
+function buildWorkerExitContext() {
+  return [
+    `bootComplete=${bootComplete}`,
+    `shutdownInProgress=${shutdownInProgress}`,
+    `initialized=${Boolean(coreRef?.initialized)}`,
+    `currentStep=${coreRef?.currentInitializationStep || 'none'}`,
+    `currentDetail=${coreRef?.currentInitializationDetail || 'none'}`,
+    `initError=${initError?.message || 'none'}`
+  ].join(' | ');
+}
+
+const originalProcessExit = process.exit.bind(process);
+process.exit = ((code = 0) => {
+  appendWorkerCrashTrace('processExitCall', `code=${code} | ${buildWorkerExitContext()}`);
+  return originalProcessExit(code);
+});
+
 // CRITICAL: Register error handlers BEFORE any async code runs
 // This catches errors that occur during module evaluation / startup
 process.on('uncaughtException', (error) => {
   const msg = `[WORKER UNCAUGHT EXCEPTION] ${error.message}\n${error.stack || ''}`;
   process.stderr.write(msg + '\n');
-  appendWorkerCrashTrace('uncaughtException', error.message || 'unknown', error.stack || '');
+  appendWorkerCrashTrace(
+    'uncaughtException',
+    `${error.message || 'unknown'} | ${buildWorkerExitContext()}`,
+    error.stack || ''
+  );
   // Don't exit immediately — let proxy handle the restart
 });
 
@@ -53,9 +79,13 @@ process.on('unhandledRejection', (reason) => {
   process.stderr.write(msg + '\n');
   appendWorkerCrashTrace(
     'unhandledRejection',
-    reason?.message || String(reason || 'unknown'),
+    `${reason?.message || String(reason || 'unknown')} | ${buildWorkerExitContext()}`,
     reason?.stack || ''
   );
+});
+
+process.on('exit', (code) => {
+  appendWorkerCrashTrace('processExit', `code=${code} | ${buildWorkerExitContext()}`);
 });
 
 const heapLimitMB = v8.getHeapStatistics().heap_size_limit / 1024 / 1024;
@@ -300,9 +330,8 @@ app.use((req, res, next) => {
 
 const sessions = new Map();
 const core = new OmnySysMCPServer(projectPath);
+coreRef = core;
 core.sessions = sessions;
-let initError = null;
-let shutdownInProgress = false;
 
 const executeLiveMcpToolCall = (request, sessionContext = {}) => executeMcpToolCall(request, {
   initError: () => initError,
@@ -471,10 +500,11 @@ logger.info(`Project: ${projectPath}`);
 
 // CRITICAL: Boot timeout diagnostic — must be set BEFORE core.initialize() starts
 const BOOT_TIMEOUT_MS = 45000;
-let bootComplete = false;
 const bootTimer = setTimeout(() => {
   if (!bootComplete) {
-    process.stderr.write(`[WORKER BOOT TIMEOUT] Initialization exceeded ${BOOT_TIMEOUT_MS}ms. Core initialized: ${core.initialized}\n`);
+    const timeoutMessage = `[WORKER BOOT TIMEOUT] Initialization exceeded ${BOOT_TIMEOUT_MS}ms. Core initialized: ${core.initialized}. Step: ${core.currentInitializationStep || 'unknown'}\n`;
+    process.stderr.write(timeoutMessage);
+    appendWorkerCrashTrace('bootTimeout', timeoutMessage.trim());
   }
 }, BOOT_TIMEOUT_MS);
 bootTimer.unref();
@@ -515,6 +545,11 @@ core.initialize = async function() {
     bootComplete = false;
     clearTimeout(bootTimer);
     process.stderr.write(`[WORKER BOOT FAILED] core.initialize() threw: ${error.message}\n${error.stack || ''}\n`);
+    appendWorkerCrashTrace(
+      'bootFailed',
+      `${error.message} | ${buildWorkerExitContext()}`,
+      error.stack || ''
+    );
     throw error;
   }
 };

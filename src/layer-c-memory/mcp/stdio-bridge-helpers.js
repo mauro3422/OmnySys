@@ -121,11 +121,32 @@ export function buildInitializeResponse(requestId, cachedResponse = null) {
     };
 }
 
+export function resolveRestartType(args = {}) {
+    if (args?.refreshOnly) return 'refresh_only';
+    if (args?.softReload) return 'soft_reload';
+    if (args?.clearCacheOnly) return 'cache_only_flush';
+    if (args?.processRestart) return 'true_process_restart';
+    if (args?.reindexOnly) return 'reindex_only';
+    if (args?.reanalyze) return 'proxy_reanalyze';
+    if (args?.clearCache) return 'legacy_proxy_restart_with_clear_cache';
+    return 'legacy_proxy_restart';
+}
+
+export function isProxyManagedRestartArgs(args = {}) {
+    const restartType = resolveRestartType(args);
+    return !['refresh_only', 'soft_reload', 'cache_only_flush', 'reindex_only'].includes(restartType);
+}
+
 export function buildRestartAcceptedResponse(requestId, args = {}, options = {}) {
+    const restartType = resolveRestartType(args);
     const processRestart = Boolean(args?.processRestart);
+    const proxyManagedRestart = isProxyManagedRestartArgs(args);
+    const defaultRetryAfterMs = args?.reanalyze
+        ? 15000
+        : (proxyManagedRestart ? 5000 : 0);
     const retryAfterMs = Number.isFinite(Number(options.retryAfterMs))
         ? Math.max(0, Number(options.retryAfterMs))
-        : (processRestart ? 5000 : 0);
+        : defaultRetryAfterMs;
     const estimatedReadyAt = options.estimatedReadyAt || (retryAfterMs > 0
         ? new Date(Date.now() + retryAfterMs).toISOString()
         : null);
@@ -133,15 +154,17 @@ export function buildRestartAcceptedResponse(requestId, args = {}, options = {})
         success: true,
         restarting: true,
         processRestart,
-        restartType: processRestart ? 'true_process_restart' : 'restart',
-        message: processRestart
+        proxyManagedRestart,
+        restartType,
+        message: proxyManagedRestart
             ? `Restart request accepted. The bridge is recovering and will reconnect automatically. Estimated ready in about ${Math.max(1, Math.ceil(retryAfterMs / 1000))}s.`
             : 'Restart request accepted.',
-        bridgeRecovery: processRestart
+        bridgeRecovery: proxyManagedRestart
             ? {
                 state: 'recovering',
                 retryAfterMs,
                 estimatedReadyAt,
+                forceFreshSession: true,
                 suggestedRetryMethods: ['get_server_status', 'list_tools']
             }
             : {

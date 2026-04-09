@@ -121,4 +121,47 @@ describe('restart-runtime', () => {
       process.send = originalProcessSend;
     }
   });
+
+  it('marks no-flag proxy restarts as legacy and recommends an explicit mode', async () => {
+    const originalProcessSend = process.send;
+    process.send = vi.fn();
+
+    try {
+      const result = await handleRuntimeRestart({}, { server: {}, cache: null });
+
+      expect(result.success).toBe(true);
+      expect(result.restartType).toBe('legacy_proxy_restart');
+      expect(result.legacyMode).toBe(true);
+      expect(result.explicitModeRecommended).toBe(true);
+      expect(result.message).toContain('without an explicit mode');
+      expect(process.send).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'restart',
+        reason: 'manual_restart'
+      }));
+    } finally {
+      process.send = originalProcessSend;
+    }
+  });
+
+  it('marks clearCache-only proxy restarts as legacy and keeps the warning explicit', async () => {
+    const originalProcessSend = process.send;
+    process.send = vi.fn();
+
+    try {
+      const result = await handleRuntimeRestart({ clearCache: true }, { server: {}, cache: null });
+
+      expect(result.success).toBe(true);
+      expect(result.restartType).toBe('legacy_proxy_restart_with_clear_cache');
+      expect(result.legacyMode).toBe(true);
+      expect(result.explicitModeRecommended).toBe(true);
+      expect(result.message).toContain('clearCache=true');
+      expect(process.send).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'restart',
+        clearCache: true,
+        reason: 'manual_restart'
+      }));
+    } finally {
+      process.send = originalProcessSend;
+    }
+  });
 });

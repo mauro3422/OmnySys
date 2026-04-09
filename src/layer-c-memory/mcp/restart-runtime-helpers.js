@@ -266,17 +266,22 @@ What to expect:
 }
 
 export function buildProxyRestartResult({ clearCache, reanalyze, clearCacheOnly, reindexOnly }) {
+  const restartType = reanalyze
+    ? 'proxy_reanalyze'
+    : (clearCache ? 'legacy_proxy_restart_with_clear_cache' : 'legacy_proxy_restart');
+  const retryAfterMs = reanalyze ? 15000 : 5000;
+
   return {
     success: true,
     restarting: true,
-    restartType: 'true_process_restart',
+    restartType,
     bridgeRecovery: {
       trigger: 'server rejected request after daemon restart',
       forceFreshSession: true,
-      retryAfterMs: 250
+      retryAfterMs
     },
     lifecycle: buildRestartLifecycleGuidance({
-      restartType: 'true_process_restart',
+      restartType,
       proxyMode: true,
       clearCache,
       reanalyze,
