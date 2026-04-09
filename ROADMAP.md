@@ -1,8 +1,8 @@
 # OmnySys — Roadmap de Desarrollo
 
-**Versión actual**: v0.9.61  
-**Última actualización**: 2026-02-25  
-**Estado**: ✅ **100% Estático, 0% LLM** - Dead Code Detection 85% preciso
+**Versión actual**: v0.9.285
+**Última actualización**: 2026-04-09
+**Estado**: ✅ **100% Estático, 0% LLM** — Tree-sitter + SQLite + 45 MCP Tools
 
 ---
 
@@ -26,7 +26,7 @@ OMNYSYS (Molecular):
 │  Dentro de la caja hay ÁTOMOS       │
 │  └── Cada función es un átomo       │
 │  ✅ Sabes que existe processOrder() │
-│  ✅ Sabes que tiene 3 parámetros    │
+│  ✅ Sabes sus parámetros            │
 │  ✅ Sabes que llama a calculateTotal│
 └─────────────────────────────────────┘
 
@@ -35,32 +35,47 @@ OMNYSYS (Data Flow):
 │  Dentro del átomo hay ELECTRONES    │
 │  ✅ "order entra por aquí"          │
 │  ✅ "se transforma en total aquí"   │
-│  ✅ "sale como orderId aquí"        │
 │  ✅ "Si cambias order.items → 8 archivos afectados" │
 └─────────────────────────────────────┘
 ```
-
-**IMPORTANTE (v0.9.61)**: Todo el análisis es **100% ESTÁTICO, 0% LLM**. No usamos inteligencia artificial para extraer metadata.
 
 ---
 
 ## ✅ Fases Completadas
 
+### ✅ v0.9.285 — Propagation Engine + Control Plane (2026-04)
+
+**Logros**:
+- ✅ Motor de propagación canónico para cambios de folderización
+- ✅ Plano de control del compilador con 8 señales
+- ✅ Telemetría de runtime (proxy + bridge) con detección de thrashing
+- ✅ Promoción canónica para familias folderizadas y superficies emergentes
+- ✅ Inventario de sistemas (22 sistemas: 18 canónicos, 3 emergentes, 2 bridges, 2 wrappers)
+- ✅ Snapshot de folderización con naming debt tracking
+- ✅ Consolidación de monolitos: 5 archivos ~3,550L → 44 módulos
+- ✅ Delta compression en atom-history (~60% reducción de payload)
+- ✅ Snapshot rotation (1 por día máximo)
+- ✅ Process restart split con DB preservation
+
+**Métricas actuales**:
+- Átomos indexados: 14,241 activos
+- Archivos analizados: 2,813 activos
+- Herramientas MCP: 45
+- Relaciones en grafo: 11,202
+- Sociedades de cohesión: 1,780
+- Health Score: 62/100 (D-) — bloqueado por policy drift
+- Database Health: 76/100 (C+) — schema A (0 drift)
+- Reliability/Trust: 44/100 (F)
+
+---
+
 ### ✅ v0.9.61 — Dead Code Detection + Refactorización (2026-02-25)
 
 **Logros**:
-- ✅ Dead Code Detection 85% preciso (273 → 42 casos)
-- ✅ 100% Estático, 0% LLM (LLM deprecated)
+- ✅ Dead Code Detection 85% preciso
+- ✅ 100% Estático, 0% LLM
 - ✅ 3 archivos refactorizados (audit-logger, write-queue, resolver)
 - ✅ 8 god functions refactorizadas
-- ✅ 29 MCP tools disponibles
-- ✅ Documentación completa actualizada (19 archivos)
-
-**Métricas**:
-- Health Score: 99/100 (Grade A)
-- Archivos analizados: 1,860
-- Átomos extraídos: 13,485
-- Test Coverage: 79%
 
 ---
 
@@ -74,16 +89,7 @@ OMNYSYS (Data Flow):
 
 ---
 
-### ✅ v0.9.58 — SQLite Migration (2026-02-23)
-
-**Logros**:
-- ✅ Todos los tools usan SQLite
-- ✅ 5 archivos migrados
-- ✅ JSON legacy eliminado
-
----
-
-### ✅ v0.9.54 — Zero Technical Debt (2026-02-22)
+### ✅ v0.9.54 — Zero Technical Debt Push (2026-02-22)
 
 **Logros**:
 - ✅ 13 files refactored (100%)
@@ -92,164 +98,185 @@ OMNYSYS (Data Flow):
 
 ---
 
-## 🔴 Trabajo en Progreso (v0.9.61)
-
-### Deuda Técnica Restante
+## 🔴 Estado Actual — Deuda Técnica Activa
 
 | Tipo | Cantidad | Estado |
 |------|----------|--------|
-| **God Functions** | 193 | 🔴 En progreso |
-| **Duplicados** | 118 exactos | 🔴 Pendiente |
-| **Test Coverage** | 79% (target: 80%) | 🟡 Casi |
-| **Async Waterfalls** | 4 funciones críticas | 🔴 Pendiente |
-| **Race Conditions** | 3 detectadas | 🔴 Pendiente |
+| **Policy Drift** | 136 hallazgos | 🔴 Bloquea control plane |
+| **Hotspots de Complejidad** | 15 funciones CC > 30 | 🔴 Target ≤ 15 |
+| **Duplicados Estructurales** | 5 grupos (10 instancias) | 🟡 Baja urgencia |
+| **Duplicados Conceptuales** | 2 (watcher detected) | 🟡 Media urgencia |
+| **Naming Debt** | 1,871 renombres | 🟡 Folderización pendiente |
+| **Metadata Coverage** | 84% | 🟡 Target > 90% |
+| **Estado Compartido Radiactivo** | 1 átomo (50 dependientes) | 🔴 Alto riesgo |
+
+---
+
+## 📋 Roadmap Inmediato
+
+### Sprint 1 — Desbloquear Control Plane
+
+**Prioridad**: 🔴 CRÍTICA
+
+1. **Reconciliar universo de archivos** — Los archivos vivos indexados exceden el manifiesto persistido. Un rescan completo sincroniza la DB con el filesystem real.
+2. **Consolidar 136 policy drifts** — Son hallazgos de gobernanza activos. Clasificar por tipo (data_gateway, propagation_expansion, summary_presentation, etc.) y reparar.
+3. **Reparar database health** — Las proyecciones están drifting del grafo de átomos canónico.
+
+**Resultado esperado**: Control plane pasa de `blocked` a `watching` o `ready`.
+
+---
+
+### Sprint 2 — Refactorizar Hotspots
+
+**Prioridad**: 🔴 ALTA
+
+Las 5 funciones más complejas necesitan división SOLID:
+
+| Función | CC Actual | Target | Archivo |
+|---------|-----------|--------|---------|
+| `buildTechnicalDebtReportValues` | 55 | ≤ 15 | `technical-debt-report-cache-helpers.js` |
+| `buildTelemetryRegistry` | 47 | ≤ 15 | `compiler-control-plane-telemetry.js` |
+| `persistFolderizationSnapshot` | 43 | ≤ 15 | `folderization-snapshot-helpers.js` |
+| `summarizeCompilerControlPlane` | 42 | ≤ 15 | `compiler-control-plane.js` |
+| `buildCurrentMetrics` | 39 | ≤ 15 | `compiler-metrics-current.js` |
+
+**Herramienta**: `execute_solid_split({ filePath, symbolName, execute: false })` para previsualizar antes de aplicar.
+
+---
+
+### Sprint 3 — Consolidar Duplicados
+
+**Prioridad**: 🟡 MEDIA
+
+5 grupos de duplicados estructurales para consolidar:
+
+1. `isTransientSqliteAvailabilityError` → SSOT en `shared/utils/normalize-helpers.js`
+2. `firstDefined` → SSOT en `shared/compiler/compiler-observability-contract.js`
+3. `getDependentsForPath` → SSOT en `folderize-family-plan-runner.js`
+4. `IssueManager.constructor` → SSOT en `consistency/issue-manager/manager.js`
+5. `IssueManager.getIssues` → SSOT en `consistency/issue-manager/manager.js`
+
+**Herramienta**: `consolidate_conceptual_cluster({ semanticFingerprint, ssotFilePath, execute: true })`
+
+---
+
+### Sprint 4 — Lazy Indexing (Performance)
+
+**Prioridad**: 🟡 MEDIA
+
+Migrar de análisis "Big Bang" a arquitectura escalonada tipo LSP:
+
+```
+Phase 1 (Structural Fast Scan) < 5s:
+  Tree-sitter → Nombres/Firmas/Imports → SQLite → MCP Tools disponibles
+
+Phase 2 (Deep Semantic Scan) Background/Lazy:
+  DataFlow · Semántica · DNA · calledBy links · enrichWithCulture
+  → Actualizaciones incrementales a SQLite
+```
+
+**Objetivo**: TTI (Time-to-Interactive) < 5s vs ~4.5s actuales para carga desde caché.
 
 ---
 
 ## 📋 Roadmap Futuro
 
-### Q2 2026 - Tree-sitter Migration
-
-**Qué**: Reemplazar Babel con Tree-sitter
-
-**Por qué**:
-- Mejor detección de `isExported` para arrow functions
-- Análisis de tipos TypeScript más preciso
-- Performance mejorado en proyectos grandes
-- Soporte para más lenguajes (Rust, Go, Python)
-
-**Estado**: 🚧 PLANIFICADO
-
----
-
-### Q3 2026 - Intra-Atómico
+### Q3 2026 — Intra-Atómico
 
 **Qué**: Dentro de cada transformación, ver los **sub-átomos**:
 
 ```javascript
-// Transformación actual (v0.9.61)
-{
-  from: "total",
-  to: "finalTotal",
-  operation: "arithmetic"
-}
+// Transformación actual
+{ from: "total", to: "finalTotal", operation: "arithmetic" }
 
-// Intra-atómico (Q3 2026) - MÁS GRANULAR
+// Intra-atómico — MÁS GRANULAR
 {
-  from: "total",
-  to: "finalTotal",
-  operation: "arithmetic",
+  from: "total", to: "finalTotal", operation: "arithmetic",
   subOperations: [
     { op: "multiply", operands: ["total", "discount"], result: "savings" },
     { op: "subtract", operands: ["total", "savings"], result: "finalTotal" }
-  ],
-  precision: "line-by-line"
+  ]
 }
 ```
 
-**Para qué sirve**:
-- Detectar precision loss en cálculos financieros
-- Optimizar transformaciones innecesarias
-- Validar invariantes matemáticos
-
-**Estado**: 🚧 PLANIFICADO
+**Para qué**: Detectar precision loss en cálculos financieros, optimizar transformaciones innecesarias.
 
 ---
 
-### Q4 2026 - Estado Cuántico
+### Q4 2026 — Estado Cuántico
 
 **Qué**: Simular **todos los paths posibles** (if/else, try/catch):
 
 ```javascript
-// Simulación multi-universo
 function processOrder(order) {
   if (!order.items.length) throw new Error("Empty");  // Universo A
   if (order.total > 10000) applyDiscount();           // Universo B
   return saveOrder(order);                            // Universo C
 }
-
-// Posibles universos:
-Universe A: order.items=[] → throw → catch → error_response
-Universe B: order.total=15000 → applyDiscount → saveOrder → success
-Universe C: order.total=5000 → saveOrder → success
 ```
 
-**Para qué sirve**:
-- Generar test cases automáticamente
-- Detectar paths no cubiertos por tests
-- Análisis de riesgo: "¿Qué pasa si falla X?"
-
-**Estado**: 🚧 PLANIFICADO
+**Para qué**: Generar test cases automáticamente, detectar paths no cubiertos.
 
 ---
 
-### 2027 - Campo Unificado
+### 2027 — Campo Unificado
 
-**Qué**: Detectar **entrelazamiento cuántico** entre archivos lejanos:
+**Qué**: Detectar **entrelazamiento** entre archivos lejanos sin import directo:
 
 ```javascript
-// Archivo A (frontend)
-const user = await fetchUser(id);
-
-// Archivo B (backend)
-app.get('/api/user/:id', handler);
-
-// Entrelazamiento detectado:
-// frontend.fetchUser() ──entrelazado──→ backend./api/user/:id
+// Frontend: fetchUser(id) ──entrelazado──→ Backend: /api/user/:id
 // Si cambia el contrato en B, A se rompe (aunque no haya import directo)
 ```
 
-**Para qué sirve**:
-- Detectar breaking changes en APIs
-- Mapear dependencias cross-service
-- Validar contratos entre frontend y backend
-
-**Estado**: 🚧 PLANIFICADO
+**Para qué**: Detectar breaking changes en APIs, mapear dependencias cross-service.
 
 ---
 
 ## 📊 Métricas de Éxito
 
-### Actuales (v0.9.61)
+### Actuales (Abril 2026)
 
-| Métrica | Valor | Target | Estado |
-|---------|-------|--------|--------|
-| **Health Score** | 99/100 | >95 | ✅ Excelente |
-| **Test Coverage** | 79% | 80% | 🟡 Casi |
-| **God Functions** | 193 | <100 | 🔴 En progreso |
-| **Dead Code** | 42 | 0 | ✅ 85% mejora |
-| **Duplicados** | 118 | <50 | 🔴 Pendiente |
-| **LLM Usage** | 0% | 0% | ✅ COMPLETADO |
+| Métrica | Actual | Target | Estado |
+|---------|--------|--------|--------|
+| **Health Score** | 62/100 | > 80 | 🔴 |
+| **Database Health** | 76/100 | > 90 | 🟡 |
+| **Reliability/Trust** | 44/100 | > 70 | 🔴 |
+| **MVP Ready** | No | Sí | 🔴 |
+| **Herramientas MCP** | 45 | 45 | ✅ |
+| **Schema Drift** | 0 | 0 | ✅ |
+| **Análisis LLM** | 0% | 0% | ✅ |
 
-### Objetivos Q2 2026
+### Objetivos Inmediatos
 
-- [ ] Migrar a Tree-sitter
-- [ ] Eliminar 50% de god functions (193 → ~100)
-- [ ] Consolidar 50% de duplicados (118 → ~60)
-- [ ] Alcanzar 80% test coverage
-- [ ] Eliminar 3 race conditions
-- [ ] Reducir async waterfalls en 90%
+- [ ] Desbloquear control plane (136 policy drifts → 0)
+- [ ] Refactorizar 5 funciones con CC > 30
+- [ ] Consolidar 5 grupos de duplicados
+- [ ] Normalizar naming debt (1,871 → < 500)
+- [ ] Subir metadata coverage de 84% a > 90%
+- [ ] Alcanzar MVP readiness
 
 ---
 
 ## 🎓 Lecciones Aprendidas
 
-### Lo que Funciona (v0.9.61)
+### Lo que Funciona
 
-1. ✅ **100% Estático**: No necesitamos LLM para el análisis
-2. ✅ **SQLite**: Mucho más rápido que JSON
-3. ✅ **Bulk Operations**: 10x más rápido
-4. ✅ **Dead Code Detection**: 85% preciso sin LLM
-5. ✅ **MCP Tools**: 29 herramientas determinísticas
+1. ✅ **100% Estático**: Tree-sitter + SQLite + álgebra de grafos — sin LLM
+2. ✅ **3 bases de datos separadas**: Activas + historial de átomos + historial de salud
+3. ✅ **45 herramientas MCP determinísticas**: Query, action, admin
+4. ✅ **Atomic editing**: Validación de sintaxis + propagación de impacto
+5. ✅ **DNA de código**: Detección de duplicados por estructura, no solo texto
+6. ✅ **FileWatcher con guards**: Integridad + impacto + cobertura semántica
+7. ✅ **Control plane**: Detecta cuándo el sistema confía en sus propios datos
 
 ### Lo que NO Funcionaba (y eliminamos)
 
-1. ❌ **LLM para análisis**: Lento, caro, impredecible
-2. ❌ **JSON storage**: Lento, sin integridad referencial
-3. ❌ **Inserts individuales**: 30 segundos vs 3 segundos
+1. ❌ **LLM para análisis**: Lento, caro, impredecible (deprecated desde v0.9.61)
+2. ❌ **JSON storage**: Lento, sin integridad referencial (migrado a SQLite)
+3. ❌ **Inserts individuales**: 30s vs 3s con bulk operations
 
 ---
 
-**Última actualización**: 2026-02-25 (v0.9.61)  
-**Estado**: ✅ **100% Estático, 0% LLM**  
-**Próximo**: 🚧 Migración a Tree-sitter (Q2 2026)
+**Última actualización**: 2026-04-09 (v0.9.285)
+**Estado**: ✅ **100% Estático, 0% LLM**
+**Próximo**: 🔧 Desbloquear control plane → Refactorizar hotspots → Consolidar duplicados
