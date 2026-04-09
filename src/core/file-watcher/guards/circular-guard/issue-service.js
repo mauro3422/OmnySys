@@ -19,13 +19,22 @@ import {
 
 export async function persistCircularIssue(rootPath, filePath, severity, message, context) {
   try {
+    const propagation = context?.extraData?.propagation || null;
     await persistWatcherIssue(
       rootPath,
       filePath,
       createIssueType(IssueDomains.ARCH, 'circular', severity),
       severity,
       message,
-      context
+      propagation
+        ? {
+            ...context,
+            extraData: {
+              ...(context?.extraData || {}),
+              propagation
+            }
+          }
+        : context
     );
   } catch {
     // Watcher persistence already degrades gracefully; avoid bubbling runtime noise.

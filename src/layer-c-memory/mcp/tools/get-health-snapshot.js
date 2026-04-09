@@ -7,9 +7,52 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
+import {
+  buildPropagationPlan,
+  summarizePropagationPlan
+} from '../../../shared/compiler/index.js';
 import { buildCompilerSnapshotContext } from './compiler-snapshot-service.js';
 
 const logger = createLogger('OmnySys:health-snapshot');
+
+function buildHealthSnapshotPropagation(result) {
+  const propagation = result.controlPlane?.propagation || result.controlPlaneSummary?.propagation || null;
+  const missingSystems = Array.isArray(propagation?.missingSystemNames)
+    ? propagation.missingSystemNames
+    : [];
+  const state = propagation?.state || 'missing';
+  const decision = state === 'fresh'
+    ? 'approve'
+    : state === 'stale' || state === 'watching' || state === 'partial'
+      ? 'review'
+      : 'reject';
+
+  return summarizePropagationPlan(buildPropagationPlan({
+    changeType: 'folderization',
+    decision,
+    impactedFileCount: Number(propagation?.missingSystemCount || 0),
+    rewriteCount: Number(propagation?.missingSystemCount || 0),
+    validationTargetCount: Number(propagation?.expectedSystemCount || 0),
+    hasCrossFamilyPropagation: missingSystems.length > 0,
+    topImpactedFiles: missingSystems.slice(0, 5).map((name) => ({
+      filePath: name,
+      dependencyCount: 1
+    })),
+    topCandidates: missingSystems.slice(0, 5).map((name) => ({
+      familyRoot: name,
+      decision: 'missing'
+    })),
+    candidateCount: Number(propagation?.expectedSystemCount || 0),
+    guidance: propagation?.recommendation || null,
+    recommendationStrategy: 'health_snapshot',
+    drift: propagation ? {
+      state,
+      reason: propagation?.recommendation || propagation?.state || 'Propagation state unavailable.'
+    } : null,
+    scopePath: result.snapshot?.scopePath || null,
+    focusPath: result.snapshot?.focusPath || null
+  }));
+}
 
 function buildHealthSnapshotResponse(result) {
   return {
@@ -24,6 +67,7 @@ function buildHealthSnapshotResponse(result) {
     history: result.snapshot.history,
     trend: result.snapshot.trend,
     oneLine: result.healthPanel?.oneLine || null,
+    propagation: buildHealthSnapshotPropagation(result),
     systemInventory: result.systemInventory || null,
     canonicalPromotionDetail: result.canonicalPromotionDetail || null,
     canonicalPromotion: result.canonicalPromotion || null,

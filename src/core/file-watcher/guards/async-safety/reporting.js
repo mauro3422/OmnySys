@@ -5,18 +5,24 @@ export async function reportAsyncSafetyIssues({
     filePath,
     issues,
     networkIssues,
+    propagation,
     EventEmitterContext,
     verbose,
     logger
 }) {
-    await persistAsyncSafetyIssues(rootPath, filePath, issues, networkIssues);
+    const persistence = await persistAsyncSafetyIssues(rootPath, filePath, issues, networkIssues);
+    const resolvedPropagation = propagation
+        || persistence?.propagation
+        || issues[0]?.context?.extraData?.propagation
+        || null;
 
     EventEmitterContext.emit('runtime:async-safety', {
         filePath,
         totalIssues: issues.length,
         high: issues.filter((issue) => issue.severity === 'high').length,
         networkIssues,
-        sample: issues.slice(0, 3).map((issue) => issue.atomName)
+        sample: issues.slice(0, 3).map((issue) => issue.atomName),
+        propagation: resolvedPropagation
     });
 
     if (verbose) {

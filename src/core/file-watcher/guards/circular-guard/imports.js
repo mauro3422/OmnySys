@@ -1,6 +1,7 @@
 import { createLogger } from '../../../../utils/logger.js';
 import { prepareFileDependencyLookup } from './repository.js';
 import { clearCircularIssues } from './issue-service.js';
+import { buildCircularPropagation } from './context.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
 
@@ -53,6 +54,15 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
     const shortestCycle = cyclesFound.sort((a, b) => a.length - b.length)[0];
     const cycleStr = shortestCycle.join(' -> ');
     logger.warn(`[CIRCULAR GUARD] Circular import detected: ${cycleStr}`);
+    const propagation = buildCircularPropagation({
+      scopePath: rootPath,
+      focusPath: filePath,
+      severity: 'high',
+      cycleType: 'import',
+      candidateNames: shortestCycle,
+      cycleLength: shortestCycle.length,
+      reason: cycleStr
+    });
 
     const context = {
       severity: 'high',
@@ -66,14 +76,15 @@ export async function detectCircularImportsForFile(rootPath, filePath, EventEmit
         cycleType: 'import',
         cycles: cyclesFound,
         shortestCycle,
-        cycleLength: shortestCycle.length
+        cycleLength: shortestCycle.length,
+        propagation
       }
     };
 
     const { persistCircularIssue } = await import('./issue-service.js');
     await persistCircularIssue(rootPath, filePath, 'high', `Circular dependency: ${cycleStr}`, context);
 
-    EventEmitterContext.emit('arch:circular', { filePath, cycles: cyclesFound });
+    EventEmitterContext.emit('arch:circular', { filePath, cycles: cyclesFound, propagation });
     return cyclesFound;
   } catch (error) {
     logger.debug(`[CIRCULAR GUARD SKIP] ${filePath}: ${error.message}`);

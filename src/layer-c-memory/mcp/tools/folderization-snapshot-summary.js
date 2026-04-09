@@ -1,5 +1,9 @@
 import { buildFolderizationSnapshotTrend } from './folderization-snapshot-helpers.js';
 import { buildCompilerDriftAssessment } from '../../../shared/compiler/compiler-drift-assessment.js';
+import {
+  buildDataGatewayContract,
+  summarizeDataGatewayContract
+} from '../../../shared/compiler/index.js';
 import { summarizeSemanticCanonicality } from '../../../shared/compiler/semantic-surface-granularity-contract.js';
 
 /**
@@ -34,21 +38,23 @@ function countLiveRowSyncStaleRows(liveRowSync) {
   );
 }
 
-function buildMissingLiveRowSyncSummary() {
+function buildMissingLiveRowSyncSummary(dataGatewaySummary = null) {
   return {
-    state: 'missing',
+    state: dataGatewaySummary?.primaryIssue?.state || 'missing',
     healthy: false,
     trustworthy: false,
     staleRows: 0,
-    reason: 'No live row sync summary is available.',
-    recommendation: 'Reconcile the live support tables before trusting folderization guidance.'
+    reason: dataGatewaySummary?.primaryIssue?.reason || 'No live row sync summary is available.',
+    recommendation: dataGatewaySummary?.nextAction || 'Reconcile the live support tables before trusting folderization guidance.',
+    gatewaySummary: dataGatewaySummary
   };
 }
 
-function buildLiveRowSyncSummary({ liveRowSync, liveRowSignal, staleRows }) {
+function buildLiveRowSyncSummary({ liveRowSync, liveRowSignal, staleRows, dataGatewaySummary }) {
   const hasCleanupError = liveRowSync.cleanupError != null;
   const isSettling = liveRowSync.skippedReason === 'phase2_settling';
   const state = liveRowSignal?.state
+    || dataGatewaySummary?.primaryIssue?.state
     || (hasCleanupError
       ? 'blocked'
       : isSettling
@@ -59,9 +65,11 @@ function buildLiveRowSyncSummary({ liveRowSync, liveRowSignal, staleRows }) {
   const healthy = liveRowSignal?.healthy === true || (!hasCleanupError && staleRows === 0);
   const trustworthy = liveRowSignal?.trustworthy === true || (!hasCleanupError && staleRows === 0);
   const reason = liveRowSignal?.reason
+    || dataGatewaySummary?.primaryIssue?.reason
     || liveRowSync.cleanupError?.message
     || (staleRows > 0 ? 'Live support tables are drifting from the atom graph.' : 'Live support tables are aligned with the atom graph.');
   const recommendation = liveRowSignal?.recommendation
+    || dataGatewaySummary?.nextAction
     || liveRowSync.before?.recommendedActions?.[0]
     || (staleRows > 0 ? 'Reconcile the live support tables before trusting folderization guidance.' : 'Keep live-row reconciliation on the canonical path.');
 
@@ -73,13 +81,14 @@ function buildLiveRowSyncSummary({ liveRowSync, liveRowSignal, staleRows }) {
     reason,
     recommendation,
     evidence: liveRowSignal?.evidence || liveRowSync,
-    assessment: liveRowSignal
+    assessment: liveRowSignal,
+    gatewaySummary: dataGatewaySummary
   };
 }
 
-export function summarizeLiveRowSync(liveRowSync = null) {
+export function summarizeLiveRowSync(liveRowSync = null, dataGatewaySummary = null) {
   if (!liveRowSync) {
-    return buildMissingLiveRowSyncSummary();
+    return buildMissingLiveRowSyncSummary(dataGatewaySummary);
   }
 
   const assessment = buildCompilerDriftAssessment({ liveRowSync });
@@ -87,7 +96,7 @@ export function summarizeLiveRowSync(liveRowSync = null) {
     ? assessment.signals.find((signal) => signal?.key === 'live_row_sync') || null
     : null;
   const staleRows = countLiveRowSyncStaleRows(liveRowSync);
-  return buildLiveRowSyncSummary({ liveRowSync, liveRowSignal, staleRows });
+  return buildLiveRowSyncSummary({ liveRowSync, liveRowSignal, staleRows, dataGatewaySummary });
 }
 
 export function buildFolderizationSnapshotSummary({
@@ -99,7 +108,12 @@ export function buildFolderizationSnapshotSummary({
 } = {}) {
   const summary = folderizationReport?.summary || {};
   const creationGuidance = folderizationReport?.creationGuidance || {};
-  const liveRowSync = summarizeLiveRowSync(databaseHealth?.metrics?.liveRowSync || null);
+  const dataGatewayContract = buildDataGatewayContract({ databaseHealth });
+  const dataGatewaySummary = summarizeDataGatewayContract(dataGatewayContract);
+  const liveRowSync = summarizeLiveRowSync(
+    databaseHealth?.metrics?.liveRowSync || null,
+    dataGatewaySummary
+  );
   const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: liveRowSync.state } }, history);
   const folderizationDrift = folderizationReport?.drift || {
     state: liveRowSync.state,

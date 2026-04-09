@@ -7,7 +7,10 @@
  */
 
 import { readFileSync } from 'fs';
-import { detectPolicyDrifts, detectPolicyDriftsInDirectory } from './policy-drift-scanner.js';
+import {
+  detectPolicyDriftsBatch,
+  detectPolicyDriftsInDirectory
+} from './policy-drift-scanner.js';
 import { FIX_TEMPLATES } from './policy-drift-templates.js';
 
 // ── Plan Generation ────────────────────────────────────────────────

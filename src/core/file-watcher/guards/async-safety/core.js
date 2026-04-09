@@ -24,7 +24,7 @@ export async function detectAsyncSafetyIssues(rootPath, filePath, EventEmitterCo
             return [];
         }
 
-        const { issues, networkIssues } = collectAsyncSafetyIssues(atoms, maxAsyncLines);
+        const { issues, networkIssues, propagation } = collectAsyncSafetyIssues(atoms, maxAsyncLines);
 
         if (issues.length > 0) {
             await reportAsyncSafetyIssues({
@@ -32,13 +32,17 @@ export async function detectAsyncSafetyIssues(rootPath, filePath, EventEmitterCo
                 filePath,
                 issues,
                 networkIssues,
+                propagation,
                 EventEmitterContext,
                 verbose,
                 logger
             });
         }
 
-        return issues;
+        return issues.map((issue) => ({
+            ...issue,
+            propagation: issue?.context?.extraData?.propagation || propagation || null
+        }));
     } catch (error) {
         logger.debug(`[ASYNC-SAFETY GUARD SKIP] ${filePath}: ${error.message}`);
         return [];

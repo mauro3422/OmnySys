@@ -29,8 +29,9 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
         const cycles = detectCycles(fileGraph);
         const fileCycle = cycles.find((cycle) => cycle.includes(relPath)) || null;
 
+        let moduleCycleResult = null;
         if (fileCycle) {
-            await persistModuleCycleIssue(rootPath, filePath, fileCycle);
+            moduleCycleResult = await persistModuleCycleIssue(rootPath, filePath, fileCycle);
         } else {
             await clearCircularIssues(rootPath, filePath);
         }
@@ -38,10 +39,14 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
         const localAtoms = getCircularLocalAtoms(repo.db, relPath);
 
         if (localAtoms.length === 0) {
-            return { fileCycle, atomCycle: null };
+            return {
+                fileCycle,
+                atomCycle: null,
+                propagation: moduleCycleResult?.context?.extraData?.propagation || null
+            };
         }
 
-        return detectCircularAtomCycles({
+        const cycleResult = await detectCircularAtomCycles({
             rootPath,
             filePath,
             relPath,
@@ -53,6 +58,10 @@ export async function detectCircularDependencies(rootPath, filePath, repo) {
             isLikelyInfrastructureCycleAtom,
             logger
         });
+        return {
+            ...cycleResult,
+            propagation: cycleResult?.propagation || moduleCycleResult?.context?.extraData?.propagation || null
+        };
     } catch (error) {
         logger.error(`[CIRCULAR GUARD FAILED] ${error.message}`);
         return null;

@@ -12,8 +12,26 @@ function buildFolderizationPropagationAdoptionTargets({
   snapshot,
   systemInventory,
   folderizationReport,
-  databaseHealth
+  databaseHealth,
+  watcherStats,
+  watcherAlerts = []
 }) {
+  const hasWatcherSurface = true;
+  const hasRenameSurface = Boolean(
+    folderizationReport?.normalization
+    || folderizationReport?.naming
+    || folderizationReport?.familyState
+  );
+  const hasHealthSnapshotSurface = Boolean(
+    snapshot?.driftAssessment
+    || snapshot?.dataGatewayContract
+    || snapshot?.metadataExtractionCoverage
+  );
+  const hasCachePolicySurface = Boolean(
+    watcherStats
+    || databaseHealth
+    || snapshot?.driftAssessment
+  );
   const exposedSurfaces = [
     { name: 'compiler_explainability', role: 'explainability', source: 'compilerExplainability', available: true },
     { name: 'compiler_health_dashboard', role: 'dashboard', source: 'health dashboard', available: true },
@@ -26,6 +44,10 @@ function buildFolderizationPropagationAdoptionTargets({
     { name: 'policy_coverage', role: 'policy', source: 'systemInventory.policyCoverage', available: Boolean(systemInventory?.policyCoverage) },
     { name: 'canonical_promotion', role: 'promotion', source: 'systemInventory.canonicalPromotion', available: Boolean(systemInventory?.canonicalPromotion) },
     { name: 'folderization', role: 'folderization', source: 'compilerExplainability.folderization', available: Boolean(folderizationReport) },
+    { name: 'rename_folderized_family', role: 'normalizer', source: 'folderization.normalization', available: hasRenameSurface },
+    { name: 'health_snapshot', role: 'history', source: 'mcp_omnysystem_get_health_snapshot', available: hasHealthSnapshotSurface },
+    { name: 'cache_policy', role: 'freshness', source: 'cache policy advisor', available: hasCachePolicySurface },
+    { name: 'watcher', role: 'reconciliation', source: 'watcher diagnostics / watcherStats', available: hasWatcherSurface },
     { name: 'propagation', role: 'propagation', source: 'compilerExplainability.folderization.propagation', available: Boolean(folderizationReport?.propagation) },
     { name: 'standardization', role: 'governance', source: 'standardizationReport', available: Boolean(snapshot.standardizationReport) },
     { name: 'compiler_contract_layer', role: 'governance', source: 'compilerContractLayer', available: Boolean(snapshot.compilerContractLayer) },
@@ -88,7 +110,9 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       snapshot,
       systemInventory,
       folderizationReport,
-      databaseHealth
+      databaseHealth,
+      watcherStats,
+      watcherAlerts
     });
     const propagationAdoptionRequiredSystems = Array.isArray(systemInventory?.topSystems) ? systemInventory.topSystems : [];
     const folderizationAutomation = buildFolderizationAutomationSummaryFromReport(folderizationReport, {

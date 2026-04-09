@@ -55,8 +55,11 @@ export function collectAsyncSafetyIssues(atoms = [], maxAsyncLines = 80, maxIssu
         }
     }
 
+    const propagation = issues[0]?.context?.extraData?.propagation || null;
+
     return {
         issues,
-        networkIssues
+        networkIssues,
+        propagation
     };
 }

@@ -15,6 +15,7 @@ export async function persistAsyncSafetyIssues(rootPath, filePath, issues, netwo
     try {
         const highIssues = issues.filter((issue) => issue.severity === 'high');
         const primaryIssue = highIssues[0] || issues[0];
+        const propagation = primaryIssue?.context?.extraData?.propagation || null;
 
         await persistWatcherIssue(
             rootPath,
@@ -28,8 +29,10 @@ export async function persistAsyncSafetyIssues(rootPath, filePath, issues, netwo
                 issues: issues.map((issue) => ({
                     atomName: issue.atomName,
                     severity: issue.severity,
-                    message: issue.message
+                    message: issue.message,
+                    propagation: issue?.context?.extraData?.propagation || null
                 })),
+                propagation,
                 ...primaryIssue.context
             }
         );
@@ -41,11 +44,12 @@ export async function persistAsyncSafetyIssues(rootPath, filePath, issues, netwo
             await clearWatcherIssue(rootPath, filePath, 'runtime_async_safety_medium');
         }
 
-        return { highIssues, primaryIssue };
+        return { highIssues, primaryIssue, propagation };
     } catch (error) {
         return {
             highIssues: [],
             primaryIssue: null,
+            propagation: null,
             error: error.message
         };
     }

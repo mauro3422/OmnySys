@@ -1,44 +1,46 @@
 import { takeSample } from './sample-helpers.js';
 
-export function normalizeConnectedSystems(connectedSystems = []) {
-  return takeSample(
-    (Array.isArray(connectedSystems) ? connectedSystems : [])
-      .map((item) => {
-        if (!item) return null;
-        if (typeof item === 'string') {
-          return { name: item, role: 'consumer', systemKind: 'unknown' };
-        }
+export function normalizeConnectedSystems(connectedSystems = [], limit = 8) {
+  const normalized = (Array.isArray(connectedSystems) ? connectedSystems : [])
+    .map((item) => {
+      if (!item) return null;
+      if (typeof item === 'string') {
+        return { name: item, role: 'consumer', systemKind: 'unknown' };
+      }
 
-        return {
-          name: item.name || item.system || item.role || null,
-          role: item.role || item.type || 'consumer',
-          systemKind: item.systemKind || item.kind || item.role || 'unknown'
-        };
-      })
-      .filter((item) => item?.name),
-      8
-  );
+      return {
+        name: item.name || item.system || item.role || null,
+        role: item.role || item.type || 'consumer',
+        systemKind: item.systemKind || item.kind || item.role || 'unknown'
+      };
+    })
+    .filter((item) => item?.name);
+
+  return typeof limit === 'number'
+    ? takeSample(normalized, limit)
+    : normalized;
 }
 
-export function normalizeInventorySystems(systems = []) {
-  return takeSample(
-    (Array.isArray(systems) ? systems : [])
-      .map((item) => {
-        if (!item) return null;
+export function normalizeInventorySystems(systems = [], limit = 12) {
+  const normalized = (Array.isArray(systems) ? systems : [])
+    .map((item) => {
+      if (!item) return null;
 
-        if (typeof item === 'string') {
-          return { name: item, role: 'inventory', systemKind: 'unknown' };
-        }
+      if (typeof item === 'string') {
+        return { name: item, role: 'inventory', systemKind: 'unknown' };
+      }
 
-        return {
-          name: item.name || item.surface || item.entrypoint || item.id || item.system || null,
-          role: item.role || item.kind || 'inventory',
-          systemKind: item.systemKind || item.kind || item.role || 'unknown'
-        };
-      })
-      .filter((item) => item?.name),
-    12
-  );
+      return {
+        name: item.name || item.surface || item.entrypoint || item.id || item.system || null,
+        role: item.role || item.kind || 'inventory',
+        systemKind: item.systemKind || item.kind || item.role || 'unknown'
+      };
+    })
+    .filter((item) => item?.name);
+
+  return typeof limit === 'number'
+    ? takeSample(normalized, limit)
+    : normalized;
 }
 
 export function buildPropagationAdoptionSummary({
@@ -46,11 +48,12 @@ export function buildPropagationAdoptionSummary({
   surfacedSystems = [],
   requiredSystems = []
 } = {}) {
-  const required = normalizeInventorySystems(requiredSystems.length > 0 ? requiredSystems : connectedSystems);
+  const required = normalizeInventorySystems(requiredSystems.length > 0 ? requiredSystems : connectedSystems, null);
   const surfaced = normalizeConnectedSystems(
     surfacedSystems.length > 0
       ? surfacedSystems
-      : (requiredSystems.length > 0 ? [] : connectedSystems)
+      : (requiredSystems.length > 0 ? [] : connectedSystems),
+    null
   );
   const surfacedSystemNames = surfaced.map((item) => item.name);
   const surfacedNameSet = new Set(surfacedSystemNames);

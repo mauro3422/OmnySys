@@ -5,10 +5,39 @@ import {
     createStandardContext,
     formatAsyncSafetyMessage
 } from '../guard-standards.js';
+import {
+    buildPropagationPlan,
+    summarizePropagationPlan
+} from '../../../../shared/compiler/index.js';
+
+function buildAsyncSafetyPropagation({ metrics, severity, reason, listenerThreshold }) {
+    return summarizePropagationPlan(buildPropagationPlan({
+        changeType: 'policy_drift',
+        scopePath: metrics.filePath || null,
+        focusPath: metrics.filePath || null,
+        severity,
+        impactedFileCount: 1,
+        rewriteCount: 1,
+        candidateCount: 1,
+        validationTargetCount: 1,
+        topCandidates: [{
+            name: metrics.name,
+            filePath: metrics.filePath || null
+        }],
+        topImpactedFiles: metrics.filePath ? [{ filePath: metrics.filePath }] : [],
+        guidance: 'Surface async-safety findings to watcher persistence, health snapshots, and drift governance before trusting runtime recovery paths.',
+        recommendationStrategy: 'async_safety',
+        drift: {
+            state: 'watch',
+            reason: reason || 'async safety finding'
+        }
+    }));
+}
 
 export function buildAsyncSafetyIssue({ metrics, listenerThreshold, reason }) {
     const severity = metrics.linesOfCode > listenerThreshold ? 'high' : 'medium';
     const issueType = createIssueType(IssueDomains.RUNTIME, 'async_safety', severity);
+    const propagation = buildAsyncSafetyPropagation({ metrics, severity, reason, listenerThreshold });
 
     return {
         atomId: metrics.id,
@@ -33,7 +62,8 @@ export function buildAsyncSafetyIssue({ metrics, listenerThreshold, reason }) {
                 hasNetworkCalls: true,
                 hasErrorHandling: false,
                 functionType: metrics.type,
-                complexity: metrics.complexity
+                complexity: metrics.complexity,
+                propagation
             }
         })
     };
@@ -42,6 +72,12 @@ export function buildAsyncSafetyIssue({ metrics, listenerThreshold, reason }) {
 export function buildAsyncSafetyMetadataIssue({ metrics, listenerThreshold }) {
     const severity = 'low';
     const issueType = createIssueType(IssueDomains.RUNTIME, 'async_safety', severity);
+    const propagation = buildAsyncSafetyPropagation({
+        metrics,
+        severity,
+        reason: 'async event-listener cleanup verification',
+        listenerThreshold
+    });
 
     return {
         atomId: metrics.id,
@@ -60,7 +96,8 @@ export function buildAsyncSafetyMetadataIssue({ metrics, listenerThreshold }) {
             extraData: {
                 eventListeners: metrics.eventListeners,
                 eventEmitters: metrics.eventEmitters || [],
-                source: 'metadata'
+                source: 'metadata',
+                propagation
             }
         })
     };

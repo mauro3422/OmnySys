@@ -1,5 +1,5 @@
 import { createLogger } from '../../../../utils/logger.js';
-import { buildCircularContext } from './context.js';
+import { buildCircularContext, buildCircularPropagation } from './context.js';
 import { persistCircularIssue, clearCircularIssues } from './issue-service.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:circular');
@@ -7,6 +7,15 @@ const logger = createLogger('OmnySys:file-watcher:guards:circular');
 export async function persistModuleCycleIssue(rootPath, filePath, fileCycle) {
   try {
     const message = `Circular module dependency detected: ${fileCycle.join(' -> ')}`;
+    const propagation = buildCircularPropagation({
+      scopePath: rootPath,
+      focusPath: filePath,
+      severity: 'high',
+      cycleType: 'module',
+      candidateNames: fileCycle,
+      cycleLength: fileCycle.length,
+      reason: message
+    });
     const context = buildCircularContext({
       severity: 'high',
       suggestedAction: 'Break the circular dependency by extracting shared code to a separate module',
@@ -18,7 +27,8 @@ export async function persistModuleCycleIssue(rootPath, filePath, fileCycle) {
       extraData: {
         cycleType: 'module',
         cyclePath: fileCycle,
-        cycleLength: fileCycle.length
+        cycleLength: fileCycle.length,
+        propagation
       }
     });
 
@@ -34,6 +44,15 @@ export async function persistModuleCycleIssue(rootPath, filePath, fileCycle) {
 export async function persistLifecycleCycleIssue(rootPath, filePath, atom, atomCycle, atomNames) {
   try {
     const message = `Event-driven lifecycle loop detected: ${atomNames.join(' -> ')}`;
+    const propagation = buildCircularPropagation({
+      scopePath: rootPath,
+      focusPath: filePath,
+      severity: 'low',
+      cycleType: 'lifecycle',
+      candidateNames: atomNames,
+      cycleLength: atomCycle.length,
+      reason: message
+    });
     const context = buildCircularContext({
       severity: 'low',
       atomId: atom.id,
@@ -48,7 +67,8 @@ export async function persistLifecycleCycleIssue(rootPath, filePath, atom, atomC
         cycleType: 'lifecycle',
         cyclePath: atomCycle,
         cycleLength: atomCycle.length,
-        atomNames
+        atomNames,
+        propagation
       }
     });
 
@@ -65,6 +85,15 @@ export async function persistLifecycleCycleIssue(rootPath, filePath, atom, atomC
 export async function persistFunctionalCycleIssue(rootPath, filePath, atom, atomCycle, atomNames) {
   try {
     const message = `Cross-file functional recursion detected: ${atomNames.join(' -> ')}`;
+    const propagation = buildCircularPropagation({
+      scopePath: rootPath,
+      focusPath: filePath,
+      severity: 'high',
+      cycleType: 'function',
+      candidateNames: atomNames,
+      cycleLength: atomCycle.length,
+      reason: message
+    });
     const context = buildCircularContext({
       severity: 'high',
       atomId: atom.id,
@@ -80,7 +109,8 @@ export async function persistFunctionalCycleIssue(rootPath, filePath, atom, atom
         cycleType: 'function',
         cyclePath: atomCycle,
         cycleLength: atomCycle.length,
-        atomNames
+        atomNames,
+        propagation
       }
     });
 
