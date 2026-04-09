@@ -1,6 +1,5 @@
 import { getAllAtoms } from '#layer-c/storage/index.js';
 import { getFieldToolCoverage, getAvailableFields } from '#layer-a/extractors/metadata/registry.js';
-import { buildCompilerHistoricalStorageSummary } from '../../../shared/compiler/compiler-persistence-paths.js';
 import { getDatabase } from '../../storage/database/connection.js';
 import {
   getRegisteredTables,
@@ -10,12 +9,16 @@ import {
   exportSchemaSQL
 } from '../../storage/database/schema-registry.js';
 import {
+  buildCompilerHistoricalStorageSummary,
   buildCompilerControlPlaneFoundations,
   getDatabaseHealthSummary,
+  summarizePropagationPlan,
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
 } from '../../../shared/compiler/index.js';
 import { deriveSchema, fieldEvolution, computeCorrelations } from './get-schema-stats.js';
+
+void summarizePropagationPlan;
 
 const TEST_CALLBACK_PATTERN = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\s*\(/;
 const isTestAtom = (atom) => atom.isTestCallback === true || TEST_CALLBACK_PATTERN.test(atom.name);

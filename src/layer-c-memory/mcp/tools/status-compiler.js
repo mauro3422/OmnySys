@@ -6,8 +6,82 @@ import {
   getMcpSessionSummary,
   getPhase2FileCounts,
   getSharedStateContentionSummary,
-  loadCompilerDiagnosticsSnapshot
+  loadCompilerDiagnosticsSnapshot,
+  summarizePropagationPlan
 } from '../../../shared/compiler/index.js';
+
+void summarizePropagationPlan;
+
+function buildSharedStateStatus(sharedStateSummary) {
+  return {
+    activeSocietiesBadge: sharedStateSummary.actorCount > 0 ? 'RADIOACTIVE' : 'CLEAN',
+    actorCount: sharedStateSummary.actorCount,
+    totalLinks: sharedStateSummary.totalLinks,
+    maxContention: sharedStateSummary.maxContention,
+    hottestKey: sharedStateSummary.hottestKey,
+    topContentionKeys: sharedStateSummary.topContentionKeys
+  };
+}
+
+function buildBackgroundStatus({
+  repo,
+  phase2Counts,
+  graphCoverage,
+  issueSummary,
+  fileUniverseSummary,
+  liveRowSync,
+  conceptualSummary,
+  sessionSummary
+}) {
+  return {
+    phase2PendingFiles: phase2Counts.pendingFiles,
+    phase2CompletedFiles: phase2Counts.completedFiles,
+    societiesCount: repo.db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0,
+    graphCoverage,
+    fileUniverseSummary: {
+      scannedFileTotal: fileUniverseSummary.scannedFileTotal,
+      liveFileCount: fileUniverseSummary.liveFileCount,
+      zeroAtomFileCount: fileUniverseSummary.zeroAtomFileCount,
+      liveCoverageRatio: fileUniverseSummary.liveCoverageRatio,
+      liveRowSync: liveRowSync?.summary || null
+    },
+    conceptualDuplicates: {
+      actionableGroups: conceptualSummary.actionableGroups,
+      rawGroups: conceptualSummary.rawGroups,
+      actionableRatio: conceptualSummary.actionableRatio,
+      actionableImplementations: conceptualSummary.actionableImplementations,
+      rawImplementations: conceptualSummary.rawImplementations
+    },
+    issueSummary: {
+      total: issueSummary.total,
+      display: issueSummary.display,
+      orphanCount: issueSummary.orphanCount,
+      suspiciousDeadCandidates: issueSummary.suspiciousDeadCandidates
+    },
+    mcpSessionSummary: sessionSummary
+  };
+}
+
+function buildMcpSessionsStatus(sessionSummary) {
+  return {
+    totalActive: sessionSummary.runtimeSessions,
+    totalPersistent: sessionSummary.totalPersistent,
+    totalPersistentActive: sessionSummary.totalPersistentActive,
+    uniqueClients: sessionSummary.uniqueClients,
+    clientsWithDuplicates: sessionSummary.clientsWithDuplicates,
+    actionableDuplicateClients: sessionSummary.actionableDuplicateClients,
+    toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients,
+    clientSyncState: sessionSummary.clientSyncState || null,
+    clientSyncSeverity: sessionSummary.clientSyncSeverity || null,
+    clientSyncReason: sessionSummary.clientSyncReason || null,
+    clientSyncRecommendation: sessionSummary.clientSyncRecommendation || null,
+    health: sessionSummary.multiClientChurn
+      ? 'MULTI_CLIENT_CHURN'
+      : sessionSummary.runtimeSessions > 20
+        ? 'STRESSED'
+        : 'HEALTHY'
+  };
+}
 
 export async function attachDeepVitals(status, projectPath, server) {
   try {
@@ -24,14 +98,7 @@ export async function attachDeepVitals(status, projectPath, server) {
       db: repo.db,
       sharedState: sharedStateSummary
     });
-    status.sharedState = {
-      activeSocietiesBadge: sharedStateSummary.actorCount > 0 ? 'RADIOACTIVE' : 'CLEAN',
-      actorCount: sharedStateSummary.actorCount,
-      totalLinks: sharedStateSummary.totalLinks,
-      maxContention: sharedStateSummary.maxContention,
-      hottestKey: sharedStateSummary.hottestKey,
-      topContentionKeys: sharedStateSummary.topContentionKeys
-    };
+    status.sharedState = buildSharedStateStatus(sharedStateSummary);
 
     const phase2Counts = getPhase2FileCounts(repo.db);
     const graphCoverage = getGraphCoverageSummary(repo.db);
@@ -49,53 +116,18 @@ export async function attachDeepVitals(status, projectPath, server) {
       sessionDb: repo?.db || null
     });
 
-    status.background = {
-      phase2PendingFiles: phase2Counts.pendingFiles,
-      phase2CompletedFiles: phase2Counts.completedFiles,
-      societiesCount: repo.db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0,
+    status.background = buildBackgroundStatus({
+      repo,
+      phase2Counts,
       graphCoverage,
-      fileUniverseSummary: {
-        scannedFileTotal: fileUniverseSummary.scannedFileTotal,
-        liveFileCount: fileUniverseSummary.liveFileCount,
-        zeroAtomFileCount: fileUniverseSummary.zeroAtomFileCount,
-        liveCoverageRatio: fileUniverseSummary.liveCoverageRatio,
-        liveRowSync: liveRowSync?.summary || null
-      },
-      conceptualDuplicates: {
-        actionableGroups: conceptualSummary.actionableGroups,
-        rawGroups: conceptualSummary.rawGroups,
-        actionableRatio: conceptualSummary.actionableRatio,
-        actionableImplementations: conceptualSummary.actionableImplementations,
-        rawImplementations: conceptualSummary.rawImplementations
-      },
-      issueSummary: {
-        total: issueSummary.total,
-        display: issueSummary.display,
-        orphanCount: issueSummary.orphanCount,
-        suspiciousDeadCandidates: issueSummary.suspiciousDeadCandidates
-      },
-      mcpSessionSummary: sessionSummary
-    };
+      issueSummary,
+      fileUniverseSummary,
+      liveRowSync,
+      conceptualSummary,
+      sessionSummary
+    });
 
-    status.mcpSessions = {
-      totalActive: sessionSummary.runtimeSessions,
-      totalPersistent: sessionSummary.totalPersistent,
-      totalPersistentActive: sessionSummary.totalPersistentActive,
-      uniqueClients: sessionSummary.uniqueClients,
-      clientsWithDuplicates: sessionSummary.clientsWithDuplicates,
-      actionableDuplicateClients: sessionSummary.actionableDuplicateClients,
-      toleratedDuplicateClients: sessionSummary.toleratedDuplicateClients,
-      clientSyncState: sessionSummary.clientSyncState || null,
-      clientSyncSeverity: sessionSummary.clientSyncSeverity || null,
-      clientSyncReason: sessionSummary.clientSyncReason || null,
-      clientSyncRecommendation: sessionSummary.clientSyncRecommendation || null,
-      health: sessionSummary.multiClientChurn
-        ? 'MULTI_CLIENT_CHURN'
-        : sessionSummary.runtimeSessions > 20
-          ? 'STRESSED'
-          : 'HEALTHY'
-    };
-
+    status.mcpSessions = buildMcpSessionsStatus(sessionSummary);
     status.compilerReadiness = buildCompilerReadinessStatus({
       phase2PendingFiles: status.metadata?.phase2PendingFiles ?? 0,
       societiesCount: status.metadata?.societiesCount ?? 0,

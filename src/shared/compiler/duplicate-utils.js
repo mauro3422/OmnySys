@@ -14,7 +14,7 @@ export { loadPreviousFindings } from './duplicate-utils-persistence.js';
 export {
   buildDuplicateDebtHistory,
   buildDuplicateContext
-} from './duplicate-debt.js';
+} from './duplicate-debt/index.js';
 export {
   isCanonicalDuplicateSignalPolicyFile,
   isLowSignalGeneratedAtom,

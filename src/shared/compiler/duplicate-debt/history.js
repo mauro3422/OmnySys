@@ -1,6 +1,6 @@
-import { buildFindingIdentity, calculateDebtScore, calculateTrend } from './duplicate-debt-scoring.js';
-import { mapDebtFinding } from './duplicate-debt-formatters.js';
-import { generateDebtRecommendations } from './duplicate-debt-recommendations.js';
+import { buildFindingIdentity, calculateDebtScore, calculateTrend } from '../duplicate-debt-scoring.js';
+import { mapDebtFinding } from '../duplicate-debt-formatters.js';
+import { generateDebtRecommendations } from '../duplicate-debt-recommendations.js';
 
 export function buildDuplicateDebtHistory(filePath, currentFindings = [], previousFindings = []) {
   const currentSymbols = new Set(currentFindings.map(buildFindingIdentity));

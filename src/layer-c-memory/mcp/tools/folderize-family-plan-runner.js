@@ -116,8 +116,7 @@ async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPa
       const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, {
         ...moveContext,
         skipSettlement: true,  // Don't reindex after each move
-        deferGuards: true,      // Defer guards to end of batch
-        skipSelfRewrite: true   // Defer import rewriting to folderize rewriter
+        deferGuards: true      // Defer guards to end of batch
       });
       results.push({
         from: target.from,

@@ -2,9 +2,9 @@
  * @fileoverview Internal helpers for compiler metrics current-snapshot assembly.
  */
 
-import { summarizeCompilerDriftAssessment } from './compiler-drift-assessment.js';
+import { summarizeCompilerDriftAssessment } from '../compiler-drift-assessment.js';
 import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
-import { asNumber } from './core-utils.js';
+import { asNumber } from '../core-utils.js';
 import { clampScore } from '#shared/utils/normalize-helpers.js';
 
 function buildBehaviorGateSummary(current = {}, driftSummary = null) {

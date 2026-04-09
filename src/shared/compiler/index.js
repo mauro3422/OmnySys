@@ -256,6 +256,10 @@ export {
 } from './tool-run-telemetry/summary.js';
 
 export {
+  buildCompilerHistoricalStorageSummary
+} from './compiler-persistence-paths.js';
+
+export {
   buildSurfaceAudit,
   summarizeSurfaceAudit,
   summarizeSurfaceAuditForStatus
@@ -668,7 +672,7 @@ export {
 export {
   buildDuplicateDebtHistory,
   buildDuplicateContext
-} from './duplicate-debt.js';
+} from './duplicate-debt/index.js';
 
 export {
   getCachedMetadata,

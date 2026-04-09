@@ -36,7 +36,7 @@ export {
 export {
     buildDuplicateDebtHistory,
     buildDuplicateContext,
-} from '../duplicate-debt.js';
+} from '../duplicate-debt/index.js';
 
 export {
     loadPreviousFindings,

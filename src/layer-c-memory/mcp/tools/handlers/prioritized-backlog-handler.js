@@ -14,6 +14,7 @@ import { getRiskAssessment } from '../../../query/queries/risk-query.js';
 import { buildPrioritizedItems } from './prioritized-backlog/items.js';
 import { generatePredictions } from './prioritized-backlog/predictions.js';
 import { getScoringFormula } from './prioritized-backlog/scoring.js';
+import { buildPropagationPlan, summarizePropagationPlan } from '../../../../shared/compiler/index.js';
 
 export async function handlePrioritizedBacklog(tool, projectPath, options = {}) {
     const {
@@ -40,17 +41,29 @@ export async function handlePrioritizedBacklog(tool, projectPath, options = {}) 
         minScore
     );
     const predictions = includePredicted ? generatePredictions(recurrenceData) : [];
+    const propagation = summarizePropagationPlan(buildPropagationPlan({
+        changeType: 'prioritized_backlog',
+        decision: items.length > 0 ? 'review' : 'approve',
+        mode: items.length > 0 ? 'alert_and_review' : 'alert_and_recommend',
+        candidateCount: predictions.length,
+        findingCount: items.length,
+        ruleCount: 0,
+        policyAreaCount: 1,
+        connectedSystems: ['watcher', 'risk_analysis', 'status_panel', 'health_snapshot'],
+        recommendationStrategy: items.length > 0 ? 'review_prioritized_backlog' : 'keep_prioritized_backlog_stable'
+    }));
 
     return {
         aggregationType: 'prioritized_backlog',
-        summary: buildSummary(items),
+        summary: buildPrioritizedBacklogSummary(items),
         items: items.slice(0, limit),
         predictions: predictions.slice(0, 5),
-        formula: getScoringFormula()
+        formula: getScoringFormula(),
+        propagation
     };
 }
 
-function buildSummary(items) {
+function buildPrioritizedBacklogSummary(items) {
     return {
         totalIssues: items.length,
         highPriority: items.filter((item) => item.score >= 0.7).length,

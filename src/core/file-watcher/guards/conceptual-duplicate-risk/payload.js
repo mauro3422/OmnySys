@@ -1,4 +1,4 @@
-import { buildDuplicateDebtHistory } from '../../../../shared/compiler/duplicate-debt-history.js';
+import { buildDuplicateDebtHistory } from '../../../../shared/compiler/duplicate-debt/history.js';
 import { buildConceptualSeverity } from './severity.js';
 import { buildConceptualContext } from './context.js';
 

@@ -27,6 +27,7 @@ export {
 export {
   cleanupOrphanedCompilerArtifacts,
   emitOrphanedImportsFromPersistedMetadata,
+  reconcileExcludedCompilerFiles,
   removePersistedAtomMetadata,
   removePersistedFileMetadata
 } from './compiler-persistence-cleanup.js';

@@ -1,5 +1,7 @@
 import {
+    buildPropagationPlan,
     summarizeCompilerDiagnostics,
+    summarizePropagationPlan,
     summarizeWatcherAlerts,
     summarizeWatcherAlertLifecycle
 } from '../../../../shared/compiler/index.js';
@@ -28,6 +30,17 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
     const watcherSummary = summarizeWatcherAlerts(alerts);
     const watcherLifecycle = summarizeWatcherAlertLifecycle(alerts);
     const compilerDiagnostics = summarizeCompilerDiagnostics(alerts);
+    const propagation = summarizePropagationPlan(buildPropagationPlan({
+        changeType: 'watcher_alerts',
+        decision: total > 0 ? 'review' : 'approve',
+        mode: total > 0 ? 'alert_and_review' : 'alert_and_recommend',
+        candidateCount: 0,
+        findingCount: total,
+        ruleCount: 0,
+        policyAreaCount: 1,
+        connectedSystems: ['watcher', 'status_panel', 'health_snapshot', 'compiler_explainability'],
+        recommendationStrategy: total > 0 ? 'review_watcher_alerts' : 'keep_watcher_alerts_clear'
+    }));
 
     return {
         aggregationType: 'watcher_alerts',
@@ -42,6 +55,7 @@ export async function handleWatcherAlerts(tool, db, options, filePath) {
             lifecycle: watcherLifecycle,
             totalAlerts: total
         },
-        reconciliation: result.reconciliation
+        reconciliation: result.reconciliation,
+        propagation
     };
 }

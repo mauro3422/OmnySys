@@ -6,6 +6,18 @@ All notable changes are documented as individual files in [`changelogs/`](change
 
 ---
 
+## v0.9.436 — Control Plane Foundations & Propagation Alignment (2026-04-09)
+
+- Centralizacion de `controlPlaneFoundations` para status, metrics, schema y snapshots
+- Limpieza de wrappers locales en handlers MCP/runtime
+- Propagacion explicita en health/pipeline/watcher/backlog
+- Reconciliacion automatica de archivos fuera de `compiler_scanned_files`
+- Renombre de helper en backlog para evitar duplicados conceptuales
+
+**Detalle completo**: [changelogs/v0.9.436.md](changelogs/v0.9.436.md)
+
+---
+
 ## v0.9.435 — Folderize Family Naming Repair (2026-04-09)
 
 - Fixed `folderize_family` producing redundant folder names (`compiler/compiler-metrics-snapshot/` → `compiler/metrics/`)

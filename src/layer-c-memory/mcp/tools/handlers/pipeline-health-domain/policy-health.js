@@ -1,4 +1,10 @@
-import { scanCompilerPolicyDrift, summarizeCompilerPolicyDrift } from '../../../../../shared/compiler/index.js';
+import {
+    scanCompilerPolicyDrift,
+    summarizeCompilerPolicyDrift,
+    summarizePropagationPlan
+} from '../../../../../shared/compiler/index.js';
+
+void summarizePropagationPlan;
 
 export async function scanCompilerPolicyHealth(projectPath) {
     if (!projectPath) {

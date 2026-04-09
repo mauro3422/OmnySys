@@ -14,24 +14,6 @@ import {
 } from '../../../storage/governance/index.js';
 import { buildPropagationPlan, summarizePropagationPlan } from '../../../../shared/compiler/index.js';
 
-function buildStoragePropagation(health, duplicates, genealogy) {
-  const issueCount = (health?.anomalies?.length || 0)
-    + (duplicates?.duplicateGroups > 0 ? 1 : 0)
-    + (genealogy?.issues?.length || 0);
-
-  return buildPropagationPlan({
-    changeType: 'storage_audit',
-    decision: issueCount === 0 ? 'approve' : 'review',
-    mode: issueCount === 0 ? 'alert_and_recommend' : 'alert_and_review',
-    candidateCount: 0,
-    findingCount: issueCount,
-    ruleCount: 0,
-    policyAreaCount: 1,
-    connectedSystems: ['storage_governance', 'status_panel', 'health_snapshot', 'pipeline_health'],
-    recommendationStrategy: issueCount === 0 ? 'keep_storage_healthy' : 'review_storage_anomalies'
-  });
-}
-
 export async function handleStorageHealth(tool, projectPath, options = {}) {
   const { runMaintenance = false, dryRun = true } = options;
 
@@ -58,9 +40,20 @@ export async function handleStorageHealth(tool, projectPath, options = {}) {
       recommendations.push(...(genealogy.recommendations || []));
     }
 
-    const propagation = summarizePropagationPlan(
-      buildStoragePropagation(health, duplicates, genealogy)
-    );
+    const issueCount = (health?.anomalies?.length || 0)
+      + (duplicates?.duplicateGroups > 0 ? 1 : 0)
+      + (genealogy?.issues?.length || 0);
+    const propagation = summarizePropagationPlan(buildPropagationPlan({
+      changeType: 'storage_audit',
+      decision: issueCount === 0 ? 'approve' : 'review',
+      mode: issueCount === 0 ? 'alert_and_recommend' : 'alert_and_review',
+      candidateCount: 0,
+      findingCount: issueCount,
+      ruleCount: 0,
+      policyAreaCount: 1,
+      connectedSystems: ['storage_governance', 'status_panel', 'health_snapshot', 'pipeline_health'],
+      recommendationStrategy: issueCount === 0 ? 'keep_storage_healthy' : 'review_storage_anomalies'
+    }));
 
     return {
       health: {

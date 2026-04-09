@@ -29,10 +29,6 @@ vi.mock('#layer-a/extractors/metadata/registry.js', () => ({
   getAvailableFields: mocks.getAvailableFields
 }));
 
-vi.mock('../../../../../src/shared/compiler/compiler-persistence-paths.js', () => ({
-  buildCompilerHistoricalStorageSummary: mocks.buildCompilerHistoricalStorageSummary
-}));
-
 vi.mock('../../../../../src/layer-c-memory/storage/database/connection.js', () => ({
   getDatabase: mocks.getDatabase
 }));
@@ -46,8 +42,10 @@ vi.mock('../../../../../src/layer-c-memory/storage/database/schema-registry.js',
 }));
 
 vi.mock('../../../../../src/shared/compiler/index.js', () => ({
+  buildCompilerHistoricalStorageSummary: mocks.buildCompilerHistoricalStorageSummary,
   buildCompilerControlPlaneFoundations: mocks.buildCompilerControlPlaneFoundations,
   getDatabaseHealthSummary: mocks.getDatabaseHealthSummary,
+  summarizePropagationPlan: vi.fn(),
   summarizeAtomSemanticPurity: mocks.summarizeAtomSemanticPurity,
   summarizeAtomTestability: mocks.summarizeAtomTestability
 }));

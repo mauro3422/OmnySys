@@ -8,7 +8,11 @@
  */
 
 import { discoverProjectSourceFiles } from './file-discovery.js';
-import { syncPersistedScannedFileManifest, summarizePersistedScannedFileCoverage } from './compiler-persistence.js';
+import {
+  reconcileExcludedCompilerFiles,
+  syncPersistedScannedFileManifest,
+  summarizePersistedScannedFileCoverage
+} from './compiler-persistence.js';
 import { collectCanonicalAdoptionEvidence } from './evidence.js';
 import {
   buildCompilerDiagnosticsSnapshotContracts,
@@ -17,7 +21,7 @@ import {
 export {
   buildCompilerMetricsSnapshot,
   summarizeCompilerMetricsSnapshot
-} from './compiler-metrics-snapshot.js';
+} from './metrics/snapshot.js';
 
 async function buildCompilerDiagnosticsSnapshotPayload({
   projectPath,
@@ -31,10 +35,12 @@ async function buildCompilerDiagnosticsSnapshotPayload({
 } = {}) {
   const scannedFilePaths = await discoverProjectSourceFiles(projectPath);
   const canonicalAdoptionEvidence = await collectCanonicalAdoptionEvidence(projectPath);
-  const dbSurfaces = getCompilerDiagnosticsDatabaseSurfaces(db);
+  let dbSurfaces = getCompilerDiagnosticsDatabaseSurfaces(db);
 
   if (dbSurfaces.phase2PendingFiles === 0) {
     await syncPersistedScannedFileManifest(projectPath, scannedFilePaths);
+    await reconcileExcludedCompilerFiles(projectPath);
+    dbSurfaces = getCompilerDiagnosticsDatabaseSurfaces(db);
   }
 
   const persistedFileCoverage = await summarizePersistedScannedFileCoverage(projectPath, scannedFilePaths);

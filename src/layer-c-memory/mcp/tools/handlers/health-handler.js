@@ -1,6 +1,8 @@
 import { getProjectStats } from '../../../query/apis/project-api.js';
 import {
+    buildPropagationPlan,
     getDatabaseHealthSummary,
+    summarizePropagationPlan,
     summarizeCentralityCoverageRow,
     summarizePhysicsCoverageRow
 } from '../../../../shared/compiler/index.js';
@@ -77,12 +79,26 @@ export async function handleHealthMetrics(tool, projectPath) {
             }
         }
 
+        const issueCount = Number(databaseHealth?.criticalFindings?.length || 0)
+            + Number(databaseHealth?.warnings?.length || 0);
+
         return {
             project: projectPath,
             globalHealth: stats.health,
             quality: stats.quality,
             databaseHealth,
-            physics
+            physics,
+            propagation: summarizePropagationPlan(buildPropagationPlan({
+                changeType: 'status_health',
+                decision: issueCount > 0 ? 'review' : 'approve',
+                mode: issueCount > 0 ? 'alert_and_review' : 'alert_and_recommend',
+                candidateCount: 0,
+                findingCount: issueCount,
+                ruleCount: 0,
+                policyAreaCount: 1,
+                connectedSystems: ['status_panel', 'health_snapshot', 'compiler_explainability', 'cache_policy'],
+                recommendationStrategy: issueCount > 0 ? 'review_health_drift' : 'keep_health_surfaces_aligned'
+            }))
         };
     } catch (error) {
         return {

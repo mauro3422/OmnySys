@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   discoverCompilerFiles: vi.fn(),
   discoverProjectSourceFiles: vi.fn(),
+  reconcileExcludedCompilerFiles: vi.fn(),
   syncPersistedScannedFileManifest: vi.fn(),
   summarizePersistedScannedFileCoverage: vi.fn(),
   getFileImportEvidenceCoverage: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock('../../../../src/shared/compiler/file-discovery.js', () => ({
 }));
 
 vi.mock('../../../../src/shared/compiler/compiler-persistence.js', () => ({
+  reconcileExcludedCompilerFiles: mocks.reconcileExcludedCompilerFiles,
   syncPersistedScannedFileManifest: mocks.syncPersistedScannedFileManifest,
   summarizePersistedScannedFileCoverage: mocks.summarizePersistedScannedFileCoverage
 }));
@@ -112,6 +114,10 @@ beforeEach(() => {
 
   mocks.discoverCompilerFiles.mockResolvedValue([]);
   mocks.discoverProjectSourceFiles.mockResolvedValue(['src/a.js']);
+  mocks.reconcileExcludedCompilerFiles.mockResolvedValue({
+    removedFiles: 0,
+    removedAtoms: 0
+  });
   mocks.syncPersistedScannedFileManifest.mockResolvedValue(undefined);
   mocks.summarizePersistedScannedFileCoverage.mockResolvedValue({
     healthy: true,
@@ -193,6 +199,7 @@ describe('compiler-diagnostics-snapshot', () => {
       'C:/Dev/OmnySystem',
       ['src/a.js']
     );
+    expect(mocks.reconcileExcludedCompilerFiles).toHaveBeenCalledWith('C:/Dev/OmnySystem');
     expect(snapshot.phase2PendingFiles).toBe(0);
     expect(snapshot.persistedFileCoverage.scannedFileTotal).toBe(1);
     expect(snapshot.semanticCanonicality.summary).toBe('semantic canonicality');
@@ -218,5 +225,6 @@ describe('compiler-diagnostics-snapshot', () => {
     });
 
     expect(mocks.syncPersistedScannedFileManifest).not.toHaveBeenCalled();
+    expect(mocks.reconcileExcludedCompilerFiles).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import {
+    buildPropagationPlan,
     buildCompilerRemediationBacklog,
     buildPipelineHealthCompilerRemediationItems,
     buildDeadCodeRemediationPlan,
@@ -10,7 +11,8 @@ import {
     collectPipelineFieldCoverageFindings,
     getDeadCodePlausibilitySummary,
     getPipelineOrphanSummary,
-    getIssueSummary
+    getIssueSummary,
+    summarizePropagationPlan
 } from '../../../../../shared/compiler/index.js';
 import { syncRuntimeTableHealthIssues } from '../../../../../core/diagnostics/runtime-table-health.js';
 import {
@@ -132,6 +134,17 @@ export async function collectPipelineHealthFoundation({ db, projectPath }) {
             staleRiskRows
         })
     );
+    const propagation = summarizePropagationPlan(buildPropagationPlan({
+        changeType: 'pipeline_health',
+        decision: issues.length > 0 ? 'review' : 'approve',
+        mode: issues.length > 0 ? 'alert_and_review' : 'alert_and_recommend',
+        candidateCount: orphanFunctions.length + suspiciousDeadCandidates.length,
+        findingCount: issues.length + warnings.length,
+        ruleCount: policyHealth.policySummary?.total || 0,
+        policyAreaCount: Object.keys(policyHealth.policySummary?.byPolicyArea || {}).length,
+        connectedSystems: ['pipeline_health', 'status_panel', 'health_snapshot', 'compiler_explainability', 'cache_policy'],
+        recommendationStrategy: issues.length > 0 ? 'repair_pipeline_health_findings' : 'keep_pipeline_health_aligned'
+    }));
 
     return {
         issues,
@@ -151,6 +164,7 @@ export async function collectPipelineHealthFoundation({ db, projectPath }) {
         zeroFields: fieldCoverage.zeroFields,
         suspiciousDeadCandidates,
         policySummary: policyHealth.policySummary,
-        issueSummary: getIssueSummary(db, { minDeadCodeLines: 5 })
+        issueSummary: getIssueSummary(db, { minDeadCodeLines: 5 }),
+        propagation
     };
 }

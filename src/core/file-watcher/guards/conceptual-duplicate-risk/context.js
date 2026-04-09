@@ -1,5 +1,5 @@
 import { createStandardContext, StandardSuggestions } from '../guard-standards.js';
-import { buildDuplicateContext } from '../../../../shared/compiler/duplicate-debt-context.js';
+import { buildDuplicateContext } from '../../../../shared/compiler/duplicate-debt/context.js';
 import { buildDuplicateRiskPropagationPlan } from '../../../../shared/compiler/propagation-engine/change-type-plans/duplicate-risk.js';
 import { summarizePropagationPlan } from '../../../../shared/compiler/propagation-engine/plan-builder.js';
 
