@@ -276,7 +276,14 @@ export async function rewriteFolderizedFamilyImports({
         filePath, projectPath, moveTargets, internalRenameMap, context
       );
 
-      const allRewrites = [...rewrites, ...internalRewrites];
+      // Location-relative rewrite: when a file moves to a new folder, ALL relative
+      // imports need recalculation (even to files that didn't move).
+      // E.g., './core-utils.js' → '../core-utils.js' when file moves to a subfolder.
+      const locationRewrites = await rewriteRelativeImportsForNewLocation(
+        filePath, projectPath, moveTargets, context
+      );
+
+      const allRewrites = [...rewrites, ...internalRewrites, ...locationRewrites];
 
       if (allRewrites.length > 0) {
         rewriteCount += allRewrites.length;
@@ -303,6 +310,107 @@ export async function rewriteFolderizedFamilyImports({
     skippedFiles,
     failedFiles
   };
+}
+
+/**
+ * Rewrite relative imports when a file moves to a new folder location.
+ * This handles imports to files that DIDN'T move but need path recalculation
+ * because the importing file changed location.
+ * E.g., './core-utils.js' → '../core-utils.js' when file moves to a subfolder.
+ */
+async function rewriteRelativeImportsForNewLocation(filePath, projectPath, moveTargets, context = {}) {
+  const absFilePath = path.resolve(projectPath, filePath);
+  let code;
+  try {
+    code = await fs.readFile(absFilePath, 'utf8');
+  } catch {
+    return [];
+  }
+
+  // Find which move target this file corresponds to
+  const movedTarget = moveTargets.find(t => {
+    const newPath = normalizeComparablePath(path.resolve(projectPath, t.to));
+    return normalizeComparablePath(absFilePath) === newPath;
+  });
+
+  if (!movedTarget) {
+    // This is an external impacted file, not a moved file
+    return [];
+  }
+
+  // The original location of this file before the move
+  const originalPath = path.resolve(projectPath, movedTarget.from);
+  const originalDir = path.dirname(originalPath);
+  const newDir = path.dirname(absFilePath);
+
+  // If file didn't change directory, no need to rewrite relative imports
+  if (originalDir === newDir) {
+    return [];
+  }
+
+  const rewrites = [];
+  const lines = code.split('\n');
+  let modified = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Match relative imports
+    const match = line.match(/from\s+['"](\.\.\/[^'"]+|\.\/[^'"]+|\.\\[^'"]+|\.\\.\\[^'"]+)['"]/);
+    if (!match) continue;
+
+    const importSource = match[1].replace(/\\/g, '/');
+    
+    // Skip if this is an intra-family import (handled by rewriteIntraFamilyImports)
+    const importBasename = path.basename(importSource).replace(/\.js$/, '');
+    const isIntraFamily = moveTargets.some(t => {
+      const oldBasename = path.basename(t.from).replace(/\.js$/, '');
+      return oldBasename === importBasename;
+    });
+    if (isIntraFamily) continue;
+
+    // Resolve the import from the NEW location
+    const resolvedFromNew = normalizeImportToAbsolute(importSource, filePath, projectPath);
+    if (!resolvedFromNew) continue;
+
+    // Check if the file actually exists at the resolved path
+    try {
+      await fs.access(resolvedFromNew);
+    } catch {
+      // File doesn't exist at this path from new location — needs rewriting
+      // Try to find where it actually is by resolving from the ORIGINAL location
+      const resolvedFromOriginal = normalizeImportToAbsolute(importSource, movedTarget.from, projectPath);
+      if (!resolvedFromOriginal) continue;
+
+      try {
+        await fs.access(resolvedFromOriginal);
+        // File exists at original resolution — calculate new relative path from new location
+        const newImportSource = calculateRelativeImport(filePath, path.relative(projectPath, resolvedFromOriginal), projectPath);
+        if (!newImportSource || newImportSource === importSource) continue;
+
+        const oldLine = line;
+        const newLine = line.replace(importSource, newImportSource);
+        if (newLine === oldLine) continue;
+
+        lines[i] = newLine;
+        modified = true;
+        rewrites.push({
+          filePath,
+          importSource,
+          newImportSource,
+          status: 'location_relative_rewritten'
+        });
+      } catch {
+        // File doesn't exist at original resolution either — skip
+      }
+    }
+  }
+
+  if (modified) {
+    const newCode = lines.join('\n');
+    await fs.writeFile(absFilePath, newCode, 'utf8');
+  }
+
+  return rewrites;
 }
 
 /**
