@@ -91,6 +91,39 @@ describe('folderization-automation-summary', () => {
     expect(automation.reason).toContain('blocked');
   });
 
+  it('routes monolithic no-candidate cases through split_large_file', () => {
+    const automation = buildFolderizationAutomationSummaryFromReport({
+      decision: 'reject',
+      drift: { state: 'fresh', score: 5, reason: 'stable support surface' },
+      recommendation: { strategy: 'split_large_file', action: 'Use split_large_file to decompose the monolith before folderization.' },
+      propagation: {
+        changeType: 'folderization',
+        decision: 'reject',
+        mode: 'blocked',
+        cacheKey: 'abc123',
+        cacheHit: true,
+        validationTargetCount: 0,
+        recommendationStrategy: 'split_large_file',
+        connectedSystems: []
+      },
+      normalization: {
+        summary: {
+          safetyLevel: 'missing',
+          recommendedAction: 'noop',
+          renameTargetCount: 0,
+          renameTargetDensity: 0
+        }
+      }
+    });
+
+    expect(automation.automationState).toBe('blocked');
+    expect(automation.shouldExecute).toBe(false);
+    expect(automation.executionTarget).toBe('split_large_file');
+    expect(automation.executionMode).toBe('analyze');
+    expect(automation.nextAction).toContain('split_large_file');
+    expect(automation.reason).toContain('split_large_file');
+  });
+
   it('marks adoption as stale when connected systems are not yet surfaced', () => {
     const automation = buildFolderizationAutomationSummaryFromReport({
       decision: 'approve',

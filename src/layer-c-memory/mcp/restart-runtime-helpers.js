@@ -3,6 +3,8 @@ import { createLogger } from '../../utils/logger.js';
 import { shouldPreserveHistoryArtifact } from '#shared/utils/normalize-helpers.js';
 import { reloadMetadata as reloadServerMetadata } from '../../core/unified-server/initialization/analysis-manager.js';
 
+export { reloadServerMetadata };
+
 const logger = createLogger('OmnySys:restart:helpers');
 
 export async function invalidateIncrementalState(server) {
@@ -123,28 +125,41 @@ export async function refreshToolRegistrySafely(refreshToolRegistryFn, successMe
 }
 
 export async function performSoftReload({ server, orchestrator, cache, refreshToolRegistryFn }) {
-  await stopOrchestrator(orchestrator);
-  if (orchestrator) {
-    await fastRestartOrchestrator(server, {});
-  }
-
-  if (cache?.initialize) {
-    await cache.initialize();
-    if (server.metadata && cache.set) {
-      cache.set('metadata', server.metadata);
+  try {
+    await stopOrchestrator(orchestrator);
+    if (orchestrator) {
+      await fastRestartOrchestrator(server, {});
     }
+
+    if (cache?.initialize) {
+      await cache.initialize();
+      if (server.metadata && cache.set) {
+        cache.set('metadata', server.metadata);
+      }
+    }
+
+    await refreshToolRegistrySafely(refreshToolRegistryFn);
+
+    return {
+      success: true,
+      restarting: false,
+      restartType: 'soft_reload',
+      lifecycle: buildRestartLifecycleGuidance({ restartType: 'soft_reload', softReload: true }),
+      message: 'Soft reload complete. Orchestrator and runtime state refreshed without process restart.',
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    logger.warn(`Soft reload failed: ${error.message}`);
+    return {
+      success: false,
+      restarting: false,
+      restartType: 'soft_reload',
+      error: error.message,
+      lifecycle: buildRestartLifecycleGuidance({ restartType: 'soft_reload', softReload: true }),
+      message: 'Soft reload failed. Runtime state remains unchanged.',
+      timestamp: new Date().toISOString()
+    };
   }
-
-  await refreshToolRegistrySafely(refreshToolRegistryFn);
-
-  return {
-    success: true,
-    restarting: false,
-    restartType: 'soft_reload',
-    lifecycle: buildRestartLifecycleGuidance({ restartType: 'soft_reload', softReload: true }),
-    message: 'Soft reload complete. Orchestrator and runtime state refreshed without process restart.',
-    timestamp: new Date().toISOString()
-  };
 }
 
 export async function handleRefreshOnly(server, cache, refreshToolRegistryFn) {

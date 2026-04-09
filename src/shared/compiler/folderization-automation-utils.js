@@ -187,6 +187,12 @@ export function buildAutomationReason({
     return `Folderization can execute because propagation is attached to ${connectedLabel} and the normalization plan is safe; adoption is aligned across ${propagationAdoption?.surfacedSystemCount || 0} surfaced system(s).`;
   }
 
+  if (recommendationStrategy === 'split_large_file') {
+    return propagationAdoption?.missingSystemCount > 0
+      ? `Folderization should pause because ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} still need the propagation pattern and the family should be split first with split_large_file.`
+      : 'Folderization should pause because no DB-backed folderization candidate is available; split the monolith with split_large_file before retrying folderization.';
+  }
+
   if (automationState === 'review') {
     return propagationAdoption?.missingSystemCount > 0
       ? `Folderization should be reviewed because ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} still need the propagation pattern and policy coverage is ${policyCoverageState || 'unknown'}.`
@@ -201,8 +207,13 @@ export function buildAutomationReason({
 export function buildExecutionTarget({
   decision,
   automationState,
-  normalizationSafetyLevel
+  normalizationSafetyLevel,
+  recommendationStrategy
 }) {
+  if (recommendationStrategy === 'split_large_file') {
+    return 'split_large_file';
+  }
+
   if (decision === 'already_folderized') {
     return 'rename_folderized_family';
   }

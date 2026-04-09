@@ -31,6 +31,7 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
   const normalizationDensity = Number(normalization.summary?.renameTargetDensity || 0);
   const propagationMode = propagation.mode || 'blocked';
   const propagationDecision = propagation.decision || folderizationReport.decision || 'reject';
+  const recommendationStrategy = propagation.recommendationStrategy || folderizationReport.recommendation?.strategy || null;
   const policyCoverageState = policyCoverage?.coverageState || policyCoverage?.state || null;
   const promotionState = canonicalPromotion?.promotionState || canonicalPromotion?.summary?.promotionState || null;
   const systemInventoryState = context.systemInventory?.inventoryState || context.systemInventory?.summary?.inventoryState || null;
@@ -53,12 +54,15 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
   const executionTarget = buildExecutionTarget({
     decision: folderizationReport.decision,
     automationState,
-    normalizationSafetyLevel
+    normalizationSafetyLevel,
+    recommendationStrategy
   });
   const nextAction = shouldExecute
     ? `Execute ${executionTarget} using the propagation plan and connected systems.`
     : automationState === 'already_folderized'
       ? 'Reuse the existing folderized family and only rename within the family if needed.'
+      : executionTarget === 'split_large_file'
+        ? 'Use split_large_file to decompose the monolith before retrying folderization.'
       : automationState === 'review'
         ? (propagationAdoption.missingSystemCount > 0
           ? `Update ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} to surface the propagation pattern before execution.`
@@ -110,7 +114,7 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     driftState: drift.state || 'fresh',
     driftScore: Number(drift.score || 0),
     driftReason: drift.reason || null,
-    recommendationStrategy: propagation.recommendationStrategy || folderizationReport.recommendation?.strategy || null,
+    recommendationStrategy,
     connectedSystemCount: connectedSystems.length,
     connectedSystems,
     connectedSystemNames,

@@ -29,6 +29,7 @@ export function createBridgeTelemetryController({ projectPath, log }) {
     const summary = summarizeBridgeRuntimeTelemetry(nextTelemetry);
 
     return {
+      state: summary.state || nextTelemetry.state || null,
       bridgeHealthState: summary.healthState || summary.state || null,
       bridgeRiskLevel: summary.riskLevel || null,
       bridgeWarningReasons: summary.warningReasons || [],

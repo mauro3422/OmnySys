@@ -1,12 +1,14 @@
 import { getRecommendation } from '../recommendations/RecommendationEngine.js';
 
 function buildEmptyRecommendation() {
-  return {
-    message: 'No folderization candidate available',
-    action: 'Review folderization signals after more helpers are extracted',
-    strategy: 'folderization',
-    alternatives: []
-  };
+  return getRecommendation({
+    type: 'split_large_file',
+    context: {
+      familyRoot: 'current family',
+      message: 'No folderization candidate available; split the monolith before folderizing.',
+      action: 'Use split_large_file to break the monolith into smaller helpers before retrying folderization.'
+    }
+  });
 }
 
 function buildFolderizationRecommendation({

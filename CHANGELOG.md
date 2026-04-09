@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here as a release index. Detailed per-version notes live in `changelogs/`.
 
+## v0.9.432
+
+- **Restart process split and canonical folderization signals:** the process-restart lifecycle now lives in a dedicated module, folderization snapshots reuse the canonical drift and semantic-surface contracts, and bridge telemetry now persists the derived settled state instead of a stale booting snapshot.
+  - `src/layer-c-memory/mcp/restart-runtime-process.js` extracted from the main restart router.
+  - `src/layer-c-memory/mcp/tools/folderization-snapshot-summary.js` now reads canonical drift/semantic signals.
+  - `src/layer-c-memory/mcp/stdio-bridge-telemetry.js` persists the derived bridge state.
+  - Regression coverage added for the process-restart handler and the existing restart/telemetry paths stayed green.
+
 ## v0.9.431
 
 - **MCP restart recovery and observability consolidation:** the restart ACK/recovery flow now survives `processRestart` cycles, the canonical observability contract aggregates propagation/policy/gateway/inventory/readiness/telemetry, and the compiler dashboard was split into a thin coordinator plus section builders to keep the watcher below the file-size threshold.

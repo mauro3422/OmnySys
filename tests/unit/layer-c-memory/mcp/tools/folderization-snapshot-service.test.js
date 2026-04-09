@@ -190,4 +190,87 @@ describe('folderization-snapshot-service', () => {
     expect(result.persisted).toBeTruthy();
     expect(result.repo.insertCalls).toHaveLength(1);
   });
+
+  it('surfaces split_large_file when no folderization candidate is available', async () => {
+    mocks.buildFolderizationReportFromRepo.mockReturnValueOnce({
+      candidateReport: { candidateCount: 0 },
+      familyState: { stateCounts: { flat: 0, mixed: 0, already_folderized: 0 } },
+      migrationPlans: { candidates: [], focusCandidate: null },
+      naming: { familyCount: 0, renameTargetCount: 0 },
+      namingPatterns: { patternCounts: {} },
+      creationGuidance: {
+        guidance: 'No guidance available',
+        selectionReason: 'The current family is monolithic.'
+      },
+      propagation: {
+        decision: 'reject',
+        mode: 'blocked',
+        moveTargetCount: 0,
+        impactedFileCount: 0,
+        rewriteCount: 0,
+        renameTargetCount: 0,
+        validationTargetCount: 0,
+        hasCrossFamilyPropagation: false,
+        topImpactedFiles: [],
+        topCandidates: [],
+        candidateCount: 0,
+        flatFamilies: 0,
+        mixedFamilies: 0,
+        alreadyFolderizedFamilies: 0,
+        guidance: 'No guidance available',
+        recommendationStrategy: 'split_large_file'
+      },
+      recommendation: {
+        message: 'No folderization candidate available; split the monolith before folderizing.',
+        action: 'Use split_large_file to break the monolith into smaller helpers before retrying folderization.',
+        strategy: 'split_large_file'
+      },
+      decision: 'reject',
+      summary: {
+        candidateCount: 0,
+        flatFamilies: 0,
+        mixedFamilies: 0,
+        alreadyFolderizedFamilies: 0,
+        namingFamilies: 0,
+        namingTargets: 0,
+        namingPatternCounts: {},
+        recommendationStrategy: 'split_large_file'
+      }
+    });
+    mocks.getDatabaseHealthSummary.mockReturnValueOnce({
+      healthy: true,
+      healthScore: 96,
+      grade: 'A',
+      summary: 'Database projections are aligned',
+      metrics: {
+        activeAtoms: 120,
+        liveRowSync: {
+          summary: {
+            staleAtomRows: 0,
+            staleFileRows: 0,
+            staleRiskRows: 0,
+            staleRelationRows: 0,
+            staleConnectionRows: 0
+          }
+        }
+      },
+      criticalFindings: [],
+      warnings: [],
+      recommendations: []
+    });
+
+    const result = await buildFolderizationSnapshotContext(
+      {
+        scopePath: 'src/shared/compiler',
+        focusPath: 'src/shared/compiler/folderization-report'
+      },
+      { projectPath: 'C:/Dev/OmnySystem' }
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.snapshot.summary.recommendationStrategy).toBe('split_large_file');
+    expect(result.snapshot.summary.recommendedTool).toBe('split_large_file');
+    expect(result.snapshot.summary.recommendedAction).toContain('split_large_file');
+    expect(result.snapshot.summary.whyThisFirst).toContain('split');
+  });
 });

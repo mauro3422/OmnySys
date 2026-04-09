@@ -36,6 +36,14 @@ const CANONICAL_TEMPLATES = {
             : 'Use short role-based basenames once the family is folderized',
         strategy: 'folderization'
     }),
+    split_large_file: (ctx) => ({
+        message: ctx.message
+            || (ctx.familyRoot
+                ? `Split ${ctx.familyRoot} with split_large_file before folderizing.`
+                : 'Split the monolith with split_large_file before folderizing.'),
+        action: ctx.action || 'Use split_large_file to decompose the monolith before folderization',
+        strategy: 'split_large_file'
+    }),
     high_coupling: () => ({
         message: 'Consider splitting into smaller modules or using dependency injection',
         action: 'Reduce import count to improve modularity',
