@@ -10,7 +10,8 @@ import {
   exportSchemaSQL
 } from '../../storage/database/schema-registry.js';
 import {
-  ensureLiveRowSync,
+  buildCompilerControlPlaneFoundations,
+  getDatabaseHealthSummary,
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
 } from '../../../shared/compiler/index.js';
@@ -185,12 +186,22 @@ export async function buildAtomsSchemaResult(projectPath, { atomType, sampleSize
 
 export function buildDatabaseSchemaResult({ includeSQL, projectPath = process.cwd() } = {}) {
   const db = getDatabase();
-  const liveRowSync = db ? ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 }) : null;
+  const databaseHealth = db ? getDatabaseHealthSummary(db, { liveRowSyncSampleLimit: 5 }) : null;
+  const controlPlaneFoundations = db
+    ? buildCompilerControlPlaneFoundations({ dbSurfaces: { databaseHealth } })
+    : null;
+  const liveRowSync = controlPlaneFoundations?.liveRowSync || null;
   const historicalStores = buildCompilerHistoricalStorageSummary(projectPath);
   const status = getDatabaseSchemaStatus();
   if (!status.success) return { ...status, schemaType: 'database', historicalStores };
 
-  const result = { schemaType: 'database', ...status, liveRowSync, historicalStores };
+  const result = {
+    schemaType: 'database',
+    ...status,
+    liveRowSync,
+    controlPlaneFoundations,
+    historicalStores
+  };
   result.summary = {
     ...result.summary, historicalStoreCount: historicalStores.totalStores,
     historicalStoreReadyCount: historicalStores.readyStoreCount,

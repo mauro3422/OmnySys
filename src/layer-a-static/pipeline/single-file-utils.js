@@ -95,6 +95,7 @@ export function markAtomAsRemoved(atom) {
     return {
         ...atom,
         purpose: 'REMOVED',
+        isRemoved: true,
         isDeadCode: true,
         callerPattern: {
             id: 'removed',

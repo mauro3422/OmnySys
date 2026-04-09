@@ -1,7 +1,7 @@
 import { buildFolderizationSnapshotTrend } from './folderization-snapshot-helpers.js';
 import { buildCompilerDriftAssessment } from '../../../shared/compiler/compiler-drift-assessment.js';
 import {
-  buildDataGatewayContract,
+  buildCompilerControlPlaneFoundations,
   summarizeDataGatewayContract
 } from '../../../shared/compiler/index.js';
 import { summarizeSemanticCanonicality } from '../../../shared/compiler/semantic-surface-granularity-contract.js';
@@ -108,10 +108,13 @@ export function buildFolderizationSnapshotSummary({
 } = {}) {
   const summary = folderizationReport?.summary || {};
   const creationGuidance = folderizationReport?.creationGuidance || {};
-  const dataGatewayContract = buildDataGatewayContract({ databaseHealth });
+  const foundations = buildCompilerControlPlaneFoundations({
+    dbSurfaces: { databaseHealth }
+  });
+  const dataGatewayContract = foundations.dataGatewayContract;
   const dataGatewaySummary = summarizeDataGatewayContract(dataGatewayContract);
   const liveRowSync = summarizeLiveRowSync(
-    databaseHealth?.metrics?.liveRowSync || null,
+    foundations.liveRowSync || null,
     dataGatewaySummary
   );
   const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: liveRowSync.state } }, history);

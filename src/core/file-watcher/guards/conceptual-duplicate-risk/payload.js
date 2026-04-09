@@ -1,4 +1,4 @@
-import { buildDuplicateDebtHistory } from '../../../../shared/compiler/index.js';
+import { buildDuplicateDebtHistory } from '../../../../shared/compiler/duplicate-debt-history.js';
 import { buildConceptualSeverity } from './severity.js';
 import { buildConceptualContext } from './context.js';
 
@@ -14,16 +14,19 @@ export function buildConceptualDuplicateReportPayload({
     const severity = buildConceptualSeverity(findings);
     const debtHistory = buildDuplicateDebtHistory(normalizedFilePath, findings, previousFindings);
     const context = buildConceptualContext({
+        normalizedFilePath,
         findings,
         maxFindings,
         debtHistory,
         severity
     });
+    const propagation = context.propagation || context.extraData?.propagation || null;
 
     return {
         preview,
         severity,
         debtHistory,
-        context
+        context,
+        propagation
     };
 }

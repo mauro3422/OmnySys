@@ -105,6 +105,7 @@ export function buildCurrentMetrics({
     databaseHealth,
     fileUniverse,
     analysisGeneration,
+    controlPlaneFoundations,
     compilerDriftAssessment,
     notificationCounts,
     pendingFiles,
@@ -112,6 +113,8 @@ export function buildCurrentMetrics({
     toolTelemetry,
     behavior
   } = summaries;
+  const dataGatewayContract = controlPlaneFoundations?.dataGatewayContract || compilerExplainability?.dataGatewayContract || null;
+  const liveRowSync = controlPlaneFoundations?.liveRowSync || databaseHealth?.metrics?.liveRowSync || null;
 
   const current = {
     projectPath,
@@ -139,13 +142,13 @@ export function buildCurrentMetrics({
     zeroAtomFileCount: asNumber(fileUniverse?.zeroAtomFileCount, 0),
     metadataCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0),
     metadataFieldCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct, 0),
-    dataGatewayTrustworthy: compilerExplainability?.dataGatewayContract?.summary?.trustworthy === true,
-    dataGatewayState: compilerExplainability?.dataGatewayContract?.summary?.primaryIssue?.state
-      || (compilerExplainability?.dataGatewayContract?.summary?.trustworthy === true ? 'trustworthy' : 'needs_attention'),
+    dataGatewayTrustworthy: dataGatewayContract?.summary?.trustworthy === true,
+    dataGatewayState: dataGatewayContract?.summary?.primaryIssue?.state
+      || (dataGatewayContract?.summary?.trustworthy === true ? 'trustworthy' : 'needs_attention'),
     callLinks: asNumber(graphCoverage.callLinks, 0),
     semanticLinks: asNumber(graphCoverage.semanticLinks, 0),
     activeAtoms: asNumber(databaseHealth?.metrics?.activeAtoms, 0),
-    liveRowSync: databaseHealth?.metrics?.liveRowSync || null,
+    liveRowSync,
     watcherAlertCount: Array.isArray(watcherAlerts) ? watcherAlerts.length : 0,
     recentWarningCount: notificationCounts.warnings,
     recentErrorCount: notificationCounts.errors,

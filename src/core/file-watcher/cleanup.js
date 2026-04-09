@@ -30,6 +30,7 @@ export function _markAtomAsRemoved(atom) {
     return {
         ...atom,
         purpose: 'REMOVED',
+        isRemoved: true,
         isDeadCode: true,
         callerPattern: { id: 'removed', label: 'Eliminado', reason: 'Function no longer exists in source file' },
         lineage: {

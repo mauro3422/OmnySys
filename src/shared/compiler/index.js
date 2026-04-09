@@ -283,6 +283,10 @@ export {
 } from './metadata-extraction-coverage/coverage.js';
 
 export {
+  buildCompilerControlPlaneFoundations
+} from './control-plane-foundations.js';
+
+export {
   buildSurfaceFreshnessLedger,
   summarizeSurfaceFreshnessLedger,
   buildDataGatewayContract,

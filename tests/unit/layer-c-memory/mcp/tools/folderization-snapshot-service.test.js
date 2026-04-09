@@ -4,7 +4,10 @@ const mocks = vi.hoisted(() => ({
   getRepository: vi.fn(),
   buildFolderizationReportFromRepo: vi.fn(),
   buildEmptyFolderizationReport: vi.fn(),
-  getDatabaseHealthSummary: vi.fn()
+  getDatabaseHealthSummary: vi.fn(),
+  buildFolderizationSnapshotSummary: vi.fn(),
+  buildHistoryWithCurrent: vi.fn(),
+  summarizeSemanticSurfaceForSnapshot: vi.fn()
 }));
 
 vi.mock('#layer-c/storage/repository/index.js', () => ({
@@ -15,6 +18,12 @@ vi.mock('../../../../../src/shared/compiler/index.js', () => ({
   buildFolderizationReportFromRepo: mocks.buildFolderizationReportFromRepo,
   buildEmptyFolderizationReport: mocks.buildEmptyFolderizationReport,
   getDatabaseHealthSummary: mocks.getDatabaseHealthSummary
+}));
+
+vi.mock('../../../../../src/layer-c-memory/mcp/tools/folderization-snapshot-summary.js', () => ({
+  buildFolderizationSnapshotSummary: mocks.buildFolderizationSnapshotSummary,
+  buildHistoryWithCurrent: mocks.buildHistoryWithCurrent,
+  summarizeSemanticSurfaceForSnapshot: mocks.summarizeSemanticSurfaceForSnapshot
 }));
 
 import { buildFolderizationSnapshotContext } from '../../../../../src/layer-c-memory/mcp/tools/folderization-snapshot-service.js';
@@ -160,6 +169,33 @@ describe('folderization-snapshot-service', () => {
       warnings: [{ code: 'db_sync_drift', message: 'DB desync detected' }],
       recommendations: ['Reconcile the live support tables before trusting folderization guidance.']
     });
+    mocks.buildFolderizationSnapshotSummary.mockImplementation(({ folderizationReport, databaseHealth }) => {
+      const strategy = folderizationReport?.recommendation?.strategy || folderizationReport?.summary?.recommendationStrategy || 'folderization';
+      const dbSyncState = databaseHealth?.metrics?.liveRowSync?.summary?.staleAtomRows > 0 ? 'stale' : 'fresh';
+      return {
+        dbSyncState,
+        summaryText: `folder=5/9 | candidates=${folderizationReport?.summary?.candidateCount || 0} | naming=${folderizationReport?.summary?.namingTargets || 0} | propagation=${folderizationReport?.summary?.propagationImpactedFiles || 0}/${folderizationReport?.summary?.propagationRewriteCount || 0} | drift=${dbSyncState} | dbsync=${dbSyncState} | health=${databaseHealth?.healthScore || 0}/${databaseHealth?.grade || 'F'}`,
+        recommendedAction: dbSyncState !== 'fresh'
+          ? 'Reconcile the live support tables before trusting folderization guidance.'
+          : (folderizationReport?.recommendation?.action || 'Use split_large_file to break the monolith into smaller helpers before retrying folderization.'),
+        nextBestFolder: folderizationReport?.creationGuidance?.preferredFolder || 'src/core/file-watcher/guards/dead-code',
+        nextBestStem: folderizationReport?.creationGuidance?.preferredRoleStems?.[0]?.stem || 'core.js',
+        recommendationStrategy: strategy,
+        recommendedTool: strategy === 'split_large_file' ? 'split_large_file' : 'folderize_family',
+        whyThisFirst: strategy === 'split_large_file'
+          ? (folderizationReport?.recommendation?.message || 'Split the monolith first.')
+          : 'DB-backed family reuse is preferred.',
+        trend: { status: 'improving' },
+        liveRowSync: {
+          state: dbSyncState,
+          reason: dbSyncState === 'fresh'
+            ? 'Live support tables are aligned with the atom graph.'
+            : 'Live support tables are drifting from the atom graph.'
+        }
+      };
+    });
+    mocks.buildHistoryWithCurrent.mockImplementation((snapshot, history) => [snapshot, ...history]);
+    mocks.summarizeSemanticSurfaceForSnapshot.mockImplementation((value) => value || null);
   });
 
   it('builds a lightweight folderization snapshot with db sync state', async () => {

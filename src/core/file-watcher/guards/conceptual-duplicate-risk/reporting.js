@@ -14,7 +14,7 @@ export async function persistConceptualDuplicateFinding({
     eventEmitterContext,
     maxFindings
 }) {
-    const { preview, severity, debtHistory, context } = buildConceptualDuplicateReportPayload({
+    const { preview, severity, debtHistory, context, propagation } = buildConceptualDuplicateReportPayload({
         normalizedFilePath,
         findings,
         previousFindings,
@@ -32,7 +32,15 @@ export async function persistConceptualDuplicateFinding({
         issueType,
         severity,
         `${findings.length} conceptual duplicate(s): ${preview}`,
-        context
+        propagation
+            ? {
+                ...context,
+                extraData: {
+                    ...(context?.extraData || {}),
+                    propagation
+                }
+            }
+            : context
     );
 
     if (severity === 'high') {
@@ -41,5 +49,14 @@ export async function persistConceptualDuplicateFinding({
         await clearWatcherIssue(rootPath, normalizedFilePath, 'code_conceptual_duplicate_high');
     }
 
-    emitConceptualDuplicateFinding(eventEmitterContext, normalizedFilePath, severity, findings);
+    emitConceptualDuplicateFinding(eventEmitterContext, normalizedFilePath, severity, findings, propagation);
+
+    return {
+        issueType,
+        severity,
+        preview,
+        debtHistory,
+        propagation,
+        context
+    };
 }

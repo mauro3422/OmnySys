@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   buildAnalysisGenerationSnapshot: vi.fn(),
   summarizeAnalysisGeneration: vi.fn(),
   buildDataGatewayContract: vi.fn(),
+  summarizeDataGatewayContract: vi.fn(),
   buildSurfaceAudit: vi.fn(),
   getPhase2PendingFiles: vi.fn()
 }));
@@ -62,7 +63,7 @@ vi.mock('../../../../src/shared/compiler/file-universe-granularity.js', () => ({
   getFileUniverseGranularity: mocks.getFileUniverseGranularity
 }));
 
-vi.mock('../../../../src/shared/compiler/summary.js', () => ({
+vi.mock('../../../../src/shared/compiler/database-health-summary.js', () => ({
   getDatabaseHealthSummary: mocks.getDatabaseHealthSummary
 }));
 
@@ -70,7 +71,7 @@ vi.mock('../../../../src/shared/compiler/standardization-report.js', () => ({
   buildCompilerStandardizationReport: mocks.buildCompilerStandardizationReport
 }));
 
-vi.mock('../../../../src/shared/compiler/compiler-contract-layer.js', () => ({
+vi.mock('../../../../src/shared/compiler/compiler-contract-layer/layer.js', () => ({
   buildCompilerContractLayer: mocks.buildCompilerContractLayer
 }));
 
@@ -88,7 +89,8 @@ vi.mock('../../../../src/shared/compiler/counts-generation.js', () => ({
 }));
 
 vi.mock('../../../../src/shared/compiler/contract.js', () => ({
-  buildDataGatewayContract: mocks.buildDataGatewayContract
+  buildDataGatewayContract: mocks.buildDataGatewayContract,
+  summarizeDataGatewayContract: mocks.summarizeDataGatewayContract
 }));
 
 vi.mock('../../../../src/shared/compiler/surface-audit/audit.js', () => ({
@@ -150,6 +152,7 @@ beforeEach(() => {
     fingerprint: 'test-fingerprint'
   });
   mocks.buildDataGatewayContract.mockReturnValue({ healthy: true, summary: 'data-gateway' });
+  mocks.summarizeDataGatewayContract.mockReturnValue({ trustworthy: true, nextAction: 'ok' });
   mocks.buildSurfaceAudit.mockReturnValue({ healthy: true, trustworthy: true, summary: 'surface-audit' });
   mocks.buildCompilerDriftAssessment.mockReturnValue({
     status: 'stable',
@@ -196,6 +199,12 @@ describe('compiler-diagnostics-snapshot', () => {
     expect(snapshot.analysisGeneration.generationId).toBe('analysis:status:test');
     expect(snapshot.canonicalAdoptions.custom).toBe(true);
     expect(snapshot.dataGatewayContract.summary).toBe('data-gateway');
+    expect(snapshot.controlPlaneFoundations).toEqual(expect.objectContaining({
+      analysisGeneration: expect.objectContaining({ generationId: 'analysis:status:test' }),
+      databaseHealth: expect.objectContaining({ healthy: true }),
+      fileUniverseGranularity: expect.objectContaining({ summary: 'universe' }),
+      dataGatewayContract: expect.objectContaining({ summary: 'data-gateway' })
+    }));
     expect(snapshot.driftAssessment.summary.trustworthy).toBe(true);
     expect(snapshot.surfaceAudit.trustworthy).toBe(true);
   });

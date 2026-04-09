@@ -2,9 +2,11 @@
 
 ## Responsabilidad
 
-Detectar conexiones entre archivos que el análisis estático no puede ver, usando inteligencia artificial local y pattern matching.
+Detectar conexiones entre archivos que el análisis estático simple no puede ver, usando pattern matching y álgebra de grafos.
 
 Esta capa complementa la Capa A añadiendo "consciencia semántica".
+
+**IMPORTANTE**: 100% estático, 0% LLM. Todo se detecta con reglas determinísticas.
 
 ---
 

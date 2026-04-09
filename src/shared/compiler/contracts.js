@@ -1,4 +1,8 @@
 export {
+  buildCompilerControlPlaneFoundations
+} from './control-plane-foundations.js';
+
+export {
   getCompilerDiagnosticsDatabaseSurfaces
 } from './compiler-diagnostics-snapshot-contracts-database.js';
 

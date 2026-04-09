@@ -64,9 +64,10 @@ export function buildCurrentSummaries({
     }
   })();
   const folderization = compilerExplainability?.folderization || {};
-  const databaseHealth = compilerExplainability?.databaseHealth || null;
-  const fileUniverse = compilerExplainability?.fileUniverseGranularity || null;
-  const analysisGeneration = compilerExplainability?.analysisGeneration || null;
+  const controlPlaneFoundations = compilerExplainability?.controlPlaneFoundations || null;
+  const databaseHealth = controlPlaneFoundations?.databaseHealth || compilerExplainability?.databaseHealth || null;
+  const fileUniverse = controlPlaneFoundations?.fileUniverseGranularity || compilerExplainability?.fileUniverseGranularity || null;
+  const analysisGeneration = controlPlaneFoundations?.analysisGeneration || compilerExplainability?.analysisGeneration || null;
   const compilerDriftAssessment = driftAssessment || compilerExplainability?.driftAssessment || null;
   const notificationCounts = {
     total: asNumber(recentErrors?.summary?.total, 0),
@@ -136,6 +137,7 @@ export function buildCurrentSummaries({
     databaseHealth,
     fileUniverse,
     analysisGeneration,
+    controlPlaneFoundations,
     compilerDriftAssessment,
     notificationCounts,
     pendingFiles,

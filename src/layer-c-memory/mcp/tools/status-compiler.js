@@ -6,7 +6,6 @@ import {
   getMcpSessionSummary,
   getPhase2FileCounts,
   getSharedStateContentionSummary,
-  ensureLiveRowSync,
   loadCompilerDiagnosticsSnapshot
 } from '../../../shared/compiler/index.js';
 
@@ -20,7 +19,6 @@ export async function attachDeepVitals(status, projectPath, server) {
     }
 
     const sharedStateSummary = getSharedStateContentionSummary(repo.db);
-    const liveRowSync = ensureLiveRowSync(repo.db, { autoSync: true, sampleLimit: 5 });
     const compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
       projectPath,
       db: repo.db,
@@ -38,7 +36,13 @@ export async function attachDeepVitals(status, projectPath, server) {
     const phase2Counts = getPhase2FileCounts(repo.db);
     const graphCoverage = getGraphCoverageSummary(repo.db);
     const issueSummary = getIssueSummary(repo.db);
-    const fileUniverseSummary = compilerDiagnostics.fileUniverseGranularity;
+    const controlPlaneFoundations = compilerDiagnostics.controlPlaneFoundations || {};
+    const liveRowSync = controlPlaneFoundations.liveRowSync
+      || compilerDiagnostics.databaseHealth?.metrics?.liveRowSync
+      || null;
+    const fileUniverseSummary = controlPlaneFoundations.fileUniverseGranularity
+      || compilerDiagnostics.fileUniverseGranularity
+      || {};
     const conceptualSummary = getConceptualDuplicateSummary(repo, { limit: 50 });
     const sessionSummary = getMcpSessionSummary(sessionManager, {
       runtimeSessionCount: server.sessions?.size || 0,
@@ -55,7 +59,7 @@ export async function attachDeepVitals(status, projectPath, server) {
         liveFileCount: fileUniverseSummary.liveFileCount,
         zeroAtomFileCount: fileUniverseSummary.zeroAtomFileCount,
         liveCoverageRatio: fileUniverseSummary.liveCoverageRatio,
-        liveRowSync: liveRowSync.summary
+        liveRowSync: liveRowSync?.summary || null
       },
       conceptualDuplicates: {
         actionableGroups: conceptualSummary.actionableGroups,

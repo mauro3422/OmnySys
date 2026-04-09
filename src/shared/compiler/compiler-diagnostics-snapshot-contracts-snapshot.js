@@ -1,15 +1,11 @@
 import { summarizeSemanticCanonicality } from './semantic-surface-granularity.js';
-import { getFileUniverseGranularity } from './file-universe-granularity.js';
 import { buildAnalysisGenerationSnapshot } from './counts-generation.js';
 import { buildCompilerDriftAssessment } from './compiler-drift-assessment.js';
-import { buildDataGatewayContract } from './contract.js';
 import { buildCompilerStandardizationReport } from './standardization-report.js';
 import { buildCompilerContractLayer } from './compiler-contract-layer/layer.js';
 import { buildSurfaceAudit } from './surface-audit/audit.js';
-import { getLiveFileTotal } from './live-row-utils.js';
-import { ensureLiveRowSync } from './live-row-reconciliation.js';
 import { buildResolvedCanonicalAdoptions } from './compiler-diagnostics-snapshot-contracts-adoptions.js';
-import { loadCompilerDiagnosticsSnapshot } from './snapshot.js';
+import { buildCompilerControlPlaneFoundations } from './control-plane-foundations.js';
 import { validateMetricCoherence } from './metric-coherence-validator.js';
 
 export function buildCompilerDiagnosticsSnapshotContracts({
@@ -26,11 +22,6 @@ export function buildCompilerDiagnosticsSnapshotContracts({
   tableCounts
 }) {
   const semanticCanonicality = summarizeSemanticCanonicality(dbSurfaces.semanticSurfaceGranularity);
-  const fileUniverseGranularity = getFileUniverseGranularity({
-    scannedFileTotal: persistedFileCoverage?.scannedFileTotal || 0,
-    manifestFileTotal: persistedFileCoverage?.manifestFileTotal || 0,
-    liveFileCount: db ? getLiveFileTotal(db) : (persistedFileCoverage?.liveIndexedFiles || 0)
-  });
   const analysisGeneration = buildAnalysisGenerationSnapshot({
     projectPath,
     source: 'compiler-diagnostics-snapshot',
@@ -40,16 +31,17 @@ export function buildCompilerDiagnosticsSnapshotContracts({
     relationCount: dbSurfaces.databaseHealth?.metrics?.activeCallRelations || 0,
     semanticConnectionCount: dbSurfaces.databaseHealth?.metrics?.activeSemanticConnections || 0
   });
-  const dataGatewayContract = buildDataGatewayContract({
-    analysisGeneration,
-    persistedFileCoverage,
-    fileImportEvidenceCoverage: dbSurfaces.fileImportEvidenceCoverage,
-    systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
-    metadataSurfaceParity: dbSurfaces.metadataSurfaceParity,
-    metadataExtractionCoverage: dbSurfaces.metadataExtractionCoverage,
-    semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
+  const {
+    analysisGeneration: foundationsAnalysisGeneration,
+    databaseHealth: foundationsDatabaseHealth,
     fileUniverseGranularity,
-    databaseHealth: dbSurfaces.databaseHealth
+    dataGatewayContract,
+    liveRowSync
+  } = buildCompilerControlPlaneFoundations({
+    persistedFileCoverage,
+    dbSurfaces,
+    db,
+    analysisGeneration
   });
   const resolvedCanonicalAdoptions = buildResolvedCanonicalAdoptions({
     canonicalAdoptionEvidence,
@@ -107,7 +99,7 @@ export function buildCompilerDiagnosticsSnapshotContracts({
     metadataExtractionCoverage: dbSurfaces.metadataExtractionCoverage,
     dataGatewayContract,
     databaseHealth: dbSurfaces.databaseHealth,
-    liveRowSync: dbSurfaces.databaseHealth?.metrics?.liveRowSync || null,
+    liveRowSync,
     systemMapPersistenceCoverage: dbSurfaces.systemMapPersistenceCoverage,
     semanticSurfaceGranularity: dbSurfaces.semanticSurfaceGranularity,
     fileUniverseGranularity,
@@ -131,6 +123,13 @@ export function buildCompilerDiagnosticsSnapshotContracts({
     fileUniverseGranularity,
     analysisGeneration,
     dataGatewayContract,
+    controlPlaneFoundations: {
+      analysisGeneration: foundationsAnalysisGeneration,
+      databaseHealth: foundationsDatabaseHealth,
+      fileUniverseGranularity,
+      dataGatewayContract,
+      liveRowSync
+    },
     resolvedCanonicalAdoptions,
     standardizationReport,
     compilerContractLayer,

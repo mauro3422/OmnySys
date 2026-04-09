@@ -41,7 +41,9 @@ export async function cleanupOrphanedCompilerArtifacts(rootPath, filePath, valid
         await withCompilerRepository(rootPath, (repo) => repo.db.prepare(`
           UPDATE atoms
           SET purpose_type = 'REMOVED',
+              is_removed = 1,
               is_dead_code = 1,
+              updated_at = datetime('now'),
               derived_json = json_set(
                 COALESCE(derived_json, '{}'),
                 '$.status', 'removed',

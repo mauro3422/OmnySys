@@ -128,6 +128,10 @@ env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "
 
     await writeFile(paths.windowsConfigPath, buildWindowsConfig());
     await writeFile(paths.wslConfigPath, `
+[mcp_servers.browsermcp]
+command = "npx"
+args = ["@browsermcp/mcp@latest"]
+
 [mcp_servers.omnysystem]
 type = "stdio"
 command = "bash"
