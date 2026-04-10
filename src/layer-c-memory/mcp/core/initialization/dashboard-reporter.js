@@ -12,6 +12,7 @@ import { IntegrityDashboard } from '#core/meta-detector/integrity-dashboard.js';
 import { createLogger } from '#utils/logger.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
+import { reconcileWatcherIssues } from '#core/file-watcher/watcher-issue-persistence.js';
 import {
   getAtomCountSummary,
   getConceptualDuplicateSummary,
@@ -136,6 +137,14 @@ async function fetchExtendedMetrics(projectPath, db, repo, isFinal, startupTelem
     // 2. Now run live row reconciliation
     const liveRowSync = ensureLiveRowSync(db, { autoSync: true, sampleLimit: 5 });
     metrics.liveRowSyncSummary = liveRowSync.summary;
+
+    // 2b. Reconcile watcher issue persistence after row sync so inventory/trust
+    // reads see the same lifecycle state as the atom/file graph.
+    const watcherIssueReconciliation = await reconcileWatcherIssues(projectPath, {
+      db,
+      maxDelete: 1000
+    });
+    metrics.watcherIssueReconciliation = watcherIssueReconciliation;
 
     // 3. Load remaining metrics after reconciliation
     metrics.compilerDiagnostics = await loadCompilerDiagnosticsSnapshot({
