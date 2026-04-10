@@ -92,6 +92,7 @@ export function buildTechnicalDebtReportResult({
       orphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0
     },
     issuePersistence: {
+      activeIssueCount: currentSnapshot.current?.watcherIssuePersistence?.activeIssueCount || 0,
       recentIssueCount: currentSnapshot.current?.watcherIssuePersistence?.recentIssueCount || 0,
       orphanedIssues: currentSnapshot.current?.watcherIssuePersistence?.orphanedIssues || 0,
       withoutLifecycle: currentSnapshot.current?.watcherIssuePersistence?.withoutLifecycle || 0,

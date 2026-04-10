@@ -560,6 +560,7 @@ export async function buildTrustInvestigationReport(projectPath, options = {}) {
     issues: {
       summary: issueSummary,
       watcherAudit: {
+        activeIssueCount: asNumber(watcherIssuePersistence.activeIssueCount, 0),
         recentIssueCount: asNumber(watcherIssuePersistence.recentIssueCount, 0),
         withoutLifecycle,
         withoutContext
@@ -570,6 +571,7 @@ export async function buildTrustInvestigationReport(projectPath, options = {}) {
         summary: issueSummary?.pipelineOrphanSummary || null
       },
       persistence: {
+        activeIssueCount: asNumber(watcherIssuePersistence.activeIssueCount, 0),
         watcherOrphanedIssues,
         pipelineOrphanCount,
         withoutLifecycle,
@@ -633,6 +635,7 @@ export function summarizeTrustInvestigationReport(report = null) {
     metadataCoveragePct: asNumber(report.metadata?.coverage?.coveragePct, 0),
     policyDriftCount: asNumber(report.inventory?.report?.policyDriftCount, 0),
     watcherOrphanedIssues: asNumber(report.issues?.persistence?.watcherOrphanedIssues, 0),
+    activeIssueCount: asNumber(report.issues?.persistence?.activeIssueCount, 0),
     pipelineOrphanCount: asNumber(report.issues?.persistence?.pipelineOrphanCount, asNumber(report.issues?.pipelineOrphans?.total, 0)),
     orphanedIssues: asNumber(report.issues?.persistence?.watcherOrphanedIssues, 0),
     slowToolCount: asNumber(report.tools?.slowToolCount, 0),

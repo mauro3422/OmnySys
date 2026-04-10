@@ -101,6 +101,7 @@ function summarizeCompactCurrentStructure(current = {}) {
   return {
     issueCount: valueOr(current.issueCount, 0),
     watcherIssuePersistence: current.watcherIssuePersistence || null,
+    activeWatcherIssues: valueOr(current.watcherIssuePersistence?.activeIssueCount, 0),
     structuralGroups: valueOr(current.structuralGroups, 0),
     conceptualGroups: valueOr(current.conceptualGroups, 0),
     conceptualRawGroups: valueOr(current.conceptualRawGroups, 0),

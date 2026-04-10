@@ -108,7 +108,7 @@ export function buildTechnicalDebtPriorityActions(data) {
             priority: Number(issuePersistence.orphanedIssues || 0) > 100 ? 'high' : 'medium',
             type: 'issue_persistence',
             action: 'Reconcile watcher issue persistence and lifecycle metadata',
-            impact: `Watcher orphans=${issuePersistence.orphanedIssues || 0}, withoutLifecycle=${issuePersistence.withoutLifecycle || 0}, withoutContext=${issuePersistence.withoutContext || 0}`,
+            impact: `Watcher active=${issuePersistence.activeIssueCount || 0}, orphans=${issuePersistence.orphanedIssues || 0}, withoutLifecycle=${issuePersistence.withoutLifecycle || 0}, withoutContext=${issuePersistence.withoutContext || 0}`,
             urgencyScore: Number(issuePersistence.orphanedIssues || 0) + Number(issuePersistence.withoutLifecycle || 0) + Number(issuePersistence.withoutContext || 0)
         });
     }

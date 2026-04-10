@@ -117,6 +117,7 @@ export function buildCurrentMetrics({
   const liveRowSync = controlPlaneFoundations?.liveRowSync || databaseHealth?.metrics?.liveRowSync || null;
   const watcherIssuePersistence = issueSummary?.watcherIssuePersistence || null;
   const issuePersistence = watcherIssuePersistence ? {
+    activeIssueCount: asNumber(watcherIssuePersistence.activeIssueCount, 0),
     recentIssueCount: asNumber(watcherIssuePersistence.recentIssueCount, 0),
     withoutLifecycle: asNumber(watcherIssuePersistence.withoutLifecycle, 0),
     withoutContext: asNumber(watcherIssuePersistence.withoutContext, 0),
@@ -231,7 +232,7 @@ export function buildCurrentMetrics({
       : null,
     `issues=${current.issueCount}`,
     current.watcherIssuePersistence
-      ? `issuePersistence=${current.watcherIssuePersistence.orphanedIssues || 0}/${current.watcherIssuePersistence.withoutLifecycle || 0}/${current.watcherIssuePersistence.withoutContext || 0}`
+      ? `issuePersistence=${current.watcherIssuePersistence.activeIssueCount || 0}:${current.watcherIssuePersistence.orphanedIssues || 0}/${current.watcherIssuePersistence.withoutLifecycle || 0}/${current.watcherIssuePersistence.withoutContext || 0}`
       : null,
     `dups=${current.structuralGroups + current.conceptualGroups}`,
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,

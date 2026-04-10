@@ -19,6 +19,7 @@ export function buildTechnicalDebtReportValues({
   const conceptualGroups = report.conceptual?.totalGroups || 0;
   const pipelineOrphans = report.pipelineOrphans?.total || 0;
   const watcherOrphans = issuePersistence.orphanedIssues || 0;
+  const activeWatcherIssues = issuePersistence.activeIssueCount || 0;
   const withoutLifecycle = issuePersistence.withoutLifecycle || 0;
   const withoutContext = issuePersistence.withoutContext || 0;
   const namingDebt = folderization.namingDebt?.renameTargetCount
@@ -28,6 +29,7 @@ export function buildTechnicalDebtReportValues({
     `debt=${report.debtScore?.score || 0}/${report.debtScore?.level || 'low'}`,
     `structural=${structuralGroups}`,
     `conceptual=${conceptualGroups}`,
+    `watchers=${activeWatcherIssues}`,
     `orphans=${pipelineOrphans}`,
     `issuePersistence=${watcherOrphans}/${withoutLifecycle}/${withoutContext}`,
     `folder=${folderization.summary?.candidateCount || 0}`,
@@ -53,6 +55,7 @@ export function buildTechnicalDebtReportValues({
     conceptual_raw_groups: Number(report.conceptual?.rawGroups || 0),
     pipeline_orphans: pipelineOrphans,
     issue_persistence_orphans: Number(watcherOrphans || 0),
+    issue_persistence_active: Number(activeWatcherIssues || 0),
     issue_persistence_without_lifecycle: Number(withoutLifecycle || 0),
     issue_persistence_without_context: Number(withoutContext || 0),
     folderization_candidate_count: Number(folderization.summary?.candidateCount || 0),

@@ -17,11 +17,13 @@ export function collectIssueMetrics(db, options = {}) {
   if (!db) {
     return {
       total: 0,
+      activeWatcherIssues: 0,
       bySeverity: [],
       display: '0 items',
       orphanCount: 0,
       pipelineOrphanCount: 0,
       watcherIssuePersistence: {
+        activeIssueCount: 0,
         recentIssueCount: 0,
         withoutLifecycle: 0,
         withoutContext: 0,
@@ -52,15 +54,23 @@ export function collectIssueMetrics(db, options = {}) {
 
   const orphanSummary = getPipelineOrphanSummary(db);
   const deadCodeSummary = getDeadCodePlausibilitySummary(db, { minLines: minDeadCodeLines });
+  const activeWatcherIssueCount = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM semantic_issues
+    WHERE message LIKE '[watcher]%'
+      AND (is_removed = 0 OR is_removed IS NULL)
+  `).get().count;
 
   return {
     total: rows.reduce((sum, row) => sum + row.count, 0),
+    activeWatcherIssues: activeWatcherIssueCount,
     bySeverity: rows,
     display: rows.map((row) => `${row.count} ${row.severity}`).join(', ') || '0 items',
     orphanCount: orphanSummary?.total || 0,
     pipelineOrphanCount: orphanSummary?.total || 0,
     pipelineOrphanSummary: orphanSummary,
     watcherIssuePersistence: {
+      activeIssueCount: activeWatcherIssueCount,
       recentIssueCount: recentWatcherIssues.length,
       withoutLifecycle: watcherAudit.withoutLifecycle || 0,
       withoutContext: watcherAudit.withoutContext || 0,
@@ -71,4 +81,3 @@ export function collectIssueMetrics(db, options = {}) {
     deadCodeWarning: deadCodeSummary?.warning || null
   };
 }
-
