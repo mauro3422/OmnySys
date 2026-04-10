@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 import {
     readDaemonOwnerLock,
     waitForDaemonOwner
-} from '../../shared/compiler/runtime-ownership.js';
+} from '../../shared/compiler/index.js';
 import {
     readDaemonHealth,
     waitForDaemonHealthy,

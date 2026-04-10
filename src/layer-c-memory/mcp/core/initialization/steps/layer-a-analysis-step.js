@@ -14,15 +14,32 @@ import path from 'path';
 const logger = createLogger('OmnySys:layer:a:analysis:step');
 
 /**
- * Ultra-fast check: if omnysys.db exists, analysis is complete.
- * Uses only fs.access on a known path — zero project tree scan, zero DB open.
+ * Ultra-fast check: if omnysys.db exists AND has active atoms, analysis is complete.
+ * Uses only fs.access + a quick SQLite count — zero project tree scan.
+ * Minimum threshold: 100 active atoms (a real project has thousands).
  */
+const MIN_ACTIVE_ATOMS_THRESHOLD = 100;
+
 async function hasCompleteAnalysis(projectPath) {
   try {
     const dataDir = path.join(projectPath, '.omnysysdata');
     const dbPath = path.join(dataDir, 'omnysys.db');
     await fs.access(dbPath);
-    return true;
+
+    // DB exists — quick check: does it have active atoms?
+    // After reanalyze=true, the DB is recreated empty → must run full analysis
+    const Database = (await import('better-sqlite3')).default;
+    const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+
+    try {
+      const row = db.prepare('SELECT COUNT(*) as n FROM atoms WHERE is_removed = 0').get();
+      const activeCount = Number(row?.n || 0);
+      db.close();
+      return activeCount >= MIN_ACTIVE_ATOMS_THRESHOLD;
+    } catch {
+      db.close();
+      return false;
+    }
   } catch {
     return false;
   }

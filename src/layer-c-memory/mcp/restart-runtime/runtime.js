@@ -212,6 +212,7 @@ async function handleProxyRestart({
       reanalyze,
       clearCacheOnly,
       reindexOnly,
+      processRestart,
       file: 'user_requested',
       reason: clearCacheOnly ? 'clear_cache_only' : reindexOnly ? 'reindex_only' : reanalyze ? 'reanalyze' : 'manual_restart'
     });

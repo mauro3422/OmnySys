@@ -3,7 +3,7 @@ import {
   readBridgeRuntimeTelemetry,
   writeBridgeRuntimeTelemetrySync,
   summarizeBridgeRuntimeTelemetry
-} from '../../shared/compiler/bridge-runtime-telemetry.js';
+} from '../../shared/compiler/index.js';
 
 export function createBridgeTelemetryController({ projectPath, log }) {
   let bridgeTelemetry = readBridgeRuntimeTelemetry(projectPath) || null;

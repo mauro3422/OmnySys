@@ -1,4 +1,4 @@
-import { runAsyncBoundary } from '../../shared/compiler/async-boundary.js';
+import { runAsyncBoundary } from '../../shared/compiler/index.js';
 import { normalizeTransportOrigin } from './transport-provenance.js';
 import { execSync } from 'child_process';
 import { buildHealthUrl, buildMcpUrl } from '../../shared/mcp-endpoints.js';
