@@ -106,6 +106,34 @@ At implementation time:
 
 - `5/5` tests passed
 
+## Follow-up Evidence
+
+### 2026-04-10: direct Windows MCP SDK probe
+
+- A direct Windows client using `@modelcontextprotocol/sdk` and `StreamableHTTPClientTransport` connected to `http://127.0.0.1:9999/mcp`.
+- The probe listed `45` tools and observed a live `sessionId`, which means the daemon and MCP transport are healthy when the client follows the full handshake.
+- The `omnysys://sessions` resource reported:
+  - `runtimeSessions: 1`
+  - `persistedActiveSessions: 1`
+  - `transportOriginCounts.http_direct: 1`
+- That same daemon still showed `sessions: 0` in `/health` until the SDK client completed `initialize`.
+
+### Why this matters
+
+This confirms the bug boundary:
+
+- daemon health is not the same as session health
+- a raw request to `/mcp` is not enough to prove the handshake is correct
+- the WSL bridge must preserve route identity and replay the proper initialize flow after reconnect
+
+So this bug class should keep being tracked as a bridge / session / handshake issue, not as a generic "MCP is broken" report.
+
+### 2026-04-10: bridge telemetry namespace isolation
+
+- The stdio bridge now persists its runtime telemetry with an explicit bridge namespace instead of hydrating by `projectPath` alone.
+- That namespace separates Windows and WSL surfaces so a cached `lastSessionId` or cached `initialize` from one environment cannot be replayed into the other.
+- The fix keeps same-environment recovery intact while preventing cross-surface session reuse from stale telemetry.
+
 ## Lessons Learned
 
 ### 1. Healthy daemon does not mean healthy launcher route
@@ -167,3 +195,15 @@ If `Transport closed` still appears after the route fix, the next debugging pass
 - first post-initialize tool call
 
 That would tell us whether Codex closes the transport before or after the daemon binds the route-aware session.
+
+## Later Evolution
+
+On 2026-04-10 a separate local issue was documented where Codex inside VS Code
+could freeze at startup when launched through the WSL surface even while the
+Windows daemon and Windows bridge stayed healthy.
+
+That follow-up is tracked separately in:
+
+- `docs/bugs-mcp/vscode-codex-wsl-startup-freeze.md`
+
+This matters because not every WSL-side failure is another route-dedup bug.

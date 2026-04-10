@@ -71,3 +71,6 @@ The bridge also needed to preserve the restart tool result shape expected by Cod
 - The remaining watcher warnings are technical debt, not a functional blocker.
 - If the restart path regresses, check the trace event sequence before changing the daemon itself.
 - `Transport closed` later reappeared through a different WSL launcher-route collision pattern; that evolution is documented in `docs/bugs-mcp/mcp-wsl-route-dedup-transport-closed.md`.
+- A later local investigation also documented a distinct VS Code launcher freeze when Codex was configured to start through WSL; that issue is tracked separately in `docs/bugs-mcp/vscode-codex-wsl-startup-freeze.md`.
+- A healthy `/health` snapshot does not imply an active MCP session. The session counter only moves after a full MCP `initialize` handshake succeeds.
+- A direct Windows SDK probe on 2026-04-10 confirmed that the transport/session handshake is what creates the live session, not the daemon boot alone.
