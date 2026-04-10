@@ -30,6 +30,11 @@ vi.mock('#cli/commands/setup.js', () => ({
   setupLogic: vi.fn()
 }));
 
+vi.mock('#cli/commands/trust.js', () => ({
+  aliases: ['trust', 'investigate', 'baseline'],
+  trustLogic: vi.fn()
+}));
+
 vi.mock('#cli/commands/help.js', () => ({
   aliases: ['help', '--help', '-h'],
   helpLogic: vi.fn()
@@ -105,6 +110,18 @@ describe('findCommand', () => {
     expect(cmd.aliases).toContain('-h');
   });
 
+  it('finds trust command', () => {
+    const cmd = findCommand('trust');
+    expect(cmd).toBeDefined();
+    expect(cmd.aliases).toContain('trust');
+  });
+
+  it('finds trust command by investigate alias', () => {
+    const cmd = findCommand('investigate');
+    expect(cmd).toBeDefined();
+    expect(cmd.aliases).toContain('investigate');
+  });
+
   it('returns null for unknown command', () => {
     const cmd = findCommand('unknown');
     expect(cmd).toBeNull();
@@ -168,6 +185,12 @@ describe('findCommandLogic', () => {
     expect(typeof logic).toBe('function');
   });
 
+  it('finds logic function for trust command', async () => {
+    const logic = await findCommandLogic('trust');
+    expect(logic).toBeDefined();
+    expect(typeof logic).toBe('function');
+  });
+
   it('finds logic function for down command', async () => {
     const logic = await findCommandLogic('down');
     expect(logic).toBeDefined();
@@ -187,6 +210,7 @@ describe('commands', () => {
     expect(commands.setupTerminal).toBeDefined();
     expect(commands.refresh).toBeDefined();
     expect(commands.analyze).toBeDefined();
+    expect(commands.trust).toBeDefined();
   });
 
   it('has correct number of commands', () => {

@@ -62,6 +62,7 @@ export function buildTechnicalDebtPriorityActions(data) {
         structural,
         conceptual,
         orphans,
+        issuePersistence = null,
         folderization = [],
         folderizationFamilyState = null,
         folderizationNaming = null,
@@ -101,6 +102,16 @@ export function buildTechnicalDebtPriorityActions(data) {
             urgencyScore: orphan.complexity
         });
     });
+
+    if (issuePersistence && Number(issuePersistence.orphanedIssues || 0) > 0) {
+        actions.push({
+            priority: Number(issuePersistence.orphanedIssues || 0) > 100 ? 'high' : 'medium',
+            type: 'issue_persistence',
+            action: 'Reconcile watcher issue persistence and lifecycle metadata',
+            impact: `Watcher orphans=${issuePersistence.orphanedIssues || 0}, withoutLifecycle=${issuePersistence.withoutLifecycle || 0}, withoutContext=${issuePersistence.withoutContext || 0}`,
+            urgencyScore: Number(issuePersistence.orphanedIssues || 0) + Number(issuePersistence.withoutLifecycle || 0) + Number(issuePersistence.withoutContext || 0)
+        });
+    }
 
     const folderizableFamilies = folderization
         .filter((plan) => plan?.decision === 'approve')

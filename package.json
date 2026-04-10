@@ -14,6 +14,7 @@
     "stop": "node omny.js down",
     "status": "node omny.js status",
     "tools": "node omny.js tools",
+    "trust": "node omny.js trust",
     "setup": "node install.js",
     "setup:terminal": "node scripts/mcp-autostart.js",
     "analyze": "node src/cli/index.js analyze",

@@ -187,6 +187,16 @@ export {
 } from './canonical-promotion-summary.js';
 
 export {
+  buildTrustInvestigationReport,
+  summarizeTrustInvestigationReport
+} from './trust-investigation-report.js';
+
+export {
+  buildTrustRemediationBatchPlan,
+  summarizeTrustRemediationBatchPlan
+} from './trust-remediation-batches.js';
+
+export {
   buildCompilerLayerReliability
 } from './compiler-metric-reliability.js';
 

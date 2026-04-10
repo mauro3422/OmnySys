@@ -13,7 +13,7 @@
  * TODOS los valores deben ser: number, string, bigint, buffer, o null
  * NO puede haber: undefined, NaN, Infinity, objects, arrays, functions
  */
-import { TABLE_DEFINITIONS } from '../../../database/schema-registry.js';
+import { TABLE_DEFINITIONS } from '../../../database/schema-registry/index.js';
 
 const ATOM_CUSTOM_EXTRACTORS = {
   atom_type: atom => atom.type || atom.atomType || 'function',

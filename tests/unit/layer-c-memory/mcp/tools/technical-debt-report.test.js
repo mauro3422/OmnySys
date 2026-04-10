@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   getRepository: vi.fn(),
   buildCompilerMetricsSnapshot: vi.fn(),
+  loadCompilerExplainability: vi.fn(async () => ({})),
   buildFolderizationReportFromRepo: vi.fn(),
   buildEmptyFolderizationReport: vi.fn(),
   aggregateExecute: vi.fn(),
@@ -13,12 +14,17 @@ vi.mock('#layer-c/storage/repository/index.js', () => ({
   getRepository: mocks.getRepository
 }));
 
-vi.mock('../../../../../src/shared/compiler/index.js', () => ({
-  buildCompilerMetricsSnapshot: mocks.buildCompilerMetricsSnapshot,
-  buildFolderizationReportFromRepo: mocks.buildFolderizationReportFromRepo,
-  buildEmptyFolderizationReport: mocks.buildEmptyFolderizationReport,
-  normalizeSnapshotPath: mocks.normalizeSnapshotPath
-}));
+vi.mock('../../../../../src/shared/compiler/index.js', async () => {
+  const actual = await vi.importActual('../../../../../src/shared/compiler/index.js');
+  return {
+    ...actual,
+    buildCompilerMetricsSnapshot: mocks.buildCompilerMetricsSnapshot,
+    loadCompilerExplainability: mocks.loadCompilerExplainability,
+    buildFolderizationReportFromRepo: mocks.buildFolderizationReportFromRepo,
+    buildEmptyFolderizationReport: mocks.buildEmptyFolderizationReport,
+    normalizeSnapshotPath: mocks.normalizeSnapshotPath
+  };
+});
 
 vi.mock('../../../../../src/layer-c-memory/mcp/tools/aggregate-metrics.js', () => ({
   AggregateMetricsTool: class AggregateMetricsTool {

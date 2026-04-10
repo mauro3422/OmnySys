@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import Database from 'better-sqlite3';
 
-import { exportSchemaSQL } from '../../../../src/layer-c-memory/storage/database/schema-registry.js';
+import { exportSchemaSQL } from '../../../../src/layer-c-memory/storage/database/schema-registry/index.js';
 import { getDatabaseHealthSummary } from '../../../../src/shared/compiler/summary.js';
 import { getSystemMapPersistenceCoverage } from '../../../../src/shared/compiler/system-map-persistence.js';
 

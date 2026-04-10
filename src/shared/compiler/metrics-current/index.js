@@ -115,6 +115,15 @@ export function buildCurrentMetrics({
   } = summaries;
   const dataGatewayContract = controlPlaneFoundations?.dataGatewayContract || compilerExplainability?.dataGatewayContract || null;
   const liveRowSync = controlPlaneFoundations?.liveRowSync || databaseHealth?.metrics?.liveRowSync || null;
+  const watcherIssuePersistence = issueSummary?.watcherIssuePersistence || null;
+  const issuePersistence = watcherIssuePersistence ? {
+    recentIssueCount: asNumber(watcherIssuePersistence.recentIssueCount, 0),
+    withoutLifecycle: asNumber(watcherIssuePersistence.withoutLifecycle, 0),
+    withoutContext: asNumber(watcherIssuePersistence.withoutContext, 0),
+    orphanedIssues: asNumber(watcherIssuePersistence.orphanedIssues, 0),
+    pipelineOrphanCount: asNumber(issueSummary?.pipelineOrphanCount || issueSummary?.orphanCount, 0),
+    lifecycleDistribution: watcherIssuePersistence.lifecycleDistribution || null
+  } : null;
 
   const current = {
     projectPath,
@@ -126,6 +135,7 @@ export function buildCurrentMetrics({
     healthScore: asNumber(databaseHealth?.healthScore, 0),
     healthGrade: databaseHealth?.grade || 'F',
     issueCount: asNumber(issueSummary.total, 0),
+    watcherIssuePersistence: issuePersistence,
     structuralGroups: asNumber(summaries.structuralGroups, 0),
     conceptualGroups: asNumber(conceptualSummary.actionableGroups, 0),
     conceptualRawGroups: asNumber(conceptualSummary.rawGroups, 0),
@@ -220,6 +230,9 @@ export function buildCurrentMetrics({
       ? `repair=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.pressureRuns}`
       : null,
     `issues=${current.issueCount}`,
+    current.watcherIssuePersistence
+      ? `issuePersistence=${current.watcherIssuePersistence.orphanedIssues || 0}/${current.watcherIssuePersistence.withoutLifecycle || 0}/${current.watcherIssuePersistence.withoutContext || 0}`
+      : null,
     `dups=${current.structuralGroups + current.conceptualGroups}`,
     `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
     current.canonicalPromotion?.promotionState

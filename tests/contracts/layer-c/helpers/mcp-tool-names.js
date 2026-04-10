@@ -24,7 +24,8 @@ export const TOOL_NAMES = [
   'mcp_omnysystem_get_server_status',
   'mcp_omnysystem_get_recent_errors',
   'mcp_omnysystem_restart_server',
-  'mcp_omnysystem_detect_performance_hotspots'
+  'mcp_omnysystem_detect_performance_hotspots',
+  'mcp_omnysystem_get_trust_investigation_report'
 ];
 
 export const REQUIRED_TOOL_DEFINITION_FIELDS = ['name', 'description', 'inputSchema'];

@@ -7,7 +7,7 @@ import {
   getTableColumns,
   generateSchemaReport,
   exportSchemaSQL
-} from '../../storage/database/schema-registry.js';
+} from '../../storage/database/schema-registry/index.js';
 import {
   buildCompilerHistoricalStorageSummary,
   buildCompilerControlPlaneFoundations,

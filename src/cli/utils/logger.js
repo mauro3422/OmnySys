@@ -1,6 +1,6 @@
 /**
  * @fileoverview CLI Logger
- * 
+ *
  * @module cli/utils/logger
  */
 
@@ -32,6 +32,7 @@ Comandos:
   down, stop    Detiene todos los servicios
   status        Muestra estado de los servicios
   tools         Lista herramientas disponibles
+  trust         Baseline de confianza y drifts de DB
   call <tool>   Ejecuta una herramienta
   setup         Configura OpenCode y verifica instalación
   help          Muestra esta ayuda
@@ -39,6 +40,7 @@ Comandos:
 Ejemplos:
   omnysys up                              # Inicia todo
   omnysys status                          # Ver estado
+  omnysys trust                           # Auditar confianza de la DB
   omnysys call get_impact_map '{"filePath":"src/core.js"}'
   omnysys tools                           # Ver herramientas
 `);

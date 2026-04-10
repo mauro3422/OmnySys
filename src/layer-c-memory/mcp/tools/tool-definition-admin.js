@@ -140,6 +140,24 @@ export const adminToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_get_trust_investigation_report',
+    description: 'Runs a trust baseline over inventory, metadata, issue persistence and tool latency so the system can decide whether its control plane is trustworthy.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        scopePath: { type: 'string', description: 'Scope contextual para elegir la familia o dominio más cercano' },
+        focusPath: { type: 'string', description: 'Focus contextual para afinar la guía y la comparación' },
+        compareDays: { type: 'number', default: 3, description: 'Ventana en días para comparar tendencia' },
+        historyLimit: { type: 'number', default: 12, description: 'Cantidad máxima de snapshots devueltos en el history' },
+        toolRunTelemetryWindowDays: { type: 'number', default: 7, description: 'Ventana para resumir la telemetría de ejecución de tools' },
+        limit: { type: 'number', default: 3, description: 'Cantidad máxima de muestras a devolver por categoría' },
+        persist: { type: 'boolean', default: true, description: 'Si es true, guarda la snapshot de confianza en SQLite' },
+        includeSamples: { type: 'boolean', default: true, description: 'Si es true, incluye samples concretos en la respuesta' }
+      },
+      required: []
+    }
+  },
+  {
     name: 'mcp_omnysystem_get_canonical_promotion_report',
     description: 'Returns the canonical promotion plan for folderized families and emergent surfaces, combining system inventory and folderization evidence into a reusable contract.',
     inputSchema: {

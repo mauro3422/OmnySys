@@ -14,9 +14,13 @@ export function buildTechnicalDebtReportValues({
   const current = currentSnapshot.current || {};
   const summary = report.summary || {};
   const folderization = report.folderization || {};
+  const issuePersistence = report.issuePersistence || {};
   const structuralGroups = report.structural?.totalGroups || 0;
   const conceptualGroups = report.conceptual?.totalGroups || 0;
   const pipelineOrphans = report.pipelineOrphans?.total || 0;
+  const watcherOrphans = issuePersistence.orphanedIssues || 0;
+  const withoutLifecycle = issuePersistence.withoutLifecycle || 0;
+  const withoutContext = issuePersistence.withoutContext || 0;
   const namingDebt = folderization.namingDebt?.renameTargetCount
     || folderization.naming?.renameTargetCount
     || 0;
@@ -25,6 +29,7 @@ export function buildTechnicalDebtReportValues({
     `structural=${structuralGroups}`,
     `conceptual=${conceptualGroups}`,
     `orphans=${pipelineOrphans}`,
+    `issuePersistence=${watcherOrphans}/${withoutLifecycle}/${withoutContext}`,
     `folder=${folderization.summary?.candidateCount || 0}`,
     `naming=${namingDebt}`
   ].join(' | ');
@@ -47,6 +52,9 @@ export function buildTechnicalDebtReportValues({
     conceptual_groups: conceptualGroups,
     conceptual_raw_groups: Number(report.conceptual?.rawGroups || 0),
     pipeline_orphans: pipelineOrphans,
+    issue_persistence_orphans: Number(watcherOrphans || 0),
+    issue_persistence_without_lifecycle: Number(withoutLifecycle || 0),
+    issue_persistence_without_context: Number(withoutContext || 0),
     folderization_candidate_count: Number(folderization.summary?.candidateCount || 0),
     flat_families: Number(folderization.summary?.flatFamilies || 0),
     mixed_families: Number(folderization.summary?.mixedFamilies || 0),
@@ -76,6 +84,7 @@ export function buildTechnicalDebtReportValues({
     payload_json: JSON.stringify({
       fingerprint: fingerprint || currentSnapshot.current?.snapshotFingerprint || null,
       report,
+      issuePersistence,
       currentSnapshot: {
         fingerprint: currentSnapshot.current?.snapshotFingerprint || null,
         summary: currentSnapshot.summary || null,

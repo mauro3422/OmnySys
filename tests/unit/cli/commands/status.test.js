@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('#cli/utils/port-checker.js', () => ({
   checkLLM: vi.fn(),
@@ -8,10 +8,17 @@ vi.mock('#cli/utils/port-checker.js', () => ({
 
 const { checkLLM, checkMCP } = await import('#cli/utils/port-checker.js');
 const { statusLogic, execute, aliases } = await import('#cli/commands/status.js');
+const originalFetch = global.fetch;
 
 describe('statusLogic', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    global.fetch = originalFetch;
   });
 
   it('returns success when both services running', async () => {
@@ -76,6 +83,11 @@ describe('statusLogic', () => {
   it('shows tools available only when MCP running', async () => {
     vi.mocked(checkLLM).mockResolvedValue(true);
     vi.mocked(checkMCP).mockResolvedValue(true);
+    vi.mocked(global.fetch).mockResolvedValue({
+      json: () => Promise.resolve({
+        tools: Array(9).fill({ name: 'tool' })
+      })
+    });
 
     const result = await statusLogic({ silent: true });
 

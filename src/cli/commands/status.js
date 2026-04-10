@@ -1,4 +1,5 @@
 import { checkLLM, checkMCP } from '../utils/port-checker.js';
+import { getMcpUrl } from '../utils/mcp-standardizer/utils.js';
 import { log } from '../utils/logger.js';
 
 export const aliases = ['status'];
@@ -13,6 +14,17 @@ export async function statusLogic(options = {}) {
   try {
     const llm = await checkLLM();
     const mcp = await checkMCP();
+    let toolsAvailable = 0;
+
+    if (mcp) {
+      try {
+        const response = await fetch(`${getMcpUrl()}/tools`);
+        const payload = await response.json();
+        toolsAvailable = Array.isArray(payload?.tools) ? payload.tools.length : 0;
+      } catch {
+        toolsAvailable = 0;
+      }
+    }
 
     return {
       success: true,
@@ -25,7 +37,7 @@ export async function statusLogic(options = {}) {
         mcp: {
           running: mcp,
           port: 9999,
-          toolsAvailable: mcp ? 9 : 0
+          toolsAvailable
         }
       },
       allRunning: llm && mcp
@@ -46,14 +58,14 @@ export async function execute() {
   const mcpStatus = mcpHealth ? `🟢 ${mcpHealth.status}` : (result.services.mcp.running ? '🟢 Running' : '🔴 Stopped');
   const sessions = mcpHealth ? `${mcpHealth.sessions} active` : 'N/A';
 
-  console.log('\n╔════════════════════════════════════╗');
+  console.log('\n╔════════════════════════════════════════╗');
   console.log('║      OMNYsys STATUS                ║');
-  console.log('╠════════════════════════════════════╣');
+  console.log('╠════════════════════════════════════════╣');
   console.log(`║  LLM Server:  ${result.services.llm.running ? '🟢 Running' : '🔴 Stopped'}${' '.repeat(16)}║`);
   console.log(`║  MCP Server:  ${mcpStatus}${' '.repeat(27 - mcpStatus.length)}║`);
   console.log(`║  Sessions:    ${sessions}${' '.repeat(26 - sessions.length)}║`);
-  console.log(`║  Tools:       ${result.services.mcp.running ? '20 available' : 'N/A'}${' '.repeat(15)}║`);
-  console.log('╚════════════════════════════════════╝\n');
+  console.log(`║  Tools:       ${result.services.mcp.running ? `${result.services.mcp.toolsAvailable} available` : 'N/A'}${' '.repeat(15)}║`);
+  console.log('╚════════════════════════════════════════╝\n');
 
   if (!result.allRunning) {
     log('Ejecuta: omnysys up', 'warning');

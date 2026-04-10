@@ -91,6 +91,14 @@ export function buildTechnicalDebtReportResult({
       grade: pipelineHealthResult.grade || 'F',
       orphans: pipelineHealthResult.orphanPipelineFunctions?.length || 0
     },
+    issuePersistence: {
+      recentIssueCount: currentSnapshot.current?.watcherIssuePersistence?.recentIssueCount || 0,
+      orphanedIssues: currentSnapshot.current?.watcherIssuePersistence?.orphanedIssues || 0,
+      withoutLifecycle: currentSnapshot.current?.watcherIssuePersistence?.withoutLifecycle || 0,
+      withoutContext: currentSnapshot.current?.watcherIssuePersistence?.withoutContext || 0,
+      pipelineOrphanCount: currentSnapshot.current?.watcherIssuePersistence?.pipelineOrphanCount || 0,
+      lifecycleDistribution: currentSnapshot.current?.watcherIssuePersistence?.lifecycleDistribution || null
+    },
     folderization: folderizationReport.summary
   };
 
@@ -176,6 +184,7 @@ export function buildTechnicalDebtReportResult({
     structural: duplicatesResult.remediation?.items || [],
     conceptual: conceptualResult.groups || [],
     orphans: pipelineHealthResult.orphanPipelineFunctions || [],
+    issuePersistence: summary.issuePersistence,
     folderization: folderizationReport.migrationPlans?.candidates || [],
     folderizationFamilyState: folderization.familyState,
     folderizationNaming: folderization.naming,
@@ -188,6 +197,7 @@ export function buildTechnicalDebtReportResult({
     success: true,
     aggregationType: 'technical_debt_report',
     summary,
+    issuePersistence: summary.issuePersistence,
     structural,
     conceptual,
     pipelineOrphans,

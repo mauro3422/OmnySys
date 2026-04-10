@@ -1,4 +1,4 @@
-import { TABLE_DEFINITIONS } from '../../../database/schema-registry.js';
+import { TABLE_DEFINITIONS } from '../../../database/schema-registry/index.js';
 
 export function getAtomInsertColumns() {
   return TABLE_DEFINITIONS.atoms.columns.map((column) => column.name);

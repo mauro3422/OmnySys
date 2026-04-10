@@ -13,7 +13,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
-import { getTableColumns, hasColumn } from '../storage/database/schema-registry.js';
+import { getTableColumns, hasColumn } from '../storage/database/schema-registry/index.js';
 
 const DB_PATH = '.omnysysdata/omnysys.db';
 

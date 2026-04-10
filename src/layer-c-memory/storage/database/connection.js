@@ -33,7 +33,7 @@ import {
   generateAddColumnSQL,
   generateCreateTableSQL,
   generateCreateIndexesSQL
-} from './schema-registry.js';
+} from './schema-registry/index.js';
 
 const logger = createLogger('OmnySys:Storage:Connection');
 

@@ -100,6 +100,7 @@ function summarizeCompactCurrentScores(current = {}) {
 function summarizeCompactCurrentStructure(current = {}) {
   return {
     issueCount: valueOr(current.issueCount, 0),
+    watcherIssuePersistence: current.watcherIssuePersistence || null,
     structuralGroups: valueOr(current.structuralGroups, 0),
     conceptualGroups: valueOr(current.conceptualGroups, 0),
     conceptualRawGroups: valueOr(current.conceptualRawGroups, 0),

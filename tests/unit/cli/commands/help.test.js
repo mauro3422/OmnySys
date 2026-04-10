@@ -22,6 +22,7 @@ describe('helpLogic', () => {
     expect(result.helpText).toContain('down');
     expect(result.helpText).toContain('status');
     expect(result.helpText).toContain('tools');
+    expect(result.helpText).toContain('trust');
     expect(result.helpText).toContain('call');
     expect(result.helpText).toContain('setup');
     expect(result.helpText).toContain('help');
@@ -33,6 +34,7 @@ describe('helpLogic', () => {
     expect(result.helpText).toContain('Ejemplos');
     expect(result.helpText).toContain('omnysys up');
     expect(result.helpText).toContain('omnysys status');
+    expect(result.helpText).toContain('omnysys trust');
     expect(result.helpText).toContain('omnysys tools');
   });
 
