@@ -1,12 +1,12 @@
 import path from 'path';
-import { createLogger } from '../../../../utils/logger.js';
-import { runAsyncBoundary } from '../../../../shared/compiler/index.js';
+import { createLogger } from '../../../../../utils/logger.js';
+import { runAsyncBoundary } from '../../../../../shared/compiler/index.js';
 import {
     normalizeComparisonPath as normalizeComparisonPathShared,
     normalizeSnapshotPath as normalizeSnapshotPathShared
-} from '../../../../shared/compiler/index.js';
-import { getFileDependents } from '#layer-c/query/apis/file-api.js';
-import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../utils/path-utils.js';
+} from '../../../../../shared/compiler/index.js';
+import { getFileDependents } from '../../../../query/apis/file-api.js';
+import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../../utils/path-utils.js';
 
 const logger = createLogger('OmnySys:move:helpers');
 const MOVE_INDEXER_WAIT_ATTEMPTS = 50;

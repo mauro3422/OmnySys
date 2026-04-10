@@ -64,7 +64,7 @@ vi.mock('../../../../src/layer-c-memory/utils/logger.js', () => ({
   createLogger: () => mocks.logger
 }));
 
-import { handleRuntimeRestart } from '../../../../src/layer-c-memory/mcp/restart-runtime.js';
+import { handleRuntimeRestart } from '../../../../src/layer-c-memory/mcp/restart-runtime/runtime.js';
 import { handleProcessRestart } from '../../../../src/layer-c-memory/mcp/restart-runtime-process.js';
 
 describe('restart-runtime', () => {

@@ -521,7 +521,7 @@ export {
   removePersistedFileMetadata,
   removePersistedAtomMetadata,
   emitOrphanedImportsFromPersistedMetadata
-} from './compiler-persistence.js';
+} from './persistence/index.js';
 
 export {
   validateCompilerImports,

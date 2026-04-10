@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { getCompilerDataDir } from './compiler-persistence-paths.js';
+import { getCompilerDataDir } from '../compiler-persistence-paths.js';
 
 /**
  * Checks if a previous Layer A analysis exists for the project.

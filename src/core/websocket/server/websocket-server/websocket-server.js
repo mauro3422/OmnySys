@@ -8,8 +8,8 @@
 
 import { WebSocketServer } from 'ws';
 import { EventEmitter } from 'events';
-import { DEFAULT_CONFIG, Events } from '../constants.js';
-import { closeAllConnections } from './connection-handler.js';
+import { DEFAULT_CONFIG, Events } from '../../constants.js';
+import { closeAllConnections } from '../connection-handler.js';
 import {
   attachWebSocketServerListeners,
   attachConnectionContext,
@@ -23,8 +23,8 @@ import {
   initializeHeartbeatManager,
   getWebSocketServerStats,
   stopWebSocketServer
-} from './websocket-server-helpers.js';
-import { createLogger } from '../../utils/logger.js';
+} from './index.js';
+import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:websocket:server');
 

@@ -114,7 +114,7 @@ import path from 'path';
 import express from 'express';
 import { OmnySysMCPServer } from './mcp/core/server-class.js';
 import { createLogger } from '../utils/logger.js';
-import { handleRuntimeRestart } from './mcp/restart-runtime.js';
+import { handleRuntimeRestart } from './mcp/restart-runtime/runtime.js';
 import { startHttpServer } from './mcp-http-listener.js';
 import {
   buildServerForSession,

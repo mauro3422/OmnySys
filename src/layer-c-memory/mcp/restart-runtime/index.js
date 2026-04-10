@@ -1,7 +1,7 @@
-import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
-import { createLogger } from '../../utils/logger.js';
-import { shouldPreserveHistoryArtifact } from '#shared/utils/normalize-helpers.js';
-import { reloadMetadata as reloadServerMetadata } from '../../core/unified-server/initialization/analysis-manager.js';
+import { buildRestartLifecycleGuidance } from '../../../shared/compiler/index.js';
+import { createLogger } from '../../../utils/logger.js';
+import { shouldPreserveHistoryArtifact } from '../../../shared/utils/normalize-helpers.js';
+import { reloadMetadata as reloadServerMetadata } from '../../../core/unified-server/initialization/analysis-manager.js';
 
 export { reloadServerMetadata };
 

@@ -12,7 +12,7 @@ import {
   reconcileExcludedCompilerFiles,
   syncPersistedScannedFileManifest,
   summarizePersistedScannedFileCoverage
-} from './compiler-persistence.js';
+} from './persistence/index.js';
 import { collectCanonicalAdoptionEvidence } from './evidence.js';
 import {
   buildCompilerDiagnosticsSnapshotContracts,

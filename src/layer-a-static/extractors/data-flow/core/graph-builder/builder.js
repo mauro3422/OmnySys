@@ -16,8 +16,8 @@ import {
   hasAsync,
   hasSideEffects,
   tracePath
-} from './graph-builder-analysis.js';
-import { toVisualFormat as formatGraphVisual } from './graph-builder-visualization.js';
+} from './index.js';
+import { toVisualFormat as formatGraphVisual } from '../graph-builder-visualization.js';
 
 export class GraphBuilder {
   constructor() {

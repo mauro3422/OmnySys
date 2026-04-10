@@ -1,5 +1,5 @@
 import { uniquePaths } from '../../layer-graph/utils/path-utils.js';
-import { summarizePersistedScannedFileCoverage } from './compiler-persistence.js';
+import { summarizePersistedScannedFileCoverage } from './persistence/index.js';
 
 export function collectDiscoveredFilePaths(currentFiles = []) {
   return uniquePaths(currentFiles.map((file) => file.path).filter(Boolean));

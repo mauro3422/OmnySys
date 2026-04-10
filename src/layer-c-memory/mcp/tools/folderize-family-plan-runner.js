@@ -2,7 +2,7 @@ import path from 'path';
 import { createLogger } from '../../../utils/logger.js';
 import { runAsyncBoundary } from '../../../shared/compiler/index.js';
 import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
-import { MoveOrchestrator } from '../core/shared/move-orchestrator.js';
+import { MoveOrchestrator } from '../core/shared/move-orchestrator/orchestrator.js';
 import { withMutationBatch } from '../core/shared/mutation-batch.js';
 import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
 import { buildFolderizedFamilyGroups, buildFolderizedFamilySuggestion } from '../../../shared/compiler/index.js';
@@ -282,6 +282,7 @@ async function runDeferredGuards({ focusPlan, projectPath, moveContext, allTarge
 
   const results = [];
   const guardContext = {
+    rootPath: projectPath,
     ...moveContext,
     deferGuards: false // Ensure guards actually run this time
   };

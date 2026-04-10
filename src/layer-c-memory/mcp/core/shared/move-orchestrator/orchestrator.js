@@ -1,18 +1,18 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { createLogger } from '../../../../utils/logger.js';
-import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../utils/path-utils.js';
-import { atomic_edit } from '../../tools/atomic-edit/index.js';
-import { extractModuleDependencySourcesFromCode } from '../../tools/atomic-edit/exports.js';
-import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../shared/compiler/index.js';
-import { withMutationBatch } from './mutation-batch.js';
-import { settleMutationFiles } from './mutation-settlement.js';
+import { createLogger } from '../../../../../utils/logger.js';
+import { calculateRelativeImport, normalizeImportToAbsolute } from '../../../../../utils/path-utils.js';
+import { atomic_edit } from '../../../tools/atomic-edit/index.js';
+import { extractModuleDependencySourcesFromCode } from '../../../tools/atomic-edit/exports.js';
+import { removePersistedAtomMetadata, removePersistedFileMetadata } from '../../../../../shared/compiler/index.js';
+import { withMutationBatch } from '../mutation-batch.js';
+import { settleMutationFiles } from '../mutation-settlement.js';
 import {
     collectMoveDependents,
     findMatchingMoveImport,
     findModuleSourceLineIndex,
     waitForBackgroundIndexer
-} from './move-orchestrator-helpers.js';
+} from './index.js';
 
 const logger = createLogger('OmnySys:move:orchestrator');
 

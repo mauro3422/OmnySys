@@ -1,6 +1,6 @@
-﻿import { createLogger } from '../../utils/logger.js';
-import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
-import { clearPendingRuntimeRestart } from './core/hot-reload-manager/restart-coordinator.js';
+﻿import { createLogger } from '../../../utils/logger.js';
+import { buildRestartLifecycleGuidance } from '../../../shared/compiler/index.js';
+import { clearPendingRuntimeRestart } from '../core/hot-reload-manager/restart-coordinator.js';
 import {
   buildProxyRestartResult,
   buildProcessRestartWarningMessage,
@@ -16,8 +16,8 @@ import {
   runFullPipeline,
   stopOrchestrator,
   reloadServerMetadata
-} from './restart-runtime-helpers.js';
-import { handleProcessRestart } from './restart-runtime-process.js';
+} from './index.js';
+import { handleProcessRestart } from '../restart-runtime-process.js';
 
 const logger = createLogger('OmnySys:restart:server');
 

@@ -16,7 +16,7 @@ export {
 } from './constants.js';
 
 // Re-exportar clases principales
-export { WebSocketManager } from './server/websocket-server.js';
+export { WebSocketManager } from './server/websocket-server/websocket-server.js';
 export { WSClient } from './client/ws-client.js';
 export { SubscriptionManager } from './client/subscription-manager.js';
 export { HeartbeatManager } from './server/heartbeat-manager.js';
@@ -51,4 +51,4 @@ export {
 } from './messaging/message-types.js';
 
 // Default export
-export { WebSocketManager as default } from './server/websocket-server.js';
+export { WebSocketManager as default } from './server/websocket-server/websocket-server.js';

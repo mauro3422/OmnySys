@@ -9,20 +9,20 @@
 
 export {
   hasPersistedCompilerAnalysis
-} from './compiler-persistence-analysis.js';
+} from './analysis.js';
 
 export {
   getPersistedScannedFilePaths,
   loadPersistedScannedFilePaths,
   syncPersistedScannedFileManifest,
   summarizePersistedScannedFileCoverage
-} from './compiler-persistence-manifest.js';
+} from '../compiler-persistence-manifest.js';
 
 export {
   getPersistedIndexedFilePaths,
   getPersistedKnownFilePaths,
   findIndexedFileCandidate
-} from './compiler-persistence-lookup.js';
+} from '../compiler-persistence-lookup.js';
 
 export {
   cleanupOrphanedCompilerArtifacts,
@@ -30,4 +30,4 @@ export {
   reconcileExcludedCompilerFiles,
   removePersistedAtomMetadata,
   removePersistedFileMetadata
-} from './compiler-persistence-cleanup.js';
+} from '../compiler-persistence-cleanup.js';
