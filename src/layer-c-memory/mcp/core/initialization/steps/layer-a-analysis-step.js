@@ -8,6 +8,7 @@
 
 import { InitializationStep } from './base-step.js';
 import { createLogger } from '../../../../../utils/logger.js';
+import { discoverProjectSourceFiles } from '../../../../../shared/compiler/index.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -19,6 +20,7 @@ const logger = createLogger('OmnySys:layer:a:analysis:step');
  * Minimum threshold: 100 active atoms (a real project has thousands).
  */
 const MIN_ACTIVE_ATOMS_THRESHOLD = 100;
+const MIN_INDEX_COVERAGE_RATIO = 0.98;
 
 async function hasCompleteAnalysis(projectPath) {
   try {
@@ -34,8 +36,37 @@ async function hasCompleteAnalysis(projectPath) {
     try {
       const row = db.prepare('SELECT COUNT(*) as n FROM atoms WHERE is_removed = 0').get();
       const activeCount = Number(row?.n || 0);
+      if (activeCount < MIN_ACTIVE_ATOMS_THRESHOLD) {
+        db.close();
+        return false;
+      }
+
+      const fileRow = db.prepare('SELECT COUNT(*) as n FROM files WHERE is_removed = 0').get();
+      const indexedFileCount = Number(fileRow?.n || 0);
+
+      let discoveredFileCount = 0;
+      try {
+        discoveredFileCount = (await discoverProjectSourceFiles(projectPath)).length;
+      } catch {
+        db.close();
+        return false;
+      }
+
       db.close();
-      return activeCount >= MIN_ACTIVE_ATOMS_THRESHOLD;
+
+      if (discoveredFileCount <= 0) {
+        return false;
+      }
+
+      const coverageRatio = indexedFileCount / discoveredFileCount;
+      if (coverageRatio < MIN_INDEX_COVERAGE_RATIO) {
+        logger.warn(
+          `   ⚠️  Analysis coverage too small for fast path: ${indexedFileCount}/${discoveredFileCount} files (${Math.round(coverageRatio * 100)}%)`
+        );
+        return false;
+      }
+
+      return true;
     } catch {
       db.close();
       return false;

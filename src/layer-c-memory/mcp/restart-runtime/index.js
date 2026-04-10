@@ -53,9 +53,9 @@ export async function runFullPipeline(server, result) {
   server.startTime = Date.now();
 
   try {
-    const { InitializationPipeline } = await import('./core/initialization/pipeline.js');
+    const { InitializationPipeline } = await import('../core/initialization/pipeline.js');
     const { LLMSetupStep, LayerAAnalysisStep, OrchestratorInitStep, CacheInitStep, ReadyStep } =
-      await import('./core/initialization/steps/index.js');
+      await import('../core/initialization/steps/index.js');
 
     server.pipeline = new InitializationPipeline([
       new LayerAAnalysisStep(),
@@ -85,7 +85,7 @@ export async function runFullPipeline(server, result) {
 export async function fastRestartOrchestrator(server, result) {
   logger.info('Fast restart: restarting orchestrator only (no LayerA)...');
   try {
-    const { OrchestratorInitStep } = await import('./core/initialization/steps/index.js');
+    const { OrchestratorInitStep } = await import('../core/initialization/steps/index.js');
     const step = new OrchestratorInitStep();
     await step.execute(server);
     server.initialized = true;

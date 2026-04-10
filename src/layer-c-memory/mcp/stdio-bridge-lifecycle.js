@@ -307,10 +307,12 @@ async function acquireStartLock() {
     }
 }
 
-export async function waitForDaemonReady() {
+export async function waitForDaemonReady(options = {}) {
+    const acceptReachable = options.acceptReachable === true;
+
     while (true) {
         const initialHealth = await readDaemonHealth(DAEMON_HEALTH);
-        if (!initialHealth.healthy && AUTO_START) {
+        if (!initialHealth.healthy && !initialHealth.responsive && AUTO_START) {
             const started = await startDaemon();
             if (started) {
                 return;
@@ -321,15 +323,16 @@ export async function waitForDaemonReady() {
         }
 
         if (!initialHealth.healthy) {
-            log('Waiting for daemon to reach healthy state...');
+            log(`Waiting for daemon to reach ${acceptReachable ? 'responsive' : 'healthy'} state...`);
             const health = await waitForDaemonHealthy(DAEMON_HEALTH, {
                 timeoutMs: DAEMON_READY_TIMEOUT_MS,
                 pollMs: DAEMON_READY_POLL_MS,
                 label: 'daemon',
-                log
+                log,
+                acceptReachable
             });
 
-            if (health?.healthy) {
+            if (health && (health.healthy || (acceptReachable && health.responsive))) {
                 return;
             }
 
@@ -419,11 +422,14 @@ export async function startDaemon() {
             timeoutMs: DAEMON_READY_TIMEOUT_MS,
             pollMs: DAEMON_READY_POLL_MS,
             label: 'daemon startup',
-            log
+            log,
+            acceptReachable: true
         });
 
-        if (health?.healthy) {
-            log('Daemon started successfully');
+        if (health && (health.healthy || health.responsive)) {
+            log(health.healthy
+                ? 'Daemon started successfully'
+                : 'Daemon process is responding; bridge can reconnect while initialization continues.');
             return true;
         }
 
@@ -467,6 +473,12 @@ export async function sendBridgeRetryableError(state, id, message, data = {}) {
     if (typeof id === 'undefined') return;
 
     try {
+        const retryAfterMs = Number.isFinite(Number(data.retryAfterMs))
+            ? Math.max(0, Number(data.retryAfterMs))
+            : Math.max(
+                250,
+                Number(state?.lastDaemonHealth?.initialization?.retryAfterMs || 1000)
+            );
         await state.stdioTransport.send({
             jsonrpc: '2.0',
             id,
@@ -477,6 +489,19 @@ export async function sendBridgeRetryableError(state, id, message, data = {}) {
                     retryable: true,
                     daemonUrl: DAEMON_URL.href,
                     sessionId: state.lastSessionId,
+                    retryAfterMs,
+                    estimatedReadyAt: new Date(Date.now() + retryAfterMs).toISOString(),
+                    daemonHealth: state?.lastDaemonHealth
+                        ? {
+                            reachable: Boolean(state.lastDaemonHealth.reachable),
+                            responsive: Boolean(state.lastDaemonHealth.responsive),
+                            healthy: Boolean(state.lastDaemonHealth.healthy),
+                            status: state.lastDaemonHealth.status || 'unknown',
+                            initialized: Boolean(state.lastDaemonHealth.initialized),
+                            sessions: Number(state.lastDaemonHealth.sessions || 0),
+                            initialization: state.lastDaemonHealth.initialization || null
+                        }
+                        : null,
                     ...data
                 }
             }

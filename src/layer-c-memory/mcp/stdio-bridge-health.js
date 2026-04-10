@@ -17,26 +17,37 @@ export async function readDaemonHealth(healthUrl) {
           const json = JSON.parse(data);
           const status = String(json?.status || 'unknown');
           const initialized = json?.initialized === true;
+          const service = json?.service || null;
+          const initialization = json?.initialization && typeof json.initialization === 'object'
+            ? json.initialization
+            : null;
           const healthy = (
-            (json?.service === 'omnysys-mcp' || json?.service === 'omnysys-mcp-http') &&
+            (service === 'omnysys-mcp' || service === 'omnysys-mcp-http') &&
             status === 'healthy' &&
             initialized
+          );
+          const responsive = (
+            (service === 'omnysys-mcp' || service === 'omnysys-mcp-http') &&
+            ['healthy', 'starting', 'degraded'].includes(status)
           );
 
           resolve({
             reachable: true,
+            responsive,
             healthy,
             status,
             initialized,
             pid: Number.isFinite(Number(json?.pid)) ? Number(json.pid) : null,
             sessions: Number.isFinite(Number(json?.sessions)) ? Number(json.sessions) : 0,
-            service: json?.service || null,
+            service,
             transport: json?.transport || null,
+            initialization,
             error: null
           });
         } catch {
           resolve({
           reachable: true,
+          responsive: false,
           healthy: false,
           status: 'invalid-response',
           initialized: false,
@@ -44,6 +55,7 @@ export async function readDaemonHealth(healthUrl) {
           sessions: 0,
           service: null,
           transport: null,
+          initialization: null,
           error: 'invalid JSON response'
         });
         }
@@ -51,6 +63,7 @@ export async function readDaemonHealth(healthUrl) {
     });
     req.on('error', (error) => resolve({
     reachable: false,
+    responsive: false,
     healthy: false,
     status: 'unreachable',
     initialized: false,
@@ -58,12 +71,14 @@ export async function readDaemonHealth(healthUrl) {
     sessions: 0,
     service: null,
     transport: null,
+    initialization: null,
     error: error.message
   }));
     req.on('timeout', () => {
       req.destroy();
       resolve({
       reachable: false,
+      responsive: false,
       healthy: false,
       status: 'timeout',
       initialized: false,
@@ -71,6 +86,7 @@ export async function readDaemonHealth(healthUrl) {
       sessions: 0,
       service: null,
       transport: null,
+      initialization: null,
       error: 'timeout'
       });
     });
@@ -81,7 +97,8 @@ export async function waitForDaemonHealthy(healthUrl, {
   timeoutMs,
   pollMs,
   label = 'daemon',
-  log
+  log,
+  acceptReachable = false
 }) {
   const deadline = Date.now() + timeoutMs;
   let attempt = 0;
@@ -91,6 +108,10 @@ export async function waitForDaemonHealthy(healthUrl, {
   while (Date.now() < deadline) {
     const health = await readDaemonHealth(healthUrl);
     if (health.healthy) {
+      return health;
+    }
+
+    if (acceptReachable && health.responsive) {
       return health;
     }
 

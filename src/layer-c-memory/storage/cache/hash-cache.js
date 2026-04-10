@@ -292,17 +292,23 @@ function buildInitialChangeSet(storedHashes, currentFiles, projectPath) {
   const deletedFiles = Object.keys(storedHashes).filter((filePath) => !currentFileSet.has(filePath));
 
   return {
-    changes: {
-      newFiles: [],
-      modifiedFiles: [],
-      unchangedFiles: [],
-      deletedFiles
-    },
+    changes: createEmptyChangeSet(deletedFiles),
     deletedFiles
   };
 }
 
-async function collectCurrentHashes(projectPath, currentFiles, storedHashes, storedMeta, changes) {
+function createEmptyChangeSet(deletedFiles = []) {
+  return {
+    newFiles: [],
+    modifiedFiles: [],
+    unchangedFiles: [],
+    deletedFiles: Array.isArray(deletedFiles) ? [...deletedFiles] : []
+  };
+}
+
+async function collectCurrentHashes(projectPath, currentFiles, storedHashes, storedMeta, changes = createEmptyChangeSet()) {
+  const safeChanges = changes || createEmptyChangeSet();
+
   try {
     const newHashes = {};
     const batchSize = 50;
@@ -325,7 +331,7 @@ async function collectCurrentHashes(projectPath, currentFiles, storedHashes, sto
 
               // If mtime and size unchanged, skip hash calculation
               if (Math.abs(currentMtime - meta.mtime_ms) < 1 && currentSize === meta.file_size) {
-                changes.unchangedFiles.push(normalizedPath);
+                safeChanges.unchangedFiles.push(normalizedPath);
                 newHashes[normalizedPath] = {
                   hash: storedHashes[normalizedPath],
                   mtime_ms: Math.round(currentMtime),
@@ -349,11 +355,11 @@ async function collectCurrentHashes(projectPath, currentFiles, storedHashes, sto
           };
 
           if (!storedHashes[normalizedPath]) {
-            changes.newFiles.push(normalizedPath);
+            safeChanges.newFiles.push(normalizedPath);
           } else if (storedHashes[normalizedPath] !== currentHash) {
-            changes.modifiedFiles.push(normalizedPath);
+            safeChanges.modifiedFiles.push(normalizedPath);
           } else {
-            changes.unchangedFiles.push(normalizedPath);
+            safeChanges.unchangedFiles.push(normalizedPath);
           }
 
           // Try to get stat for metadata if we haven't already

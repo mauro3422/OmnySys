@@ -5,13 +5,40 @@ import {
   summarizeBridgeRuntimeTelemetry
 } from '../../shared/compiler/index.js';
 
-export function createBridgeTelemetryController({ projectPath, log }) {
+function normalizeNamespacePart(value) {
+  return String(value || '').trim().replace(/\s+/g, '-').replace(/[:/\\]+/g, '-');
+}
+
+export function resolveBridgeTelemetryNamespace({
+  env = process.env,
+  platform = process.platform
+} = {}) {
+  const explicitNamespace = normalizeNamespacePart(env.OMNYSYS_BRIDGE_TELEMETRY_NAMESPACE);
+  if (explicitNamespace) {
+    return explicitNamespace;
+  }
+
+  const wslDistro = normalizeNamespacePart(env.WSL_DISTRO_NAME);
+  const hostFlavor = platform === 'win32'
+    ? 'windows'
+    : (wslDistro || env.WSL_INTEROP ? 'wsl' : 'unix');
+  const clientTag = normalizeNamespacePart(env.OMNYSYS_CLIENT_ROUTE_BASE || env.OMNYSYS_CLIENT_ID || env.OMNYSYS_CLIENT_NAME || 'unknown');
+
+  return [hostFlavor, wslDistro, clientTag].filter(Boolean).join(':');
+}
+
+export function createBridgeTelemetryController({ projectPath, log, bridgeNamespace = 'default' }) {
   let bridgeTelemetry = readBridgeRuntimeTelemetry(projectPath) || null;
+
+  if (bridgeTelemetry && bridgeTelemetry.bridgeNamespace && bridgeTelemetry.bridgeNamespace !== bridgeNamespace) {
+    bridgeTelemetry = null;
+  }
 
   function persistBridgeTelemetry(patch = {}) {
     bridgeTelemetry = {
       ...(bridgeTelemetry || {}),
       projectPath,
+      bridgeNamespace,
       updatedAt: nowIso(),
       ...patch
     };
@@ -50,6 +77,7 @@ export function createBridgeTelemetryController({ projectPath, log }) {
     const nextTelemetry = {
       ...(bridgeTelemetry || {}),
       projectPath,
+      bridgeNamespace,
       updatedAt: nowIso(),
       connectCount: (current.connectCount || 0) + (type === 'bridge-connect' ? 1 : 0),
       reconnectCount: (current.reconnectCount || 0) + (type === 'bridge-reconnect' ? 1 : 0),
@@ -73,6 +101,7 @@ export function createBridgeTelemetryController({ projectPath, log }) {
     const nextTelemetry = {
       ...(bridgeTelemetry || {}),
       projectPath,
+      bridgeNamespace,
       updatedAt: nowIso(),
       lastDaemonHealth: health || null,
       lastDaemonHealthAt: nowIso(),

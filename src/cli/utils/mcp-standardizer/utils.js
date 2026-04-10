@@ -16,6 +16,57 @@ export function normalizeSlashes(filePath) {
     return String(filePath || '').replace(/\\/g, '/');
 }
 
+export function isWindowsPath(filePath) {
+    return /^[A-Za-z]:\//.test(normalizeSlashes(filePath).trim());
+}
+
+export function isMountedWindowsPath(filePath) {
+    return /^\/mnt\/[A-Za-z](\/|$)/.test(normalizeSlashes(filePath).trim());
+}
+
+export function toWindowsPath(filePath) {
+    const normalized = normalizeSlashes(filePath).trim();
+    if (isWindowsPath(normalized)) {
+        return normalized.replace(/^([a-z]):\//, (_, drive) => `${drive.toUpperCase()}:/`);
+    }
+
+    const match = normalized.match(/^\/mnt\/([A-Za-z])\/(.*)$/);
+    if (!match) {
+        return normalized;
+    }
+
+    const [, drive, rest] = match;
+    return `${drive.toUpperCase()}:/${rest}`;
+}
+
+export function inferTargetPlatform({ filePath = '', projectPath = '', defaultPlatform = process.platform } = {}) {
+    const normalizedFilePath = normalizeSlashes(filePath).trim();
+    if (normalizedFilePath) {
+        return isWindowsPath(normalizedFilePath) || isMountedWindowsPath(normalizedFilePath)
+            ? 'windows'
+            : 'unix';
+    }
+
+    if (isWindowsPath(projectPath) || isMountedWindowsPath(projectPath)) {
+        return 'windows';
+    }
+
+    return defaultPlatform === 'win32' ? 'windows' : 'unix';
+}
+
+export function toTargetPath(filePath, options = {}) {
+    const targetPlatform = options.targetPlatform || inferTargetPlatform({
+        filePath,
+        projectPath: options.projectPath || ''
+    });
+
+    if (targetPlatform === 'windows') {
+        return toWindowsPath(filePath);
+    }
+
+    return normalizeSlashes(filePath);
+}
+
 export function stripBom(text) {
     if (typeof text !== 'string') return '';
     return text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;

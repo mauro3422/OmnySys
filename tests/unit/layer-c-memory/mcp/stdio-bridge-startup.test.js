@@ -32,8 +32,20 @@ describe('stdio-bridge-startup', () => {
       lastDaemonHealth: {
         healthy: true,
         sessions: 1
-      }
+      },
+      lastBridgeTransportState: 'message-sent'
     })).toBe(true);
+  });
+
+  it('does not preconnect when the last bridge transport state was not reusable', () => {
+    expect(shouldPreconnectBridgeTransport({
+      lastSessionId: 'session-cached',
+      lastDaemonHealth: {
+        healthy: true,
+        sessions: 1
+      },
+      lastBridgeTransportState: 'transport-error'
+    })).toBe(false);
   });
 
   it('promotes a bootstrap transport to a session-bound transport before normal requests', () => {

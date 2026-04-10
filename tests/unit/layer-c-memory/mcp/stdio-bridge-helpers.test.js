@@ -40,6 +40,23 @@ describe('stdio-bridge-helpers', () => {
     expect(message.params.clientInfo.transport_origin_source).toBe('stdio_bridge');
   });
 
+  it('infers the canonical client family from the initialize client name', () => {
+    const message = normalizeBridgeInitializeMessage({
+      jsonrpc: '2.0',
+      method: 'initialize',
+      params: {
+        clientInfo: {
+          name: 'Cline MCP Client'
+        }
+      },
+      id: 2
+    });
+
+    expect(message.params.clientInfo.name).toBe('Cline');
+    expect(message.params.clientInfo.client_id).toBe('cline');
+    expect(message.params.clientInfo.client_route_id).toMatch(/^cline::\d+$/);
+  });
+
   it('treats invalid or missing MCP session as a recoverable session error', () => {
     const error = new Error('Bad Request: invalid or missing MCP session');
 

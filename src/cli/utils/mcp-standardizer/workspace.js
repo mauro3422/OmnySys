@@ -1,22 +1,30 @@
-﻿import path from 'path';
+import path from 'path';
 import {
     VSCODE_DAEMON_TASK_LABEL,
     VSCODE_DAEMON_TASK_COMMAND,
     SERVER_KEY,
-    CONFIG_PATHS,
-    repoRoot
+    CONFIG_PATHS
 } from './constants.js';
-import { readJsonSafe, writeJsonNoBom, getMcpUrl, getHealthUrl, normalizeSlashes } from './utils.js';
+import {
+    readJsonSafe,
+    writeJsonNoBom,
+    getMcpUrl,
+    getHealthUrl,
+    inferTargetPlatform,
+    toTargetPath
+} from './utils.js';
 import { getWorkspaceConfigPaths, getVsCodeConfigPaths, getUnifiedConfigPath } from './paths.js';
 import { getNodeCommand } from './node-command.js';
+import { buildBridgePath } from './clients-helpers.js';
 
-function buildWorkspaceBridgeServer(projectPath, includeDescription = false) {
-    const bridgePath = normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js'));
-    const normalizedProjectPath = normalizeSlashes(projectPath);
+function buildWorkspaceBridgeServer(projectPath, includeDescription = false, options = {}) {
+    const targetPlatform = options.targetPlatform || inferTargetPlatform({ projectPath });
+    const bridgePath = buildBridgePath({ projectPath, targetPlatform });
+    const normalizedProjectPath = toTargetPath(projectPath, { targetPlatform, projectPath });
 
     const server = {
         type: 'stdio',
-        command: getNodeCommand(),
+        command: getNodeCommand({ targetPlatform, projectPath }),
         args: [bridgePath],
         cwd: normalizedProjectPath,
         env: {
@@ -34,36 +42,50 @@ function buildWorkspaceBridgeServer(projectPath, includeDescription = false) {
     return server;
 }
 
-function buildVsCodeMcpPayload(projectPath, includeDescription = false) {
+function mapConfigPaths(paths, options = {}) {
+    return Object.fromEntries(
+        Object.entries(paths).map(([key, value]) => [
+            key,
+            toTargetPath(value, {
+                targetPlatform: options.targetPlatform || inferTargetPlatform({ filePath: value }),
+                filePath: value,
+                projectPath: options.projectPath || ''
+            })
+        ])
+    );
+}
+
+function buildVsCodeMcpPayload(projectPath, includeDescription = false, options = {}) {
     return {
         servers: {
             [SERVER_KEY]: {
-                ...buildWorkspaceBridgeServer(projectPath, includeDescription)
+                ...buildWorkspaceBridgeServer(projectPath, includeDescription, options)
             }
         }
     };
 }
 
-export function buildWorkspaceMcpPayload(projectPath, includeDescription = false) {
+export function buildWorkspaceMcpPayload(projectPath, includeDescription = false, options = {}) {
     return {
         mcpServers: {
-            [SERVER_KEY]: buildWorkspaceBridgeServer(projectPath, includeDescription)
+            [SERVER_KEY]: buildWorkspaceBridgeServer(projectPath, includeDescription, options)
         }
     };
 }
 
 export async function writeUnifiedConfig(projectPath, url) {
     const targetPath = getUnifiedConfigPath(projectPath);
+    const targetPlatform = inferTargetPlatform({ projectPath });
     const payload = {
         version: 1,
         server: {
             name: SERVER_KEY,
             transport: 'stdio-bridge',
-            entry: normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js')),
+            entry: buildBridgePath({ projectPath, targetPlatform }),
             url,
             health: getHealthUrl()
         },
-        targets: {
+        targets: mapConfigPaths({
             codex: CONFIG_PATHS.codex,
             clineVsCode: CONFIG_PATHS.clineVsCode,
             clineCursor: CONFIG_PATHS.clineCursor,
@@ -72,20 +94,24 @@ export async function writeUnifiedConfig(projectPath, url) {
             qwen: CONFIG_PATHS.qwen,
             antigravity: CONFIG_PATHS.antigravity,
             geminiCli: CONFIG_PATHS.geminiCli
-        },
-        workspace: getWorkspaceConfigPaths(projectPath),
-        vscode: getVsCodeConfigPaths(projectPath)
+        }, { projectPath }),
+        workspace: mapConfigPaths(getWorkspaceConfigPaths(projectPath), { projectPath, targetPlatform }),
+        vscode: mapConfigPaths(getVsCodeConfigPaths(projectPath), { projectPath, targetPlatform })
     };
 
     await writeJsonNoBom(targetPath, payload);
     return targetPath;
 }
 
-export function buildDaemonTask() {
+export function buildDaemonTask(options = {}) {
+    const projectPath = path.resolve(options.projectPath || process.cwd());
+    const targetPlatform = options.targetPlatform || inferTargetPlatform({ projectPath });
+
     return {
         label: VSCODE_DAEMON_TASK_LABEL,
         type: 'shell',
-        command: getNodeCommand(),
+        // VS Code owns this task on Windows even when the installer runs from WSL.
+        command: getNodeCommand({ targetPlatform, projectPath }),
         args: ['src/layer-c-memory/mcp-http-proxy.js'],
         options: { cwd: '${workspaceFolder}' },
         runOptions: { runOn: 'folderOpen' },
@@ -95,15 +121,16 @@ export function buildDaemonTask() {
 
 export async function applyWorkspaceMcpConfig(options = {}) {
     const projectPath = path.resolve(options.projectPath || process.cwd());
+    const targetPlatform = inferTargetPlatform({ projectPath });
     const files = getWorkspaceConfigPaths(projectPath);
     const vscodeFiles = getVsCodeConfigPaths(projectPath);
 
-    await writeJsonNoBom(files.dotMcp, buildWorkspaceMcpPayload(projectPath));
-    await writeJsonNoBom(files.mcpServers, buildWorkspaceMcpPayload(projectPath));
-    await writeJsonNoBom(vscodeFiles.mcp, buildVsCodeMcpPayload(projectPath));
+    await writeJsonNoBom(files.dotMcp, buildWorkspaceMcpPayload(projectPath, false, { targetPlatform }));
+    await writeJsonNoBom(files.mcpServers, buildWorkspaceMcpPayload(projectPath, false, { targetPlatform }));
+    await writeJsonNoBom(vscodeFiles.mcp, buildVsCodeMcpPayload(projectPath, false, { targetPlatform }));
     await writeJsonNoBom(files.mcpServersSchema, {
         $schema: 'https://modelcontextprotocol.io/schemas/2024-11-05/mcp-servers-config.schema.json',
-        ...buildWorkspaceMcpPayload(projectPath, true)
+        ...buildWorkspaceMcpPayload(projectPath, true, { targetPlatform })
     });
 
     return { success: true, files };
@@ -112,8 +139,9 @@ export async function applyWorkspaceMcpConfig(options = {}) {
 export async function applyVsCodeAutostartConfig(options = {}) {
     try {
         const projectPath = path.resolve(options.projectPath || process.cwd());
+        const targetPlatform = inferTargetPlatform({ projectPath });
         const paths = getVsCodeConfigPaths(projectPath);
-        const daemonTask = buildDaemonTask();
+        const daemonTask = buildDaemonTask({ projectPath, targetPlatform });
 
         const tasksConfig = await readJsonSafe(paths.tasks, { version: '2.0.0', tasks: [] });
 
@@ -139,7 +167,7 @@ export async function applyVsCodeAutostartConfig(options = {}) {
 
         await writeJsonNoBom(paths.tasks, tasksConfig);
 
-        await writeJsonNoBom(paths.mcp, buildVsCodeMcpPayload(projectPath, true));
+        await writeJsonNoBom(paths.mcp, buildVsCodeMcpPayload(projectPath, true, { targetPlatform }));
 
         const settings = await readJsonSafe(paths.settings, {});
         settings['task.allowAutomaticTasks'] = 'on';

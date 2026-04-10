@@ -116,6 +116,7 @@ import { OmnySysMCPServer } from './mcp/core/server-class.js';
 import { createLogger } from '../utils/logger.js';
 import { handleRuntimeRestart } from './mcp/restart-runtime/runtime.js';
 import { startHttpServer } from './mcp-http-listener.js';
+import { buildInitializationProgress } from './mcp/core/initialization/progress-state.js';
 import {
   buildServerForSession,
   createConditionalJsonMiddleware,
@@ -191,6 +192,7 @@ async function getRuntimeResourceSnapshot() {
   const health = buildHealthSnapshot({
     initialized: core.initialized,
     initError,
+    server: core,
     projectPath,
     sessionCount: sessions.size,
     background
@@ -251,6 +253,7 @@ async function getRuntimeResourceSnapshot() {
 export function buildHealthSnapshot({
   initialized = false,
   initError = null,
+  server = null,
   projectPath,
   sessionCount = 0,
   background = null
@@ -265,6 +268,9 @@ export function buildHealthSnapshot({
     projectPath,
     initialized: Boolean(initialized),
     sessions: sessionCount ?? 0,
+    initialization: buildInitializationProgress(server, {
+      acceptingMcpSessions: true
+    }),
     background,
     transport: 'streamable-http',
     error: initError?.message || null
@@ -423,6 +429,7 @@ app.get('/health', async (req, res) => {
   const healthSnapshot = buildHealthSnapshot({
     initialized: core.initialized,
     initError,
+    server: core,
     projectPath,
     sessionCount: sessions.size,
     background

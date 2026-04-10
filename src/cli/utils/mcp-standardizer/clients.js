@@ -11,7 +11,9 @@ import {
     stripBom,
     normalizeSlashes,
     getHealthUrl,
-    getMcpUrl
+    getMcpUrl,
+    inferTargetPlatform,
+    toTargetPath
 } from './utils.js';
 import {
     buildBridgePath,
@@ -26,7 +28,8 @@ import { getNodeCommand } from './node-command.js';
 export async function applyCodexConfig(url, projectPath = repoRoot) {
     const targetPath = CONFIG_PATHS.codex;
     const projectConfigPath = path.join(projectPath, '.codex', 'config.toml');
-    const codexTableBody = buildCodexTableBody(url, projectPath);
+    const targetPlatform = inferTargetPlatform({ filePath: targetPath, projectPath });
+    const codexTableBody = buildCodexTableBody(url, projectPath, { filePath: targetPath, targetPlatform });
     const trustTableNames = getCodexProjectTrustTableNames(projectPath);
     let content = '';
 
@@ -85,9 +88,10 @@ export async function applyClineConfig(filePath, url, clientName, projectPath = 
     const config = await readJsonSafe(filePath, { mcpServers: {} });
     const mcpServers = ensureMcpServersContainer(config);
     const existing = getPrimaryWithLegacyFallback(mcpServers);
-    const bridgePath = buildBridgePath();
-    const nodeCommand = getNodeCommand();
-    const normalizedProjectPath = normalizeSlashes(path.resolve(projectPath));
+    const targetPlatform = inferTargetPlatform({ filePath, projectPath });
+    const bridgePath = buildBridgePath({ filePath, projectPath, targetPlatform });
+    const nodeCommand = getNodeCommand({ filePath, projectPath, targetPlatform });
+    const normalizedProjectPath = toTargetPath(path.resolve(projectPath), { filePath, projectPath, targetPlatform });
 
     mcpServers[SERVER_KEY] = {
         ...(existing || {}),
@@ -197,9 +201,14 @@ export async function applyOpenCodeConfig(url) {
 export async function applyQwenConfig(url, projectPath) {
     const targetPath = CONFIG_PATHS.qwen;
     const config = await readJsonSafe(targetPath, {});
-    const bridgePath = buildBridgePath();
-    const nodeCommand = getNodeCommand();
-    const env = buildBridgeEnv(url, projectPath);
+    const globalTargetPlatform = inferTargetPlatform({ filePath: targetPath, projectPath });
+    const bridgePath = buildBridgePath({ filePath: targetPath, projectPath, targetPlatform: globalTargetPlatform });
+    const nodeCommand = getNodeCommand({ filePath: targetPath, projectPath, targetPlatform: globalTargetPlatform });
+    const env = buildBridgeEnv(url, projectPath, {
+        filePath: targetPath,
+        projectPath,
+        targetPlatform: globalTargetPlatform
+    });
 
     // Global config: omit OMNYSYS_PROJECT_PATH so the bridge auto-detects
     // the workspace via process.cwd() (inherited from the IDE)
@@ -228,13 +237,29 @@ export async function applyQwenConfig(url, projectPath) {
 
     const projectQwenDir = path.join(projectPath, '.qwen');
     const projectConfigPath = path.join(projectQwenDir, 'settings.json');
+    const projectTargetPlatform = inferTargetPlatform({ filePath: projectConfigPath, projectPath });
+    const projectBridgePath = buildBridgePath({
+        filePath: projectConfigPath,
+        projectPath,
+        targetPlatform: projectTargetPlatform
+    });
+    const projectNodeCommand = getNodeCommand({
+        filePath: projectConfigPath,
+        projectPath,
+        targetPlatform: projectTargetPlatform
+    });
+    const projectEnv = buildBridgeEnv(url, projectPath, {
+        filePath: projectConfigPath,
+        projectPath,
+        targetPlatform: projectTargetPlatform
+    });
 
     const projectConfig = {
         mcpServers: {
             [SERVER_KEY]: {
-                command: nodeCommand,
-                args: [bridgePath],
-                env
+                command: projectNodeCommand,
+                args: [projectBridgePath],
+                env: projectEnv
             }
         },
         mcp: {
@@ -251,9 +276,14 @@ export async function applyQwenConfig(url, projectPath) {
 
 export async function applyAntigravityConfig(projectPath) {
     const targetPath = CONFIG_PATHS.antigravity;
-    const bridgePath = buildBridgePath();
-    const nodeCommand = getNodeCommand();
-    const env = buildBridgeEnv(getMcpUrl(), projectPath);
+    const targetPlatform = inferTargetPlatform({ filePath: targetPath, projectPath });
+    const bridgePath = buildBridgePath({ filePath: targetPath, projectPath, targetPlatform });
+    const nodeCommand = getNodeCommand({ filePath: targetPath, projectPath, targetPlatform });
+    const env = buildBridgeEnv(getMcpUrl(), projectPath, {
+        filePath: targetPath,
+        projectPath,
+        targetPlatform
+    });
     const config = await readJsonSafe(targetPath, { mcpServers: {} });
 
     const mcpServers = ensureMcpServersContainer(config);
@@ -291,4 +321,3 @@ export async function applyGeminiCliConfig(url) {
 
     return { client: 'geminiCli', path: targetPath, applied: true };
 }
-

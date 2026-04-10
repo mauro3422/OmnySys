@@ -3,6 +3,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { applyPagination } from './core/pagination.js';
 import { executeToolCall } from './core/initialization/steps/mcp-tool-call-helpers.js';
+import { buildInitializationPendingToolResult } from './core/initialization/progress-state.js';
 import {
   buildJsonRpcErrorResponse
 } from './http-session-routing-helpers.js';
@@ -85,15 +86,18 @@ export async function executeMcpToolCall(request, dependencies) {
 
   const currentInitError = initError();
   if (currentInitError) {
-    return {
-      content: [{ type: 'text', text: `OmnySys initialization failed: ${currentInitError.message}` }]
-    };
+    return buildInitializationPendingToolResult({
+      server: core,
+      initError: currentInitError,
+      projectPath: core?.projectPath || null
+    });
   }
 
   if (!core.initialized) {
-    return {
-      content: [{ type: 'text', text: 'OmnySys is initializing. Retry in a few seconds.' }]
-    };
+    return buildInitializationPendingToolResult({
+      server: core,
+      projectPath: core?.projectPath || null
+    });
   }
 
   const { name, arguments: args } = request.params;

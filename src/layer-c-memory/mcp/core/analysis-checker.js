@@ -201,13 +201,14 @@ export async function checkAndRunAnalysisSmart(projectPath, options = {}) {
       return handleFullReindex(projectPath, reloadMetadataFn);
     }
 
-    // Paso 2: Ultra-fast path — si existe omnysys.db, el análisis es válido.
-    if (await hasAnalysisDb(projectPath)) {
-      return handleUltraFastPath(reloadMetadataFn);
+    // Paso 2: Si ya hay DB, todavía verificamos el universo actual de archivos.
+    // Evita aceptar una proyección parcial como si fuera análisis completo.
+    if (!(await hasAnalysisDb(projectPath))) {
+      return handleFullReindex(projectPath, reloadMetadataFn);
     }
 
-    // Paso 3: Slow path — sin DB, necesitamos metadata completa desde DB
-    logger.info('   📦 No omnysys.db found, loading full metadata from DB...');
+    // Paso 3: Cargar metadata y comparar contra el filesystem actual.
+    logger.info('   📦 omnysys.db found, loading full metadata from DB...');
     const metadata = await getProjectMetadata(projectPath);
     const fileCount = metadata?.stats?.totalFiles || 0;
 

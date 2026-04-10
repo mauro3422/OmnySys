@@ -20,6 +20,12 @@ const mocks = vi.hoisted(() => ({
   runFullPipeline: vi.fn(),
   stopOrchestrator: vi.fn(),
   buildProxyRestartResult: vi.fn(() => ({ success: true, restarting: true })),
+  runFullIndexing: vi.fn(async () => ({
+    files: {
+      'src/example.js': {}
+    },
+    duration: 1
+  })),
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -35,7 +41,7 @@ vi.mock('../../../../src/layer-c-memory/mcp/core/hot-reload-manager/restart-coor
   clearPendingRuntimeRestart: mocks.clearPendingRuntimeRestart
 }));
 
-vi.mock('../../../../src/layer-c-memory/mcp/restart-runtime-helpers.js', () => ({
+vi.mock('../../../../src/layer-c-memory/mcp/restart-runtime/index.js', () => ({
   buildProxyRestartResult: mocks.buildProxyRestartResult,
   buildProcessRestartWarningMessage: vi.fn(),
   clearStandaloneCache: mocks.clearStandaloneCache,
@@ -58,6 +64,10 @@ vi.mock('../../../../src/layer-c-memory/mcp/core/initialization/steps/index.js',
       return undefined;
     }
   }
+}));
+
+vi.mock('../../../../src/layer-c-memory/mcp/core/analysis-checker/index-runner.js', () => ({
+  runFullIndexing: mocks.runFullIndexing
 }));
 
 vi.mock('../../../../src/layer-c-memory/utils/logger.js', () => ({
@@ -93,6 +103,7 @@ describe('restart-runtime', () => {
 
     expect(result.success).toBe(true);
     expect(result.reindexed).toBe(true);
+    expect(mocks.runFullIndexing).toHaveBeenCalledTimes(1);
     expect(mocks.reloadServerMetadata).toHaveBeenCalledTimes(1);
     expect(server.cache.initialize).toHaveBeenCalledTimes(1);
     expect(server.orchestrator._startPhase2BackgroundIndexer).toHaveBeenCalledTimes(1);

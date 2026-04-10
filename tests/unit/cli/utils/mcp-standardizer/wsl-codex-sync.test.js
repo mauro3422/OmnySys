@@ -126,6 +126,41 @@ env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "
     expect(wslConfig).toContain('/scripts/mcp/omnysystem-wsl-bridge.sh');
   });
 
+  it('upgrades an absolute-node WSL bridge config to the wrapper launcher', async () => {
+    const paths = await makePaths();
+
+    await writeFile(paths.windowsConfigPath, buildWindowsConfig());
+    await writeFile(paths.wslConfigPath, `
+[mcp_servers.omnysystem]
+type = "stdio"
+command = "/usr/bin/node"
+args = ["/home/maur/OmnySystem-wsl/src/layer-c-memory/mcp-stdio-bridge.js"]
+cwd = "/home/maur/OmnySystem-wsl"
+startup_timeout_sec = 120
+env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "1", OMNYSYS_PROJECT_PATH = "/home/maur/OmnySystem-wsl", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex" }
+`.trimStart());
+
+    const result = await syncWindowsCodexMcpToWsl({
+      platform: 'linux',
+      env: {
+        HOME: paths.wslHome,
+        USERPROFILE: paths.windowsHome,
+        WSL_DISTRO_NAME: 'Ubuntu'
+      },
+      windowsConfigPath: paths.windowsConfigPath,
+      wslConfigPath: paths.wslConfigPath
+    });
+
+    const wslConfig = await readFile(paths.wslConfigPath);
+
+    expect(result.applied).toBe(true);
+    expect(result.adaptedTables).toEqual(['mcp_servers.omnysystem']);
+    expect(wslConfig).not.toContain('command = "/usr/bin/node"');
+    expect(wslConfig).toContain('command = "bash"');
+    expect(wslConfig).toContain('args = ["/mnt/c/Dev/OmnySystem/scripts/mcp/omnysystem-wsl-bridge.sh"]');
+    expect(wslConfig).toContain('OMNYSYS_PROJECT_PATH = "/mnt/c/Dev/OmnySystem"');
+  });
+
   it('is idempotent once the wrapper-backed omnysystem config already exists', async () => {
     const paths = await makePaths();
 

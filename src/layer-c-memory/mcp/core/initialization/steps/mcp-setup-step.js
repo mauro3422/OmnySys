@@ -17,6 +17,7 @@ import {
 import { toolDefinitions, toolHandlers } from '../../../tools/index.js';
 import { applyPagination } from '../../pagination.js';
 import { createLogger } from '../../../../../utils/logger.js';
+import { buildInitializationPendingToolResult } from '../progress-state.js';
 import {
   executeToolCall
 } from './mcp-tool-call-helpers.js';
@@ -100,9 +101,10 @@ export class McpSetupStep extends InitializationStep {
   async handleToolCall(request, server) {
     // Si el servidor todavía está inicializando (Layer A, cache, etc.), avisar y esperar.
     if (!server.initialized) {
-      return {
-        content: [{ type: 'text', text: '⏳ OmnySys se está inicializando (análisis estático en progreso). Reintentá en unos segundos.' }]
-      };
+      return buildInitializationPendingToolResult({
+        server,
+        projectPath: server?.projectPath || null
+      });
     }
 
     const { name, arguments: args } = request.params;

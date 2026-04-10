@@ -190,11 +190,11 @@ export function shouldRefreshWrapperBackedWslOmnysystemTable(tableBody = []) {
 export function isLegacyWslNodeBridgeTable(tableBody = []) {
     const command = getTomlStringValue(tableBody, 'command');
     const args = getTomlArrayValues(tableBody, 'args');
-    const env = getTomlInlineTableMap(tableBody, 'env');
+    const normalizedCommand = path.posix.basename(String(command || '').trim());
+    const bridgePath = String(args[0] || '').trim();
 
-    return command === 'node'
-        && args[0]?.endsWith('/src/layer-c-memory/mcp-stdio-bridge.js')
-        && (env.OMNYSYS_PROJECT_PATH || '').startsWith('/mnt/');
+    return (normalizedCommand === 'node' || normalizedCommand === 'node.exe')
+        && bridgePath.endsWith('/src/layer-c-memory/mcp-stdio-bridge.js');
 }
 
 export function isWindowsOnlyOmnysystemTable(tableBody = []) {

@@ -48,9 +48,9 @@ function detectClientFromParentProcess() {
             /\bcode(\s|$)/.test(parentName) ||
             parentName.includes('vscode')
         ) {
-            // Running under VS Code - could be any AI extension
-            // Default to 'vscode-ai' since we can't determine which one
-            return { id: 'vscode-ai', name: 'VS Code AI' };
+            // VS Code alone is too generic to identify the real MCP client.
+            // Let initialize.clientInfo or env vars provide the canonical identity.
+            return null;
         }
         
         return null;
@@ -215,12 +215,26 @@ function getTrimmedClientField(clientInfo, field) {
     return typeof value === 'string' ? value.trim() : '';
 }
 
+function inferCanonicalClientFromOriginal(originalClientId, originalName) {
+    const inferred = detectClientFromUserAgent(originalClientId) || detectClientFromUserAgent(originalName);
+    if (inferred) {
+        return inferred;
+    }
+
+    return {
+        id: originalClientId || '',
+        name: originalName || ''
+    };
+}
+
 function resolveCanonicalClientId(originalClientId, originalName) {
-    return BRIDGE_CLIENT_ID || originalClientId || originalName || '';
+    const inferred = inferCanonicalClientFromOriginal(originalClientId, originalName);
+    return inferred.id || BRIDGE_CLIENT_ID || inferred.name || '';
 }
 
 function resolveCanonicalClientName(originalName, originalClientId, canonicalId) {
-    return BRIDGE_CLIENT_NAME || canonicalId || originalName || originalClientId || '';
+    const inferred = inferCanonicalClientFromOriginal(originalClientId, originalName);
+    return inferred.name || BRIDGE_CLIENT_NAME || canonicalId || inferred.id || '';
 }
 
 function resolveCanonicalClientVersion(originalVersion) {

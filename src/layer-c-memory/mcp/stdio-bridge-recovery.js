@@ -85,8 +85,10 @@ async function runBridgeRecovery(state, trigger, connectBridgeTransport, options
     timeoutMs: DAEMON_RECOVERY_TIMEOUT_MS,
     pollMs: DAEMON_RECOVERY_POLL_MS,
     label: 'daemon recovery',
-    log
+    log,
+    acceptReachable: true
   });
+  const daemonResponsive = Boolean(health?.responsive);
 
   const previousDaemonHealth = state.lastDaemonHealth || null;
   const daemonPidChange = detectDaemonPidChange({
@@ -100,10 +102,12 @@ async function runBridgeRecovery(state, trigger, connectBridgeTransport, options
     state.lastDaemonPid = Number(health.pid);
   }
   state.persistBridgeSessionSnapshot?.({
-    bridgeTransportState: health?.healthy ? 'recovery-daemon-healthy' : 'recovery-daemon-unhealthy'
+    bridgeTransportState: health?.healthy
+      ? 'recovery-daemon-healthy'
+      : (daemonResponsive ? 'recovery-daemon-responsive' : 'recovery-daemon-unhealthy')
   });
 
-  if (!health?.healthy) {
+  if (!daemonResponsive) {
     log(`Daemon recovery failed. sessions=${health?.sessions ?? 'unknown'} pid=${health?.pid ?? 'unknown'}. Will retry bridge recovery instead of shutting down.`);
     setTimeout(() => {
       if (!state.isReconnecting) {
@@ -117,7 +121,11 @@ async function runBridgeRecovery(state, trigger, connectBridgeTransport, options
     return;
   }
 
-  log('Daemon recovered. Reconnecting HTTP transport...');
+  if (health?.healthy) {
+    log('Daemon recovered. Reconnecting HTTP transport...');
+  } else {
+    log(`Daemon is responding but still initializing (${health?.initialization?.currentStep || health?.status || 'starting'}). Reconnecting HTTP transport early...`);
+  }
   try {
     const forceFreshSession = shouldForceFreshSession(trigger, options) || daemonPidChange.pidChanged;
     log(`Reconnect plan: forceFreshSession=${forceFreshSession}, previousPid=${daemonPidChange.previousPid ?? 'n/a'}, currentPid=${daemonPidChange.currentPid ?? 'n/a'}, pidChanged=${daemonPidChange.pidChanged}`);

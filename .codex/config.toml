@@ -1,4 +1,4 @@
-approval_policy = "untrusted"
+approval_policy = "never"
 sandbox_mode = "danger-full-access"
 [projects.'C:\Dev\OmnySystem']
 trust_level = "trusted"
@@ -80,3 +80,6 @@ approval_mode = "approve"
 
 [mcp_servers.omnysystem.tools.mcp_omnysystem_consolidate_policy_drifts]
 approval_mode = "approve"
+
+[projects.'/mnt/c/Dev/OmnySystem']
+trust_level = "trusted"

@@ -4,7 +4,11 @@ import path from 'path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { createBridgeTelemetryController, parseRestartRecoveryHint } from '../../../../src/layer-c-memory/mcp/stdio-bridge-telemetry.js';
+import {
+  createBridgeTelemetryController,
+  parseRestartRecoveryHint,
+  resolveBridgeTelemetryNamespace
+} from '../../../../src/layer-c-memory/mcp/stdio-bridge-telemetry.js';
 import { readBridgeRuntimeTelemetry } from '../../../../src/shared/compiler/bridge-runtime-telemetry.js';
 
 describe('stdio-bridge-telemetry', () => {
@@ -12,7 +16,8 @@ describe('stdio-bridge-telemetry', () => {
     const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'omnysys-bridge-controller-'));
     const controller = createBridgeTelemetryController({
       projectPath: projectRoot,
-      log: vi.fn()
+      log: vi.fn(),
+      bridgeNamespace: 'windows:codex'
     });
 
     controller.persistBridgeTelemetry({
@@ -28,8 +33,59 @@ describe('stdio-bridge-telemetry', () => {
       state: 'stable',
       bridgeHealthState: 'stable',
       bridgeRiskLevel: 'low',
+      connectCount: 1,
+      bridgeNamespace: 'windows:codex'
+    });
+  });
+
+  it('does not hydrate bridge telemetry across environment namespaces', () => {
+    const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'omnysys-bridge-namespace-'));
+
+    const windowsController = createBridgeTelemetryController({
+      projectPath: projectRoot,
+      log: vi.fn(),
+      bridgeNamespace: 'windows:codex'
+    });
+
+    windowsController.persistBridgeTelemetry({
+      state: 'stable',
+      connectCount: 1,
+      lastSessionId: 'windows-session',
+      events: [
+        { type: 'bridge-connect', at: new Date().toISOString() }
+      ]
+    });
+
+    const wslController = createBridgeTelemetryController({
+      projectPath: projectRoot,
+      log: vi.fn(),
+      bridgeNamespace: 'wsl:Ubuntu:codex-wsl'
+    });
+
+    wslController.recordBridgeEvent('bridge-connect');
+
+    const readBack = readBridgeRuntimeTelemetry(projectRoot);
+
+    expect(readBack).toMatchObject({
+      bridgeNamespace: 'wsl:Ubuntu:codex-wsl',
       connectCount: 1
     });
+    expect(readBack.lastSessionId).toBeUndefined();
+  });
+
+  it('derives a stable namespace for the current environment shape', () => {
+    expect(resolveBridgeTelemetryNamespace({
+      platform: 'win32',
+      env: {}
+    })).toBe('windows:unknown');
+
+    expect(resolveBridgeTelemetryNamespace({
+      platform: 'linux',
+      env: {
+        WSL_DISTRO_NAME: 'Ubuntu',
+        OMNYSYS_CLIENT_ROUTE_BASE: 'codex-wsl'
+      }
+    })).toBe('wsl:Ubuntu:codex-wsl');
   });
 
   it('parses recovery hints for proxy-managed restarts beyond processRestart', () => {

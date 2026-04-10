@@ -134,6 +134,28 @@ So this bug class should keep being tracked as a bridge / session / handshake is
 - That namespace separates Windows and WSL surfaces so a cached `lastSessionId` or cached `initialize` from one environment cannot be replayed into the other.
 - The fix keeps same-environment recovery intact while preventing cross-surface session reuse from stale telemetry.
 
+### 2026-04-10: stale same-surface session reuse hardening
+
+- A later local probe showed a subtler variant: the bridge could start from a cached live session created by one client route and then receive `initialize` from another one.
+- The symptom in telemetry was a mismatch like:
+  - early `transport-create` on one route bucket
+  - later `daemon-response` on another route bucket
+- The bridge now clears the cached session and cached initialize response when the new `initialize.clientInfo` does not match the previous client/route identity.
+- After that hardening, a direct probe using `Client({ name: 'Cline', ... })` completed:
+  - `TOOLS_1 45`
+  - `TOOLS_2 45`
+- The bridge telemetry for that probe stayed consistent on one route:
+  - `client_route_id = cline::<pid>`
+  - no mixed reuse of an older `vscode-ai::...` route
+
+### Why this matters
+
+- Not every stale session bug is cross-environment Windows vs WSL.
+- A bridge can also reuse the wrong live session inside the same Windows surface if launcher identity changes between cached telemetry and the next `initialize`.
+- That means session reuse must stay guarded by both:
+  - daemon health and session count
+  - client identity and route continuity
+
 ## Lessons Learned
 
 ### 1. Healthy daemon does not mean healthy launcher route

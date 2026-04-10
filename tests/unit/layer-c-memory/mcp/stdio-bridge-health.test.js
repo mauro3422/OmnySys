@@ -66,4 +66,36 @@ describe('stdio-bridge-health', () => {
       sessions: 1
     }));
   });
+
+  it('can return early once the daemon is responsive during startup', async () => {
+    installSequentialHealthResponses([
+      {
+        status: 'starting',
+        initialized: false,
+        service: 'omnysys-mcp-http',
+        pid: 33,
+        sessions: 0,
+        initialization: {
+          currentStep: 'layer-a-analysis',
+          retryAfterMs: 2000
+        }
+      }
+    ]);
+
+    await expect(waitForDaemonHealthy('http://127.0.0.1:9999/health', {
+      timeoutMs: 1000,
+      pollMs: 0,
+      label: 'daemon startup',
+      acceptReachable: true
+    })).resolves.toEqual(expect.objectContaining({
+      reachable: true,
+      responsive: true,
+      healthy: false,
+      pid: 33,
+      initialization: expect.objectContaining({
+        currentStep: 'layer-a-analysis',
+        retryAfterMs: 2000
+      })
+    }));
+  });
 });

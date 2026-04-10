@@ -1,18 +1,37 @@
 import path from 'path';
 import { repoRoot } from './constants.js';
-import { getHealthUrl, normalizeSlashes } from './utils.js';
+import { getHealthUrl, inferTargetPlatform, toTargetPath } from './utils.js';
 import { getNodeCommand } from './node-command.js';
 
-export function buildBridgePath() {
-    return normalizeSlashes(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js'));
+function resolveTargetPlatform(options = {}) {
+    return options.targetPlatform || inferTargetPlatform({
+        filePath: options.filePath || '',
+        projectPath: options.projectPath || ''
+    });
 }
 
-export function buildBridgeEnv(url, projectPath) {
+export function buildBridgePath(options = {}) {
+    const targetPlatform = resolveTargetPlatform(options);
+    return toTargetPath(path.join(repoRoot, 'src', 'layer-c-memory', 'mcp-stdio-bridge.js'), {
+        targetPlatform,
+        projectPath: options.projectPath || ''
+    });
+}
+
+export function buildBridgeEnv(url, projectPath, options = {}) {
+    const targetPlatform = resolveTargetPlatform({
+        ...options,
+        projectPath
+    });
+
     return {
         OMNYSYS_DAEMON_URL: url,
         OMNYSYS_HEALTH_URL: getHealthUrl(),
         OMNYSYS_AUTO_START: '1',
-        OMNYSYS_PROJECT_PATH: normalizeSlashes(projectPath),
+        OMNYSYS_PROJECT_PATH: toTargetPath(projectPath, {
+            targetPlatform,
+            projectPath
+        }),
         OMNYSYS_CLIENT_ID: 'codex',
         OMNYSYS_CLIENT_NAME: 'codex'
     };
@@ -22,22 +41,53 @@ export function normalizeCodexProjectPath(projectPath) {
     return path.resolve(projectPath).replace(/^\\\\\?\\/, '');
 }
 
-export function getCodexProjectTrustTableNames(projectPath) {
-    const normalizedProjectPath = normalizeCodexProjectPath(projectPath);
-    const tableNames = [`projects.'${normalizedProjectPath}'`];
-
-    if (/^[A-Za-z]:\\/.test(normalizedProjectPath)) {
-        tableNames.push(`projects.'\\\\?\\${normalizedProjectPath}'`);
-    }
-
-    return tableNames;
+function escapeTomlBasicString(value) {
+    return String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
-export function buildCodexTableBody(url, projectPath) {
-    const bridgePath = buildBridgePath();
-    const nodeCommand = getNodeCommand();
-    const normalizedProjectPath = normalizeSlashes(projectPath);
-    const env = buildBridgeEnv(url, normalizedProjectPath);
+export function getCodexProjectTrustTableNames(projectPath) {
+    const normalizedProjectPath = normalizeCodexProjectPath(projectPath);
+    const tableNames = [
+        `projects.'${normalizedProjectPath}'`,
+        `projects."${escapeTomlBasicString(normalizedProjectPath)}"`
+    ];
+
+    if (/^[A-Za-z]:\\/.test(normalizedProjectPath)) {
+        const namespacedPath = `\\\\?\\${normalizedProjectPath}`;
+        tableNames.push(`projects.'${namespacedPath}'`);
+        tableNames.push(`projects."${escapeTomlBasicString(namespacedPath)}"`);
+    }
+
+    return Array.from(new Set(tableNames));
+}
+
+export function buildCodexTableBody(url, projectPath, options = {}) {
+    // The standardized installer writes configs for mixed Windows + WSL clients.
+    // The serialized command/path values must match the client consuming them,
+    // not whichever runtime happened to execute install.js.
+    const targetPlatform = resolveTargetPlatform({
+        ...options,
+        projectPath
+    });
+    const bridgePath = buildBridgePath({
+        ...options,
+        projectPath,
+        targetPlatform
+    });
+    const nodeCommand = getNodeCommand({
+        ...options,
+        projectPath,
+        targetPlatform
+    });
+    const normalizedProjectPath = toTargetPath(projectPath, {
+        targetPlatform,
+        projectPath
+    });
+    const env = buildBridgeEnv(url, normalizedProjectPath, {
+        ...options,
+        projectPath: normalizedProjectPath,
+        targetPlatform
+    });
     const envEntries = [
         ['OMNYSYS_DAEMON_URL', env.OMNYSYS_DAEMON_URL],
         ['OMNYSYS_HEALTH_URL', env.OMNYSYS_HEALTH_URL],

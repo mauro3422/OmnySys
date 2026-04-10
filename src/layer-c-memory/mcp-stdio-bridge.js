@@ -24,6 +24,7 @@ import {
 } from './mcp/stdio-bridge-recovery.js';
 import {
     createBridgeTelemetryController,
+    resolveBridgeTelemetryNamespace,
     parseRestartRecoveryHint
 } from './mcp/stdio-bridge-telemetry.js';
 import {
@@ -58,12 +59,19 @@ const {
     getBridgeTelemetrySnapshot
 } = createBridgeTelemetryController({
     projectPath: PROJECT_PATH,
-    log
+    log,
+    bridgeNamespace: resolveBridgeTelemetryNamespace({
+        env: process.env,
+        platform: process.platform
+    })
 });
 
 let bridgeTraceCounter = 0;
 
 function persistBridgeSessionSnapshot(state, patch = {}) {
+    if (Object.prototype.hasOwnProperty.call(patch, 'bridgeTransportState')) {
+        state.lastBridgeTransportState = patch.bridgeTransportState || null;
+    }
     persistBridgeTelemetry({
         ...patch,
         lastSessionId: state.lastSessionId || null,
@@ -86,6 +94,41 @@ function getBridgeClientRouteId(state) {
     return state.cachedInitializeRequest?.params?.clientInfo?.client_route_id
         || state.cachedInitializeRequest?.params?.clientInfo?.original_client_route_id
         || null;
+}
+
+function getComparableClientIdentity(clientInfo = {}) {
+    return {
+        clientId: String(clientInfo?.client_id || '').trim(),
+        originalClientId: String(clientInfo?.original_client_id || '').trim(),
+        name: String(clientInfo?.name || '').trim(),
+        originalName: String(clientInfo?.original_name || '').trim(),
+        routeId: String(clientInfo?.client_route_id || '').trim(),
+        originalRouteId: String(clientInfo?.original_client_route_id || '').trim()
+    };
+}
+
+function shouldReuseCachedBridgeSession(previousClientInfo = {}, nextClientInfo = {}) {
+    const previous = getComparableClientIdentity(previousClientInfo);
+    const next = getComparableClientIdentity(nextClientInfo);
+
+    const previousClientKey = previous.clientId || previous.originalClientId || previous.name || previous.originalName;
+    const nextClientKey = next.clientId || next.originalClientId || next.name || next.originalName;
+    const previousRouteKey = previous.routeId || previous.originalRouteId;
+    const nextRouteKey = next.routeId || next.originalRouteId;
+
+    if (!previousClientKey || !nextClientKey) {
+        return false;
+    }
+
+    if (previousClientKey !== nextClientKey) {
+        return false;
+    }
+
+    if (previousRouteKey && nextRouteKey && previousRouteKey !== nextRouteKey) {
+        return false;
+    }
+
+    return true;
 }
 
 function traceBridgeFlow(state, traceId, step, details = {}) {
@@ -133,6 +176,10 @@ function hydrateBridgeStateFromTelemetry(state) {
 
     if (Number.isFinite(Number(snapshot.lastDaemonPid))) {
         state.lastDaemonPid = Number(snapshot.lastDaemonPid);
+    }
+
+    if (snapshot.bridgeTransportState) {
+        state.lastBridgeTransportState = snapshot.bridgeTransportState;
     }
 }
 
@@ -297,16 +344,52 @@ async function connectBridgeTransport(state, options = {}) {
 
     transport.onerror = (err) => {
         if (!isStaleTransport()) {
-            log(`http error: ${err.message}`);
+            const errorMessage = String(err?.message || err || '');
+            log(`http error: ${errorMessage}`);
             traceBridgeFlow(state, traceId, 'transport-error', {
-                message: String(err?.message || err || '')
+                message: errorMessage
             });
             recordBridgeEvent('bridge-http-error', {
                 traceId,
-                message: String(err?.message || err || ''),
+                message: errorMessage,
                 sessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
                 transportGeneration
             });
+            persistBridgeSessionSnapshot(state, {
+                bridgeTransportGeneration: transportGeneration,
+                bridgeTransportSessionId: state.lastSessionId || state.httpTransport?._sessionId || null,
+                bridgeTransportState: 'transport-error',
+                bridgeTraceId: traceId,
+                bridgeTraceStep: 'transport-error'
+            });
+
+            if (shouldTriggerRecovery(err) && !state.isReconnecting) {
+                const currentTransport = state.httpTransport;
+                const currentSessionId = state.lastSessionId || currentTransport?._sessionId || null;
+                state.httpTransport = null;
+                recordBridgeEvent('bridge-recovery-needed', {
+                    traceId,
+                    trigger: errorMessage || 'transport error',
+                    sessionId: currentSessionId,
+                    transportGeneration
+                });
+                persistBridgeSessionSnapshot(state, {
+                    bridgeTransportGeneration: transportGeneration,
+                    bridgeTransportSessionId: currentSessionId,
+                    bridgeTransportState: 'recovering',
+                    bridgeTraceId: traceId,
+                    bridgeTraceStep: 'transport-error-recovery'
+                });
+                if (currentTransport) {
+                    currentTransport.close().catch(() => {});
+                }
+                void scheduleBridgeRecovery(
+                    state,
+                    errorMessage || 'transport error',
+                    connectBridgeTransport,
+                    { forceFreshSession: true, backoffMs: 0 }
+                );
+            }
         }
     };
     transport.onclose = async () => {
@@ -351,10 +434,17 @@ async function handleBridgeStdioMessage(state, message) {
 
     try {
         if (normalizedMessage?.method === 'initialize' && isRequestMessage(normalizedMessage)) {
+            const previousInitializeRequest = state.cachedInitializeRequest;
+            const nextClientInfo = normalizedMessage?.params?.clientInfo || {};
             state.cachedInitializeRequest = normalizedMessage;
             persistBridgeSessionSnapshot(state, {
                 bridgeTransportState: 'initialize-cached'
             });
+
+            const canReuseLiveSession = shouldReuseCachedBridgeSession(
+                previousInitializeRequest?.params?.clientInfo || {},
+                nextClientInfo
+            );
 
             const daemonSessionCount = Number(state.lastDaemonHealth?.sessions || 0);
             const daemonHealthIsFresh = Boolean(
@@ -372,7 +462,22 @@ async function handleBridgeStdioMessage(state, message) {
                 state.localInitializeHandled = false;
             }
 
-            if (liveSessionId) {
+            if (!canReuseLiveSession && liveSessionId) {
+                log(`Cached bridge session ${liveSessionId} belongs to a different client route. Forcing a fresh initialize handshake.`);
+                state.lastSessionId = null;
+                state.cachedInitializeResponse = null;
+                state.localInitializeHandled = false;
+                const currentTransport = state.httpTransport;
+                state.httpTransport = null;
+                if (currentTransport) {
+                    currentTransport.close().catch(() => {});
+                }
+                persistBridgeSessionSnapshot(state, {
+                    bridgeTransportState: 'stale-session-cleared'
+                });
+            }
+
+            if (liveSessionId && canReuseLiveSession) {
                 const initializeResponse = buildInitializeResponse(
                     normalizedMessage.id,
                     state.cachedInitializeResponse
@@ -673,9 +778,9 @@ const main = createCliOrchestrator({
         persistBridgeTelemetry({
             state: 'booting'
         });
-        await waitForDaemonReady();
+        await waitForDaemonReady({ acceptReachable: true });
 
-        log(`Daemon ready. Bridging stdio <-> ${DAEMON_URL}`);
+        log(`Daemon reachable. Bridging stdio <-> ${DAEMON_URL}`);
 
         const stdioTransport = new StdioServerTransport();
         sharedState = createBridgeState(stdioTransport);
@@ -709,7 +814,8 @@ const main = createCliOrchestrator({
 
         if (shouldPreconnectBridgeTransport({
             lastSessionId: sharedState.lastSessionId,
-            lastDaemonHealth: daemonHealth
+            lastDaemonHealth: daemonHealth,
+            lastBridgeTransportState: sharedState.lastBridgeTransportState
         })) {
             await connectBridgeTransport(sharedState);
         } else {
