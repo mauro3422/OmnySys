@@ -1,8 +1,11 @@
-import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
-import { createLogger } from '../../utils/logger.js';
-import { clearPendingRuntimeRestart } from './core/hot-reload-manager/restart-coordinator.js';
+import { buildRestartLifecycleGuidance } from '../../../shared/compiler/index.js';
+import { createLogger } from '../../../utils/logger.js';
+import { clearPendingRuntimeRestart } from '../core/hot-reload-manager/restart-coordinator.js';
+import { isProxyMode } from './utils.js';
 
 const logger = createLogger('OmnySys:restart:helpers');
+
+export { isProxyMode };
 
 export function clearPendingHotReloadRestart(server) {
   clearPendingRuntimeRestart(server);
@@ -33,9 +36,6 @@ function buildLegacyProxyRestartMessage(clearCache) {
   return `${variant} This path kills and respawns the worker via the proxy, may briefly disconnect MCP clients, and should be replaced with an explicit mode such as processRestart=true, clearCacheOnly=true, reindexOnly=true, or clearCache+reanalyze=true.`;
 }
 
-function isProxyMode() {
-  return process.env.OMNYSYS_PROXY_MODE === '1' || typeof process.send === 'function';
-}
 
 export async function handleSoftReload(server, orchestrator, cache, refreshToolRegistryFn, { performSoftReload }) {
   logger.info('Soft reload requested...');

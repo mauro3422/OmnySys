@@ -548,6 +548,33 @@ function startDaemonWatchdogHealthCheck() {
 }
 
 ensureCompilerRuntimeDirSync(projectRoot);
+
+// Poll for restart signal file (fallback for broken IPC channel)
+const RESTART_SIGNAL_FILE = path.join(projectPath, '.omnysysdata', 'restart-signal.json');
+const signalCheckInterval = setInterval(() => {
+    try {
+        if (fs.existsSync(RESTART_SIGNAL_FILE)) {
+            const content = fs.readFileSync(RESTART_SIGNAL_FILE, 'utf8');
+            const signal = JSON.parse(content);
+            const now = Date.now();
+            // Only process signals from the last 10 seconds (prevent stale signals)
+            const signalTime = new Date(signal.timestamp).getTime();
+            if (now - signalTime < 10000 && !restartInFlight && !restartScheduled) {
+                log(`🔄 Restart signal file detected (${signal.type}). Triggering restart...`);
+                fs.unlinkSync(RESTART_SIGNAL_FILE);
+                restartInFlight = true;
+                restartScheduled = signal.type === 'processRestart' ? ['--processRestart'] : [];
+                _lastRestartAt = Date.now();
+                if (worker && worker.connected) {
+                    worker.kill('SIGTERM');
+                }
+            }
+        }
+    } catch {
+        // Ignore parse errors or race conditions
+    }
+}, 500).unref();
+
 if (shouldSpawnInitialWorker) {
     writeOwnerLock('starting');
     persistProxyTelemetry({ state: 'booting' });

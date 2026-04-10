@@ -149,6 +149,79 @@ async function updateMoveDependents(dependents, oldPath, newPath, projectPath, c
     };
 }
 
+/**
+ * Detecta barrel files que re-exportan el archivo movido y los actualiza.
+ * Un barrel file es un archivo donde ≥50% de sus exports son re-exports.
+ * Actualiza los re-exports para apuntar al nuevo path.
+ */
+async function detectAndUpdateBarrelFiles(oldPath, newPath, projectPath, context = {}) {
+    const barrelUpdates = [];
+    const { server, projectPath: _pp, ...restContext } = context || {};
+    const orchestrator = context?.orchestrator || server;
+    const repo = orchestrator?.cache?.getRepository?.() || null;
+
+    if (!repo?.db) {
+        return barrelUpdates;
+    }
+
+    // Buscar archivos que importan/re-exportan el oldPath
+    const importers = repo.db.prepare(`
+        SELECT DISTINCT f.path
+        FROM files f, json_each(f.imports_json) as imp
+        WHERE f.is_removed = 0
+        AND imp.value LIKE ?
+    `).all(`%${oldPath.replace(/\\/g, '/').split('/').pop()}%`);
+
+    for (const row of importers) {
+        const filePath = row.path;
+        if (filePath === oldPath || filePath === newPath) continue;
+
+        const absPath = path.resolve(projectPath, filePath);
+        try {
+            const code = await fs.readFile(absPath, 'utf-8');
+            const lines = code.split('\n');
+
+            // Detectar re-exports: export { x } from '...' o export * from '...'
+            const reExportPattern = new RegExp(
+                `export\\s+(\\{[^}]*\\}|\\*)\\s+from\\s+['"]([^'"]*(?:${oldPath.replace(/\\/g, '/').split('/').pop().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}))['"]`,
+                'g'
+            );
+
+            let fileModified = false;
+            for (let i = 0; i < lines.length; i++) {
+                const match = reExportPattern.exec(lines[i]);
+                if (match) {
+                    const oldImportPath = match[2];
+                    const newImportPath = calculateRelativeImport(filePath, newPath, projectPath);
+
+                    if (newImportPath && newImportPath !== oldImportPath) {
+                        const oldLine = lines[i];
+                        const newLine = oldLine.replace(oldImportPath, newImportPath);
+                        lines[i] = newLine;
+                        fileModified = true;
+
+                        barrelUpdates.push({
+                            filePath,
+                            from: oldImportPath,
+                            to: newImportPath
+                        });
+                    }
+                }
+            }
+
+            if (fileModified) {
+                const newCode = lines.join('\n');
+                await fs.writeFile(absPath, newCode, 'utf-8');
+                logger.info(`[MoveOrchestrator] Barrel file updated: ${filePath}`);
+            }
+        } catch (err) {
+            logger.warn(`[MoveOrchestrator] Failed to check barrel file ${filePath}: ${err.message}`);
+        }
+    }
+
+    return barrelUpdates;
+}
+
 async function executeMoveMutation(oldPath, newPath, projectPath, context, dependents) {
     const absOld = path.resolve(projectPath, oldPath);
     const absNew = path.resolve(projectPath, newPath);
@@ -177,25 +250,30 @@ async function executeMoveMutation(oldPath, newPath, projectPath, context, depen
 
         const dependencyUpdates = await updateMoveDependents(dependents, oldPath, newPath, projectPath, context);
 
+        // Detectar y actualizar barrel files que re-exportan el archivo movido
+        const barrelUpdates = await detectAndUpdateBarrelFiles(oldPath, newPath, projectPath, context);
+
         return {
             success: true,
             moved: { from: oldPath, to: newPath },
             selfUpdated: selfRewrites.length > 0,
             selfRewrites,
-            updatedFiles: dependencyUpdates.updatedFiles,
+            updatedFiles: [...dependencyUpdates.updatedFiles, ...barrelUpdates.map(b => b.filePath)],
+            barrelUpdates,
             failedUpdates: dependencyUpdates.failedUpdates
         };
     });
 }
 
 async function settleMoveMutation(projectPath, context, oldPath, newPath, dependents, moveResult) {
+    const barrelFiles = (moveResult.barrelUpdates || []).map(b => b.filePath);
     return await settleMutationFiles({
         projectPath,
         context,
         reason: 'move_file',
-        touchedFiles: [oldPath, newPath, ...dependents, ...(moveResult.updatedFiles || [])],
-        validationTargets: [newPath, ...(moveResult.updatedFiles || []), ...dependents],
-        reindexTargets: [newPath, ...(moveResult.updatedFiles || [])],
+        touchedFiles: [oldPath, newPath, ...dependents, ...(moveResult.updatedFiles || []), ...barrelFiles],
+        validationTargets: [newPath, ...(moveResult.updatedFiles || []), ...dependents, ...barrelFiles],
+        reindexTargets: [newPath, ...(moveResult.updatedFiles || []), ...barrelFiles],
         maxValidationTargets: 10
     });
 }

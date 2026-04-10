@@ -765,6 +765,14 @@ function handleBridgeStdioClose(state) {
 
 let sharedState = null;
 
+function handleBridgeStdioMessageSafely(state, message) {
+    return Promise.resolve()
+        .then(() => handleBridgeStdioMessage(state, message))
+        .catch((error) => {
+            log(`Unhandled bridge message error: ${error?.message || error}`);
+        });
+}
+
 const main = createCliOrchestrator({
     name: 'mcp:stdio-bridge',
     logger: {
@@ -824,9 +832,7 @@ const main = createCliOrchestrator({
             });
         }
 
-        stdioTransport.onmessage = async (message) => {
-            await handleBridgeStdioMessage(sharedState, message);
-        };
+        stdioTransport.onmessage = (message) => handleBridgeStdioMessageSafely(sharedState, message);
 
         stdioTransport.onerror = (err) => log(`stdio error: ${err.message}`);
         stdioTransport.onclose = () => {

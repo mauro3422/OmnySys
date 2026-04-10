@@ -27,8 +27,8 @@ function buildIncrementalAtomMetadata(atom, rootPath, options) {
     _meta: {
       ...(atom._meta || {}),
       rootPath,
-      lastModified: Date.now(),
-      version: (atom._meta?.version || 0) + 1,
+      lastModified: atom._meta?.lastModified || Date.now(),
+      version: atom._meta?.version || 1,
       incrementalUpdate: true,
       source: options.source || 'unknown'
     }

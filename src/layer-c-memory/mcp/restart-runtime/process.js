@@ -1,13 +1,32 @@
-import { buildRestartLifecycleGuidance } from '../../shared/compiler/index.js';
-import { createLogger } from '../../utils/logger.js';
+import path from 'path';
+import fs from 'fs';
+import { buildRestartLifecycleGuidance } from '../../../shared/compiler/index.js';
+import { createLogger } from '../../../utils/logger.js';
 import {
   buildProcessRestartWarningMessage,
   buildProxyRestartResult,
   purgeRuntimeCache,
   refreshToolRegistrySafely
-} from './restart-runtime/index.js';
+} from './index.js';
 
 const logger = createLogger('OmnySys:restart:process');
+
+const RESTART_SIGNAL_FILE = path.join(process.env.OMNYSYS_PROJECT_PATH || process.cwd(), '.omnysysdata', 'restart-signal.json');
+
+function writeRestartSignalFile() {
+  try {
+    const signalDir = path.dirname(RESTART_SIGNAL_FILE);
+    if (!fs.existsSync(signalDir)) fs.mkdirSync(signalDir, { recursive: true });
+    fs.writeFileSync(RESTART_SIGNAL_FILE, JSON.stringify({
+      type: 'processRestart',
+      timestamp: new Date().toISOString(),
+      pid: process.pid
+    }));
+    logger.info(`Restart signal file written: ${RESTART_SIGNAL_FILE}`);
+  } catch (err) {
+    logger.warn(`Failed to write restart signal file: ${err.message}`);
+  }
+}
 
 // Cooldown to prevent restart loops. Shared with hot-reload-manager.
 const RESTART_COOLDOWN_MS = 60000;
@@ -87,7 +106,7 @@ export async function handleProcessRestart({
   // The proxy may block this due to its own cooldown (survives across worker restarts).
   recordRestartTime();
   if (process.send) {
-    process.send({
+    const restartMsg = {
       type: 'restart',
       clearCache: false,
       reanalyze: false,
@@ -95,7 +114,17 @@ export async function handleProcessRestart({
       processRestart: true,
       file: 'user_requested_process_restart',
       reason: 'manual_process_restart_via_mcp_tool'
+    };
+    process.send(restartMsg, (error) => {
+      if (error) {
+        logger.error(`IPC send failed: ${error.message}. Falling back to file signal.`);
+        writeRestartSignalFile();
+      } else {
+        logger.info('Restart message sent to proxy via IPC.');
+      }
     });
+    // Also write a file signal as fallback (proxy polls for this)
+    writeRestartSignalFile();
   }
 
   const lifecycle = buildRestartLifecycleGuidance({

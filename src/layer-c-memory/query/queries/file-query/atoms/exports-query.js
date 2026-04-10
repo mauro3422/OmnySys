@@ -10,7 +10,9 @@
 import path from 'path';
 import { parseFileFromDisk } from '#layer-a/parser/index.js';
 import { loadAtoms } from '#layer-c/storage/index.js';
+import { getRepository } from '#layer-c/storage/repository/index.js';
 import { getFileAnalysis } from '../core/single-file.js';
+import { normalizePath } from '#shared/utils/path-utils.js';
 
 function getAtomExportName(atom = {}) {
   return atom.name || atom.atom_name || atom.functionName || atom.exportName || null;
@@ -55,15 +57,29 @@ function collectAnalysisExportNames(analysis, exportNames) {
   const analysisExports = Array.isArray(analysis?.exports) ? analysis.exports : [];
 
   for (const exp of analysisExports) {
-    if (typeof exp === 'string' && exp.trim()) {
-      exportNames.add(exp.trim());
-      continue;
-    }
-
-    if (exp?.name) {
-      exportNames.add(exp.name);
+    const resolvedName = resolveExportName(exp);
+    if (resolvedName) {
+      exportNames.add(resolvedName);
     }
   }
+
+  // Also check explicit re-export entries
+  const reExports = Array.isArray(analysis?.reExports) ? analysis.reExports : [];
+  for (const reExp of reExports) {
+    if (typeof reExp === 'string') {
+      exportNames.add(reExp);
+    } else {
+      const resolvedName = resolveExportName(reExp);
+      if (resolvedName) {
+        exportNames.add(resolvedName);
+      }
+    }
+  }
+}
+
+function resolveExportName(exp) {
+  if (typeof exp === 'string') return exp.trim() || null;
+  return exp?.exportedAs || exp?.localName || exp?.exportName || exp?.name || null;
 }
 
 /**
@@ -75,6 +91,33 @@ function collectAnalysisExportNames(analysis, exportNames) {
 export async function getFileExports(rootPath, filePath) {
   const atoms = await loadAtoms(rootPath, filePath);
   const exportNames = collectAtomExportNames(atoms);
+
+  // Always merge exports_json from DB to catch re-exports that are not atoms
+  // e.g.: export { foo as bar } from './other.js' — these don't create atoms
+  const repo = getRepository(rootPath);
+  if (repo?.initialized && repo?.db && repo.db.open !== false) {
+    const row = repo.db.prepare(
+      'SELECT exports_json FROM files WHERE path = ? AND is_removed = 0'
+    ).get(normalizePath(filePath, rootPath));
+    if (row?.exports_json) {
+      try {
+        const exports = JSON.parse(row.exports_json);
+        for (const exp of exports) {
+          if (typeof exp === 'string') {
+            exportNames.add(exp);
+          } else if (exp?.name) {
+            exportNames.add(exp.name);
+          } else if (exp?.exportedAs) {
+            exportNames.add(exp.exportedAs);
+          } else if (exp?.localName) {
+            exportNames.add(exp.localName);
+          }
+        }
+      } catch {
+        // JSON parse error — skip
+      }
+    }
+  }
 
   if (exportNames.size === 0) {
     const analysis = await getFileAnalysis(rootPath, filePath).catch(() => null);

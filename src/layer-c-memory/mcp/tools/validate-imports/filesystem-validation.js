@@ -52,6 +52,35 @@ async function loadModuleExportsFromDb(projectPath, modulePath, exportsByModule)
     }
 
     const moduleExports = await getFileExports(projectPath, normalizedModulePath).catch(() => new Set());
+
+    // Always merge exports_json from DB to catch re-exports that are not atoms
+    // e.g.: export { foo as bar } from './other.js' — these don't create atoms
+    // but ARE present in files.exports_json
+    const repo = getRepository(projectPath);
+    if (repo?.initialized && repo?.db && repo.db.open !== false) {
+        const row = repo.db.prepare(
+            'SELECT exports_json FROM files WHERE path = ? AND is_removed = 0'
+        ).get(normalizedModulePath);
+        if (row?.exports_json) {
+            try {
+                const exports = JSON.parse(row.exports_json);
+                for (const exp of exports) {
+                    if (typeof exp === 'string') {
+                        moduleExports.add(exp);
+                    } else if (exp?.name) {
+                        moduleExports.add(exp.name);
+                    } else if (exp?.exportedAs) {
+                        moduleExports.add(exp.exportedAs);
+                    } else if (exp?.localName) {
+                        moduleExports.add(exp.localName);
+                    }
+                }
+            } catch {
+                // JSON parse error — skip
+            }
+        }
+    }
+
     exportsByModule.set(cacheKey, moduleExports);
     return moduleExports;
 }
