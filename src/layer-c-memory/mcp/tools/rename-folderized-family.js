@@ -1,6 +1,6 @@
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
-import { MoveOrchestrator } from '../core/shared/move-orchestrator.js';
+import { MoveOrchestrator } from '../core/shared/move-orchestrator/orchestrator.js';
 import { withMutationBatch } from '../core/shared/mutation-batch.js';
 import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
 import { rewriteFolderizedFamilyImports } from './folderize-family-import-rewriter.js';

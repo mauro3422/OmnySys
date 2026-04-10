@@ -60,6 +60,7 @@ function compactHealthPanelHealth(healthPanel = null) {
 
 function compactMetricsHealth(metricsSnapshot = null) {
   const current = metricsSnapshot?.current || {};
+  const summaryCoherence = metricsSnapshot?.summaryCoherence || current.summaryCoherence || null;
 
   return {
     healthScore: asNumber(current.healthScore, 0),
@@ -75,6 +76,8 @@ function compactMetricsHealth(metricsSnapshot = null) {
     readinessReason: current.readinessReason || null,
     driftState: current.driftState || null,
     activeAtomsDriftState: current.activeAtomsDriftState || null,
+    summaryCoherenceState: summaryCoherence?.coherent === false ? 'stale' : summaryCoherence?.coherent === true ? 'fresh' : null,
+    summaryCoherenceReason: summaryCoherence?.reason || null,
     summary: current.summaryText || metricsSnapshot?.summary || null
   };
 }
@@ -328,6 +331,7 @@ function summarizePolicyState(controlPlaneContracts = null, compilerExplainabili
 function summarizeMetricsState(metricsSnapshot = null, healthDashboard = null) {
   const current = metricsSnapshot?.current || {};
   const health = healthDashboard?.health || {};
+  const summaryCoherence = metricsSnapshot?.summaryCoherence || current.summaryCoherence || null;
   const score = asNumber(firstDefined(current.globalHealthScore, current.healthScore, health.globalHealthScore, health.healthScore, 0), 0);
   const reliability = asNumber(firstDefined(current.reliabilityScore, health.reliabilityScore, 0), 0);
   const success = asNumber(firstDefined(current.successScore, health.successScore, 0), 0);
@@ -343,17 +347,23 @@ function summarizeMetricsState(metricsSnapshot = null, healthDashboard = null) {
     state = 'watching';
   }
 
+  if (summaryCoherence?.coherent === false && state !== 'blocked') {
+    state = 'watching';
+  }
+
   return {
     state,
     healthy: state === 'fresh' || state === 'watching',
     trustworthy: state !== 'blocked',
-    reason: readinessReason || health?.summary || current.summaryText || 'Metrics are not fully fresh.',
-    recommendation: readinessReason || 'Keep using the canonical metrics snapshot so derived reports stay coherent.',
+    reason: readinessReason || summaryCoherence?.reason || health?.summary || current.summaryText || 'Metrics are not fully fresh.',
+    recommendation: summaryCoherence?.recommendation || readinessReason || 'Keep using the canonical metrics snapshot so derived reports stay coherent.',
     sourceOfTruth: 'compiler metrics snapshot',
     score,
     reliability,
     success,
-    behaviorState
+    behaviorState,
+    summaryCoherenceState: summaryCoherence?.coherent === false ? 'stale' : summaryCoherence?.coherent === true ? 'fresh' : null,
+    summaryCoherenceReason: summaryCoherence?.reason || null
   };
 }
 

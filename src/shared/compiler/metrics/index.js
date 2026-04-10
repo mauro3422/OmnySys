@@ -20,6 +20,7 @@ import {
   shouldMuteBootstrapTrend
 } from './history.js';
 import { buildBehaviorScore, buildCurrentMetrics, summarizeCurrentSnapshotRow, summarizeHistoryRow } from '../metrics-current/index.js';
+import { buildCompilerMetricsSnapshotSummary } from './snapshot-summary-text.js';
 import { clampScore } from '../../utils/normalize-helpers.js';
 
 function gradeFromScore(score = 0) {
@@ -141,7 +142,7 @@ function buildSnapshotPersistenceArgs(snapshot = null) {
     behavior_state: current.behaviorState || null,
     readiness_reason: current.readinessReason || null,
     snapshot_fingerprint: current.snapshotFingerprint || buildSnapshotFingerprint(snapshot),
-    summary_text: snapshot?.summary || current.summaryText || null,
+    summary_text: snapshot?.summary || buildCompilerMetricsSnapshotSummary(current, snapshot?.trend || {}) || current.summaryText || null,
     payload_json: safeJsonStringify(buildSnapshotPersistencePayload(snapshot)),
     trend_json: safeJsonStringify(snapshot?.trend || {})
   };

@@ -88,6 +88,8 @@ describe('syncWindowsCodexMcpToWsl', () => {
     expect(wslConfig).toContain('OMNYSYS_AUTO_START = "0"');
     expect(wslConfig).toContain('OMNYSYS_PROJECT_PATH = "/mnt/c/Dev/OmnySystem"');
     expect(wslConfig).toContain('OMNYSYS_CLIENT_ROUTE_BASE = "codex-wsl"');
+    expect(wslConfig).toContain('OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp"');
+    expect(wslConfig).toContain('OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health"');
   });
 
   it('upgrades the older WSL node bridge config to the wrapper launcher', async () => {

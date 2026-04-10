@@ -23,11 +23,13 @@ import {
   summarizeCompilerMetricDictionary,
   summarizeCurrentSnapshotRow
 } from './index.js';
+import { buildCompilerMetricsSnapshotSummary } from './snapshot-summary-text.js';
 import {
   loadCompilerHealthArchiveSummary,
   persistCompilerHealthArchiveSnapshot,
   persistCompilerMetricsArchiveSnapshot
 } from '../compiler-health-archive.js';
+import { validateSnapshotSummaryCoherence } from '../metric-coherence-validator.js';
 import { summarizeCompilerMetricsSnapshot } from './snapshot-summary.js';
 
 export { summarizeCompilerMetricsSnapshot };
@@ -126,23 +128,7 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     layerReliability
   });
 
-  const summary = [
-    `Health ${Math.round(current.globalHealthScore)}/${current.globalHealthGrade}`,
-    `db=${current.healthScore}/${current.healthGrade}`,
-    `trust=${Math.round(current.reliabilityScore)}/${current.reliabilityGrade}`,
-    normalizedTrend.summary,
-    `progress=${normalizedTrend.progressScore}`,
-    `velocity/day=${normalizedTrend.velocityPerDay}`,
-    `success=${Math.round(current.successScore)}/${current.successThreshold}${current.mvpReady ? ' ready' : ''}`,
-    `behavior=${current.behaviorState}`,
-    `dbsync=${current.activeAtomsDriftState || 'missing'}`,
-    current.clientSyncState && current.clientSyncState !== 'fresh' ? `clientsync=${current.clientSyncState}` : null,
-    current.toolTelemetry?.totalRuns > 0 ? `tools=${current.toolTelemetry.successfulRuns}/${current.toolTelemetry.totalRuns} ok` : 'tools=0',
-    current.toolTelemetry?.pressureRuns > 0 ? `repair=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.pressureRuns}` : null,
-    `dups=${current.structuralGroups + current.conceptualGroups}`,
-    `folder=${current.alreadyFolderizedFamilies}/${current.flatFamilies + current.mixedFamilies + current.alreadyFolderizedFamilies}`,
-    `coverage=${Math.round(current.liveCoverageRatio * 100)}%`
-  ].filter(Boolean).join(' | ');
+  const summary = buildCompilerMetricsSnapshotSummary(current, normalizedTrend);
   current.summaryText = summary;
 
   const currentHistoryEntry = summarizeCurrentSnapshotRow(current);
@@ -172,6 +158,10 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     ),
     summary
   };
+
+  const summaryCoherence = validateSnapshotSummaryCoherence(snapshot);
+  snapshot.summaryCoherence = summaryCoherence;
+  snapshot.current.summaryCoherence = summaryCoherence;
 
   if (persist && db) {
     try {

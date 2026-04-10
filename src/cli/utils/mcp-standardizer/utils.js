@@ -1,14 +1,15 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { PORTS } from '../port-checker.js';
+import { buildHealthUrl, buildMcpUrl } from '../mcp-endpoints.js';
 import { SERVER_KEY, LEGACY_SERVER_KEYS } from './constants.js';
 
 export function getMcpUrl() {
-    return `http://127.0.0.1:${PORTS.mcp}/mcp`;
+    return buildMcpUrl({ port: PORTS.mcp });
 }
 
 export function getHealthUrl() {
-    return `http://127.0.0.1:${PORTS.mcp}/health`;
+    return buildHealthUrl({ port: PORTS.mcp });
 }
 
 export function normalizeSlashes(filePath) {

@@ -3,7 +3,7 @@
   "server": {
     "name": "omnysystem",
     "transport": "stdio-bridge",
-    "entry": "c:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js",
+    "entry": "C:/Dev/OmnySystem/src/layer-c-memory/mcp-stdio-bridge.js",
     "url": "http://127.0.0.1:9999/mcp",
     "health": "http://127.0.0.1:9999/health"
   },

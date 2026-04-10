@@ -5,7 +5,7 @@ import {
   buildProxyRestartResult,
   purgeRuntimeCache,
   refreshToolRegistrySafely
-} from './restart-runtime-helpers.js';
+} from './restart-runtime/index.js';
 
 const logger = createLogger('OmnySys:restart:process');
 

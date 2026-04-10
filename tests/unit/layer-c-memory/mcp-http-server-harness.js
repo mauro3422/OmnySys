@@ -33,7 +33,7 @@ export const h = {
     connect: vi.fn(async () => undefined)
   })),
   createConditionalJsonMiddleware: vi.fn(() => vi.fn((req, res, next) => next?.())),
-  startHttpServer: vi.fn(async ({ app }) => {
+  startHttpServer: vi.fn(async ({ app, host, port, isProxyMode }) => {
     const server = {
       close: vi.fn((callback) => {
         if (typeof callback === 'function') {
@@ -44,6 +44,7 @@ export const h = {
 
     h.state.httpServer = server;
     app.__httpServer = server;
+    h.state.startArgs = { app, host, port, isProxyMode };
     return server;
   }),
   sessionManager: {

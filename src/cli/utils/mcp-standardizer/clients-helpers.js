@@ -18,6 +18,21 @@ export function buildBridgeEnv(url, projectPath) {
     };
 }
 
+export function normalizeCodexProjectPath(projectPath) {
+    return path.resolve(projectPath).replace(/^\\\\\?\\/, '');
+}
+
+export function getCodexProjectTrustTableNames(projectPath) {
+    const normalizedProjectPath = normalizeCodexProjectPath(projectPath);
+    const tableNames = [`projects.'${normalizedProjectPath}'`];
+
+    if (/^[A-Za-z]:\\/.test(normalizedProjectPath)) {
+        tableNames.push(`projects.'\\\\?\\${normalizedProjectPath}'`);
+    }
+
+    return tableNames;
+}
+
 export function buildCodexTableBody(url, projectPath) {
     const bridgePath = buildBridgePath();
     const nodeCommand = getNodeCommand();
@@ -43,7 +58,7 @@ export function buildCodexTableBody(url, projectPath) {
 }
 
 export function buildCodexProjectTableName(projectPath) {
-    return `projects.'${path.resolve(projectPath)}'`;
+    return getCodexProjectTrustTableNames(projectPath)[0];
 }
 
 export function removeTomlTable(content, tableName) {

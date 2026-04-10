@@ -10,6 +10,7 @@
  */
 
 import { asNumber } from './core-utils.js';
+import { buildCompilerMetricsSnapshotSummary } from './metrics/snapshot-summary-text.js';
 
 /**
  * Thresholds for coherence validation.
@@ -45,6 +46,64 @@ function checkCoherence(value1, value2, threshold) {
     diff,
     diffPct: Number((diffPct * 100).toFixed(2)),
     threshold: threshold
+  };
+}
+
+export function validateSnapshotSummaryCoherence(snapshot = null) {
+  if (!snapshot?.current) {
+    return {
+      coherent: false,
+      healthy: false,
+      trustworthy: false,
+      severity: 'low',
+      reason: 'No compiler metrics snapshot is available to validate summary text coherence.',
+      recommendation: 'Validate summary text coherence after building a compiler metrics snapshot.',
+      metric: 'summary_text',
+      findings: []
+    };
+  }
+
+  const expectedSummary = buildCompilerMetricsSnapshotSummary(snapshot.current, snapshot.trend || {});
+  const actualSummary = snapshot.summary || null;
+  const matches = actualSummary === expectedSummary;
+  const coherent = Boolean(matches);
+
+  if (coherent) {
+    return {
+      coherent: true,
+      healthy: true,
+      trustworthy: true,
+      severity: 'low',
+      reason: 'Compiler metrics snapshot summary matches the canonical builder output.',
+      recommendation: 'Keep building the high-level summary through the canonical snapshot helper.',
+      metric: 'summary_text',
+      expectedSummary,
+      actualSummary,
+      currentSummary: snapshot.current?.summaryText || null,
+      findings: []
+    };
+  }
+
+  return {
+    coherent: false,
+    healthy: false,
+    trustworthy: false,
+    severity: 'medium',
+    reason: 'Compiler metrics snapshot summary does not match the canonical builder output.',
+    recommendation: 'Route snapshot summary generation through buildCompilerMetricsSnapshotSummary() before persisting or exposing it.',
+    metric: 'summary_text',
+    expectedSummary,
+    actualSummary,
+    currentSummary: snapshot.current?.summaryText || null,
+    findings: [
+      {
+        metric: 'summary_text',
+        coherent: false,
+        severity: 'medium',
+        reason: 'The persisted snapshot summary does not match the canonical builder output.',
+        recommendation: 'Persist the canonical snapshot summary built from current metrics and trend state.'
+      }
+    ]
   };
 }
 
@@ -424,5 +483,6 @@ export default {
   validateDatabaseCoherence,
   validateReportingCoherence,
   validateDerivedMetricsCoherence,
+  validateSnapshotSummaryCoherence,
   COHERENCE_THRESHOLDS
 };

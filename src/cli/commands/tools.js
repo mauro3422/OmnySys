@@ -1,4 +1,5 @@
-import { checkMCP, PORTS } from '../utils/port-checker.js';
+import { checkMCP } from '../utils/port-checker.js';
+import { getMcpUrl } from '../utils/mcp-standardizer/utils.js';
 import { log } from '../utils/logger.js';
 
 export const aliases = ['tools'];
@@ -31,7 +32,7 @@ export async function toolsLogic(options = {}) {
   }
 
   try {
-    const response = await fetch(`http://localhost:${PORTS.mcp}/tools`);
+    const response = await fetch(`${getMcpUrl()}/tools`);
     const data = await response.json();
 
     const tools = data.tools.map((tool, i) => ({

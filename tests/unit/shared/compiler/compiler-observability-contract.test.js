@@ -223,6 +223,24 @@ describe('compiler-observability-contract', () => {
     expect(compact.signals[0]).toHaveProperty('key');
   });
 
+  it('downgrades metrics visibility when the persisted snapshot summary drifts', () => {
+    const fixture = buildBaseFixture();
+    fixture.metricsSnapshot.summaryCoherence = {
+      coherent: false,
+      severity: 'medium',
+      reason: 'Compiler metrics snapshot summary does not match the canonical builder output.',
+      recommendation: 'Route snapshot summary generation through the canonical helper.'
+    };
+    fixture.metricsSnapshot.current.summaryCoherence = fixture.metricsSnapshot.summaryCoherence;
+
+    const observability = buildCompilerObservabilityContract(fixture);
+
+    expect(observability.metricsState).toBe('watching');
+    expect(observability.state).toBe('watching');
+    expect(observability.metrics.summaryCoherenceState).toBe('stale');
+    expect(observability.metrics.summaryCoherenceReason).toContain('canonical builder output');
+  });
+
   it('reports settling when readiness is waiting for the bootstrap baseline', () => {
     const fixture = buildBaseFixture();
     fixture.healthDashboard.trend.status = 'settling';

@@ -9,8 +9,13 @@ import {
 } from './stdio-bridge-lifecycle.js';
 import { waitForDaemonHealthy, waitMs } from './stdio-bridge-health.js';
 import { waitForBridgeSessionId } from './stdio-bridge-helpers.js';
+import { buildHealthUrl } from '../../shared/mcp-endpoints.js';
 
-const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
+const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || buildHealthUrl({
+  port: 9999,
+  env: process.env,
+  platform: process.platform
+});
 const DAEMON_RECOVERY_TIMEOUT_MS = Number(process.env.OMNYSYS_DAEMON_RECOVERY_TIMEOUT_MS || 180000);
 const DAEMON_RECOVERY_POLL_MS = Number(process.env.OMNYSYS_DAEMON_RECOVERY_POLL_MS || 1500);
 const BRIDGE_RECOVERY_BACKOFF_MS = Number(process.env.OMNYSYS_BRIDGE_RECOVERY_BACKOFF_MS || 250);

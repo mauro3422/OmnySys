@@ -1,6 +1,6 @@
 approval_policy = "untrusted"
 sandbox_mode = "danger-full-access"
-[projects.'\\?\C:\Dev\OmnySystem']
+[projects.'C:\Dev\OmnySystem']
 trust_level = "trusted"
 
 [mcp_servers.omnysystem.tools.mcp_omnysystem_execute_sql]

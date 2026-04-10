@@ -1,5 +1,5 @@
 
-import { MoveOrchestrator } from '../core/shared/move-orchestrator.js';
+import { MoveOrchestrator } from '../core/shared/move-orchestrator/orchestrator.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:mcp:move_file');

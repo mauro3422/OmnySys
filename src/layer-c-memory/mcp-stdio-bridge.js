@@ -32,6 +32,7 @@ import {
 } from './mcp/stdio-bridge-startup.js';
 import {
     getDaemonUrl,
+    getDaemonHealthUrl,
     buildInitializeResponse,
     buildRestartAcceptedResponse,
     isProxyManagedRestartArgs,
@@ -46,7 +47,7 @@ import {
 } from './mcp/stdio-bridge-helpers.js';
 
 const DAEMON_URL = getDaemonUrl();
-const DAEMON_HEALTH_URL = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
+const DAEMON_HEALTH_URL = getDaemonHealthUrl();
 const PROJECT_PATH = process.env.OMNYSYS_PROJECT_PATH || process.cwd();
 const PROCESS_RESTART_RECOVERY_BACKOFF_MS = Number(process.env.OMNYSYS_PROCESS_RESTART_RECOVERY_BACKOFF_MS || 5000);
 

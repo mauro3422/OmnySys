@@ -1,4 +1,5 @@
 import { checkMCP, PORTS } from '../utils/port-checker.js';
+import { getHealthUrl, getMcpUrl } from '../utils/mcp-standardizer/utils.js';
 import { setupOpenCode } from '../utils/opencode-config.js';
 import { log } from '../utils/logger.js';
 import { startMCP } from '../handlers/process-manager.js';
@@ -22,7 +23,7 @@ export async function upLogic(options = {}) {
       log(`📡 Sending graceful restart signal to Daemon instead of killing it (clearCache=${isClean})...`, 'info');
 
       try {
-        const response = await fetch(`http://127.0.0.1:${PORTS.mcp}/restart`, {
+        const response = await fetch(`${getMcpUrl().replace('/mcp', '')}/restart`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ clearCache: isClean, reanalyze: isClean })
@@ -94,8 +95,8 @@ export async function execute() {
   }
 
   log('\nOmnySys is ready', 'success');
-  log(`   MCP:  http://localhost:${result.services.mcp.port}/health`);
-  log(`   Tools: http://localhost:${result.services.mcp.port}/tools\n`);
+  log(`   MCP:  ${getHealthUrl()}`);
+  log(`   Tools: ${getMcpUrl().replace('/mcp', '/tools')}\n`);
 
   if (result.openCodeConfigured) {
     log('Unified MCP client configuration applied', 'success');

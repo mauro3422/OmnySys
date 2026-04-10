@@ -10,12 +10,14 @@ import {
     upsertTomlTable,
     stripBom,
     normalizeSlashes,
-    getHealthUrl
+    getHealthUrl,
+    getMcpUrl
 } from './utils.js';
 import {
     buildBridgePath,
     buildBridgeEnv,
     buildCodexProjectTableName,
+    getCodexProjectTrustTableNames,
     buildCodexTableBody,
     removeTomlTable
 } from './clients-helpers.js';
@@ -25,6 +27,7 @@ export async function applyCodexConfig(url, projectPath = repoRoot) {
     const targetPath = CONFIG_PATHS.codex;
     const projectConfigPath = path.join(projectPath, '.codex', 'config.toml');
     const codexTableBody = buildCodexTableBody(url, projectPath);
+    const trustTableNames = getCodexProjectTrustTableNames(projectPath);
     let content = '';
 
     try {
@@ -35,9 +38,12 @@ export async function applyCodexConfig(url, projectPath = repoRoot) {
 
     content = removeTomlTable(content, `mcp_servers.${SERVER_KEY}.env`);
     content = removeTomlTable(content, `mcp_servers.${SERVER_KEY}`);
+    for (const tableName of trustTableNames) {
+        content = removeTomlTable(content, tableName);
+    }
 
     let updated = upsertTomlTable(content, `mcp_servers.${SERVER_KEY}`, codexTableBody);
-    updated = upsertTomlTable(updated, buildCodexProjectTableName(projectPath), ['trust_level = "trusted"']);
+    updated = upsertTomlTable(updated, trustTableNames[0], ['trust_level = "trusted"']);
 
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, updated, 'utf8');
@@ -51,10 +57,13 @@ export async function applyCodexConfig(url, projectPath = repoRoot) {
 
     projectContent = removeTomlTable(projectContent, `mcp_servers.${SERVER_KEY}.env`);
     projectContent = removeTomlTable(projectContent, `mcp_servers.${SERVER_KEY}`);
+    for (const tableName of trustTableNames) {
+        projectContent = removeTomlTable(projectContent, tableName);
+    }
 
     const updatedProject = upsertTomlTable(
         projectContent,
-        buildCodexProjectTableName(projectPath),
+        trustTableNames[0],
         ['trust_level = "trusted"']
     );
     await fs.mkdir(path.dirname(projectConfigPath), { recursive: true });
@@ -244,7 +253,7 @@ export async function applyAntigravityConfig(projectPath) {
     const targetPath = CONFIG_PATHS.antigravity;
     const bridgePath = buildBridgePath();
     const nodeCommand = getNodeCommand();
-    const env = buildBridgeEnv('http://127.0.0.1:9999/mcp', projectPath);
+    const env = buildBridgeEnv(getMcpUrl(), projectPath);
     const config = await readJsonSafe(targetPath, { mcpServers: {} });
 
     const mcpServers = ensureMcpServersContainer(config);

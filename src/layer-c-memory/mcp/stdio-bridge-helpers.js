@@ -1,7 +1,7 @@
 import { runAsyncBoundary } from '../../shared/compiler/async-boundary.js';
 import { normalizeTransportOrigin } from './transport-provenance.js';
 import { execSync } from 'child_process';
-const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
+import { buildHealthUrl, buildMcpUrl } from '../../shared/mcp-endpoints.js';
 
 // Client ID detection: env vars take priority, then auto-detect from parent process
 function detectClientFromEnv() {
@@ -317,5 +317,17 @@ export async function waitForBridgeSessionId(state, timeoutMs = 2500) {
 }
 
 export function getDaemonUrl() {
-    return DAEMON_URL;
+    return new URL(process.env.OMNYSYS_DAEMON_URL || buildMcpUrl({
+        port: 9999,
+        env: process.env,
+        platform: process.platform
+    }));
+}
+
+export function getDaemonHealthUrl() {
+    return process.env.OMNYSYS_HEALTH_URL || buildHealthUrl({
+        port: 9999,
+        env: process.env,
+        platform: process.platform
+    });
 }

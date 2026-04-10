@@ -1,6 +1,7 @@
 import { asNumber } from '../core-utils.js';
 import { safeJsonStringify } from '../safe-json.js';
 import { normalizeKey, normalizeCapturedDay } from '#shared/utils/normalize-helpers.js';
+import { buildCompilerMetricsSnapshotSummary } from '../metrics/snapshot-summary-text.js';
 
 function buildArchivePersistenceArgs(snapshot = null) {
   const current = snapshot?.current || {};
@@ -34,7 +35,7 @@ function buildArchivePersistenceArgs(snapshot = null) {
     behavior_state: current.behaviorState || null,
     client_sync_state: current.clientSyncState || null,
     client_sync_severity: current.clientSyncSeverity || null,
-    summary_text: snapshot?.summary || current.summaryText || null,
+    summary_text: snapshot?.summary || buildCompilerMetricsSnapshotSummary(current, snapshot?.trend || {}) || current.summaryText || null,
     snapshot_fingerprint: current.snapshotFingerprint || '',
     payload_json: safeJsonStringify({
       current,
@@ -83,7 +84,7 @@ function buildMetricsArchivePersistenceArgs(snapshot = null) {
     watcher_alert_count: asNumber(current.watcherAlertCount, 0),
     client_sync_state: current.clientSyncState || null,
     client_sync_severity: current.clientSyncSeverity || null,
-    summary_text: snapshot?.summary || current.summaryText || null,
+    summary_text: snapshot?.summary || buildCompilerMetricsSnapshotSummary(current, snapshot?.trend || {}) || current.summaryText || null,
     snapshot_fingerprint: current.snapshotFingerprint || '',
     payload_json: safeJsonStringify({
       current,

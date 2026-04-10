@@ -316,7 +316,7 @@ if (!Number.isFinite(port) || port < 0 || port >= 65536) {
   port = 9999;
 }
 
-const host = process.env.OMNYSYS_MCP_HOST || '127.0.0.1';
+const host = process.env.OMNYSYS_MCP_HOST || '0.0.0.0';
 
 const app = express();
 app.use((req, res, next) => {

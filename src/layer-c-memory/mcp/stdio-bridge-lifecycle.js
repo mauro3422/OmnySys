@@ -24,11 +24,20 @@ import {
 import {
     detectHealthyDaemon
 } from '../mcp-http-proxy-health.js';
+import { buildHealthUrl, buildMcpUrl } from '../../shared/mcp-endpoints.js';
 
 const execAsync = promisify(exec);
 
-const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp');
-const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health';
+const DAEMON_URL = new URL(process.env.OMNYSYS_DAEMON_URL || buildMcpUrl({
+    port: 9999,
+    env: process.env,
+    platform: process.platform
+}));
+const DAEMON_HEALTH = process.env.OMNYSYS_HEALTH_URL || buildHealthUrl({
+    port: 9999,
+    env: process.env,
+    platform: process.platform
+});
 const AUTO_START = process.env.OMNYSYS_AUTO_START !== '0';
 const PROJECT_PATH = path.resolve(process.env.OMNYSYS_PROJECT_PATH || process.cwd());
 const DAEMON_PORT = String(DAEMON_URL.port || '9999');

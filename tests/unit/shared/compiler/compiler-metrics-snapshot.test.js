@@ -283,6 +283,8 @@ describe('compiler-metrics-snapshot', () => {
     expect(snapshot.summary).toContain('tools=5/6 ok');
     expect(snapshot.summary).toContain('repair=2/3');
     expect(snapshot.summary).toContain('progress=');
+    expect(snapshot.summaryCoherence?.coherent).toBe(true);
+    expect(snapshot.current.summaryCoherence?.coherent).toBe(true);
     expect(snapshot.metricDictionary.global.score).toBe(snapshot.current.reliabilityScore);
     expect(snapshot.metricDictionary.metrics.activeAtoms.sourceTables).toContain('atoms');
     expect(snapshot.metricDictionary.metrics.callLinks.graphSurface).toBe('calls');

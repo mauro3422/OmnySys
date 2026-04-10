@@ -6,6 +6,17 @@ All notable changes are documented as individual files in [`changelogs/`](change
 
 ---
 
+## v0.9.438 — MCP Bridge Hardening & Summary Coherence Repair (2026-04-10)
+
+- Hardened the OmnySys MCP bridge for Windows/WSL by keeping daemon URLs canonical and avoiding silent host rewrites
+- Normalized Codex/CLI MCP config generation so the WSL wrapper stays stable and session routing remains explicit
+- Added canonical compiler metrics summary generation plus summary coherence validation in observability and persistence
+- Updated the HTTP daemon to bind more reliably for local bridge clients and expanded tests around the new transport behavior
+
+**Detalle completo**: [changelogs/v0.9.438.md](changelogs/v0.9.438.md)
+
+---
+
 ## v0.9.437 — Folderize Naming Repair + Import Resolution Plan (2026-04-10)
 
 - Fixed `folderize_family` producing redundant folder/file names (strip directory context prefix + family prefix)

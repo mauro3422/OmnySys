@@ -5,6 +5,7 @@
  */
 
 import http from 'http';
+import { buildHealthProbeUrls } from './mcp-endpoints.js';
 
 export const PORTS = {
   llm: 8000,
@@ -17,29 +18,39 @@ export const PORTS = {
  * @returns {Promise<boolean>} Whether port is active
  */
 export async function checkPort(port) {
-  return new Promise((resolve) => {
-    try {
-      const req = http.get(`http://localhost:${port}/health`, { timeout: 1000 }, (res) => {
-        let data = '';
-        res.on('data', chunk => { data += chunk; });
-        res.on('end', () => {
-          try {
-            if (res.statusCode === 200) {
-              resolve(JSON.parse(data));
-            } else {
-              resolve(false);
+  const urls = buildHealthProbeUrls({ port });
+
+  for (const url of urls) {
+    const result = await new Promise((resolve) => {
+      try {
+        const req = http.get(url, { timeout: 1000 }, (res) => {
+          let data = '';
+          res.on('data', (chunk) => { data += chunk; });
+          res.on('end', () => {
+            try {
+              if (res.statusCode === 200) {
+                resolve(JSON.parse(data));
+              } else {
+                resolve(false);
+              }
+            } catch {
+              resolve(res.statusCode === 200);
             }
-          } catch {
-            resolve(res.statusCode === 200);
-          }
+          });
         });
-      });
-      req.on('error', () => resolve(false));
-      req.on('timeout', () => { req.destroy(); resolve(false); });
-    } catch (error) {
-      resolve(false);
+        req.on('error', () => resolve(false));
+        req.on('timeout', () => { req.destroy(); resolve(false); });
+      } catch {
+        resolve(false);
+      }
+    });
+
+    if (result) {
+      return result;
     }
-  });
+  }
+
+  return false;
 }
 
 /**

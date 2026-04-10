@@ -116,7 +116,7 @@ export async function syncWindowsCodexMcpToWsl(options = {}) {
 
         if (!existingWslTables.has(tableName)) {
             const nextTableBody = tableName === OMNYSYSTEM_TABLE
-                ? buildWslOmnysystemTableBody(tableBody)
+                ? buildWslOmnysystemTableBody(tableBody, runtime)
                 : tableBody;
             updated = upsertTomlTable(updated, tableName, nextTableBody);
             syncedTables.push(tableName);
@@ -144,7 +144,7 @@ export async function syncWindowsCodexMcpToWsl(options = {}) {
             continue;
         }
 
-        updated = upsertTomlTable(updated, tableName, buildWslOmnysystemTableBody(tableBody));
+        updated = upsertTomlTable(updated, tableName, buildWslOmnysystemTableBody(tableBody, runtime));
         adaptedTables.push(tableName);
     }
 

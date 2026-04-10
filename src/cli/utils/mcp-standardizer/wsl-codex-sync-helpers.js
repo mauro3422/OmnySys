@@ -135,7 +135,7 @@ function resolveOmnysystemProjectPath(tableBody = []) {
     return windowsPathToWsl(process.cwd());
 }
 
-export function buildWslOmnysystemTableBody(tableBody = []) {
+export function buildWslOmnysystemTableBody(tableBody = [], runtime = {}) {
     const env = getTomlInlineTableMap(tableBody, 'env');
     const projectPath = resolveOmnysystemProjectPath(tableBody);
     const launcherPath = path.posix.join(projectPath, 'scripts', 'mcp', 'omnysystem-wsl-bridge.sh');
@@ -145,6 +145,8 @@ export function buildWslOmnysystemTableBody(tableBody = []) {
 
     const nextEnv = {
         ...env,
+        // The WSL launcher execs Windows node.exe, so the bridge still talks to
+        // the daemon from the Windows side and should keep loopback URLs.
         OMNYSYS_DAEMON_URL: env.OMNYSYS_DAEMON_URL || 'http://127.0.0.1:9999/mcp',
         OMNYSYS_HEALTH_URL: env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health',
         OMNYSYS_AUTO_START: '0',

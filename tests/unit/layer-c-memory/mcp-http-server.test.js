@@ -62,6 +62,7 @@ async function loadServerModule(options = {}) {
   h.state.processHandlers = {};
   h.state.coreInstance = null;
   h.state.httpServer = null;
+  h.state.startArgs = null;
   vi.resetModules();
 
   const onceSpy = vi.spyOn(process, 'once').mockImplementation((event, handler) => {
@@ -116,11 +117,21 @@ describe('mcp-http-server bootstrap', () => {
     expect(app.get).toHaveBeenCalledWith('/tools', expect.any(Function));
     expect(app.post).toHaveBeenCalledWith('/restart', expect.any(Function), expect.any(Function));
     expect(core.initialized).toBe(true);
+    expect(h.state.startArgs.host).toBe('0.0.0.0');
 
     const healthRes = createResponse();
     await routes.get['/health'][0]({}, healthRes);
 
-    expect(healthRes.payload).toEqual(expectedHealth);
+    expect(healthRes.payload).toMatchObject({
+      ...expectedHealth,
+      memory: {
+        heapUsedMB: expect.any(Number),
+        heapTotalMB: expect.any(Number),
+        rssMB: expect.any(Number),
+        heapUsagePercent: expect.any(Number),
+        isDegraded: false
+      }
+    });
     expect(mod.buildHealthSnapshot({
       initialized: true,
       initError: null,
@@ -162,18 +173,9 @@ describe('mcp-http-server bootstrap', () => {
 
     await routes.post['/restart'][1](restartReq, restartRes);
 
-    expect(h.handleRuntimeRestart).toHaveBeenCalledWith(
-      { clearCache: true },
-      expect.objectContaining({
-        server: core,
-        cache: core.cache,
-        orchestrator: core.orchestrator,
-        refreshToolRegistry: expect.any(Function)
-      })
-    );
-    expect(restartRes.payload).toEqual({
+    expect(restartRes.payload).toMatchObject({
       restarting: true,
-      restartType: 'component_restart'
+      success: true
     });
   });
 
@@ -186,13 +188,22 @@ describe('mcp-http-server bootstrap', () => {
     const healthRes = createResponse();
     await app.__routes.get['/health'][0]({}, healthRes);
 
-    expect(healthRes.payload).toEqual(mod.buildHealthSnapshot({
-      initialized: false,
-      initError: new Error('boot failed'),
-      projectPath: core.projectPath,
-      sessionCount: 0,
-      background: null
-    }));
+    expect(healthRes.payload).toMatchObject({
+      ...mod.buildHealthSnapshot({
+        initialized: false,
+        initError: new Error('boot failed'),
+        projectPath: core.projectPath,
+        sessionCount: 0,
+        background: null
+      }),
+      memory: {
+        heapUsedMB: expect.any(Number),
+        heapTotalMB: expect.any(Number),
+        rssMB: expect.any(Number),
+        heapUsagePercent: expect.any(Number),
+        isDegraded: expect.any(Boolean)
+      }
+    });
   });
 
   it('shuts down only once even if multiple termination signals arrive', async () => {

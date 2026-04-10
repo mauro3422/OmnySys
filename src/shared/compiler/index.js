@@ -109,6 +109,10 @@ export {
 } from './snapshot.js';
 
 export {
+  buildCompilerMetricsSnapshotSummary
+} from './metrics/snapshot-summary-text.js';
+
+export {
   buildCompilerStatusSummaryEnvelope
 } from './status-summary.js';
 
@@ -274,7 +278,8 @@ export {
   validateMetricCoherence,
   validateDatabaseCoherence,
   validateReportingCoherence,
-  validateDerivedMetricsCoherence
+  validateDerivedMetricsCoherence,
+  validateSnapshotSummaryCoherence
 } from './metric-coherence-validator.js';
 
 export {
