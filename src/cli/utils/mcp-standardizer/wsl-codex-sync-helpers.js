@@ -141,6 +141,7 @@ export function buildWslOmnysystemTableBody(tableBody = []) {
     const launcherPath = path.posix.join(projectPath, 'scripts', 'mcp', 'omnysystem-wsl-bridge.sh');
     const startupTimeout = getTomlNumberValue(tableBody, 'startup_timeout_sec') || 120;
     const enabled = getTomlBooleanValue(tableBody, 'enabled');
+    const clientId = env.OMNYSYS_CLIENT_ID || 'codex';
 
     const nextEnv = {
         ...env,
@@ -148,8 +149,9 @@ export function buildWslOmnysystemTableBody(tableBody = []) {
         OMNYSYS_HEALTH_URL: env.OMNYSYS_HEALTH_URL || 'http://127.0.0.1:9999/health',
         OMNYSYS_AUTO_START: '0',
         OMNYSYS_PROJECT_PATH: projectPath,
-        OMNYSYS_CLIENT_ID: env.OMNYSYS_CLIENT_ID || 'codex',
-        OMNYSYS_CLIENT_NAME: env.OMNYSYS_CLIENT_NAME || 'codex'
+        OMNYSYS_CLIENT_ID: clientId,
+        OMNYSYS_CLIENT_NAME: env.OMNYSYS_CLIENT_NAME || 'codex',
+        OMNYSYS_CLIENT_ROUTE_BASE: env.OMNYSYS_CLIENT_ROUTE_BASE || `${clientId}-wsl`
     };
 
     const lines = [
@@ -172,6 +174,15 @@ export function isWrapperBackedWslOmnysystemTable(tableBody = []) {
     const command = getTomlStringValue(tableBody, 'command');
     const args = getTomlArrayValues(tableBody, 'args');
     return command === 'bash' && args[0]?.endsWith('/scripts/mcp/omnysystem-wsl-bridge.sh');
+}
+
+export function shouldRefreshWrapperBackedWslOmnysystemTable(tableBody = []) {
+    if (!isWrapperBackedWslOmnysystemTable(tableBody)) {
+        return false;
+    }
+
+    const env = getTomlInlineTableMap(tableBody, 'env');
+    return !String(env.OMNYSYS_CLIENT_ROUTE_BASE || '').trim();
 }
 
 export function isLegacyWslNodeBridgeTable(tableBody = []) {

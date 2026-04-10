@@ -54,4 +54,11 @@ describe('compiler-policy-conformance guard', () => {
       expect.objectContaining({ name: 'watcher' })
     ]));
   });
+
+  it('returns no findings when path context is missing', async () => {
+    await expect(detectCompilerPolicyConformance(undefined, 'src/shared/compiler/index.js')).resolves.toEqual([]);
+    await expect(detectCompilerPolicyConformance('C:/Dev/OmnySystem', undefined)).resolves.toEqual([]);
+
+    expect(persistWatcherIssue).not.toHaveBeenCalled();
+  });
 });

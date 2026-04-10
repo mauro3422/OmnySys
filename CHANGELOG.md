@@ -20,6 +20,17 @@ All notable changes are documented as individual files in [`changelogs/`](change
 
 ---
 
+## v0.9.437 — WSL MCP Route Isolation & Guard Crash Hardening (2026-04-10)
+
+- Aislamiento de rutas MCP en WSL para evitar colisiones de `Transport closed` entre launchers de Codex
+- Refresh conservador de configs wrapper-backed antiguas con `OMNYSYS_CLIENT_ROUTE_BASE`
+- Documentacion de la evolucion del bug `Transport closed` en WSL
+- Hardening de `compiler-policy-conformance-guard` y del caller de deferred guards en folderization
+
+**Detalle completo**: [changelogs/v0.9.437.md](changelogs/v0.9.437.md)
+
+---
+
 ## v0.9.436 — Control Plane Foundations & Propagation Alignment (2026-04-09)
 
 - Centralizacion de `controlPlaneFoundations` para status, metrics, schema y snapshots

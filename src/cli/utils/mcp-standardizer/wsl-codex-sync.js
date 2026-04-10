@@ -10,7 +10,8 @@ import {
     buildWslOmnysystemTableBody,
     isLegacyWslNodeBridgeTable,
     isWindowsOnlyOmnysystemTable,
-    isWrapperBackedWslOmnysystemTable
+    isWrapperBackedWslOmnysystemTable,
+    shouldRefreshWrapperBackedWslOmnysystemTable
 } from './wsl-codex-sync-helpers.js';
 
 function isWslEnvironment(runtime = {}) {
@@ -134,8 +135,10 @@ export async function syncWindowsCodexMcpToWsl(options = {}) {
         if (
             !existingBody ||
             (!isWindowsOnlyOmnysystemTable(existingBody) &&
-                !isLegacyWslNodeBridgeTable(existingBody)) ||
-            isWrapperBackedWslOmnysystemTable(existingBody)
+                !isLegacyWslNodeBridgeTable(existingBody) &&
+                !shouldRefreshWrapperBackedWslOmnysystemTable(existingBody)) ||
+            (isWrapperBackedWslOmnysystemTable(existingBody) &&
+                !shouldRefreshWrapperBackedWslOmnysystemTable(existingBody))
         ) {
             skippedExistingTables.push(tableName);
             continue;

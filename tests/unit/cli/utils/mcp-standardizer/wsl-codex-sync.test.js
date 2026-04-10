@@ -87,6 +87,7 @@ describe('syncWindowsCodexMcpToWsl', () => {
     expect(wslConfig).toContain('args = ["/mnt/c/Dev/OmnySystem/scripts/mcp/omnysystem-wsl-bridge.sh"]');
     expect(wslConfig).toContain('OMNYSYS_AUTO_START = "0"');
     expect(wslConfig).toContain('OMNYSYS_PROJECT_PATH = "/mnt/c/Dev/OmnySystem"');
+    expect(wslConfig).toContain('OMNYSYS_CLIENT_ROUTE_BASE = "codex-wsl"');
   });
 
   it('upgrades the older WSL node bridge config to the wrapper launcher', async () => {
@@ -138,7 +139,7 @@ command = "bash"
 args = ["/mnt/c/Dev/OmnySystem/scripts/mcp/omnysystem-wsl-bridge.sh"]
 cwd = "/mnt/c/Dev/OmnySystem"
 startup_timeout_sec = 120
-env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "0", OMNYSYS_PROJECT_PATH = "/mnt/c/Dev/OmnySystem", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex" }
+env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "0", OMNYSYS_PROJECT_PATH = "/mnt/c/Dev/OmnySystem", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex", OMNYSYS_CLIENT_ROUTE_BASE = "codex-wsl" }
 `.trimStart());
 
     const result = await syncWindowsCodexMcpToWsl({
@@ -155,5 +156,71 @@ env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "
     expect(result.applied).toBe(false);
     expect(result.reason).toBe('no_missing_wsl_mcp_tables');
     expect(result.adaptedTables).toEqual([]);
+  });
+
+  it('refreshes wrapper-backed omnysystem config when the route base is missing', async () => {
+    const paths = await makePaths();
+
+    await writeFile(paths.windowsConfigPath, buildWindowsConfig());
+    await writeFile(paths.wslConfigPath, `
+[mcp_servers.omnysystem]
+type = "stdio"
+command = "bash"
+args = ["/mnt/c/Dev/OmnySystem/scripts/mcp/omnysystem-wsl-bridge.sh"]
+cwd = "/mnt/c/Dev/OmnySystem"
+startup_timeout_sec = 120
+env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "0", OMNYSYS_PROJECT_PATH = "/mnt/c/Dev/OmnySystem", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex" }
+`.trimStart());
+
+    const result = await syncWindowsCodexMcpToWsl({
+      platform: 'linux',
+      env: {
+        HOME: paths.wslHome,
+        USERPROFILE: paths.windowsHome,
+        WSL_DISTRO_NAME: 'Ubuntu'
+      },
+      windowsConfigPath: paths.windowsConfigPath,
+      wslConfigPath: paths.wslConfigPath
+    });
+
+    const wslConfig = await readFile(paths.wslConfigPath);
+
+    expect(result.applied).toBe(true);
+    expect(result.adaptedTables).toEqual(['mcp_servers.omnysystem']);
+    expect(wslConfig).toContain('OMNYSYS_CLIENT_ROUTE_BASE = "codex-wsl"');
+  });
+
+  it('preserves an explicit custom WSL route base', async () => {
+    const paths = await makePaths();
+
+    await writeFile(paths.windowsConfigPath, buildWindowsConfig());
+    await writeFile(paths.wslConfigPath, `
+[mcp_servers.omnysystem]
+type = "stdio"
+command = "bash"
+args = ["/mnt/c/Dev/OmnySystem/scripts/mcp/omnysystem-wsl-bridge.sh"]
+cwd = "/mnt/c/Dev/OmnySystem"
+startup_timeout_sec = 120
+env = { OMNYSYS_DAEMON_URL = "http://127.0.0.1:9999/mcp", OMNYSYS_HEALTH_URL = "http://127.0.0.1:9999/health", OMNYSYS_AUTO_START = "0", OMNYSYS_PROJECT_PATH = "/mnt/c/Dev/OmnySystem", OMNYSYS_CLIENT_ID = "codex", OMNYSYS_CLIENT_NAME = "codex", OMNYSYS_CLIENT_ROUTE_BASE = "codex-shell-wsl" }
+`.trimStart());
+
+    const result = await syncWindowsCodexMcpToWsl({
+      platform: 'linux',
+      env: {
+        HOME: paths.wslHome,
+        USERPROFILE: paths.windowsHome,
+        WSL_DISTRO_NAME: 'Ubuntu'
+      },
+      windowsConfigPath: paths.windowsConfigPath,
+      wslConfigPath: paths.wslConfigPath
+    });
+
+    const wslConfig = await readFile(paths.wslConfigPath);
+
+    expect(result.applied).toBe(true);
+    expect(result.syncedTables).toContain('mcp_servers.browsermcp');
+    expect(result.adaptedTables).toEqual([]);
+    expect(wslConfig).toContain('OMNYSYS_CLIENT_ROUTE_BASE = "codex-shell-wsl"');
+    expect(wslConfig).not.toContain('OMNYSYS_CLIENT_ROUTE_BASE = "codex-wsl"');
   });
 });

@@ -45,6 +45,11 @@ function buildSuggestedAlternatives(findings = [], reuseGuidance = []) {
 }
 
 export async function detectCompilerPolicyConformance(rootPath, filePath) {
+  if (!rootPath || !filePath) {
+    logger.debug(`Skipping compiler policy conformance guard due to missing path context (rootPath=${rootPath || 'missing'}, filePath=${filePath || 'missing'})`);
+    return [];
+  }
+
   const absolutePath = path.join(rootPath, filePath);
   const source = await fs.readFile(absolutePath, 'utf8').catch(() => null);
   if (!source) return [];

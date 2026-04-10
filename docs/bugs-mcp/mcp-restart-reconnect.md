@@ -70,3 +70,4 @@ The bridge also needed to preserve the restart tool result shape expected by Cod
 - The restart/recovery path is now traceable through `bridge-trace:*` events.
 - The remaining watcher warnings are technical debt, not a functional blocker.
 - If the restart path regresses, check the trace event sequence before changing the daemon itself.
+- `Transport closed` later reappeared through a different WSL launcher-route collision pattern; that evolution is documented in `docs/bugs-mcp/mcp-wsl-route-dedup-transport-closed.md`.
