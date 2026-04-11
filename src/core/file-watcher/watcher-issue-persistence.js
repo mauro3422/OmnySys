@@ -252,21 +252,22 @@ export async function reconcileWatcherIssues(projectPath, options = {}) {
     const alerts = rows.map(mapSemanticIssueRowToWatcherAlert);
     const partitioned = partitionWatcherAlertsByLifecycle(alerts);
     const idsToDelete = await collectWatcherIssueDeletionIds(projectPath, db, alerts, partitioned, maxDelete);
+    const deletionSummary = summarizeWatcherIssueDeletions(idsToDelete, partitioned);
 
     if (idsToDelete.length > 0) {
       deleteWatcherIssueIds(db, idsToDelete);
       logger.info(
         `[WATCHER ISSUE RECONCILE] deleted ${idsToDelete.length} watcher alert(s)` +
-        ` (${formatWatcherReconciliationSummary(partitioned, idsToDelete)})`
+        ` (${formatWatcherReconciliationSummary(partitioned, deletionSummary, idsToDelete)})`
       );
     }
 
     return {
-      deletedExpired: expiredIds.length,
-      deletedSuperseded: supersededIds.length,
-      deletedOutdated: outdatedIds.length,
-      deletedOrphaned: orphanedIds.length,
-      deletedLowSignal: lowSignalIds.length,
+      deletedExpired: deletionSummary.expired,
+      deletedSuperseded: deletionSummary.superseded,
+      deletedOutdated: deletionSummary.outdated,
+      deletedOrphaned: deletionSummary.orphaned,
+      deletedLowSignal: deletionSummary.lowSignal,
       summary: partitioned.summary
     };
   } catch (error) {
@@ -301,13 +302,45 @@ async function collectWatcherIssueDeletionIds(projectPath, db, alerts, partition
   const supersededIds = findSupersededWatcherAlertIds(alerts).slice(0, maxDelete);
   const outdatedIds = (await findOutdatedWatcherAlertIds(projectPath, alerts, { db })).slice(0, maxDelete);
   const orphanedIds = findOrphanedWatcherAlertIds(db, alerts).slice(0, maxDelete);
+  const staleProjectionOrphanIds = loadOrphanedWatcherIssueIds(db, maxDelete);
   const lowSignalIds = alerts
     .filter((alert) => shouldSuppressWatcherAlert(alert))
     .map((alert) => alert.id)
     .filter((id) => Number.isInteger(id))
     .slice(0, maxDelete);
 
-  return [...new Set([...expiredIds, ...supersededIds, ...outdatedIds, ...orphanedIds, ...lowSignalIds])].slice(0, maxDelete);
+  return [...new Set([
+    ...expiredIds,
+    ...supersededIds,
+    ...outdatedIds,
+    ...orphanedIds,
+    ...staleProjectionOrphanIds,
+    ...lowSignalIds
+  ])].slice(0, maxDelete);
+}
+
+function loadOrphanedWatcherIssueIds(db, maxDelete) {
+  const rows = db.prepare(`
+    SELECT si.id
+    FROM semantic_issues si
+    LEFT JOIN atoms a ON si.file_path = a.file_path
+    WHERE si.message LIKE ?
+      AND (si.is_removed IS NULL OR si.is_removed = 0)
+      AND (
+        si.file_path IS NULL OR
+        si.file_path = '' OR
+        si.file_path = 'project-wide' OR
+        a.file_path IS NULL OR
+        a.is_removed = 1
+      )
+      AND (si.lifecycle_status IS NULL OR si.lifecycle_status != 'expired')
+    ORDER BY si.detected_at DESC, si.id DESC
+    LIMIT ?
+  `).all(`${WATCHER_MESSAGE_PREFIX}%`, maxDelete);
+
+  return rows
+    .map((row) => Number(row?.id))
+    .filter((id) => Number.isInteger(id));
 }
 
 function deleteWatcherIssueIds(db, idsToDelete) {
@@ -319,13 +352,26 @@ function deleteWatcherIssueIds(db, idsToDelete) {
   `).run(...idsToDelete);
 }
 
-function formatWatcherReconciliationSummary(partitioned, idsToDelete) {
+function summarizeWatcherIssueDeletions(idsToDelete, partitioned) {
+  const deletedSet = new Set(idsToDelete);
+  const countDeleted = (items = []) => items.reduce((total, alert) => total + (deletedSet.has(alert?.id) ? 1 : 0), 0);
+
+  return {
+    expired: countDeleted(partitioned.expired),
+    superseded: countDeleted(partitioned.superseded),
+    outdated: countDeleted(partitioned.outdated),
+    orphaned: countDeleted(partitioned.orphaned),
+    lowSignal: countDeleted(partitioned.lowSignal)
+  };
+}
+
+function formatWatcherReconciliationSummary(partitioned, deletionSummary, idsToDelete) {
   return [
-    `expired=${partitioned.expired.length}`,
-    `superseded=${partitioned.superseded.length}`,
-    `outdated=${partitioned.outdated?.length || 0}`,
-    `orphaned=${partitioned.orphaned?.length || 0}`,
-    `lowSignal=${partitioned.lowSignal?.length || 0}`,
+    `expired=${deletionSummary.expired}`,
+    `superseded=${deletionSummary.superseded}`,
+    `outdated=${deletionSummary.outdated}`,
+    `orphaned=${deletionSummary.orphaned}`,
+    `lowSignal=${deletionSummary.lowSignal}`,
     `deleted=${idsToDelete.length}`
   ].join(', ');
 }
