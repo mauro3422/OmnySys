@@ -153,6 +153,7 @@ describe('cache policy summary', () => {
     expect(summary.decision).toBe('freshness-first');
     expect(summary.hotPathDetected).toBe(true);
     expect(summary.whereToCache.map((item) => item.surface)).toEqual([
+      'folderization propagation / propagation-engine',
       'technical_debt_report',
       'compiler_metrics_snapshot',
       'aggregate_metrics / pipeline_health / duplicates',

@@ -20,6 +20,10 @@ export {
 } from './health-history.js';
 
 export {
+  loadCompilerHealthArchiveSummary as loadCompilerHealthArchiveDailySummary
+} from './health-history-summary.js';
+
+export {
   loadCompilerMetricsArchiveHistory
 } from './metrics-history.js';
 

@@ -92,6 +92,26 @@ export function buildSurfaceInventory({
       }
     }),
     buildSurface({
+      id: 'runtime_boundary_surfaces',
+      kind: 'surface',
+      status: 'canonical',
+      sourceOfTruth: true,
+      scope: 'runtime boundary checks',
+      surface: 'runtime_boundary_surfaces',
+      backingSurface: 'runtime-boundary-execution + runtime-boundary-classification + runtime-boundary-recovery',
+      trustworthy: true,
+      healthy: true,
+      summary: 'Canonical runtime boundary surface for async recovery, network execution, and boundary classification.',
+      evidence: {
+        entrypoints: [
+          'executeWithBoundary',
+          'executeWithNetworkBoundary',
+          'classifyBoundaryError'
+        ]
+      },
+      recommendedAction: 'Keep this as the source of truth.'
+    }),
+    buildSurface({
       id: 'system_files',
       kind: 'table',
       status: 'mirrored_support',

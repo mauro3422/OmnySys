@@ -18,9 +18,13 @@ export async function statusLogic(options = {}) {
 
     if (mcp) {
       try {
-        const response = await fetch(`${getMcpUrl()}/tools`);
+        const response = await fetch(`${getMcpUrl().replace('/mcp', '')}/tools`);
         const payload = await response.json();
-        toolsAvailable = Array.isArray(payload?.tools) ? payload.tools.length : 0;
+        toolsAvailable = Array.isArray(payload?.tools)
+          ? payload.tools.length
+          : typeof payload?.count === 'number'
+            ? payload.count
+            : 0;
       } catch {
         toolsAvailable = 0;
       }

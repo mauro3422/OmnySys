@@ -32,7 +32,7 @@ export async function toolsLogic(options = {}) {
   }
 
   try {
-    const response = await fetch(`${getMcpUrl()}/tools`);
+    const response = await fetch(`${getMcpUrl().replace('/mcp', '')}/tools`);
     const data = await response.json();
 
     const tools = data.tools.map((tool, i) => ({

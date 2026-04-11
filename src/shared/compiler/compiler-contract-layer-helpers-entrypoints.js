@@ -25,6 +25,12 @@ export function buildCanonicalEntrypoints() {
       domain: 'runtime_sync'
     },
     {
+      id: 'runtime_boundary_surfaces',
+      status: 'canonical',
+      entrypoint: 'runtimeBoundarySurfaces',
+      domain: 'runtime_boundaries'
+    },
+    {
       id: 'metadata_surface_parity',
       status: 'canonical',
       entrypoint: 'getMetadataSurfaceParity',

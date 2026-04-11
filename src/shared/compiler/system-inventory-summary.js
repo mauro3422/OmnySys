@@ -20,6 +20,9 @@ import {
   deriveRoleFromSurface,
   sortByCentrality
 } from './system-inventory-summary-helpers.js';
+import { CANONICAL_COMPILER_FAMILIES } from './standardization-report-catalog.js';
+
+const CANONICAL_FAMILY_IDS = new Set(CANONICAL_COMPILER_FAMILIES.map((family) => family.id));
 
 export function buildCompilerSystemInventorySnapshot({
   projectPath = null,
@@ -47,7 +50,9 @@ export function buildCompilerSystemInventorySnapshot({
     ...missingCanonicalApis.map((candidate) => buildCandidateEntry(candidate, 'emergent')),
     ...missingCanonicalSurfaces.map((candidate) => buildCandidateEntry(candidate, 'emergent')),
     ...governanceCandidates.map((candidate) => buildCandidateEntry(candidate, 'emergent'))
-  ]).slice(0, limit);
+  ])
+    .filter((candidate) => !CANONICAL_FAMILY_IDS.has(candidate.id))
+    .slice(0, limit);
 
   const canonicalSurfaceEntries = sortByCentrality(
     canonicalSurfaces.map((surface) => buildSurfaceInventoryEntry(surface, {
@@ -150,7 +155,8 @@ export function buildCompilerSystemInventorySnapshot({
     },
     explainability: {
       driftAssessment
-    }
+    },
+    standardization
   });
   const signals = {
     policyFindingCount,
@@ -187,6 +193,28 @@ export function buildCompilerSystemInventorySnapshot({
     policyCoverage,
     historyStores: resolvedHistoryStores
   });
+
+  if (Array.isArray(summary.topPromotionCandidates) && summary.topPromotionCandidates.length > 0) {
+    summary.topPromotionCandidates = summary.topPromotionCandidates.map((candidate) =>
+      CANONICAL_FAMILY_IDS.has(candidate?.id)
+        ? {
+          ...candidate,
+          role: 'canonical',
+          status: 'canonical',
+          canonicalStatus: 'canonical',
+          sourceOfTruth: true,
+          source: 'compiler-contract-layer.canonical',
+          trustworthy: true,
+          healthy: true,
+          driftState: 'stable'
+        }
+        : candidate
+    );
+
+    summary.emergentSystemCount = Array.isArray(summary.topPromotionCandidates)
+      ? summary.topPromotionCandidates.filter((candidate) => candidate.role !== 'canonical').length
+      : summary.emergentSystemCount;
+  }
 
   return {
     projectPath,
@@ -252,6 +280,7 @@ export function buildCompilerSystemInventoryReport(inventory = null) {
     historyStoreCount: summary.historyStoreCount || 0,
     historyStoreReadyCount: summary.historyStoreReadyCount || 0,
     historyStoreMissingCount: summary.historyStoreMissingCount || 0,
+    lineageReconciliation: summary.lineageReconciliation || null,
     historyStores: summary.historyStores || null,
     nextAction: summary.nextAction || null,
     summaryText: summary.summaryText || null,
@@ -259,7 +288,8 @@ export function buildCompilerSystemInventoryReport(inventory = null) {
     topPromotionCandidates: Array.isArray(summary.topPromotionCandidates) ? summary.topPromotionCandidates.slice(0, 5) : [],
     tooling: inventory.tooling || null,
     policyCoverage: inventory.policyCoverage || null,
-    historyStores: summary.historyStores || null
+    historyStores: summary.historyStores || null,
+    lineageReconciliation: summary.lineageReconciliation || null
   };
 }
 

@@ -9,6 +9,9 @@
 import { asNumber } from './core-utils.js';
 import { clampScore } from './score-utils.js';
 import { normalizeText } from '#shared/utils/normalize-helpers.js';
+import { CANONICAL_COMPILER_FAMILIES } from './standardization-report-catalog.js';
+
+const CANONICAL_FAMILY_IDS = new Set(CANONICAL_COMPILER_FAMILIES.map((family) => family.id));
 
 function buildPromotionTarget(candidate = {}, { index = 0, source = 'inventory' } = {}) {
   const role = normalizeText(candidate.role, 'emergent');
@@ -16,12 +19,14 @@ function buildPromotionTarget(candidate = {}, { index = 0, source = 'inventory' 
   const centralityScore = clampScore(candidate.centralityScore);
   const propagationScore = clampScore(candidate.propagationScore);
   const promotionScore = clampScore((centralityScore * 0.6) + (propagationScore * 0.4));
+  const id = candidate.id || candidate.surface || candidate.entrypoint || `${source}:${kind}:${index}`;
+  const isCanonicalFamily = CANONICAL_FAMILY_IDS.has(id);
 
   return {
-    id: candidate.id || candidate.surface || candidate.entrypoint || `${source}:${kind}:${index}`,
+    id,
     kind,
-    role,
-    status: candidate.status || (role === 'canonical' ? 'canonical' : 'emergent'),
+    role: isCanonicalFamily ? 'canonical' : role,
+    status: candidate.status || (isCanonicalFamily || role === 'canonical' ? 'canonical' : 'emergent'),
     surface: candidate.surface || candidate.entrypoint || null,
     canonicalTarget: candidate.canonicalTarget || candidate.entrypoint || candidate.surface || null,
     domain: candidate.domain || candidate.scope || null,
@@ -34,7 +39,7 @@ function buildPromotionTarget(candidate = {}, { index = 0, source = 'inventory' 
     reason: normalizeText(candidate.summary, candidate.reason || null),
     nextAction: normalizeText(candidate.nextAction, candidate.recommendedAction || null),
     evidence: candidate.evidence || {},
-    source
+    source: isCanonicalFamily ? 'compiler-contract-layer.canonical' : source
   };
 }
 

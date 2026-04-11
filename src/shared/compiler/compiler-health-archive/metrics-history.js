@@ -2,6 +2,7 @@ import { getCompilerHealthArchiveDb } from './connection-manager.js';
 import { asNumber } from '../core-utils.js';
 import { normalizeKey } from '#shared/utils/normalize-helpers.js';
 import { createLogger } from '#utils/logger.js';
+import { summarizeDailyRows } from './archive-history-base.js';
 
 const logger = createLogger('OmnySys:Compiler:HealthArchive');
 
@@ -26,6 +27,7 @@ export function loadCompilerMetricsArchiveHistory(projectPath, options = {}) {
   try {
     const rows = db.prepare(`
       SELECT
+        captured_day,
         captured_at,
         health_score,
         issue_count,
@@ -54,6 +56,38 @@ export function loadCompilerMetricsArchiveHistory(projectPath, options = {}) {
       ORDER BY captured_at DESC
       LIMIT ?
     `).all(projectPath, snapshotKind, normalizeKey(scopePath), normalizeKey(focusPath), limit) || [];
+    const dailyRows = db.prepare(`
+      SELECT
+        captured_day,
+        captured_at,
+        snapshot_kind,
+        health_score,
+        issue_count,
+        structural_groups,
+        conceptual_groups,
+        pipeline_orphans,
+        naming_targets,
+        live_coverage_ratio,
+        active_atoms,
+        recent_warning_count,
+        recent_error_count,
+        phase2_pending_files,
+        drift_state,
+        drift_score,
+        stability_score,
+        success_score,
+        behavior_state,
+        readiness_reason,
+        summary_text,
+        snapshot_fingerprint
+      FROM compiler_metrics_daily_snapshots
+      WHERE project_path = ?
+        AND snapshot_kind = ?
+        AND IFNULL(scope_key, '') = IFNULL(?, '')
+        AND IFNULL(focus_key, '') = IFNULL(?, '')
+      ORDER BY captured_at DESC
+      LIMIT ?
+    `).all(projectPath, snapshotKind, normalizeKey(scopePath), normalizeKey(focusPath), Math.max(limit * 5, 25)) || [];
 
     const baselineCutoff = new Date(Date.now() - (compareDays * 24 * 60 * 60 * 1000)).toISOString();
     const baselineRow = db.prepare(`
@@ -90,6 +124,7 @@ export function loadCompilerMetricsArchiveHistory(projectPath, options = {}) {
 
     return {
       entries: rows,
+      daily: summarizeDailyRows(dailyRows),
       latest: rows[0] || null,
       previous: rows[1] || null,
       baseline: baselineRow

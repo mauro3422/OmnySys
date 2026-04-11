@@ -1,7 +1,9 @@
 import fs from 'fs/promises';
 import { existsSync, statSync } from 'fs';
 import path from 'path';
+import Database from 'better-sqlite3';
 import { normalizeFilePath } from './path-normalization.js';
+import { asNumber } from './core-utils.js';
 
 const DATA_DIR = '.omnysysdata';
 const HEALTH_HISTORY_DB = 'health-history.db';
@@ -50,17 +52,156 @@ function buildStorageFileSummary(filePath, label) {
   };
 }
 
+function summarizeArchiveSnapshotHealth(archivePath) {
+  if (!existsSync(archivePath)) {
+    return {
+      snapshotCount: 0,
+      latestSnapshotAt: null,
+      latestSnapshotKind: null,
+      freshestSnapshotState: 'missing',
+      summaryText: 'archive missing'
+    };
+  }
+
+  try {
+    const db = new Database(archivePath, { readonly: true });
+    const latestSnapshot = db.prepare(`
+      SELECT snapshot_kind, captured_at
+      FROM compiler_metrics_daily_snapshots
+      WHERE captured_at IS NOT NULL
+      ORDER BY captured_at DESC
+      LIMIT 1
+    `).get() || db.prepare(`
+      SELECT snapshot_kind, captured_at
+      FROM compiler_health_daily_snapshots
+      WHERE captured_at IS NOT NULL
+      ORDER BY captured_at DESC
+      LIMIT 1
+    `).get() || null;
+    const snapshotCount = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM compiler_metrics_daily_snapshots
+    `).get()?.count || 0;
+    db.close();
+
+    return {
+      snapshotCount,
+      latestSnapshotAt: latestSnapshot?.captured_at || null,
+      latestSnapshotKind: latestSnapshot?.snapshot_kind || null,
+      freshestSnapshotState: latestSnapshot ? 'fresh' : 'watching',
+      summaryText: latestSnapshot
+        ? `${snapshotCount} snapshots | latest=${latestSnapshot.snapshot_kind || 'unknown'}@${latestSnapshot.captured_at || 'n/a'}`
+        : 'archive ready but empty'
+    };
+  } catch {
+    return {
+      snapshotCount: 0,
+      latestSnapshotAt: null,
+      latestSnapshotKind: null,
+      freshestSnapshotState: 'watching',
+      summaryText: 'archive present but unreadable'
+    };
+  }
+}
+
+function summarizeAtomHistoryHealth(archivePath) {
+  if (!existsSync(archivePath)) {
+    return {
+      versionCount: 0,
+      latestSnapshotAt: null,
+      freshestSnapshotState: 'missing',
+      summaryText: 'atom history missing'
+    };
+  }
+
+  try {
+    const db = new Database(archivePath, { readonly: true });
+    const latestSnapshot = db.prepare(`
+      SELECT captured_at
+      FROM atom_versions_archive
+      WHERE captured_at IS NOT NULL
+      ORDER BY captured_at DESC
+      LIMIT 1
+    `).get() || null;
+    const versionCount = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM atom_versions_archive
+    `).get()?.count || 0;
+    db.close();
+
+    return {
+      versionCount,
+      latestSnapshotAt: latestSnapshot?.captured_at || null,
+      freshestSnapshotState: latestSnapshot ? 'fresh' : 'watching',
+      summaryText: latestSnapshot
+        ? `${versionCount} versions | latest=${latestSnapshot.captured_at || 'n/a'}`
+        : 'atom history ready but empty'
+    };
+  } catch {
+    return {
+      versionCount: 0,
+      latestSnapshotAt: null,
+      freshestSnapshotState: 'watching',
+      summaryText: 'atom history present but unreadable'
+    };
+  }
+}
+
+function summarizeLineageReconciliation(projectPath, healthHistorySummary = null, atomHistorySummary = null) {
+  const healthReady = healthHistorySummary?.state === 'ready' || healthHistorySummary?.archiveHealth?.freshestSnapshotState === 'fresh';
+  const atomReady = atomHistorySummary?.state === 'ready' || atomHistorySummary?.archiveHealth?.freshestSnapshotState === 'fresh';
+  const healthSnapshotCount = asNumber(healthHistorySummary?.archiveHealth?.snapshotCount, 0);
+  const atomSnapshotCount = asNumber(atomHistorySummary?.archiveHealth?.versionCount, 0);
+  const latestSnapshotAt = [healthHistorySummary?.latestSnapshotAt, atomHistorySummary?.latestSnapshotAt]
+    .filter(Boolean)
+    .sort()
+    .at(-1) || null;
+
+  const state = healthReady && atomReady
+    ? 'reconcilable'
+    : (healthReady || atomReady)
+      ? 'watching'
+      : 'missing';
+
+  return {
+    projectPath,
+    state,
+    healthy: state === 'reconcilable',
+    trustworthy: state === 'reconcilable',
+    healthReady,
+    atomReady,
+    healthSnapshotCount,
+    atomSnapshotCount,
+    latestSnapshotAt,
+    summaryText: state === 'reconcilable'
+      ? `lineage=reconcilable | health=${healthSnapshotCount} | atom=${atomSnapshotCount} | latest=${latestSnapshotAt || 'n/a'}`
+      : state === 'watching'
+        ? `lineage=watching | health=${healthSnapshotCount} | atom=${atomSnapshotCount} | latest=${latestSnapshotAt || 'n/a'}`
+        : 'lineage=missing'
+  };
+}
+
 export function buildCompilerHistoricalStorageSummary(rootPath = process.cwd()) {
   const projectPath = path.resolve(rootPath || process.cwd());
   const archiveDir = getCompilerHistoryDir(projectPath);
-  const stores = [
-    buildStorageFileSummary(getCompilerHistoryDbPath(projectPath), 'health-history.db'),
-    buildStorageFileSummary(getAtomHistoryDbPath(projectPath), 'atom-history.db')
-  ];
+  const healthHistoryPath = getCompilerHistoryDbPath(projectPath);
+  const atomHistoryPath = getAtomHistoryDbPath(projectPath);
+  const healthStore = {
+    ...buildStorageFileSummary(healthHistoryPath, 'health-history.db'),
+    archiveHealth: summarizeArchiveSnapshotHealth(healthHistoryPath)
+  };
+  const atomStore = {
+    ...buildStorageFileSummary(atomHistoryPath, 'atom-history.db'),
+    archiveHealth: summarizeAtomHistoryHealth(atomHistoryPath)
+  };
+  const stores = [healthStore, atomStore];
 
   const readyStoreCount = stores.filter((store) => store.exists).length;
   const missingStoreCount = stores.length - readyStoreCount;
   const state = missingStoreCount === 0 ? 'ready' : readyStoreCount > 0 ? 'watching' : 'missing';
+  const latestSnapshotAt = healthStore.archiveHealth?.latestSnapshotAt || atomStore.archiveHealth?.latestSnapshotAt || null;
+  const freshestSnapshotState = healthStore.archiveHealth?.freshestSnapshotState || atomStore.archiveHealth?.freshestSnapshotState || (stores[0]?.exists ? 'watching' : 'missing');
+  const lineageReconciliation = summarizeLineageReconciliation(projectPath, healthStore, atomStore);
 
   return {
     projectPath,
@@ -69,7 +210,10 @@ export function buildCompilerHistoricalStorageSummary(rootPath = process.cwd()) 
     readyStoreCount,
     missingStoreCount,
     state,
-    summaryText: `health=${stores[0]?.state || 'missing'} | atom=${stores[1]?.state || 'missing'} | ready=${readyStoreCount}/${stores.length}`,
+    latestSnapshotAt,
+    freshestSnapshotState,
+    lineageReconciliation,
+    summaryText: `health=${healthStore.state || 'missing'}:${healthStore.archiveHealth?.freshestSnapshotState || 'n/a'} | atom=${atomStore.state || 'missing'}:${atomStore.archiveHealth?.freshestSnapshotState || 'n/a'} | ready=${readyStoreCount}/${stores.length} | ${lineageReconciliation.summaryText}`,
     stores
   };
 }

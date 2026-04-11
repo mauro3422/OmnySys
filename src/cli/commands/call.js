@@ -38,7 +38,7 @@ export async function callLogic(args, options = {}) {
   }
 
   try {
-    const response = await fetch(`${getMcpUrl()}/tools/${toolName}`, {
+    const response = await fetch(`${getMcpUrl().replace('/mcp', '')}/tools/${toolName}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(parsedArgs)
@@ -84,7 +84,7 @@ export async function execute(toolName, argsJson = '{}') {
   }
   
   try {
-    const response = await fetch(`${getMcpUrl()}/tools/${toolName}`, {
+    const response = await fetch(`${getMcpUrl().replace('/mcp', '')}/tools/${toolName}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(args)

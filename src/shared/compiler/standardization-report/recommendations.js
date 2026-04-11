@@ -8,63 +8,82 @@ import {
   hasRuntimeRestartPressure,
   hasSharedStateHotspot
 } from './recommendations-catalog.js';
+import { CANONICAL_COMPILER_FAMILIES } from '../standardization-report-catalog.js';
+
+const CANONICAL_SURFACE_IDS = new Set(
+  CANONICAL_COMPILER_FAMILIES.map((family) => family.id)
+);
+
+function addSuggestedTargetIfMissing(surfaces, id, severity, reason, recommendation) {
+  if (CANONICAL_SURFACE_IDS.has(id)) {
+    return;
+  }
+
+  surfaces.push(buildSuggestedTarget(id, severity, reason, recommendation));
+}
 
 export function buildMissingCanonicalSurfaceReport(adoptionGaps = []) {
   const byArea = Object.fromEntries(adoptionGaps.map((gap) => [gap.area, gap.count]));
   const surfaces = [];
 
   if ((byArea.testability || 0) > 0 && (byArea.semantic_purity || 0) > 0) {
-    surfaces.push(buildSuggestedTarget(
+    addSuggestedTargetIfMissing(
+      surfaces,
       'refactoring_signal_surfaces',
       'high',
       'Testability and semantic-purity still surface together across multiple MCP consumers.',
       'Prefer shared evaluation + summary/reporting APIs before adding more per-tool heuristics.'
-    ));
+    );
   }
 
   if ((byArea.async_error || 0) > 0 || (byArea.service_boundary || 0) > 0) {
-    surfaces.push(buildSuggestedTarget(
+    addSuggestedTargetIfMissing(
+      surfaces,
       'runtime_boundary_surfaces',
       'medium',
       'Async recovery and service-boundary drift often appear together in runtime-facing modules.',
       'Promote runtime boundary checks through shared compiler APIs before handlers/tools reclassify network and error boundaries inline.'
-    ));
+    );
   }
 
   if ((byArea.live_row_drift || 0) > 0 || (byArea.pipeline_orphans || 0) > 0) {
-    surfaces.push(buildSuggestedTarget(
+    addSuggestedTargetIfMissing(
+      surfaces,
       'sync_and_health_surfaces',
       'medium',
       'Health/pipeline reporting still has residual sync-style adoption gaps.',
       'Use canonical synchronization/reporting entrypoints before exposing support-table or orphan metrics in MCP.'
-    ));
+    );
   }
 
   if ((byArea.metadata_propagation || 0) > 0) {
-    surfaces.push(buildSuggestedTarget(
+    addSuggestedTargetIfMissing(
+      surfaces,
       'metadata_propagation_surfaces',
       'high',
       'Producer/consumer metadata contracts are drifting across persistence surfaces.',
       'Introduce or adopt a canonical propagation coverage API before mixing legacy and primary metadata tables in runtime code.'
-    ));
+    );
   }
 
   if ((byArea.semantic_surface_granularity || 0) > 0) {
-    surfaces.push(buildSuggestedTarget(
+    addSuggestedTargetIfMissing(
+      surfaces,
       'semantic_surface_contracts',
       'medium',
       'Semantic summaries and atom-level semantic relations are being mixed without an explicit granularity contract.',
       'Expose semantic summary/detail comparisons through a canonical granularity API before MCP/query tools compare file-level semantic_connections with atom semantic metadata.'
-    ));
+    );
   }
 
   if ((byArea.file_universe_granularity || 0) > 0) {
-    surfaces.push(buildSuggestedTarget(
+    addSuggestedTargetIfMissing(
+      surfaces,
       'file_universe_contracts',
       'medium',
       'Scanner, manifest, and live indexed file counts are being treated as equivalent without an explicit contract.',
       'Expose file-universe granularity through a canonical API before tools treat scanned, manifest, and live indexed counts as the same thing.'
-    ));
+    );
   }
 
   return surfaces;

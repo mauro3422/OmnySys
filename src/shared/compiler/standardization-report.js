@@ -18,6 +18,8 @@ import {
   normalizeDriftArea
 } from './standardization-report-helpers.js';
 
+const CANONICAL_FAMILY_IDS = new Set(CANONICAL_COMPILER_FAMILIES.map((family) => family.id));
+
 export function buildCompilerStandardizationReport({
   policySummary = {},
   watcherAlerts = [],
@@ -57,7 +59,8 @@ export function buildCompilerStandardizationReport({
     !adoptionGaps.some((gap) => gap.area === family.id)
   );
   const adoptionCoverage = buildCanonicalAdoptionCoverage(CANONICAL_COMPILER_FAMILIES, adoptionGaps);
-  const missingCanonicalSurfaces = buildMissingCanonicalSurfaceReport(adoptionGaps);
+  const missingCanonicalSurfaces = buildMissingCanonicalSurfaceReport(adoptionGaps)
+    .filter((surface) => !CANONICAL_FAMILY_IDS.has(surface.id));
 
   const totalRemediationItems = compilerRemediation?.totalItems || 0;
   const contractTaxonomyHealthy = Number(contractTaxonomy?.coverage?.coverageRatio || 0) >= 1;

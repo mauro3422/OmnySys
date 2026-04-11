@@ -7,6 +7,10 @@ import { compactRecentNotifications } from '../core/recent-notifications.js';
 import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
 import { loadNotifications, buildRecentErrorsResponse } from './status-notifications.js';
 import {
+  attachCompilerSnapshotContracts,
+  buildCompilerSnapshotResult
+} from './compiler-snapshot-service-helpers.js';
+import {
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
   buildCompilerMetricsSnapshot,
@@ -135,47 +139,30 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
     startupTelemetry: context.server?.startupTelemetry || null
   });
   const controlPlaneSummary = summarizeCompilerControlPlane(controlPlane);
-  snapshot.observability = observability;
-  snapshot.current.observability = observabilitySummary;
-  snapshot.controlPlane = controlPlane;
-  snapshot.current.controlPlane = controlPlaneSummary;
-  compactSnapshot.observability = observabilitySummary;
-  compactSnapshot.controlPlane = controlPlaneSummary;
-  healthDashboard.observability = observability;
-  healthDashboard.controlPlane = controlPlaneSummary;
-  healthPanel.observability = observabilitySummary;
-  healthPanel.controlPlane = controlPlaneSummary;
-  systemInventory.observability = observabilitySummary;
-  systemInventory.controlPlane = controlPlaneSummary;
-  systemInventoryDetail.observability = observability;
-  systemInventoryDetail.controlPlane = controlPlane;
-  canonicalPromotion.observability = observabilitySummary;
-  canonicalPromotion.controlPlane = controlPlaneSummary;
-  canonicalPromotionDetail.observability = observability;
-  canonicalPromotionDetail.controlPlane = controlPlane;
-  compilerExplainability.controlPlane = controlPlane;
+  const contracts = attachCompilerSnapshotContracts({
+    snapshot,
+    compactSnapshot,
+    healthDashboard,
+    healthPanel,
+    observability,
+    observabilitySummary,
+    controlPlane,
+    controlPlaneSummary,
+    systemInventory,
+    systemInventoryDetail,
+    canonicalPromotion,
+    canonicalPromotionDetail,
+    compilerExplainability
+  });
 
-  return {
-    success: true,
+  return buildCompilerSnapshotResult({
     projectPath,
     repo,
     notifications,
     compactNotifications,
     recentErrors,
-    compilerExplainability,
-    snapshot,
-    compactSnapshot,
-    systemInventory,
-    systemInventoryDetail,
-    canonicalPromotion,
-    canonicalPromotionDetail,
-    observability,
-    observabilitySummary,
-    controlPlane,
-    controlPlaneSummary,
-    healthDashboard,
-    healthPanel
-  };
+    ...contracts
+  });
 }
 
 export default { buildCompilerSnapshotContext };

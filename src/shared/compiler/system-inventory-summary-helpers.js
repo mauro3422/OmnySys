@@ -1,13 +1,8 @@
+import { CANONICAL_COMPILER_FAMILIES } from './standardization-report-catalog.js';
 import { asNumber } from './core-utils.js';
 import { buildCompilerToolInventorySnapshot } from './tool-inventory-summary.js';
 import { inferSystemKind } from './system-inventory-kind-helpers.js';
-import { normalizeText } from '#shared/utils/normalize-helpers.js';
-
-// --- Extracted utilities ---
-
-function clampScore(value) {
-  return Math.max(0, Math.min(100, Math.round(asNumber(value, 0))));
-}
+import { clampScore, normalizeText } from '#shared/utils/normalize-helpers.js';
 
 export { clampScore };
 
@@ -88,11 +83,37 @@ export function buildSurfaceInventoryEntry(surface = {}, { kind = 'surface', rol
 }
 
 export function buildCandidateEntry(candidate = {}, role = 'emergent') {
+  const candidateId = candidate.id || candidate.key || candidate.surface || candidate.target || candidate.reason || `candidate:${role}`;
+  if (CANONICAL_FAMILY_IDS.has(candidateId)) {
+    return {
+      id: candidateId,
+      kind: candidate.kind || 'candidate',
+      role: 'canonical',
+      status: 'canonical',
+      canonicalStatus: 'canonical',
+      sourceOfTruth: true,
+      systemKind: inferSystemKind(candidate),
+      surface: candidate.surface || candidateId || null,
+      domain: candidate.domain || candidate.area || null,
+      scope: candidate.scope || null,
+      backingSurface: candidate.backingSurface || null,
+      centralityScore: 98,
+      propagationScore: 96,
+      driftState: 'stable',
+      trustworthy: true,
+      healthy: true,
+      summary: candidate.reason || candidate.summary || candidate.label || null,
+      evidence: candidate,
+      recommendedAction: candidate.recommendation || null,
+      source: 'compiler-contract-layer.canonical'
+    };
+  }
+
   const severity = String(candidate.severity || 'medium').toLowerCase();
   const severityPenalty = { critical: 0, high: 4, medium: 10, low: 18 }[severity] ?? 12;
   const centralityScore = clampScore(90 - severityPenalty);
   return {
-    id: candidate.id || candidate.key || candidate.surface || candidate.target || candidate.reason || `candidate:${role}`,
+    id: candidateId,
     kind: candidate.kind || 'candidate', role, status: candidate.status || 'emergent', canonicalStatus: role,
     sourceOfTruth: false, systemKind: inferSystemKind(candidate),
     surface: candidate.surface || candidate.id || candidate.key || null,
@@ -282,3 +303,4 @@ export function buildInventorySummary({
     topPromotionCandidates
   };
 }
+const CANONICAL_FAMILY_IDS = new Set(CANONICAL_COMPILER_FAMILIES.map((family) => family.id));
