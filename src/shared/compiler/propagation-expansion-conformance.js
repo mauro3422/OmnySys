@@ -21,6 +21,7 @@ const PROPAGATION_AWARE_SURFACE_PATTERN = /\b(?:issueContext|extraData|summaryTe
 
 function isPropagationExemptPath(normalizedPath = '') {
   return normalizedPath.startsWith('src/core/file-watcher/guards/guard-standards/')
+    || normalizedPath.startsWith('src/core/file-watcher/guards/')
     || normalizedPath.includes('/metadata-completeness/')
     || normalizedPath.startsWith('src/shared/compiler/atom-metadata-helpers.js')
     || normalizedPath.startsWith('src/shared/compiler/propagation-expansion-conformance.js')
@@ -33,16 +34,38 @@ function isPropagationExemptPath(normalizedPath = '') {
     || normalizedPath.startsWith('src/shared/compiler/status-system-table.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status-server-details.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status-notifications.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status-runtime.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/compiler-snapshot-service.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/compiler-snapshot-service-helpers.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/folderization-snapshot-service.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/folderization-snapshot-helpers.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-folderization-snapshot.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-atom-evolution-report.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-trust-investigation-report.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt-report-cache.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt-report-cache-helpers.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/diagnose-tool-health/')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt/')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js');
 }
 
 function isPropagationSurfaceCandidate(normalizedPath = '') {
-  return normalizedPath.startsWith('src/core/file-watcher/guards/')
-    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/');
+  return normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-health')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-metrics')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-trust')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-system')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-folderization-snapshot')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-canonical-promotion-report')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-atom-evolution-report')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-technical-debt-report')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/compiler-snapshot-service')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/folderization-snapshot')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt-report')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/diagnose-tool-health')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter');
 }
 
 function importsPropagationContract(source = '') {
@@ -63,6 +86,16 @@ function usesPropagationReadyStatusSurface(source = '') {
   return /\b(?:compilerExplainability|driftAssessment|buildCompilerHealthDashboard|buildCompilerHealthPanel|buildSystemTableSummary|buildStatusSummaryPayload|summarizeCompilerExplainability|summarizeCompilerHealthDashboard|summarizeCompilerHealthPanel)\b/.test(stripComments(source));
 }
 
+function delegatesToCanonicalSnapshotSurface(source = '') {
+  const normalizedSource = stripComments(source);
+  return /\bbuildCompilerSnapshotContext\b/.test(normalizedSource)
+    || /\bbuildCompilerSnapshotResult\b/.test(normalizedSource)
+    || /\bloadCompilerExplainability\b/.test(normalizedSource)
+    || /\bbuildCompilerHealthDashboard\b/.test(normalizedSource)
+    || /\bbuildCompilerHealthPanel\b/.test(normalizedSource)
+    || /\bbuildCompilerMetricsSnapshot\b/.test(normalizedSource);
+}
+
 export function detectPropagationExpansionConformanceFromSource(filePath, source = '', options = {}) {
   return scanCompilerConformanceSource(
     filePath,
@@ -75,6 +108,10 @@ export function detectPropagationExpansionConformanceFromSource(filePath, source
       }
 
       if (!isPropagationSurfaceCandidate(normalizedPath)) {
+        return;
+      }
+
+      if (delegatesToCanonicalSnapshotSurface(currentSource)) {
         return;
       }
 

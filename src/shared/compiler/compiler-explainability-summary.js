@@ -18,6 +18,7 @@ import {
 import { compactCompilerContractLayer } from './compiler-explainability-contract-layer.js';
 import { compactPolicySummary } from './compiler-explainability-policy.js';
 import { compactStandardization } from './compiler-explainability-standardization.js';
+import { summarizePropagationLedger } from './propagation-ledger.js';
 
 export function summarizeCompilerExplainability(explainability) {
   if (!explainability || typeof explainability !== 'object') return null;
@@ -42,6 +43,7 @@ export function summarizeCompilerExplainability(explainability) {
     canonicalPromotion: compactCanonicalPromotion(explainability.canonicalPromotion),
     policyCoverage: compactPolicyCoverage(explainability.policyCoverage),
     controlPlane: compactControlPlane(explainability.controlPlane),
+    propagationLedger: summarizePropagationLedger(explainability.propagationLedger),
     databaseHealth: explainability.databaseHealth || null
   };
 }

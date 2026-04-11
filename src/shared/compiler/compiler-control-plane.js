@@ -1,5 +1,9 @@
 import { takeSample } from './sample-helpers.js';
 import {
+  buildMetricAlignmentSignal,
+  summarizeMetricAlignment
+} from './metric-alignment-summary.js';
+import {
   isBlockedState,
   isDriftingState,
   isWatchingState
@@ -34,15 +38,27 @@ export function buildCompilerControlPlane({
   bridgeRuntimeTelemetry = null
 } = {}) {
   const systems = buildSystemRegistry(systemInventoryDetail, systemInventory);
+  const metricAlignment = buildMetricAlignmentSignal({
+    compilerExplainability,
+    systemInventory,
+    current: metricsSnapshot?.current || null,
+    bridgeCallReliability: metricsSnapshot?.current?.bridgeCallReliability || null,
+    trust: observability?.trust || null
+  });
   const contracts = buildContractEntries({
     compilerExplainability,
     systemInventory,
     canonicalPromotion,
-    observability
+    observability,
+    metricAlignment
   });
   const signals = buildSignalEntries({
     compilerExplainability,
-    observability
+    observability,
+    systemInventory,
+    current: metricsSnapshot?.current || null,
+    bridgeCallReliability: metricsSnapshot?.current?.bridgeCallReliability || null,
+    trust: observability?.trust || null
   });
   const telemetry = buildTelemetryRegistry({
     compilerExplainability,
@@ -60,7 +76,9 @@ export function buildCompilerControlPlane({
     compilerExplainability,
     telemetry,
     propagation,
-    signals
+    signals,
+    metricAlignment,
+    current: metricsSnapshot?.current || null
   }).sort((left, right) => {
     const order = { critical: 0, high: 1, medium: 2, low: 3 };
     return (order[left.severity] ?? 99) - (order[right.severity] ?? 99);
@@ -84,6 +102,7 @@ export function buildCompilerControlPlane({
     },
     signals,
     telemetry,
+    metricAlignment,
     propagation,
     gaps,
     counts: {
@@ -91,6 +110,7 @@ export function buildCompilerControlPlane({
       contractCount: contracts.length,
       signalCount: signals.length,
       gapCount: gaps.length,
+      alignedSignalCount: signals.filter((signal) => signal.key === 'metric_alignment' && signal.state === 'fresh').length,
       blockedSignalCount: signals.filter((signal) => isBlockedState(signal.state)).length,
       driftingSignalCount: signals.filter((signal) => isDriftingState(signal.state)).length,
       watchingSignalCount: signals.filter((signal) => isWatchingState(signal.state)).length
@@ -98,7 +118,8 @@ export function buildCompilerControlPlane({
     nextAction: summary.nextAction,
     reason: summary.reason,
     summaryText: summary.summaryText,
-    oneLine: summary.oneLine
+    oneLine: summary.oneLine,
+    alignmentSummary: summarizeMetricAlignment(metricAlignment)
   };
 }
 
@@ -136,6 +157,8 @@ export function summarizeCompilerControlPlane(controlPlane = null) {
       blockedCount: controlPlane.telemetry.blockedCount || 0,
       nextAction: controlPlane.telemetry.nextAction || null
     } : null,
+    metricAlignment: summarizeMetricAlignment(controlPlane.metricAlignment || null),
+    alignmentSummary: controlPlane.alignmentSummary || null,
     propagation: controlPlane.propagation ? {
       state: controlPlane.propagation.state || 'missing',
       expectedSystemCount: controlPlane.propagation.expectedSystemCount || 0,

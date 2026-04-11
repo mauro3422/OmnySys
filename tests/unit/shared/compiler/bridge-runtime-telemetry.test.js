@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   readBridgeRuntimeTelemetry,
+  summarizeBridgeCallReliability,
   summarizeBridgeRuntimeTelemetry,
   writeBridgeRuntimeTelemetrySync
 } from '../../../../src/shared/compiler/bridge-runtime-telemetry.js';
@@ -101,5 +102,33 @@ describe('bridge runtime telemetry', () => {
     expect(summary.riskLevel).toBe('high');
     expect(summary.warningReasons.join(' ')).toContain('zero active sessions');
     expect(summary.summary).toContain('risk=high');
+  });
+
+  it('summarizes bridge call reliability from transport failures', () => {
+    const summary = summarizeBridgeCallReliability({
+      projectPath: '/tmp/omnysys-bridge',
+      connectCount: 2,
+      reconnectCount: 1,
+      transportClosedCount: 2,
+      sessionExpiredCount: 1,
+      retryableErrorCount: 3,
+      events: [
+        { type: 'bridge-connect', at: new Date().toISOString() },
+        { type: 'transport-closed', at: new Date().toISOString() },
+        { type: 'bridge-recovery-needed', at: new Date().toISOString() }
+      ]
+    });
+
+    expect(summary).toMatchObject({
+      state: 'thrashing',
+      failureCount: 6,
+      attemptCount: 9,
+      retryableErrorCount: 3,
+      transportClosedCount: 2,
+      sessionExpiredCount: 1
+    });
+    expect(summary.failureRate).toBeGreaterThan(0.6);
+    expect(summary.summary).toContain('failures=6');
+    expect(summary.summary).toContain('attempts=9');
   });
 });

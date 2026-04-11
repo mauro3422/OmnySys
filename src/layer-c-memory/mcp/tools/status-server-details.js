@@ -23,7 +23,8 @@ import {
   readProxyRuntimeTelemetry,
   summarizeProxyRuntimeTelemetry,
   readBridgeRuntimeTelemetry,
-  summarizeBridgeRuntimeTelemetry
+  summarizeBridgeRuntimeTelemetry,
+  summarizeBridgeCallReliability
 } from '../../../shared/compiler/index.js';
 import { sessionManager } from '../core/session-manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
@@ -183,6 +184,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   });
   const proxyRuntimeTelemetry = summarizeProxyRuntimeTelemetry(readProxyRuntimeTelemetry(projectPath));
   const bridgeRuntimeTelemetry = summarizeBridgeRuntimeTelemetry(readBridgeRuntimeTelemetry(projectPath));
+  const bridgeCallReliability = summarizeBridgeCallReliability(readBridgeRuntimeTelemetry(projectPath));
   const metricsSnapshot = buildCompilerMetricsSnapshot({
     projectPath,
     repo,
@@ -240,6 +242,12 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     || metricsSnapshot?.current?.folderizationPropagation
     || metricsSnapshot?.folderizationPropagation
     || null;
+  status.propagationLedger = compilerExplainability.propagationLedger
+    ? {
+      ...compilerExplainability.propagationLedger,
+      state: compilerExplainability.propagationLedger.state || metricsSnapshot?.current?.propagationLedger?.state || 'watching'
+    }
+    : metricsSnapshot?.current?.propagationLedger || null;
   status.healthPanel.observability = observabilitySummary;
   status.toolInventory = {
     snapshot: toolInventorySnapshot,
@@ -256,17 +264,23 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.startupTelemetry = server?.startupTelemetry || null;
   status.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
   status.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
+  status.bridgeCallReliability = bridgeCallReliability;
   status.observability = observability;
   status.observabilitySummary = observabilitySummary;
   status.metricsSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
   status.metricsSnapshot.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
+  status.metricsSnapshot.bridgeCallReliability = bridgeCallReliability;
+  status.metricsSnapshot.propagationLedger = status.propagationLedger;
   if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
     status.metricsSnapshot.current.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
     status.metricsSnapshot.current.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
+    status.metricsSnapshot.current.bridgeCallReliability = bridgeCallReliability;
+    status.metricsSnapshot.current.propagationLedger = status.propagationLedger;
   }
   if (status.healthSnapshot && typeof status.healthSnapshot === 'object') {
     status.healthSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
     status.healthSnapshot.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
+    status.healthSnapshot.bridgeCallReliability = bridgeCallReliability;
     status.healthSnapshot.observability = observability;
   }
   if (status.metricsSnapshot && typeof status.metricsSnapshot === 'object') {

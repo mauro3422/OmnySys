@@ -201,11 +201,13 @@ describe('compiler-control-plane', () => {
     const summary = summarizeCompilerControlPlane(controlPlane);
 
     expect(controlPlane.state).toBe('ready');
+    expect(['aligned', 'watching']).toContain(controlPlane.metricAlignment.state);
     expect(controlPlane.telemetry.state).toBe('watching');
     expect(controlPlane.propagation.state).toBe('ready');
     expect(controlPlane.gaps).toEqual([]);
     expect(controlPlane.systems.total).toBe(4);
     expect(summary.state).toBe('ready');
+    expect(['aligned', 'watching']).toContain(summary.metricAlignment.state);
     expect(summary.telemetry.requiredMissingCount).toBe(0);
     expect(summary.propagation.missingSystemCount).toBe(0);
   });
@@ -328,8 +330,10 @@ describe('compiler-control-plane', () => {
     const summary = summarizeCompilerControlPlane(controlPlane);
 
     expect(controlPlane.state).toBe('blocked');
+    expect(controlPlane.metricAlignment.state).toBe('drifting');
     expect(controlPlane.telemetry.requiredMissingCount).toBeGreaterThan(0);
     expect(controlPlane.propagation.missingSystemCount).toBe(2);
+    expect(controlPlane.gaps.some((gap) => gap.key === 'metric_alignment')).toBe(true);
     expect(controlPlane.gaps.some((gap) => gap.key === 'policy_drift')).toBe(true);
     expect(controlPlane.gaps.some((gap) => gap.key === 'propagation_adoption')).toBe(true);
     expect(summary.topGaps[0].severity).toBe('critical');

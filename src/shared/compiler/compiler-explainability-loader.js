@@ -7,6 +7,41 @@ import { buildFolderizationReportFromRepo } from './folderization-report.js';
 import { buildFolderizationAutomationSummaryFromReport } from './folderization-automation-summary.js';
 import { getDatabaseHealthSummary } from './database-health-summary.js';
 import { validateMetricCoherence } from './metric-coherence-validator.js';
+import { buildPropagationLedger } from './propagation-ledger.js';
+
+function publishCompilerExplainabilityRefresh(sharedState = {}, compilerExplainability = null) {
+  if (!sharedState || typeof sharedState !== 'object' || !compilerExplainability) {
+    return compilerExplainability;
+  }
+
+  const refreshedAt = new Date().toISOString();
+  const policyDriftCount = compilerExplainability.policySummary?.effectiveTotal
+    ?? compilerExplainability.policySummary?.total
+    ?? compilerExplainability.policyCoverage?.policyDriftCount
+    ?? compilerExplainability.systemInventory?.policyDriftCount
+    ?? 0;
+  const policyCoverageState = compilerExplainability.policyCoverage?.coverageState
+    || compilerExplainability.systemInventory?.policyCoverage?.coverageState
+    || null;
+  const propagationExpansionState = compilerExplainability.policyCoverage?.propagationExpansionState
+    || compilerExplainability.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state
+    || compilerExplainability.driftAssessment?.primaryIssue?.state
+    || null;
+
+  sharedState.compilerExplainability = compilerExplainability;
+  sharedState.compilerExplainabilityRefreshedAt = refreshedAt;
+  sharedState.compilerExplainabilityRefreshSource = 'compiler_explainability_loader';
+  sharedState.policySummary = compilerExplainability.policySummary || null;
+  sharedState.policyDriftCount = policyDriftCount;
+  sharedState.policyCoverageState = policyCoverageState;
+  sharedState.propagationExpansionState = propagationExpansionState;
+
+  return {
+    ...compilerExplainability,
+    refreshedAt,
+    refreshSource: 'compiler_explainability_loader'
+  };
+}
 
 function buildFolderizationPropagationAdoptionTargets({
   snapshot,
@@ -133,7 +168,20 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         })
       : null;
 
-    return {
+    const propagationLedger = buildPropagationLedger({
+      compilerExplainability: {
+        policySummary,
+        policyCoverage: systemInventory.policyCoverage || null,
+        driftAssessment: snapshot.driftAssessment
+      },
+      systemInventory,
+      sharedState,
+      source: 'compiler_explainability_loader',
+      watcherStats,
+      watcherAlerts
+    });
+
+    return publishCompilerExplainabilityRefresh(sharedState, {
       policySummary,
       standardization: snapshot.standardizationReport,
       compilerContractLayer: snapshot.compilerContractLayer,
@@ -153,6 +201,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       surfaceAudit: snapshot.surfaceAudit,
       metricCoherence,
       inventorySignals: sharedState.inventorySignals || null,
+      propagationLedger,
       folderization: {
         candidateReport: folderizationReport.candidateReport,
         familyState: folderizationReport.familyState,
@@ -177,7 +226,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       },
       systemInventory,
       policyCoverage: systemInventory.policyCoverage || null
-    };
+    });
   } catch (error) {
     return {
       error: error.message

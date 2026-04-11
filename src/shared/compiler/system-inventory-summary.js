@@ -38,6 +38,7 @@ export function buildCompilerSystemInventorySnapshot({
   const driftAssessment = compilerExplainability?.driftAssessment || null;
   const policySummary = compilerExplainability?.policySummary || null;
   const surfaceAudit = compilerExplainability?.surfaceAudit || null;
+  const propagationLedger = compilerExplainability?.propagationLedger || null;
   const resolvedHistoryStores = historyStores || buildCompilerHistoricalStorageSummary(projectPath);
   const canonicalSurfaces = Array.isArray(contractLayer?.surfaces) ? contractLayer.surfaces : [];
   const canonicalEntrypoints = Array.isArray(contractLayer?.canonicalEntrypoints) ? contractLayer.canonicalEntrypoints : [];
@@ -123,7 +124,10 @@ export function buildCompilerSystemInventorySnapshot({
   const inventorySignals = compilerExplainability?.inventorySignals || null;
   const policyFindingCount = asNumber(policySummary?.total, 0);
   const policyDriftCount = asNumber(
-    policySummary?.active ?? (asNumber(policySummary?.high, 0) + asNumber(policySummary?.medium, 0)) ?? policyFindingCount,
+    policySummary?.effectiveTotal
+      ?? policySummary?.active
+      ?? (asNumber(policySummary?.high, 0) + asNumber(policySummary?.medium, 0))
+      ?? policyFindingCount,
     0
   );
   const integrationCoveragePct = inventorySignals?.total
@@ -154,7 +158,8 @@ export function buildCompilerSystemInventorySnapshot({
       }
     },
     explainability: {
-      driftAssessment
+      driftAssessment,
+      propagationLedger
     },
     standardization
   });
@@ -168,10 +173,14 @@ export function buildCompilerSystemInventorySnapshot({
     contractParallelSurfaceFindings: asNumber(contractLayer?.summary?.parallelCanonicalSurfaceFindings, 0),
     surfaceAuditTrustworthy: surfaceAudit?.summary?.trustworthy === true,
     dataGatewayTrustworthy: compilerExplainability?.dataGatewayContract?.summary?.trustworthy === true,
-    metadataCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0),
+    metadataCoveragePct: asNumber(
+      compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct,
+      compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct || 0
+    ),
     integrationCoveragePct,
     propagationExpansionState:
-      driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state
+      propagationLedger?.propagationExpansionState
+      || driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state
       || driftAssessment?.primaryIssue?.state
       || null,
     nextAction:
@@ -229,6 +238,7 @@ export function buildCompilerSystemInventorySnapshot({
     legacySystems,
     tooling,
     policyCoverage,
+    propagationLedger,
     historyStores: resolvedHistoryStores,
     signals,
     summary
@@ -261,7 +271,8 @@ export function buildCompilerSystemInventoryReport(inventory = null) {
     contractParallelSurfaceFindings: summary.contractParallelSurfaceFindings || 0,
     surfaceAuditTrustworthy: summary.surfaceAuditTrustworthy === true,
     dataGatewayTrustworthy: summary.dataGatewayTrustworthy === true,
-    metadataCoveragePct: summary.metadataCoveragePct || 0,
+    metadataCoveragePct: summary.metadataCoveragePct || summary.metadataFieldCoveragePct || 0,
+    metadataFieldCoveragePct: summary.metadataFieldCoveragePct || 0,
     integrationCoveragePct: summary.integrationCoveragePct || 0,
     propagationExpansionState: summary.propagationExpansionState || null,
     dominantToolCategory: summary.dominantToolCategory || null,

@@ -271,9 +271,44 @@ export function summarizeBridgeRuntimeTelemetry(telemetry = null) {
   };
 }
 
+export function summarizeBridgeCallReliability(telemetry = null) {
+  const summary = summarizeBridgeRuntimeTelemetry(telemetry);
+  const failureCount = summary.transportClosedCount + summary.sessionExpiredCount + summary.retryableErrorCount;
+  const attemptCount = summary.connectCount + summary.reconnectCount + failureCount;
+  const failureRate = attemptCount > 0 ? failureCount / attemptCount : 0;
+  const reliabilityState = failureCount >= 3
+    ? 'thrashing'
+    : failureCount > 0
+      ? 'watching'
+      : summary.state === 'missing'
+        ? 'unknown'
+        : 'stable';
+
+  return {
+    state: reliabilityState,
+    failureCount,
+    failureRate,
+    attemptCount,
+    retryableErrorCount: summary.retryableErrorCount,
+    transportClosedCount: summary.transportClosedCount,
+    sessionExpiredCount: summary.sessionExpiredCount,
+    connectCount: summary.connectCount,
+    reconnectCount: summary.reconnectCount,
+    lastEventType: summary.lastEventType,
+    lastEventAt: summary.lastEventAt,
+    summary: failureCount > 0
+      ? `${reliabilityState} | failures=${failureCount} | attempts=${attemptCount} | failureRate=${Math.round(failureRate * 100)}%`
+      : `${reliabilityState} | failures=0 | attempts=${attemptCount}`,
+    recommendation: failureCount > 0
+      ? 'Track bridge closures, session expiry and retryable errors as a separate reliability surface.'
+      : 'Keep persisting bridge telemetry so reliability regressions stay visible.'
+  };
+}
+
 export default {
   getBridgeRuntimeTelemetryPath,
   readBridgeRuntimeTelemetry,
   writeBridgeRuntimeTelemetrySync,
-  summarizeBridgeRuntimeTelemetry
+  summarizeBridgeRuntimeTelemetry,
+  summarizeBridgeCallReliability
 };

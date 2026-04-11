@@ -35,10 +35,14 @@ export function resolvePolicyCoverageSummary(status = {}) {
     0
   )) || 0;
   const metadataCoveragePct = Number(firstDefined(
+    systemInventory.metadataFieldCoveragePct,
     systemInventory.metadataCoveragePct,
     inventorySummary.metadataCoveragePct,
+    inventorySummary.metadataFieldCoveragePct,
     compilerExplainability.systemInventory?.metadataCoveragePct,
+    compilerExplainability.systemInventory?.metadataFieldCoveragePct,
     compilerExplainability.systemInventory?.summary?.metadataCoveragePct,
+    compilerExplainability.systemInventory?.summary?.metadataFieldCoveragePct,
     0
   )) || 0;
   const policyCoverage = firstDefined(
@@ -112,6 +116,12 @@ export function resolveControlPlaneContracts(status = {}) {
     systemInventory: systemInventory || null,
     canonicalPromotion: canonicalPromotion || null,
     policyCoverage,
+    metricAlignment: firstDefined(
+      status.metricAlignment,
+      metricsSnapshot.metricAlignment,
+      healthSnapshot.metricAlignment,
+      compilerExplainability.metricAlignment
+    ),
     folderizationAutomation: folderizationAutomation || null,
     folderizationAdoption: folderizationAdoption || null,
     integrationCoveragePct: Number(systemInventory?.integrationCoveragePct || systemInventory?.summary?.integrationCoveragePct || 0) || 0,

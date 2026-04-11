@@ -17,6 +17,8 @@ import { buildCurrentSummaries } from './summaries.js';
 import { asNumber } from '../core-utils.js';
 import { buildStartupRegressionSummary } from '../startup-regression-summary.js';
 import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
+import { buildMetricAlignmentSignal } from '../metric-alignment-summary.js';
+import { buildPropagationLedger } from '../propagation-ledger.js';
 
 function compactFolderizationPropagation(propagation = null) {
   if (!propagation) {
@@ -115,6 +117,20 @@ export function buildCurrentMetrics({
   } = summaries;
   const dataGatewayContract = controlPlaneFoundations?.dataGatewayContract || compilerExplainability?.dataGatewayContract || null;
   const liveRowSync = controlPlaneFoundations?.liveRowSync || databaseHealth?.metrics?.liveRowSync || null;
+  const metricAlignment = buildMetricAlignmentSignal({
+    compilerExplainability,
+    systemInventory,
+    current: null,
+    bridgeCallReliability: bridgeRuntimeTelemetry?.bridgeCallReliability || null
+  });
+  const propagationLedger = buildPropagationLedger({
+    compilerExplainability,
+    systemInventory,
+    metricAlignment,
+    source: captureSource || 'status.runtime',
+    watcherAlerts,
+    sharedState: null
+  });
   const watcherIssuePersistence = issueSummary?.watcherIssuePersistence || null;
   const issuePersistence = watcherIssuePersistence ? {
     activeIssueCount: asNumber(watcherIssuePersistence.activeIssueCount, 0),
@@ -151,8 +167,15 @@ export function buildCurrentMetrics({
     namingDebt: asNumber(folderization?.namingDebt?.renameTargetCount, 0),
     liveCoverageRatio: asNumber(fileUniverse?.liveCoverageRatio, 0),
     zeroAtomFileCount: asNumber(fileUniverse?.zeroAtomFileCount, 0),
-    metadataCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0),
+    metadataCoveragePct: asNumber(
+      compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct
+        ?? compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct
+        ?? systemInventory?.metadataCoveragePct
+        ?? 0,
+      0
+    ),
     metadataFieldCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct, 0),
+    metadataWeightedCoveragePct: asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0),
     dataGatewayTrustworthy: dataGatewayContract?.summary?.trustworthy === true,
     dataGatewayState: dataGatewayContract?.summary?.primaryIssue?.state
       || (dataGatewayContract?.summary?.trustworthy === true ? 'trustworthy' : 'needs_attention'),
@@ -174,6 +197,8 @@ export function buildCurrentMetrics({
     systemInventory: systemInventory || null,
     canonicalPromotion: canonicalPromotion || null,
     policyCoverage: systemInventory?.policyCoverage || null,
+    metricAlignment,
+    propagationLedger,
     folderizationAutomation: compilerExplainability?.folderization?.automation || null,
     startupTelemetry: buildStartupRegressionSummary(startupTelemetry),
     proxyRuntimeTelemetry: proxyRuntimeTelemetry || null,
@@ -241,6 +266,12 @@ export function buildCurrentMetrics({
       : null,
     current.policyCoverage?.coverageState
       ? `policy=${current.policyCoverage.coverageState}:${current.policyCoverage.coverageScore || 0}`
+      : null,
+    current.propagationLedger?.state
+      ? `ledger=${current.propagationLedger.state}:${current.propagationLedger.policyDriftCount || 0}`
+      : null,
+    current.metricAlignment?.state
+      ? `alignment=${current.metricAlignment.state}`
       : null,
     current.folderizationPropagation?.decision
       ? `propagation=${current.folderizationPropagation.decision}`

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { GitTerminalBridge } from '../../../shared/utils/git-terminal-bridge.js';
-import { loadAtomVersionArchiveHistory } from '../../../shared/compiler/atom-history-archive.js';
+import { loadAtomVersionArchiveHistory } from '../../../shared/compiler/index.js';
 
 function safeArray(value) {
   return Array.isArray(value) ? value : [];
@@ -178,4 +178,3 @@ export function summarizeAtomHistory(history = [], archiveHistory = []) {
     archiveWindow: buildArchiveSummary(archiveVersions)
   };
 }
-

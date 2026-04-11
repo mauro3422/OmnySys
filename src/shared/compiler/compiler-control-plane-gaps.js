@@ -4,27 +4,59 @@ import {
   isDriftingState,
   isWatchingState
 } from './signal-state-helpers.js';
+import { buildMetricAlignmentSignal } from './metric-alignment-summary.js';
 
 export function buildGapEntries({
   systemInventory,
   compilerExplainability,
   telemetry,
   propagation,
-  signals
+  signals,
+  metricAlignment = null,
+  current = null
 }) {
   const summary = systemInventory?.summary || {};
-  const policyDriftCount = asNumber(summary.policyDriftCount || systemInventory?.policyDriftCount, 0);
+  const policyDriftCount = asNumber(
+    summary.policyDriftCount
+      || summary.policyCoverageDriftCount
+      || systemInventory?.policyDriftCount
+      || systemInventory?.policyCoverageDriftCount,
+    0
+  );
   const missingCanonicalApiCount = asNumber(summary.missingCanonicalApiCount || systemInventory?.missingCanonicalApiCount, 0);
   const missingCanonicalSurfaceCount = asNumber(summary.missingCanonicalSurfaceCount || systemInventory?.missingCanonicalSurfaceCount, 0);
-  const metadataCoveragePct = asNumber(summary.metadataCoveragePct || systemInventory?.metadataCoveragePct || compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0);
+  const preferredAlignment = metricAlignment || buildMetricAlignmentSignal({
+    compilerExplainability,
+    systemInventory,
+    current
+  });
+  const metadataCoveragePct = asNumber(
+    compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct
+      ?? summary.metadataCoveragePct
+      ?? systemInventory?.metadataCoveragePct
+      ?? compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct
+      ?? 0,
+    0
+  );
   const databaseHealthy = compilerExplainability?.databaseHealth?.healthy === true;
   const gaps = [];
+
+  if (preferredAlignment.state && preferredAlignment.state !== 'aligned') {
+    gaps.push({
+      key: 'metric_alignment',
+      state: preferredAlignment.state === 'blocked' ? 'blocked' : preferredAlignment.state === 'drifting' ? 'stale' : 'watching',
+      severity: preferredAlignment.state === 'blocked' ? 'critical' : preferredAlignment.state === 'drifting' ? 'high' : 'medium',
+      count: preferredAlignment.coverage?.driftPct || preferredAlignment.coverage?.weightedDriftPct || 1,
+      reason: preferredAlignment.reason,
+      recommendation: preferredAlignment.recommendation
+    });
+  }
 
   if (policyDriftCount > 0) {
     gaps.push({
       key: 'policy_drift',
-      state: policyDriftCount >= 10 ? 'blocked' : 'stale',
-      severity: policyDriftCount >= 10 ? 'critical' : 'high',
+      state: policyDriftCount >= 10 ? 'blocked' : policyDriftCount >= 3 ? 'stale' : 'watching',
+      severity: policyDriftCount >= 10 ? 'critical' : policyDriftCount >= 3 ? 'medium' : 'low',
       count: policyDriftCount,
       reason: `${policyDriftCount} active policy drift finding(s) remain in the control plane.`,
       recommendation: systemInventory?.policyCoverage?.nextAction || 'Resolve policy drift before trusting new surfaces.'
@@ -68,8 +100,8 @@ export function buildGapEntries({
   if (metadataCoveragePct < 95) {
     gaps.push({
       key: 'metadata_coverage',
-      state: metadataCoveragePct >= 80 ? 'watching' : 'stale',
-      severity: metadataCoveragePct >= 80 ? 'medium' : 'high',
+      state: metadataCoveragePct >= 85 ? 'watching' : 'stale',
+      severity: metadataCoveragePct >= 85 ? 'medium' : 'high',
       count: 95 - metadataCoveragePct,
       reason: `Metadata extraction coverage is ${metadataCoveragePct}%.`,
       recommendation: 'Raise metadata extraction coverage so registry and inventory surfaces stay trustworthy.'
