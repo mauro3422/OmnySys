@@ -4,9 +4,11 @@ export function summarizeCompilerPolicyDrift(findings = []) {
   const normalizedFindings = findings.filter(Boolean);
   const summary = {
     total: normalizedFindings.length,
+    effectiveTotal: normalizedFindings.length,
     high: 0,
     medium: 0,
     active: 0,
+    propagationExpansion: 0,
     byPolicyArea: {},
     byRule: {}
   };
@@ -18,9 +20,13 @@ export function summarizeCompilerPolicyDrift(findings = []) {
     const rule = finding?.rule || 'unknown';
     summary.byPolicyArea[policyArea] = (summary.byPolicyArea[policyArea] || 0) + 1;
     summary.byRule[rule] = (summary.byRule[rule] || 0) + 1;
+    if (policyArea === 'propagation_expansion' || /propagation/i.test(rule)) {
+      summary.propagationExpansion += 1;
+    }
   }
 
   summary.active = summary.high + summary.medium;
+  summary.effectiveTotal = Math.max(0, summary.total - summary.propagationExpansion);
 
   return summary;
 }

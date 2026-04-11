@@ -1,5 +1,6 @@
 import { asNumber } from './core-utils.js';
 import { takeSample } from './sample-helpers.js';
+import { buildMetricAlignmentSignal } from './metric-alignment-summary.js';
 import {
   normalizeState,
   severityFromState,
@@ -48,7 +49,13 @@ export function buildSystemRegistry(systemInventoryDetail = null, systemInventor
     bridge: asNumber(summary.bridgeSystemCount, 0),
     wrapper: asNumber(summary.wrapperSystemCount, 0),
     legacy: asNumber(summary.legacySystemCount, 0),
-    metadataCoveragePct: asNumber(summary.metadataCoveragePct || systemInventory?.metadataCoveragePct, 0),
+    metadataCoveragePct: asNumber(
+      summary.metadataCoveragePct
+        || systemInventory?.metadataCoveragePct
+        || systemInventory?.metadataFieldCoveragePct
+        || 0,
+      0
+    ),
     integrationCoveragePct: asNumber(summary.integrationCoveragePct || systemInventory?.integrationCoveragePct, 0),
     topSystems: Array.isArray(systemInventory?.topSystems) ? systemInventory.topSystems.slice(0, 8) : [],
     entries: takeSample(systems, 18)
@@ -59,9 +66,16 @@ export function buildContractEntries({
   compilerExplainability,
   systemInventory,
   canonicalPromotion,
-  observability
+  observability,
+  metricAlignment = null
 }) {
-  const metadataCoveragePct = asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0);
+  const metadataCoveragePct = asNumber(
+    compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct
+      ?? compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct
+      ?? systemInventory?.metadataCoveragePct
+      ?? 0,
+    0
+  );
   const compilerContractLayerSurfaces = Array.isArray(compilerExplainability?.compilerContractLayer?.surfaces)
     ? compilerExplainability.compilerContractLayer.surfaces.length
     : 0;
@@ -111,6 +125,13 @@ export function buildContractEntries({
         || 'Policy coverage not attached.'
     },
     {
+      key: 'metric_alignment',
+      state: metricAlignment?.state || (metricAlignment?.healthy === true ? 'fresh' : 'watching'),
+      trustworthy: metricAlignment?.trustworthy === true,
+      sourceOfTruth: 'metric alignment',
+      summary: metricAlignment?.reason || 'Metric alignment not attached.'
+    },
+    {
       key: 'data_gateway_contract',
       state: dataGatewayTrustworthy
         ? 'fresh'
@@ -152,11 +173,36 @@ export function buildContractEntries({
 
 export function buildSignalEntries({
   compilerExplainability,
-  observability
+  observability,
+  systemInventory,
+  current,
+  bridgeCallReliability,
+  trust
 }) {
-  const metadataCoveragePct = asNumber(compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct, 0);
+  const metricAlignment = buildMetricAlignmentSignal({
+    compilerExplainability,
+    systemInventory,
+    current,
+    bridgeCallReliability,
+    trust
+  });
+  const metadataCoveragePct = asNumber(
+    compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct
+      ?? compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct
+      ?? systemInventory?.metadataCoveragePct
+      ?? current?.metadataCoveragePct
+      ?? 0,
+    0
+  );
   const databaseHealthy = compilerExplainability?.databaseHealth?.healthy === true;
   const driftSignals = Array.isArray(observability?.signals) ? observability.signals : [];
+  const canonicalPropagationState =
+    compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state
+    || compilerExplainability?.driftAssessment?.primaryIssue?.state
+    || systemInventory?.policyCoverage?.propagationExpansionState
+    || systemInventory?.policyCoveragePropagationState
+    || current?.policyCoverage?.propagationExpansionState
+    || null;
   const mappedSignals = driftSignals.map((signal) => ({
     key: signal?.key || 'unknown',
     state: normalizeState(signal?.state, 'missing'),
@@ -168,6 +214,22 @@ export function buildSignalEntries({
     severity: severityFromState(signal?.state)
   }));
   const extraSignals = [
+    {
+      key: 'metric_alignment',
+      state: metricAlignment.state,
+      healthy: metricAlignment.healthy,
+      trustworthy: metricAlignment.trustworthy,
+      reason: metricAlignment.reason,
+      recommendation: metricAlignment.recommendation,
+      sourceOfTruth: 'metric alignment',
+      severity: metricAlignment.state === 'blocked'
+        ? 'critical'
+        : metricAlignment.state === 'drifting'
+          ? 'high'
+          : metricAlignment.state === 'watching'
+            ? 'medium'
+            : 'low'
+    },
     {
       key: 'metadata_coverage',
       state: stateFromCoveragePercent(metadataCoveragePct),
@@ -193,10 +255,26 @@ export function buildSignalEntries({
         : 'Repair database health before trusting compiler persistence surfaces.',
       sourceOfTruth: 'database health summary',
       severity: severityFromState(databaseHealthy ? 'fresh' : (compilerExplainability?.databaseHealth ? 'stale' : 'missing'))
-    }
+    },
+    canonicalPropagationState ? {
+      key: 'propagation_expansion',
+      state: normalizeState(canonicalPropagationState, 'missing'),
+      healthy: normalizeState(canonicalPropagationState, 'missing') === 'fresh',
+      trustworthy: normalizeState(canonicalPropagationState, 'missing') === 'fresh',
+      reason: compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.reason
+        || compilerExplainability?.driftAssessment?.primaryIssue?.reason
+        || systemInventory?.policyCoverage?.nextAction
+        || 'Propagation expansion is not fresh.',
+      recommendation: compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.recommendation
+        || compilerExplainability?.driftAssessment?.primaryIssue?.recommendation
+        || systemInventory?.policyCoverage?.nextAction
+        || 'Attach the canonical propagation plan before trusting policy surfaces.',
+      sourceOfTruth: 'canonical propagation contract',
+      severity: severityFromState(normalizeState(canonicalPropagationState, 'missing'))
+    } : null
   ];
 
-  return [...mappedSignals, ...extraSignals];
+  return [...mappedSignals, ...extraSignals].filter(Boolean);
 }
 
 export function buildPropagationRegistry(compilerExplainability = null, systemInventory = null) {

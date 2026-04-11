@@ -1,6 +1,7 @@
 import path from 'path';
 
 import { BaseMCPTool } from '../core/shared/base-tools/base-tool.js';
+import { loadAtomVersionArchiveHistory } from '#shared/compiler/index.js';
 import {
   collectAtomHistory,
   summarizeAtomDNA,
@@ -98,6 +99,22 @@ function computeCoherenceScore({ currentAtom, historySummary, impact, databaseSc
   return Math.round((positive / checks.length) * 100) / 100;
 }
 
+async function runAtomEvolutionReportBoundary(context, work) {
+  try {
+    return await work();
+  } catch (error) {
+    return {
+      error: error?.message || 'Unexpected atom evolution report failure',
+      boundary: 'atom_evolution_report',
+      source: context?.source || 'unknown',
+      details: {
+        filePath: context?.filePath || null,
+        symbolName: context?.symbolName || null
+      }
+    };
+  }
+}
+
 export async function buildAtomEvolutionReport(args, deps = {}) {
   const {
     projectPath,
@@ -122,96 +139,106 @@ export async function buildAtomEvolutionReport(args, deps = {}) {
   const buildDatabaseSchemaResultImpl = deps.buildDatabaseSchemaResult
     ?? (await import('./get-schema-helpers.js')).buildDatabaseSchemaResult;
 
-  const atom = await getAtomDetailsImpl(rootPath, filePath, symbolName, deps.cache ?? null);
-  if (!atom) {
-    return {
-      error: `Symbol ${symbolName} not found in ${filePath}`
-    };
-  }
-
-  const currentAtom = buildCurrentAtomSnapshot(atom);
-  const [impact, historyBundle, databaseSchema] = await Promise.all([
-    includeImpact ? getFileImpactSummaryImpl(rootPath, filePath, { includeSemantic: true }) : null,
-    includeHistory ? collectAtomHistoryImpl({
-      projectPath: rootPath,
-      filePath,
-      symbolName,
-      limit
-    }, {
-      logger: deps.logger,
-      GitTerminalBridgeClass: deps.GitTerminalBridgeClass
-    }) : null,
-    includeSystemContext ? buildDatabaseSchemaResultImpl({ includeSQL: false, projectPath }) : null
-  ]);
-
-  const historySummary = includeHistory
-    ? summarizeAtomHistory(historyBundle?.history || [], historyBundle?.archiveHistory || [])
-    : summarizeAtomHistory([], []);
-
-  const report = {
-    correlationId: `${path.isAbsolute(filePath) ? filePath : path.resolve(rootPath, filePath)}#${symbolName}`,
-    input: {
-      symbolName,
-      filePath,
-      limit,
-      includeImpact,
-      includeHistory,
-      includeSystemContext
-    },
-    results: {
-      atom: currentAtom,
-      impact: impact || null,
-      history: includeHistory
-        ? {
-            ...historySummary,
-            versions: historyBundle?.history?.map((v) => ({
-              commit: v.hash?.substring?.(0, 7) || null,
-              author: v.author || null,
-              date: v.date || null,
-              summary: v.subject || v.summary || null,
-              snippet: v.codeSnippet || null
-            })) || [],
-            archiveVersions: historyBundle?.archiveHistory?.map((row) => ({
-              versionHash: row.version_hash,
-              atomId: row.atom_id,
-              atomName: row.atom_name,
-              filePath: row.file_path,
-              capturedAt: row.captured_at,
-              source: row.source,
-              fieldHashes: JSON.parse(row.field_hashes_json || '{}')
-            })) || []
-          }
-        : {
-            ...historySummary,
-            versions: [],
-            archiveVersions: []
-          },
-      systemContext: includeSystemContext ? buildSchemaContext(databaseSchema, currentAtom) : null,
-      signals: buildSignals({
-        currentAtom,
-        impact,
-        historySummary,
-        databaseSchema
-      }),
-      ramifications: {
-        directDependents: impact?.directDependents || [],
-        transitiveDependents: impact?.transitiveDependents || [],
-        highFragilityAtoms: compactNames(impact?.highFragilityAtoms || [], 12)
-      }
-    },
-    metadata: {
-      engine: 'atom-evolution-report-v1',
-      coherenceScore: computeCoherenceScore({
-        currentAtom,
-        historySummary,
-        impact,
-        databaseSchema
-      }),
-      timestamp: new Date().toISOString()
+  return runAtomEvolutionReportBoundary({
+    source: 'buildAtomEvolutionReport',
+    filePath,
+    symbolName
+  }, async () => {
+    const atom = await getAtomDetailsImpl(rootPath, filePath, symbolName, deps.cache ?? null);
+    if (!atom) {
+      return {
+        error: `Symbol ${symbolName} not found in ${filePath}`
+      };
     }
-  };
 
-  return report;
+    const currentAtom = buildCurrentAtomSnapshot(atom);
+    const [impactResult, historyBundleResult, databaseSchemaResult] = await Promise.allSettled([
+      includeImpact ? getFileImpactSummaryImpl(rootPath, filePath, { includeSemantic: true }) : Promise.resolve(null),
+      includeHistory ? collectAtomHistoryImpl({
+        projectPath: rootPath,
+        filePath,
+        symbolName,
+        limit
+      }, {
+        logger: deps.logger,
+        GitTerminalBridgeClass: deps.GitTerminalBridgeClass,
+        loadArchiveHistory: deps.loadArchiveHistory || loadAtomVersionArchiveHistory
+      }) : Promise.resolve(null),
+      includeSystemContext ? buildDatabaseSchemaResultImpl({ includeSQL: false, projectPath }) : Promise.resolve(null)
+    ]);
+
+    const impact = impactResult.status === 'fulfilled' ? impactResult.value : null;
+    const historyBundle = historyBundleResult.status === 'fulfilled' ? historyBundleResult.value : null;
+    const databaseSchema = databaseSchemaResult.status === 'fulfilled' ? databaseSchemaResult.value : null;
+    const historySummary = includeHistory
+      ? summarizeAtomHistory(historyBundle?.history || [], historyBundle?.archiveHistory || [])
+      : summarizeAtomHistory([], []);
+
+    const report = {
+      correlationId: `${path.isAbsolute(filePath) ? filePath : path.resolve(rootPath, filePath)}#${symbolName}`,
+      input: {
+        symbolName,
+        filePath,
+        limit,
+        includeImpact,
+        includeHistory,
+        includeSystemContext
+      },
+      results: {
+        atom: currentAtom,
+        impact: impact || null,
+        history: includeHistory
+          ? {
+              ...historySummary,
+              versions: historyBundle?.history?.map((v) => ({
+                commit: v.hash?.substring?.(0, 7) || null,
+                author: v.author || null,
+                date: v.date || null,
+                summary: v.subject || v.summary || null,
+                snippet: v.codeSnippet || null
+              })) || [],
+              archiveVersions: historyBundle?.archiveHistory?.map((row) => ({
+                versionHash: row.version_hash,
+                atomId: row.atom_id,
+                atomName: row.atom_name,
+                filePath: row.file_path,
+                capturedAt: row.captured_at,
+                source: row.source,
+                fieldHashes: JSON.parse(row.field_hashes_json || '{}')
+              })) || []
+            }
+          : {
+              ...historySummary,
+              versions: [],
+              archiveVersions: []
+            },
+        systemContext: includeSystemContext ? buildSchemaContext(databaseSchema, currentAtom) : null,
+        signals: buildSignals({
+          currentAtom,
+          impact,
+          historySummary,
+          databaseSchema
+        }),
+        ramifications: {
+          directDependents: impact?.directDependents || [],
+          transitiveDependents: impact?.transitiveDependents || [],
+          highFragilityAtoms: compactNames(impact?.highFragilityAtoms || [], 12)
+        }
+      },
+      metadata: {
+        engine: 'atom-evolution-report-v1',
+        coherenceScore: computeCoherenceScore({
+          currentAtom,
+          historySummary,
+          impact,
+          databaseSchema
+        }),
+        timestamp: new Date().toISOString()
+      }
+    };
+
+    return report;
+  });
 }
 
 export class AtomEvolutionReportTool extends BaseMCPTool {

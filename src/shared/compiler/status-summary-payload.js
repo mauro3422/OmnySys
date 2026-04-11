@@ -45,6 +45,7 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     cachePolicy
   });
   const propagation = metricsSnapshot?.propagation || metricsSnapshot?.current?.folderizationPropagation || null;
+  const propagationLedger = status.propagationLedger || metricsSnapshot?.current?.propagationLedger || null;
 
   return buildCompilerStatusSummaryEnvelope(status, recentErrors, {
     databaseHealth,
@@ -116,9 +117,11 @@ export function buildStatusSummaryPayload(status, recentErrors) {
     compilerExplainability,
     metricsSnapshot,
     propagation: controlPlaneContracts.propagation || propagation,
+    propagationLedger,
     healthSnapshot,
     healthPanel,
     systemTable,
+    systemTableAscii: systemTable?.ascii || null,
     controlPlane: controlPlaneContracts.controlPlane,
     systemInventory: controlPlaneContracts.systemInventory,
     canonicalPromotion: controlPlaneContracts.canonicalPromotion,

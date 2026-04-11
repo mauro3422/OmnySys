@@ -10,13 +10,42 @@
 import { asNumber } from './core-utils.js';
 import { clampScore, normalizeText } from '#shared/utils/normalize-helpers.js';
 
+function resolveCanonicalPropagationExpansionState(summary = {}, explainability = null) {
+  return normalizeText(summary.propagationExpansionState, null)
+    || normalizeText(explainability?.propagationLedger?.propagationExpansionState, null)
+    || normalizeText(explainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state, null)
+    || normalizeText(explainability?.driftAssessment?.primaryIssue?.state, null);
+}
+
+function resolveCanonicalPolicyDriftCount(summary = {}, propagationExpansionState = null) {
+  const policyDriftCount = asNumber(summary.policyDriftCount, 0);
+  const ledgerDriftCount = asNumber(summary.propagationLedger?.policyDriftCount, 0);
+  const propagationExpansionCount = asNumber(summary.propagationExpansionCount, 0);
+  const byPolicyArea = summary.byPolicyArea || {};
+  const propagationAreaCount = asNumber(byPolicyArea.propagation_expansion, 0);
+  if (ledgerDriftCount > 0) {
+    return ledgerDriftCount;
+  }
+
+  const canonicalPropagationCount = propagationExpansionCount > 0
+    ? propagationExpansionCount
+    : propagationAreaCount > 0
+      ? propagationAreaCount
+      : (propagationExpansionState === 'stale' || propagationExpansionState === 'blocked' ? 1 : 0);
+
+  return Math.max(0, policyDriftCount - canonicalPropagationCount);
+}
+
 export function buildCompilerPolicyCoverageSummary({
   inventory = null,
   explainability = null,
   standardization = null
 } = {}) {
   const summary = inventory?.summary || inventory || {};
-  const policyDriftCount = asNumber(summary.policyDriftCount, 0);
+  const propagationExpansionState = resolveCanonicalPropagationExpansionState(summary, explainability);
+  const policyDriftCount = resolveCanonicalPolicyDriftCount(summary, propagationExpansionState);
+  const rawPolicyDriftCount = asNumber(summary.policyDriftCount, 0);
+  const propagationLedger = explainability?.propagationLedger || null;
   const missingCanonicalApiCount = asNumber(
     summary.missingCanonicalApiCount ?? standardization?.summary?.missingCanonicalApiCount,
     0
@@ -28,9 +57,6 @@ export function buildCompilerPolicyCoverageSummary({
   const totalSystemCount = asNumber(summary.totalSystemCount, 0);
   const metadataCoveragePct = clampScore(summary.metadataCoveragePct);
   const integrationCoveragePct = clampScore(summary.integrationCoveragePct);
-  const propagationExpansionState = normalizeText(summary.propagationExpansionState, null)
-    || normalizeText(explainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')?.state, null)
-    || normalizeText(explainability?.driftAssessment?.primaryIssue?.state, null);
   const canonicalSurfaceCount = asNumber(summary.canonicalSurfaceCount, 0);
   const canonicalEntrypointCount = asNumber(summary.canonicalEntrypointCount, 0);
   const bridgeSystemCount = asNumber(summary.bridgeSystemCount, 0);
@@ -49,9 +75,14 @@ export function buildCompilerPolicyCoverageSummary({
   const signalPressure =
     (metadataCoveragePct > 0 && metadataCoveragePct < 80 ? 10 : 0) +
     (integrationCoveragePct > 0 && integrationCoveragePct < 80 ? 10 : 0);
+  const propagationPressure = propagationExpansionState === 'stale'
+    ? 10
+    : propagationExpansionState === 'blocked'
+      ? 20
+      : 0;
   const driftPressure = normalizedDriftPressure
     + canonicalGapPressure
-    + (propagationExpansionState === 'stale' ? 20 : 0)
+    + propagationPressure
     + signalPressure;
   const coverageScore = clampScore(100 - driftPressure);
   const coverageState = driftPressure > 0 ? (driftPressure >= 75 ? 'stale' : 'watching') : 'fresh';
@@ -69,6 +100,7 @@ export function buildCompilerPolicyCoverageSummary({
   return {
     policyDriftCount,
     propagationExpansionState,
+    propagationLedger,
     coverageState,
     coverageScore,
     totalSystemCount,
@@ -85,7 +117,7 @@ export function buildCompilerPolicyCoverageSummary({
     recommendation: coverageState === 'fresh'
       ? 'Keep the canonical propagation contract attached to all status and reporting surfaces.'
       : 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.',
-    summaryText: `coverage=${coverageState} | score=${coverageScore} | load=${coverageLoad}/${totalSystemCount} | drift=${policyDriftCount} | canonical=${missingCanonicalApiCount}/${missingCanonicalSurfaceCount} | expansion=${propagationExpansionState || 'unknown'} | ${signalSummary}`,
+    summaryText: `coverage=${coverageState} | score=${coverageScore} | load=${coverageLoad}/${totalSystemCount} | drift=${policyDriftCount} | raw=${rawPolicyDriftCount} | canonical=${missingCanonicalApiCount}/${missingCanonicalSurfaceCount} | expansion=${propagationExpansionState || 'unknown'} | ${signalSummary}`,
     inventoryState: normalizeText(summary.inventoryState, null)
   };
 }

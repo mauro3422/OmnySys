@@ -181,6 +181,14 @@ export {
 } from './policy-coverage-summary.js';
 
 export {
+  loadConsolidationClusterContext
+} from './conceptual-cluster-service.js';
+
+export {
+  loadAtomVersionArchiveHistory
+} from './atom-history-archive.js';
+
+export {
   buildCanonicalPromotionSnapshot,
   buildCanonicalPromotionReport,
   summarizeCanonicalPromotion
@@ -199,6 +207,16 @@ export {
 export {
   buildCompilerLayerReliability
 } from './compiler-metric-reliability.js';
+
+export {
+  buildMetricAlignmentSignal,
+  summarizeMetricAlignment
+} from './metric-alignment-summary.js';
+
+export {
+  buildPropagationLedger,
+  summarizePropagationLedger
+} from './propagation-ledger.js';
 
 export {
   buildCachePolicySummary
@@ -240,7 +258,8 @@ export {
   getBridgeRuntimeTelemetryPath,
   readBridgeRuntimeTelemetry,
   writeBridgeRuntimeTelemetrySync,
-  summarizeBridgeRuntimeTelemetry
+  summarizeBridgeRuntimeTelemetry,
+  summarizeBridgeCallReliability
 } from './bridge-runtime-telemetry.js';
 
 export {

@@ -2,7 +2,7 @@ import { createLogger } from '../../../utils/logger.js';
 import {
   buildTrustInvestigationReport,
   summarizeTrustInvestigationReport
-} from '#shared/compiler/trust-investigation-report.js';
+} from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:trust-investigation');
 

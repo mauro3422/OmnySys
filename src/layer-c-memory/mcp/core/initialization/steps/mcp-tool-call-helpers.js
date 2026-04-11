@@ -18,7 +18,8 @@ import {
   buildCompilerMetricsSnapshot,
   summarizeCompilerMetricsSnapshot,
   evaluateToolRunTelemetry,
-  persistToolRunTelemetry
+  persistToolRunTelemetry,
+  summarizeSharedStateHotspots
 } from '../../../../../shared/compiler/index.js';
 import {
   buildTransportProvenance,
@@ -184,8 +185,10 @@ export function buildToolCallProvenance(name, server, recentErrors, transportCon
     clientId: transportContext?.clientId || null,
     sessionKind: transportContext?.sessionKind || null
   });
+  const sharedStateHotspots = summarizeSharedStateHotspots(server.sharedState || {});
 
-  return buildTelemetryProvenance({
+  return {
+    ...buildTelemetryProvenance({
     source: name,
     phase2PendingFiles: server.orchestrator?.phase2Pending || 0,
     runtimeRestartMode: server.runtimeRestartMode || 'manual',
@@ -201,7 +204,9 @@ export function buildToolCallProvenance(name, server, recentErrors, transportCon
         expired: recentErrors.watcherAlerts?.filter(a => a.lifecycle?.status === 'expired').length || 0
       }
     }
-  });
+    }),
+    sharedStateHotspots
+  };
 }
 
 export function buildToolCallResult(rawResult, recentErrors, provenance) {

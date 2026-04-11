@@ -94,7 +94,13 @@ function compactInventorySignals(systemInventory = null) {
     missingCanonicalSurfaceCount: asNumber(summary.missingCanonicalSurfaceCount || systemInventory?.missingCanonicalSurfaceCount, 0),
     standardizationGapCount: asNumber(summary.standardizationGapCount || systemInventory?.standardizationGapCount, 0),
     integrationCoveragePct: asNumber(summary.integrationCoveragePct || systemInventory?.integrationCoveragePct, 0),
-    metadataCoveragePct: asNumber(summary.metadataCoveragePct || systemInventory?.metadataCoveragePct, 0),
+    metadataCoveragePct: asNumber(
+      summary.metadataFieldCoveragePct
+        || summary.metadataCoveragePct
+        || systemInventory?.metadataFieldCoveragePct
+        || systemInventory?.metadataCoveragePct,
+      0
+    ),
     historyStoreState: summary.historyStoreState || systemInventory?.historyStoreState || null,
     historyStoreCount: asNumber(summary.historyStoreCount || systemInventory?.historyStoreCount, 0),
     nextAction: summary.nextAction || systemInventory?.nextAction || null

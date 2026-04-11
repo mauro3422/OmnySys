@@ -26,8 +26,10 @@ function extractStatusContext(status = {}) {
   const updateSurface = buildUpdateSurfaceSummary(status);
   const propagationExpansion = status.compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
     || (status.compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? status.compilerExplainability.driftAssessment.primaryIssue : null);
+  const propagationLedger = status.propagationLedger || status.metricsSnapshot?.current?.propagationLedger || null;
   const controlPlaneContracts = resolveControlPlaneContracts(status);
   const policyCoverage = controlPlaneContracts.policyCoverage || resolvePolicyCoverageSummary(status);
+  const metricAlignment = controlPlaneContracts.metricAlignment || status.metricAlignment || null;
   const folderizationAutomation = controlPlaneContracts.folderizationAutomation || status.compilerExplainability?.folderization?.automation || null;
   const folderizationAdoption = controlPlaneContracts.folderizationAdoption
     || folderizationAutomation?.propagationAdoption
@@ -51,7 +53,7 @@ function extractStatusContext(status = {}) {
     status, databaseHealth, metricsSnapshot, current, daily, lifetime,
     mcpSessions, watcher, toolInventory, recentErrorSummary, updateSurface,
     propagationExpansion, controlPlaneContracts, policyCoverage,
-    folderizationAutomation, folderizationAdoption, historyStores,
+    folderizationAutomation, folderizationAdoption, historyStores, propagationLedger,
     structuralGroups, conceptualGroups, totalDuplicates, healthGrade, healthScore, snapshotState
   };
 }
@@ -172,6 +174,17 @@ function buildPropagationRow(propagationExpansion) {
   };
 }
 
+function buildPropagationLedgerRow(propagationLedger) {
+  return {
+    area: 'Propagation Ledger',
+    state: propagationLedger?.state || 'missing',
+    detail: propagationLedger
+      ? `alignment=${propagationLedger.alignmentState || 'n/a'} | drift=${normalizeCount(propagationLedger.policyDriftCount || 0)} | raw=${normalizeCount(propagationLedger.rawPolicyDriftCount || 0)} | expansion=${propagationLedger.propagationExpansionState || 'n/a'} | surfaces=${(propagationLedger.affectedSurfaces || []).slice(0, 4).join(', ') || 'n/a'}`
+      : 'propagation ledger not available',
+    source: 'propagation ledger'
+  };
+}
+
 function buildDebtRow(current, totalDuplicates) {
   return {
     area: 'Debt',
@@ -203,7 +216,7 @@ function buildSystemsRow(controlPlaneContracts) {
   return {
     area: 'Systems',
     state: controlPlaneContracts.systemInventory?.inventoryState || controlPlaneContracts.systemInventory?.summary?.inventoryState || 'watching',
-    detail: `canonical=${normalizeCount((controlPlaneContracts.systemInventory?.canonicalSurfaceCount || controlPlaneContracts.systemInventory?.summary?.canonicalSurfaceCount || 0) + (controlPlaneContracts.systemInventory?.canonicalEntrypointCount || controlPlaneContracts.systemInventory?.summary?.canonicalEntrypointCount || 0))} | emergent=${normalizeCount(controlPlaneContracts.systemInventory?.emergentSystemCount || controlPlaneContracts.systemInventory?.summary?.emergentSystemCount)} | bridge=${normalizeCount(controlPlaneContracts.systemInventory?.bridgeSystemCount || controlPlaneContracts.systemInventory?.summary?.bridgeSystemCount)} | wrapper=${normalizeCount(controlPlaneContracts.systemInventory?.wrapperSystemCount || controlPlaneContracts.systemInventory?.summary?.wrapperSystemCount)} | audit=${controlPlaneContracts.systemInventory?.surfaceAuditTrustworthy === true ? 'ok' : 'watching'} | gateway=${controlPlaneContracts.systemInventory?.dataGatewayTrustworthy === true ? 'ok' : 'watching'} | meta=${normalizeCount(controlPlaneContracts.systemInventory?.metadataCoveragePct || controlPlaneContracts.systemInventory?.summary?.metadataCoveragePct)}% | integration=${normalizeCount(controlPlaneContracts.integrationCoveragePct || 0)}% | next=${controlPlaneContracts.systemInventory?.nextAction || controlPlaneContracts.systemInventory?.summary?.nextAction || 'n/a'}`,
+    detail: `canonical=${normalizeCount((controlPlaneContracts.systemInventory?.canonicalSurfaceCount || controlPlaneContracts.systemInventory?.summary?.canonicalSurfaceCount || 0) + (controlPlaneContracts.systemInventory?.canonicalEntrypointCount || controlPlaneContracts.systemInventory?.summary?.canonicalEntrypointCount || 0))} | emergent=${normalizeCount(controlPlaneContracts.systemInventory?.emergentSystemCount || controlPlaneContracts.systemInventory?.summary?.emergentSystemCount)} | bridge=${normalizeCount(controlPlaneContracts.systemInventory?.bridgeSystemCount || controlPlaneContracts.systemInventory?.summary?.bridgeSystemCount)} | wrapper=${normalizeCount(controlPlaneContracts.systemInventory?.wrapperSystemCount || controlPlaneContracts.systemInventory?.summary?.wrapperSystemCount)} | audit=${controlPlaneContracts.systemInventory?.surfaceAuditTrustworthy === true ? 'ok' : 'watching'} | gateway=${controlPlaneContracts.systemInventory?.dataGatewayTrustworthy === true ? 'ok' : 'watching'} | meta=${normalizeCount(controlPlaneContracts.systemInventory?.metadataCoveragePct || controlPlaneContracts.systemInventory?.metadataFieldCoveragePct || controlPlaneContracts.systemInventory?.summary?.metadataCoveragePct)}% | alignment=${metricAlignment?.state || 'missing'} | integration=${normalizeCount(controlPlaneContracts.integrationCoveragePct || 0)}% | next=${controlPlaneContracts.systemInventory?.nextAction || controlPlaneContracts.systemInventory?.summary?.nextAction || 'n/a'}`,
     source: 'system inventory'
   };
 }
@@ -235,7 +248,7 @@ function buildAduanaRow(policyCoverage, controlPlaneContracts) {
     area: 'Aduana',
     state: policyCoverage?.state || 'watching',
     detail: policyCoverage
-      ? `score=${policyCoverage.score} | drift=${policyCoverage.drift} | expansion=${policyCoverage.expansion} | coverage=${policyCoverage.coveragePercent} | integration=${normalizeCount(policyCoverage.integrationCoveragePct || controlPlaneContracts.integrationCoveragePct || 0)}% | meta=${normalizeCount(policyCoverage.metadataCoveragePct || 0)}% | next=${policyCoverage.nextAction}`
+      ? `score=${policyCoverage.score} | drift=${policyCoverage.drift} | expansion=${policyCoverage.expansion} | coverage=${policyCoverage.coveragePercent} | integration=${normalizeCount(policyCoverage.integrationCoveragePct || controlPlaneContracts.integrationCoveragePct || 0)}% | meta=${normalizeCount(policyCoverage.metadataCoveragePct || 0)}% | alignment=${metricAlignment?.state || 'missing'} | next=${policyCoverage.nextAction}`
       : 'policy coverage gate not loaded',
     source: 'system inventory policy coverage'
   };
@@ -300,6 +313,40 @@ function buildErrorsRow(recentErrorSummary) {
   };
 }
 
+function normalizeCell(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+export function renderSystemTableAscii(table = null) {
+  if (!table || !Array.isArray(table.rows) || table.rows.length === 0) {
+    return 'Control Plane\n(no rows)';
+  }
+
+  const headers = ['Area', 'State', 'Detail', 'Source'];
+  const rows = table.rows.map((row) => [
+    normalizeCell(row.area),
+    normalizeCell(row.state),
+    normalizeCell(row.detail),
+    normalizeCell(row.source)
+  ]);
+
+  const widths = headers.map((header, index) => Math.max(
+    header.length,
+    ...rows.map((row) => row[index].length)
+  ));
+  const border = `+${widths.map((width) => '-'.repeat(width + 2)).join('+')}+`;
+  const renderRow = (cells) => `| ${cells.map((cell, index) => cell.padEnd(widths[index], ' ')).join(' | ')} |`;
+
+  return [
+    'Control Plane',
+    border,
+    renderRow(headers),
+    border,
+    ...rows.map(renderRow),
+    border
+  ].join('\n');
+}
+
 // ── Main orchestrator ──────────────────────────────────────────────
 
 export function buildSystemTableSummary(status = {}) {
@@ -320,6 +367,7 @@ export function buildSystemTableSummary(status = {}) {
     buildBehaviorRow(ctx.current),
     buildDriftRow(ctx.current),
     buildPropagationRow(ctx.propagationExpansion),
+    buildPropagationLedgerRow(ctx.propagationLedger),
     buildDebtRow(ctx.current, ctx.totalDuplicates),
     buildSessionsRow(ctx.current, ctx.mcpSessions),
     buildToolsRow(ctx.toolInventory),
@@ -337,10 +385,12 @@ export function buildSystemTableSummary(status = {}) {
 
   return {
     title: 'Control Plane',
-    rows
+    rows,
+    ascii: renderSystemTableAscii({ rows })
   };
 }
 
 export default {
-  buildSystemTableSummary
+  buildSystemTableSummary,
+  renderSystemTableAscii
 };
