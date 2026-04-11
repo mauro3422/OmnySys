@@ -5,8 +5,8 @@
  * This script wipes local data, runs a full initialization,
  * and measures the time it takes to complete both Phase 1 and Phase 2.
  */
-import { OmnySysMCPServer } from '../src/layer-c-memory/mcp/core/server-class.js';
-import { getRepository } from '../src/layer-c-memory/storage/repository/index.js';
+import { OmnySysMCPServer } from '../../src/layer-c-memory/mcp/core/server-class.js';
+import { getRepository } from '../../src/layer-c-memory/storage/repository/index.js';
 import fs from 'fs/promises';
 import path from 'path';
 

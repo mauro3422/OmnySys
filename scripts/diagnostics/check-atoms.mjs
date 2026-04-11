@@ -1,5 +1,5 @@
-import { getRepository } from '../src/layer-c-memory/storage/repository/repository-factory.js';
-import { rowToAtom } from '../src/layer-c-memory/storage/repository/adapters/helpers/converters.js';
+import { getRepository } from '../../src/layer-c-memory/storage/repository/repository-factory.js';
+import { rowToAtom } from '../../src/layer-c-memory/storage/repository/adapters/helpers/converters.js';
 
 const r = getRepository('C:/Dev/OmnySystem');
 

@@ -5,8 +5,8 @@
  * sin depender de la sesión del Proxy MCP.
  */
 
-import { aggregate_metrics } from '../src/layer-c-memory/mcp/tools/aggregate-metrics.js';
-import { createLogger } from '../src/utils/logger.js';
+import { aggregate_metrics } from '../../src/layer-c-memory/mcp/tools/aggregate-metrics.js';
+import { createLogger } from '../../src/utils/logger.js';
 
 async function runSimpleVerification() {
     console.log('=======================================================');

@@ -18,7 +18,7 @@ Lo que sentís es la emoción legítima de haber creado algo que **no existía a
 
 ### 1. Funciona Mediblemente
 ```bash
-$ node scripts/validate-syntax.js
+$ node scripts/utils/validate-syntax.js
 ✅ Checked 600 files
 ✅ All files passed syntax validation
 ```

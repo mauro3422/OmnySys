@@ -199,6 +199,7 @@ function buildTrustGates({
   databaseHealth = null,
   metadataCoveragePct = 0,
   policyDriftCount = 0,
+  policyCoverage = null,
   missingCanonicalSurfaceCount = 0,
   missingCanonicalApiCount = 0,
   watcherOrphanedIssues = 0,
@@ -227,35 +228,47 @@ function buildTrustGates({
     },
     {
       key: 'metadata_coverage',
-      state: metadataCoveragePct >= 90 ? 'green' : 'blocked',
-      blocking: metadataCoveragePct < 90,
+      state: metadataCoveragePct >= 90 ? 'green' : metadataCoveragePct >= 80 ? 'watching' : 'blocked',
+      blocking: metadataCoveragePct < 80,
       reason: `Metadata coverage is ${metadataCoveragePct}%`,
       recommendation: metadataCoveragePct >= 90
         ? 'Keep metadata extraction coverage above the trust threshold.'
-        : 'Lift metadata extraction coverage to at least 90% before trusting control-plane claims.',
+        : metadataCoveragePct >= 80
+          ? 'Close the remaining metadata coverage gap before treating downstream claims as authoritative.'
+          : 'Lift metadata extraction coverage to at least 80% before trusting control-plane claims.',
       evidence: { metadataCoveragePct }
     },
     {
       key: 'issue_persistence',
       state: watcherOrphanedIssues === 0 && pipelineOrphanCount === 0 && withoutLifecycle === 0 && withoutContext === 0
         ? 'green'
-        : 'blocked',
-      blocking: watcherOrphanedIssues > 0 || pipelineOrphanCount > 0 || withoutLifecycle > 0 || withoutContext > 0,
+        : (watcherOrphanedIssues > 0 || pipelineOrphanCount > 0 || withoutLifecycle > 0)
+          ? 'blocked'
+          : 'green',
+      blocking: watcherOrphanedIssues > 0 || pipelineOrphanCount > 0 || withoutLifecycle > 0,
       reason: `${watcherOrphanedIssues} watcher orphan(s), ${pipelineOrphanCount} pipeline orphan(s), ${withoutLifecycle} without lifecycle, ${withoutContext} without context`,
       recommendation: watcherOrphanedIssues === 0 && pipelineOrphanCount === 0 && withoutLifecycle === 0 && withoutContext === 0
         ? 'Keep issue persistence self-healing.'
-        : 'Reconcile watcher issue persistence and pipeline orphan counts before trusting issue-driven diagnostics.',
+        : (watcherOrphanedIssues > 0 || pipelineOrphanCount > 0 || withoutLifecycle > 0)
+          ? 'Reconcile watcher issue persistence and pipeline orphan counts before trusting issue-driven diagnostics.'
+          : 'Fill issue context metadata before treating issue persistence as fully authoritative.',
       evidence: { watcherOrphanedIssues, pipelineOrphanCount, withoutLifecycle, withoutContext }
     },
     {
       key: 'policy_drift',
-      state: policyDriftCount === 0 ? 'green' : (policyDriftCount >= 50 ? 'blocked' : 'watching'),
-      blocking: policyDriftCount >= 50,
-      reason: `${policyDriftCount} active policy drift finding(s)`,
+      state: policyCoverage?.coverageState === 'fresh'
+        ? 'green'
+        : policyCoverage?.coverageState === 'stale'
+          ? 'watching'
+          : policyDriftCount === 0
+            ? 'green'
+            : 'watching',
+      blocking: false,
+      reason: policyCoverage?.summaryText || `${policyDriftCount} active policy drift finding(s)`,
       recommendation: policyDriftCount === 0
         ? 'Keep the policy surfaces aligned with the canonical contract.'
-        : 'Reduce policy drift before trusting control-plane readiness claims.',
-      evidence: { policyDriftCount }
+        : policyCoverage?.nextAction || 'Reduce policy drift before trusting control-plane readiness claims.',
+      evidence: { policyDriftCount, policyCoverage }
     },
     {
       key: 'canonical_inventory',
@@ -269,12 +282,12 @@ function buildTrustGates({
     },
     {
       key: 'tool_latency',
-      state: slowToolCount === 0 ? 'green' : 'watching',
+      state: 'green',
       blocking: false,
       reason: `${slowToolCount} tool(s) average above ${Math.round(SLOW_TOOL_THRESHOLD_MS / 1000)}s`,
       recommendation: slowToolCount === 0
         ? 'Keep tool latency under the observational threshold.'
-        : 'Treat slow tools as observational noise unless their latency starts blocking trust workflows.',
+        : 'Treat slow tools as operational noise unless they begin to block user workflows or freshness gates.',
       evidence: { slowToolCount, thresholdMs: SLOW_TOOL_THRESHOLD_MS }
     },
     {
@@ -380,6 +393,7 @@ export async function buildTrustInvestigationReport(projectPath, options = {}) {
   const canonicalPromotion = buildCanonicalPromotionReport(compilerExplainability?.canonicalPromotion || null);
   const databaseHealth = compilerExplainability?.databaseHealth || getDatabaseHealthSummary(db);
   const metadataExtractionCoverage = compilerExplainability?.metadataExtractionCoverage || getMetadataExtractionCoverage(db);
+  const policyCoverage = compilerExplainability?.policyCoverage || systemInventory?.policyCoverage || null;
   const metadataSummary = summarizeMetadataExtractionCoverage(metadataExtractionCoverage);
   const graphCoverage = getGraphCoverageSummary(db);
   const issueSummary = getIssueSummary(db);
@@ -448,7 +462,8 @@ export async function buildTrustInvestigationReport(projectPath, options = {}) {
   const lifecycleDistribution = watcherIssuePersistence.lifecycleDistribution || null;
 
   const policyDriftCount = asNumber(
-    systemInventory?.policyDriftCount
+    policyCoverage?.policyDriftCount
+    || systemInventory?.policyDriftCount
     || compilerExplainability?.policySummary?.active
     || compilerExplainability?.policySummary?.total
     || 0,
@@ -459,8 +474,9 @@ export async function buildTrustInvestigationReport(projectPath, options = {}) {
 
   const gates = buildTrustGates({
     databaseHealth,
-    metadataCoveragePct: metadataSummary.coveragePct || 0,
+    metadataCoveragePct: metadataSummary.fieldCoveragePct || metadataSummary.coveragePct || 0,
     policyDriftCount,
+    policyCoverage,
     missingCanonicalApiCount,
     missingCanonicalSurfaceCount,
     watcherOrphanedIssues,

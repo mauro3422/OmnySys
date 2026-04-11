@@ -8,14 +8,14 @@
     "health": "http://localhost:9999/health"
   },
   "targets": {
-    "codex": "/home/maur/.codex/config.toml",
+    "codex": "C:/Users/mauro/.codex/config.toml",
     "clineVsCode": "C:/Users/mauro/AppData/Roaming/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
     "clineCursor": "C:/Users/mauro/AppData/Roaming/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json",
-    "claude": "/home/maur/.claude.json",
-    "opencode": "/home/maur/.config/opencode/opencode.json",
-    "qwen": "/home/maur/.qwen/settings.json",
-    "antigravity": "/home/maur/.gemini/antigravity/mcp_config.json",
-    "geminiCli": "/home/maur/.gemini/settings.json"
+    "claude": "C:/Users/mauro/.claude.json",
+    "opencode": "C:/Users/mauro/.config/opencode/opencode.json",
+    "qwen": "C:/Users/mauro/.qwen/settings.json",
+    "antigravity": "C:/Users/mauro/.gemini/antigravity/mcp_config.json",
+    "geminiCli": "C:/Users/mauro/.gemini/settings.json"
   },
   "workspace": {
     "dotMcp": "C:/Dev/OmnySystem/.mcp.json",

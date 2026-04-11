@@ -7,12 +7,12 @@
  * Usage: node scripts/cleanup-orphans.js
  */
 
-import { getDatabase, initializeStorage, closeStorage } from '../src/layer-c-memory/storage/database/connection.js';
+import { getDatabase, initializeStorage, closeStorage } from '../../src/layer-c-memory/storage/database/connection.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT_PATH = path.join(__dirname, '..');
+const ROOT_PATH = path.join(__dirname, '..', '..');
 
 async function main() {
     console.log('\n🧹 OmnySys Database Cleanup');

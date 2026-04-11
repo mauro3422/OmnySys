@@ -8,7 +8,7 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
-import { createLogger } from '../src/utils/logger.js';
+import { createLogger } from '../../src/utils/logger.js';
 
 
 const logger = createLogger('Janitor:Remediate');

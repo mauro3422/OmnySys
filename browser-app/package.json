@@ -1,0 +1,29 @@
+{
+  "name": "omnysystem-browser",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5199",
+    "dev:api": "node server/db-api.js",
+    "dev:all": "node server/db-api.js & vite --port 5199",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.6.0",
+    "better-sqlite3": "^11.9.1",
+    "dagre": "^0.8.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "recharts": "^2.15.3"
+  },
+  "devDependencies": {
+    "@types/dagre": "^0.7.54",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "~5.7.2",
+    "vite": "^6.3.1"
+  }
+}

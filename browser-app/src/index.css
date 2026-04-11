@@ -1,0 +1,321 @@
+:root {
+  /* Design Tokens - Catppuccin Mocha Inspired */
+  --bg-app: #11111b;
+  --bg-surface: #1e1e2e;
+  --bg-overlay: #313244;
+  --bg-accent: #45475a;
+  
+  --fg-text: #cdd6f4;
+  --fg-subtext: #a6adc8;
+  --fg-overlay: #7f849c;
+  
+  --accent-blue: #89b4fa;
+  --accent-lavender: #b4befe;
+  --accent-sapphire: #74c7ec;
+  --accent-sky: #89dceb;
+  --accent-green: #a6e3a1;
+  --accent-peach: #fab387;
+  --accent-red: #f38ba8;
+  --accent-mauve: #cba6f7;
+  --accent-yellow: #f9e2af;
+  
+  --border: #313244;
+  --border-subtle: rgba(205, 214, 244, 0.05);
+  
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --glass: rgba(30, 30, 46, 0.7);
+  
+  --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--fg-text);
+  font-family: var(--font-main);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ── Header ────────────────────────────────────────── */
+.app-header {
+  height: 56px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 24px;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  font-size: 20px;
+  color: var(--accent-blue);
+  filter: drop-shadow(0 0 8px rgba(137, 180, 250, 0.4));
+  animation: pulse-glow 3s infinite ease-in-out;
+}
+
+.logo-text {
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: -0.5px;
+  background: linear-gradient(to right, var(--fg-text), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  color: var(--fg-subtext);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+}
+
+.tab:hover {
+  background: var(--bg-overlay);
+  color: var(--fg-text);
+}
+
+.tab.active {
+  background: rgba(137, 180, 250, 0.1);
+  color: var(--accent-blue);
+}
+
+.tab-icon { font-size: 16px; }
+
+.app-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--fg-overlay);
+}
+
+.stat-chip {
+  background: var(--bg-overlay);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  color: var(--fg-subtext);
+}
+
+.data-source-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.data-source-badge.live { background: rgba(166, 227, 161, 0.1); color: var(--accent-green); border: 1px solid rgba(166, 227, 161, 0.2); }
+.data-source-badge.demo { background: rgba(249, 226, 175, 0.1); color: var(--accent-yellow); border: 1px solid rgba(249, 226, 175, 0.2); }
+
+/* ── Content Layout ────────────────────────────────── */
+.app-content {
+  flex: 1;
+  overflow: hidden;
+  background-color: var(--bg-app);
+}
+
+aside {
+  box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+  z-index: 10;
+}
+
+/* ── Status Bar ────────────────────────────────────── */
+.health-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(17, 17, 27, 0.5);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.status-dot.healthy { background-color: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+.status-dot.warning { background-color: var(--accent-yellow); box-shadow: 0 0 8px var(--accent-yellow); }
+.status-dot.error { background-color: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+
+.status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: 0.4;
+  animation: pulse-ring 2s infinite;
+}
+
+/* ── Cards & Sections ─────────────────────────────── */
+.health-dashboard {
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.health-section {
+  margin-bottom: 40px;
+}
+
+.health-section h3 {
+  font-size: 14px;
+  color: var(--fg-overlay);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-card-icon {
+  font-size: 24px;
+  opacity: 0.8;
+}
+
+.stat-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+.stat-card-label {
+  font-size: 12px;
+  color: var(--fg-overlay);
+  font-weight: 600;
+}
+
+.stat-card-sub {
+  font-size: 10px;
+  color: var(--fg-overlay);
+  opacity: 0.7;
+}
+
+/* ── Loading Spinner ───────────────────────────────── */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--bg-overlay);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 1s infinite linear;
+}
+
+/* ── Animations ────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse-glow { 0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px var(--accent-blue)); } 50% { opacity: 0.7; filter: drop-shadow(0 0 12px var(--accent-blue)); } }
+@keyframes pulse-ring { 0% { transform: scale(0.8); opacity: 0.5; } 100% { transform: scale(2); opacity: 0; } }
+
+/* ── React Flow Customization ───────────────────────── */
+.react-flow__node-fileNode {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.react-flow__handle {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-blue);
+  border: 2px solid var(--bg-app);
+}
+
+.react-flow__controls {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.react-flow__controls-button {
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-text);
+  fill: var(--fg-text);
+}
+
+.react-flow__controls-button:hover {
+  background: var(--bg-overlay);
+}

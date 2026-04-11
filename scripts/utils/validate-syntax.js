@@ -8,7 +8,7 @@
 
 import { execSync } from 'child_process';
 import fg from 'fast-glob';
-import { createLogger } from '../src/utils/logger.js';
+import { createLogger } from '../../src/utils/logger.js';
 
 const logger = createLogger('OmnySys:validate');
 

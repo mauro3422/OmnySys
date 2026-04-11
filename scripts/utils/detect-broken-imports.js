@@ -8,7 +8,7 @@
  * - Elimina template literals y strings de ejemplo
  * - Ignora directorios: tests/, test/, test-cases/, archive/
  * 
- * Uso: node scripts/detect-broken-imports.js
+ * Uso: node scripts/utils/detect-broken-imports.js
  */
 
 import fs from 'fs';
@@ -16,7 +16,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.resolve(__dirname, '..');
+const rootDir = path.resolve(__dirname, '..', '..');
 
 // Directorios a ignorar (no son código de producción)
 const IGNORE_DIRS = new Set([

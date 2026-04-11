@@ -80,7 +80,7 @@ Sugerencia: Migración gradual
 
 ### ✅ 4. Validación de Sintaxis Pre-Commit
 
-**Script**: `scripts/validate-syntax.js`
+**Script**: `scripts/utils/validate-syntax.js`
 
 **Función**: Valida TODOS los archivos JS antes de permitir commit
 

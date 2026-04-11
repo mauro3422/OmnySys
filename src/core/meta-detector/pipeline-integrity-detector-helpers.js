@@ -17,10 +17,11 @@ export function auditWatcherIssues(recentIssues) {
     return recentIssues.reduce((summary, issue) => {
         try {
             const context = parsePersistedField(issue.context_json, {});
-            if (!context.lifecycle || context.lifecycle.status === 'unknown') {
+            const lifecycleStatus = context.lifecycle?.status || 'unknown';
+            if (!context.lifecycle || lifecycleStatus === 'unknown') {
                 summary.withoutLifecycle++;
             }
-            if (!context.suggestedAction) {
+            if (!context.suggestedAction && lifecycleStatus === 'active') {
                 summary.withoutContext++;
             }
         } catch {

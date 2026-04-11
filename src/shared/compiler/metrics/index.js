@@ -220,7 +220,24 @@ function buildActiveAtomsDriftAssessment(current = null, history = null) {
   const previousActiveAtoms = asNumber(previous?.activeAtoms, 0);
   const delta = currentActiveAtoms - previousActiveAtoms;
   const deltaPct = previousActiveAtoms > 0 ? Number(((delta / previousActiveAtoms) * 100).toFixed(2)) : 0;
-  if (staleRows > 0) return { state: 'blocked', healthy: false, trustworthy: false, severity: 'high', reason: `Live support tables are drifting from the atom graph (${staleRows} stale row(s)).`, recommendation: liveRowSync?.before?.recommendedActions?.[0] || 'Reconcile the live support tables before trusting active atom counts.', evidence: liveRowSync, delta, deltaPct };
+  if (staleRows > 0) {
+    const phase2Settling = liveRowSync?.skippedReason === 'phase2_settling';
+    return {
+      state: phase2Settling ? 'partial' : 'blocked',
+      healthy: phase2Settling,
+      trustworthy: phase2Settling,
+      severity: phase2Settling ? 'low' : 'high',
+      reason: phase2Settling
+        ? `Live support tables are still settling while Phase 2 is pending (${staleRows} stale row(s)).`
+        : `Live support tables are drifting from the atom graph (${staleRows} stale row(s)).`,
+      recommendation: phase2Settling
+        ? 'Wait for Phase 2 to settle before forcing live-row cleanup or trusting support-table counts.'
+        : (liveRowSync?.before?.recommendedActions?.[0] || 'Reconcile the live support tables before trusting active atom counts.'),
+      evidence: liveRowSync,
+      delta,
+      deltaPct
+    };
+  }
   if (!previous) return { state: 'initial', healthy: true, trustworthy: true, severity: 'low', reason: 'First active atom snapshot captured.', recommendation: 'Capture another snapshot to establish an active atom baseline.', evidence: { activeAtoms: currentActiveAtoms }, delta, deltaPct };
   const previousScale = Math.max(1, previousActiveAtoms);
   const blockedThreshold = Math.max(250, Math.round(previousScale * 0.25));

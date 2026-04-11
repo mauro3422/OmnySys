@@ -23,7 +23,7 @@
 
 ## Los 26 Imports Rotos — Detalle Completo
 
-*Fuente: `logs/broken-imports-report.json` — ejecutar `node scripts/detect-broken-imports.js`*
+*Fuente: `logs/broken-imports-report.json` — ejecutar `node scripts/utils/detect-broken-imports.js`*
 
 ### Categoría A: Path Incorrecto (archivo existe, path equivocado)
 
@@ -300,7 +300,7 @@ Archivos test nuevos: 2 (smoke.test.js + import-health.test.js = 44 tests nuevos
 
 ```bash
 # Detectar imports rotos
-node scripts/detect-broken-imports.js
+node scripts/utils/detect-broken-imports.js
 
 # Ver reporte completo
 cat logs/broken-imports-report.json

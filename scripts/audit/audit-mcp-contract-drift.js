@@ -2,10 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
-import { getTableColumns } from '../src/layer-c-memory/storage/database/schema-registry.js';
+import { getTableColumns } from '../../src/layer-c-memory/storage/database/schema-registry.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..', '..');
 const DB_PATH = path.join(ROOT, '.omnysysdata', 'omnysys.db');
 const QUERY_FILE = path.join(ROOT, 'src', 'layer-c-memory', 'mcp', 'tools', 'semantic', 'semantic-queries.js');
 const CHANGELOG_FILE = path.join(ROOT, 'CHANGELOG.md');

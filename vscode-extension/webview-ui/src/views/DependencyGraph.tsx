@@ -94,6 +94,10 @@ export function DependencyGraph({ files, dependencies, onFileSelect }: Props) {
       .map(d => {
         const sourceFile = files.find(f => f.path === d.source);
         const sourceColor = sourceFile ? (riskColors[sourceFile.riskLevel] || '#585b70') : '#7f849c';
+        
+        // Semantic coloring (Draft for unified logic)
+        // Note: VS Code webview currently doesn't have a 'selectedFile' passed to this component 
+        // in the same way, but we can prepare the structure.
         const edgeColor = d.isDynamic ? '#f1c40f' : sourceColor;
         
         return {
