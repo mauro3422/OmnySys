@@ -1,7 +1,7 @@
 import { summarizeSemanticCanonicality } from './semantic-surface-granularity.js';
 import { buildAnalysisGenerationSnapshot } from './counts-generation.js';
 import { buildCompilerDriftAssessment } from './compiler-drift-assessment.js';
-import { buildCompilerStandardizationReport } from './standardization-report.js';
+import { buildCompilerStandardizationReport } from './standardization-report/index.js';
 import { buildCompilerContractLayer } from './compiler-contract-layer/layer.js';
 import { buildSurfaceAudit } from './surface-audit/audit.js';
 import { buildResolvedCanonicalAdoptions } from './compiler-diagnostics-snapshot-contracts-adoptions.js';

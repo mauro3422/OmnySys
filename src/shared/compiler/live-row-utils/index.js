@@ -12,8 +12,8 @@ export {
   getStaleAtomRowCount,
   getLiveRowDriftSummary,
   loadStaleTableRows
-} from './live-row-utils-queries.js';
+} from '../live-row-utils-queries.js';
 
 export {
   detectLiveRowDrift
-} from './live-row-utils-detection.js';
+} from './detection.js';

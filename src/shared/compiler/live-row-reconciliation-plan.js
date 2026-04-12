@@ -2,7 +2,7 @@ import { buildStandardPlan } from './remediation-plan-builder.js';
 import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import { buildOrphanRelationCleanupStatement } from './live-row-relations-cleanup.js';
 import { getPhase2PendingFiles } from './compiler-runtime-metrics/index.js';
-import { getLiveFileSetSql, getLiveFileTotal, getLiveRowDriftSummary, loadStaleTableRows } from './live-row-utils.js';
+import { getLiveFileSetSql, getLiveFileTotal, getLiveRowDriftSummary, loadStaleTableRows } from './live-row-utils/index.js';
 import { ensureLiveRowSync } from './live-row-reconciliation.js';
 
 function buildZeroCleanupResult() {

@@ -1,4 +1,4 @@
-import { normalizeSemanticPath } from './semantic-surface-derivation/index.js';
+import { normalizeSemanticPath } from '../semantic-surface-derivation/index.js';
 
 export function pushConnectionRow(rows, seen, payload) {
   const {

@@ -11,12 +11,12 @@
 import {
   buildMissingCanonicalApis,
   buildMissingCanonicalSurfaceReport
-} from './standardization-report/recommendations.js';
-import { CANONICAL_COMPILER_FAMILIES } from './standardization-report-catalog.js';
+} from './recommendations.js';
+import { CANONICAL_COMPILER_FAMILIES } from '../standardization-report-catalog.js';
 import {
   buildCanonicalAdoptionCoverage,
   normalizeDriftArea
-} from './standardization-report-helpers.js';
+} from './helpers.js';
 
 const CANONICAL_FAMILY_IDS = new Set(CANONICAL_COMPILER_FAMILIES.map((family) => family.id));
 

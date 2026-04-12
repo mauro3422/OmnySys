@@ -12,7 +12,7 @@ export { buildCompilerControlPlaneFoundations } from './control-plane-foundation
 export { buildDataGatewayContract, summarizeDataGatewayContract } from './contract.js';
 export { ensureLiveRowSync } from './live-row-reconciliation.js';
 export { getFileUniverseGranularity } from './file-universe-granularity.js';
-export { getLiveFileSetSql } from './live-row-utils.js';
+export { getLiveFileSetSql } from './live-row-utils/index.js';
 export { normalizeDerivedRiskLevel } from './risk-level.js';
 export { parseSemanticFingerprint } from './conceptual-noise-policy.js';
 export { getSemanticSurfaceGranularity } from './semantic-surface-granularity.js';

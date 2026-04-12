@@ -1,4 +1,4 @@
-import { getRecommendation } from './recommendations/RecommendationEngine.js';
+import { getRecommendation } from '../recommendations/RecommendationEngine.js';
 
 const MANUAL_LIVE_ROW_PATTERNS = [
   /(LEFT JOIN|NOT IN)\s+live_files/,

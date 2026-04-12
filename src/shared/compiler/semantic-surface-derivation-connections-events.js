@@ -1,6 +1,6 @@
 import { normalizeSemanticKey, normalizeSemanticPath } from './semantic-surface-derivation/index.js';
-import { deriveSharedStateConnections } from './semantic-surface-derivation-connections-shared-state.js';
-import { pushConnectionRow } from './semantic-surface-derivation-connections-shared.js';
+import { deriveSharedStateConnections } from './semantic-surface-derivation-connections-shared/index.js';
+import { pushConnectionRow } from './semantic-surface-derivation-connections-shared/shared.js';
 
 export function deriveEventConnections(atomSurface = [], now = Date.now()) {
   const rows = [];

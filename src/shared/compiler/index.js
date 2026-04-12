@@ -71,7 +71,7 @@ export {
 
 export {
   buildCompilerStandardizationReport
-} from './standardization-report.js';
+} from './standardization-report/index.js';
 
 export {
   buildCompilerContractLayer
@@ -636,7 +636,7 @@ export {
   getStaleTableRowCount,
   getLiveRowDriftSummary,
   loadStaleTableRows
-} from './live-row-utils.js';
+} from './live-row-utils/index.js';
 
 export {
   buildLiveRowReconciliationPlan,

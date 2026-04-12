@@ -10,7 +10,7 @@
 
 import { buildDataGatewayContract } from './contract.js';
 import { getFileUniverseGranularity } from './file-universe-granularity.js';
-import { getLiveFileTotal } from './live-row-utils.js';
+import { getLiveFileTotal } from './live-row-utils/index.js';
 
 export function buildCompilerControlPlaneFoundations({
   persistedFileCoverage = null,
