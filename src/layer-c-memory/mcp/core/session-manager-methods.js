@@ -650,4 +650,39 @@ export function getAllSessions(activeOnly = false) {
     return activeOnly ? this.statements.getAllActive.all() : this.statements.getAll.all();
   } catch (err) {
     if (!isTransientSqliteAvailabilityError(err)) {
-      logger.error(`Failed to get a
+      logger.error(`Failed to get all sessions: ${err.message}`);
+    }
+    return [];
+  }
+}
+
+export function getDedupStats() {
+  try {
+    const all = this.getAllSessions(false);
+    const active = this.getAllSessions(true);
+    const activeByClient = new Map();
+
+    for (const session of active) {
+      const cid = session.client_id || 'unknown';
+      if (!activeByClient.has(cid)) activeByClient.set(cid, []);
+      activeByClient.get(cid).push(session);
+    }
+
+    const duplicates = [];
+    for (const [clientId, sessions] of activeByClient.entries()) {
+      if (sessions.length > 1) {
+        duplicates.push({ clientId, count: sessions.length });
+      }
+    }
+
+    return {
+      totalSessions: all.length,
+      activeSessions: active.length,
+      uniqueClients: activeByClient.size,
+      clientsWithDuplicates: duplicates.length,
+      duplicateDetails: duplicates
+    };
+  } catch (err) {
+    return { error: err.message };
+  }
+}

@@ -19,10 +19,38 @@ import { applyPagination } from '../../pagination.js';
 import { createLogger } from '../../../../../utils/logger.js';
 import { buildInitializationPendingToolResult } from '../progress-state.js';
 import {
-  executeToolCall
+  executeToolCall,
+  buildToolExecutionContext
 } from './mcp-tool-call-helpers.js';
+import { normalizeTransportOrigin, inferTransportOrigin } from '../../transport-provenance.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
+
+/**
+ * Construye un transportContext para el modo stdio bridge.
+ * El stdio bridge siempre usa 'stdio_bridge' como origen.
+ */
+function buildStdioTransportContext(server) {
+  const clientInfo = server?.clientInfo || {};
+  const inferred = inferTransportOrigin({
+    clientInfo,
+    metadata: { transport_origin: 'stdio_bridge' },
+    requestContext: { defaultOrigin: 'stdio_bridge' }
+  });
+
+  return {
+    origin: normalizeTransportOrigin(inferred, 'stdio_bridge'),
+    source: 'stdio-bridge',
+    clientInfo,
+    clientId: clientInfo?.client_id || clientInfo?.name || 'stdio-client',
+    sessionKind: 'stdio',
+    metadata: {
+      transport_origin: 'stdio_bridge',
+      transport_origin_source: 'inferred',
+      transport_request_phase: 'stdio-tool-call'
+    }
+  };
+}
 
 async function syncClaudePermissions(projectPath, toolDefinitions) {
   const { readFile, writeFile } = await import('fs/promises');
@@ -121,7 +149,9 @@ export class McpSetupStep extends InitializationStep {
 
     const startTime = performance.now();
 
-    const resultWithProvenance = await executeToolCall(handler, name, server, args);
+    // Build stdio bridge transport context so tool runs capture correct transport_origin
+    const transportContext = buildStdioTransportContext(server);
+    const resultWithProvenance = await executeToolCall(handler, name, server, args, transportContext);
 
     // Middleware: paginación automática sobre todos los arrays top-level.
     // Se aplica SIEMPRE — si el caller no pasa offset/limit, usa defaults seguros.
