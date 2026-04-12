@@ -66,7 +66,17 @@ function isCanonicalGatewayModule(normalizedPath = '') {
     '/shared/compiler/system-map-persistence-repair-helpers.js',
     '/shared/compiler/system-map-persistence-repair-primary.js',
     '/shared/compiler/system-map-persistence-repair-resolution.js',
-    '/shared/compiler/system-map-persistence-repair-semantic.js'
+    '/shared/compiler/system-map-persistence-repair-semantic.js',
+    // Canonical surface registry and surfaces (need direct DB access by design)
+    '/shared/compiler/canonical-surface-registry.js',
+    '/shared/compiler/mcp-topology-surface.js',
+    '/shared/compiler/bridge-telemetry-surface.js',
+    '/shared/compiler/tool-runs-surface.js',
+    '/shared/compiler/sessions-surface.js',
+    '/shared/compiler/atom-events-surface.js',
+    '/shared/compiler/societies-surface.js',
+    '/shared/compiler/file-deps-surface.js',
+    '/shared/compiler/surface-obligations-propagator.js'
   ];
 
   return [
@@ -92,7 +102,12 @@ function isGovernanceDiagnosticModule(normalizedPath = '') {
     '/layer-c-memory/query/export.js',
     '/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js',
     '/core/file-watcher/handlers/relationships.js',
-    '/core/file-watcher/guards/circular-guard/repository.js'
+    '/core/file-watcher/guards/circular-guard/repository.js',
+    // Guards need direct DB access to audit the codebase (they ARE the auditors)
+    '/core/file-watcher/guards/missing-surface-audit-guard.js',
+    '/core/file-watcher/guards/semantic-surface-collapse-guard.js',
+    '/core/file-watcher/guards/default-semantic-guard-definitions-governance.js',
+    '/core/file-watcher/guards/compiler-policy-conformance-guard.js'
   ];
 
   return diagnosticSuffixes.some((segment) => normalizedPath.endsWith(segment));
