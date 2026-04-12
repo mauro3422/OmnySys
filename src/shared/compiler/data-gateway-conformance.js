@@ -9,6 +9,7 @@
 
 import { createPositionalFinding } from './conformance-utils.js';
 import { scanCompilerConformanceSource } from './compiler-conformance-scan.js';
+import { normalizePath } from '../utils/path-utils.js';
 
 function importsDataGatewayContract(source = '') {
   return /from\s+['"][^'"]*shared\/compiler\/(?:index\.js|contract\.js)['"]/.test(source);
@@ -150,13 +151,20 @@ function usesManualGatewayRead(source = '') {
 }
 
 export function detectDataGatewayConformanceFromSource(filePath, source = '', options = {}) {
+  const normalizedPath = normalizePath(filePath);
+
+  // Gateway implementation modules ARE the canonical surfaces — don't audit the auditors
+  if (/shared\/compiler\//.test(normalizedPath)) {
+    return [];
+  }
+
   return scanCompilerConformanceSource(
     filePath,
     source,
     options,
     { severity: 'medium', policyArea: 'data_gateway' },
-    ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
-      if (isCanonicalGatewayModule(normalizedPath) || isGovernanceDiagnosticModule(normalizedPath)) {
+    ({ normalizedPath: np, source: currentSource, severity, policyArea, findings }) => {
+      if (isCanonicalGatewayModule(np) || isGovernanceDiagnosticModule(np)) {
         return;
       }
 
