@@ -3,8 +3,8 @@
  */
 
 import { createHash } from 'node:crypto';
-import { asNumber, normalizeTelemetryPath } from './core-utils.js';
-import { clampScore } from '#shared/utils/normalize-helpers.js';
+import { asNumber, normalizeTelemetryPath } from '../core-utils.js';
+import { clampScore } from '../../utils/normalize-helpers.js';
 
 function buildPipelineTimingFingerprint(run = {}) {
   return createHash('sha1')

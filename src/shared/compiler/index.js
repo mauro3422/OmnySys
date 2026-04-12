@@ -292,7 +292,7 @@ export {
   persistPipelineTimingTelemetry,
   buildPipelineTimingTelemetrySummary,
   summarizePipelineTimingTelemetry
-} from './pipeline-timing-telemetry.js';
+} from './pipeline-timing-telemetry/telemetry.js';
 
 export {
   evaluateToolRunTelemetry,

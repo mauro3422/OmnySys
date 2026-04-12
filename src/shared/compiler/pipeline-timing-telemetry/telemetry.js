@@ -16,7 +16,7 @@ import {
   normalizePhaseTimings,
   normalizeTelemetryPath,
   summarizePhaseTimings
-} from './pipeline-timing-telemetry-helpers.js';
+} from './index.js';
 
 export function evaluatePipelineTimingTelemetry({
   projectPath = null,

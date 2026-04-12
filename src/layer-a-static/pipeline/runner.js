@@ -9,7 +9,7 @@
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { startTimer } from '../../utils/performance-tracker.js';
 import { createLogger } from '../../utils/logger.js';
-import { evaluatePipelineTimingTelemetry, persistPipelineTimingTelemetry } from '../../shared/compiler/pipeline-timing-telemetry.js';
+import { evaluatePipelineTimingTelemetry, persistPipelineTimingTelemetry } from '../../shared/compiler/pipeline-timing-telemetry/telemetry.js';
 
 const logger = createLogger('OmnySys:pipeline');
 
