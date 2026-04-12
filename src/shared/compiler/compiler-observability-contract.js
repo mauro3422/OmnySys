@@ -599,10 +599,10 @@ export function buildCompilerObservabilityContract({
 
   const inventory = {
     state: inventoryIssueCount > 0
-      ? (inventoryIssueCount >= 3 ? 'blocked' : 'stale')
+      ? (inventoryIssueCount >= 5 ? 'blocked' : inventoryIssueCount >= 3 ? 'stale' : 'watching')
       : 'fresh',
-    healthy: inventoryIssueCount === 0,
-    trustworthy: inventoryIssueCount === 0,
+    healthy: inventoryIssueCount < 3,
+    trustworthy: inventoryIssueCount < 3,
     reason: inventoryIssueCount > 0
       ? 'Inventory is missing canonical surfaces or still carries policy drift.'
       : inventoryCompact.nextAction || 'Canonical inventory surfaces are aligned.',

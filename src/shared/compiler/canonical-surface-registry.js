@@ -141,6 +141,14 @@ export const CANONICAL_SURFACE_REGISTRY = {
     state: 'partial',
     description: 'Risk assessments per atom/file (only accessible via aggregate_metrics)'
   },
+  semantic_surface_contracts: {
+    table: 'semantic_connections',
+    loadFn: 'buildSemanticGranularityComparison',
+    file: 'src/shared/compiler/semantic-granularity-api.js',
+    controlPlaneField: 'SemanticGranularity',
+    state: 'canonical',
+    description: 'Semantic summary vs detail comparison contract (file-level vs atom-level granularity)'
+  },
 
   // ─── Internal/Infrastructure (no surface needed) ───
   cache_entries: {

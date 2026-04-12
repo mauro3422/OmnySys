@@ -200,113 +200,33 @@ export function buildFolderizationSnapshotTrend(current = null, history = []) {
   };
 }
 
-export function persistFolderizationSnapshot(db, snapshot = null) {
-  if (!db?.prepare || !snapshot) {
-    return null;
-  }
-
-  const summary = snapshot.summary || {};
-  const databaseHealth = snapshot.databaseHealth || null;
-  const liveRowSync = summary.liveRowSync || null;
-  const payload = {
-    snapshot,
-    summary,
-    folderization: snapshot.folderization || {},
-    databaseHealth
+function computeDriftScores(liveRowSync = {}) {
+  const state = liveRowSync.state || null;
+  return {
+    drift_state: state,
+    drift_score: state === 'blocked' ? 100 : state === 'stale' ? 50 : 0,
+    watcher_alert_count: state === 'blocked' ? 1 : 0,
+    behavior_state: state === 'blocked' ? 'blocked' : null
   };
-  const trend = snapshot.trend || buildFolderizationSnapshotTrend(snapshot, []);
+}
 
-  const stmt = db.prepare(`
-    INSERT INTO compiler_metrics_snapshots (
-      project_path,
-      snapshot_kind,
-      scope_path,
-      focus_path,
-      capture_source,
-      analysis_generation_id,
-      captured_at,
-      health_score,
-      health_grade,
-      issue_count,
-      structural_groups,
-      conceptual_groups,
-      conceptual_raw_groups,
-      pipeline_orphans,
-      folderization_candidate_count,
-      flat_families,
-      mixed_families,
-      already_folderized_families,
-      naming_families,
-      naming_targets,
-      naming_debt,
-      live_coverage_ratio,
-      active_atoms,
-      zero_atom_file_count,
-      call_links,
-      semantic_links,
-      watcher_alert_count,
-      recent_warning_count,
-      recent_error_count,
-      phase2_pending_files,
-      drift_state,
-      drift_score,
-      stability_score,
-      success_score,
-      success_threshold,
-      mvp_ready,
-      behavior_state,
-      readiness_reason,
-      snapshot_fingerprint,
-      summary_text,
-      payload_json,
-      trend_json
-    ) VALUES (
-      @project_path,
-      @snapshot_kind,
-      @scope_path,
-      @focus_path,
-      @capture_source,
-      @analysis_generation_id,
-      @captured_at,
-      @health_score,
-      @health_grade,
-      @issue_count,
-      @structural_groups,
-      @conceptual_groups,
-      @conceptual_raw_groups,
-      @pipeline_orphans,
-      @folderization_candidate_count,
-      @flat_families,
-      @mixed_families,
-      @already_folderized_families,
-      @naming_families,
-      @naming_targets,
-      @naming_debt,
-      @live_coverage_ratio,
-      @active_atoms,
-      @zero_atom_file_count,
-      @call_links,
-      @semantic_links,
-      @watcher_alert_count,
-      @recent_warning_count,
-      @recent_error_count,
-      @phase2_pending_files,
-      @drift_state,
-      @drift_score,
-      @stability_score,
-      @success_score,
-      @success_threshold,
-      @mvp_ready,
-      @behavior_state,
-      @readiness_reason,
-      @snapshot_fingerprint,
-      @summary_text,
-      @payload_json,
-      @trend_json
-    )
-  `);
+function computeHealthIndicators(databaseHealth = {}) {
+  const healthy = databaseHealth.healthy === true;
+  return {
+    stability_score: healthy ? 100 : 70,
+    success_score: healthy ? 100 : 75,
+    mvp_ready: healthy ? 1 : 0,
+    fallback_behavior: healthy ? 'ready' : 'watchful'
+  };
+}
 
-  return stmt.run({
+function buildSnapshotInsertParams(snapshot = {}, summary = {}, databaseHealth = {}, liveRowSync = {}, trend = {}) {
+  const drift = computeDriftScores(liveRowSync);
+  const health = computeHealthIndicators(databaseHealth);
+  const fileUniverse = databaseHealth.metrics?.fileUniverse || {};
+  const metrics = databaseHealth.metrics || {};
+
+  return {
     project_path: snapshot.projectPath || null,
     snapshot_kind: snapshot.snapshotKind || 'folderization',
     scope_path: normalizeSnapshotPath(snapshot.scopePath || null),
@@ -328,30 +248,73 @@ export function persistFolderizationSnapshot(db, snapshot = null) {
     naming_families: Number(summary.namingFamilies || 0),
     naming_targets: Number(summary.namingTargets || 0),
     naming_debt: Number(summary.namingTargets || 0),
-    live_coverage_ratio: Number(databaseHealth?.metrics?.fileUniverse?.liveCoverageRatio || 0),
-    active_atoms: Number(databaseHealth?.metrics?.activeAtoms || 0),
-    zero_atom_file_count: Number(databaseHealth?.metrics?.fileUniverse?.zeroAtomFileCount || 0),
+    live_coverage_ratio: Number(fileUniverse.liveCoverageRatio || 0),
+    active_atoms: Number(metrics.activeAtoms || 0),
+    zero_atom_file_count: Number(fileUniverse.zeroAtomFileCount || 0),
     call_links: 0,
     semantic_links: 0,
-    watcher_alert_count: liveRowSync.state === 'blocked' ? 1 : 0,
+    watcher_alert_count: drift.watcher_alert_count,
     recent_warning_count: databaseHealth?.warnings?.length || 0,
     recent_error_count: databaseHealth?.criticalFindings?.length || 0,
     phase2_pending_files: 0,
-    drift_state: liveRowSync.state || null,
-    drift_score: liveRowSync.state === 'blocked' ? 100 : liveRowSync.state === 'stale' ? 50 : 0,
-    stability_score: databaseHealth?.healthy === true ? 100 : 70,
-    success_score: databaseHealth?.healthy === true ? 100 : 75,
+    drift_state: drift.drift_state,
+    drift_score: drift.drift_score,
+    stability_score: health.stability_score,
+    success_score: health.success_score,
     success_threshold: 85,
-    mvp_ready: databaseHealth?.healthy === true ? 1 : 0,
-    behavior_state: liveRowSync.state === 'blocked' ? 'blocked' : (databaseHealth?.healthy === true ? 'ready' : 'watchful'),
+    mvp_ready: health.mvp_ready,
+    behavior_state: drift.behavior_state || health.fallback_behavior,
     readiness_reason: liveRowSync.reason || databaseHealth?.summary || 'Folderization snapshot captured.',
     snapshot_fingerprint: buildFolderizationSnapshotFingerprint(snapshot),
     summary_text: summary.summaryText || null,
-    payload_json: JSON.stringify(payload),
+    payload_json: JSON.stringify({
+      snapshot,
+      summary,
+      folderization: snapshot.folderization || {},
+      databaseHealth
+    }),
     trend_json: JSON.stringify(trend)
-  });
+  };
+}
 
-  // Rotación: eliminar duplicados del mismo día, mantener solo el más reciente
+export function persistFolderizationSnapshot(db, snapshot = null) {
+  if (!db?.prepare || !snapshot) {
+    return null;
+  }
+
+  const summary = snapshot.summary || {};
+  const databaseHealth = snapshot.databaseHealth || null;
+  const liveRowSync = summary.liveRowSync || null;
+  const trend = snapshot.trend || buildFolderizationSnapshotTrend(snapshot, []);
+  const params = buildSnapshotInsertParams(snapshot, summary, databaseHealth, liveRowSync, trend);
+
+  const stmt = db.prepare(`
+    INSERT INTO compiler_metrics_snapshots (
+      project_path, snapshot_kind, scope_path, focus_path, capture_source,
+      analysis_generation_id, captured_at, health_score, health_grade,
+      issue_count, structural_groups, conceptual_groups, conceptual_raw_groups,
+      pipeline_orphans, folderization_candidate_count, flat_families, mixed_families,
+      already_folderized_families, naming_families, naming_targets, naming_debt,
+      live_coverage_ratio, active_atoms, zero_atom_file_count, call_links, semantic_links,
+      watcher_alert_count, recent_warning_count, recent_error_count, phase2_pending_files,
+      drift_state, drift_score, stability_score, success_score, success_threshold,
+      mvp_ready, behavior_state, readiness_reason, snapshot_fingerprint,
+      summary_text, payload_json, trend_json
+    ) VALUES (
+      @project_path, @snapshot_kind, @scope_path, @focus_path, @capture_source,
+      @analysis_generation_id, @captured_at, @health_score, @health_grade,
+      @issue_count, @structural_groups, @conceptual_groups, @conceptual_raw_groups,
+      @pipeline_orphans, @folderization_candidate_count, @flat_families, @mixed_families,
+      @already_folderized_families, @naming_families, @naming_targets, @naming_debt,
+      @live_coverage_ratio, @active_atoms, @zero_atom_file_count, @call_links, @semantic_links,
+      @watcher_alert_count, @recent_warning_count, @recent_error_count, @phase2_pending_files,
+      @drift_state, @drift_score, @stability_score, @success_score, @success_threshold,
+      @mvp_ready, @behavior_state, @readiness_reason, @snapshot_fingerprint,
+      @summary_text, @payload_json, @trend_json
+    )
+  `);
+
+  const result = stmt.run(params);
   result.archive = pruneFolderizationSnapshotHistory(db, snapshot);
 
   return result;

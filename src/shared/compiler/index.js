@@ -453,6 +453,11 @@ export {
 } from './semantic-surface-granularity.js';
 
 export {
+  buildSemanticGranularityComparison,
+  summarizeSemanticGranularity
+} from './semantic-granularity-api.js';
+
+export {
   loadAtomSemanticSurface,
   summarizeAtomSemanticSurface,
   deriveSemanticConnectionsFromAtomSurface

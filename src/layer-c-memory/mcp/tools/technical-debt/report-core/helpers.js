@@ -64,7 +64,7 @@ export async function loadTechnicalDebtReportArtifacts({
       : buildEmptyPipelineHealthResult(),
     folderizationSnapshotReport
       || (repo && needs.needsFolderizationDetails
-        ? buildFolderizationReportFromRepo(repo, folderizationOptions)
+        ? Promise.resolve(buildFolderizationReportFromRepo(repo, folderizationOptions))
             .catch((error) => {
               console.error('[technical-debt] Failed to load folderization report:', error.message);
               return buildEmptyFolderizationReport(folderizationOptions);

@@ -1,7 +1,7 @@
 # OmnySys — Roadmap de Desarrollo
 
-**Versión actual**: v0.9.434
-**Última actualización**: 2026-04-09
+**Versión actual**: v0.9.439
+**Última actualización**: 2026-04-12
 **Estado**: ✅ **100% Estático, 0% LLM** — Tree-sitter + SQLite + 45 MCP Tools
 
 ---

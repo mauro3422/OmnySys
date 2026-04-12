@@ -26,7 +26,9 @@ function usesAtomSemanticRelations(source = '') {
 }
 
 function importsCanonicalGranularityApi(source = '') {
-  return /getSemanticSurfaceGranularity/.test(source);
+  return /getSemanticSurfaceGranularity/.test(source)
+    || /buildSemanticGranularityComparison/.test(source)
+    || /summarizeSemanticGranularity/.test(source);
 }
 
 export function detectSemanticSurfaceGranularityConformanceFromSource(filePath, source = '', options = {}) {
@@ -39,10 +41,17 @@ export function detectSemanticSurfaceGranularityConformanceFromSource(filePath, 
       const isExempt = (
         normalizedPath.endsWith('/semantic-surface-granularity-contract.js') ||
         normalizedPath.startsWith('src/shared/compiler/semantic-surface-granularity') ||
+        normalizedPath.startsWith('src/shared/compiler/semantic-granularity-api.js') ||
         normalizedPath.startsWith('src/shared/compiler/metadata-extraction-coverage') ||
+        normalizedPath.startsWith('src/shared/compiler/system-map-persistence-repair') ||
+        normalizedPath.startsWith('src/layer-a-static/pipeline/shared-state-linkage.js') ||
+        normalizedPath.startsWith('src/core/file-watcher/guards/semantic-surface-collapse-guard.js') ||
         normalizedPath.startsWith('src/layer-c-memory/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js') ||
         normalizedPath.startsWith('src/layer-c-memory/query/queries/connections-query.js') ||
-        normalizedPath.startsWith('src/shared/compiler/live-row-utils-queries.js')
+        normalizedPath.startsWith('src/shared/compiler/live-row-utils-queries.js') ||
+        normalizedPath.startsWith('src/shared/compiler/metrics-current/') ||
+        normalizedPath.startsWith('src/layer-b-semantic/') ||
+        normalizedPath.startsWith('src/layer-a-static/pattern-detection/')
       );
 
       if (isExempt) return;

@@ -92,6 +92,54 @@ function buildFolderizationPromotionTarget(folderizationReport = null) {
   };
 }
 
+function deduplicatePromotionTargets(targets) {
+  const unique = [];
+  const seen = new Set();
+
+  for (const target of targets) {
+    const key = target.id || target.surface || target.canonicalTarget;
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      unique.push(target);
+    }
+  }
+  return unique;
+}
+
+function sortPromotionTargets(targets, maxCount = 5) {
+  return targets
+    .sort((a, b) =>
+      (b.promotionScore || 0) - (a.promotionScore || 0)
+        || (b.centralityScore || 0) - (a.centralityScore || 0)
+        || String(a.id || '').localeCompare(String(b.id || ''))
+    )
+    .slice(0, maxCount);
+}
+
+function countTargetCategories(targets, folderizationPromotionTarget, folderizationSummary) {
+  return {
+    folderizedFamilyCount: Math.max(
+      folderizationPromotionTarget ? 1 : 0,
+      Number(folderizationSummary.alreadyFolderizedFamilies || 0)
+    ),
+    emergentCandidateCount: targets.filter((t) => t.source === 'inventory' && t.role !== 'canonical').length,
+    canonicalCandidateCount: targets.filter((t) => t.role === 'canonical').length
+  };
+}
+
+function resolvePromotionState(inventoryState, candidateCount, folderizationState) {
+  return inventoryState === 'ready' && candidateCount > 0 && (folderizationState == null || folderizationState === 'fresh')
+    ? 'ready'
+    : 'watching';
+}
+
+function resolveNextAction(topTargets, folderizationSummary, inventorySummary) {
+  return topTargets[0]?.nextAction
+    || folderizationSummary.nextAction
+    || inventorySummary.nextAction
+    || 'Promote the strongest emergent surface into a canonical API and migrate callers together.';
+}
+
 function buildPromotionSummary({
   systemInventory = null,
   folderizationReport = null,
@@ -103,51 +151,22 @@ function buildPromotionSummary({
   const folderizationDecision = normalizeText(folderizationReport?.decision, null);
   const folderizationState = normalizeText(folderizationReport?.drift?.state || folderizationSummary.driftState || folderizationReport?.summary?.dbSyncState || null);
   const folderizationPromotionTarget = buildFolderizationPromotionTarget(folderizationReport);
-  const targets = [
+
+  const allTargets = [
     ...(folderizationPromotionTarget ? [folderizationPromotionTarget] : []),
     ...promotionTargets.map((target, index) => buildPromotionTarget(target, { index, source: 'inventory' }))
   ];
-  const uniqueTargets = [];
-  const seen = new Set();
-
-  for (const target of targets) {
-    const key = target.id || target.surface || target.canonicalTarget;
-    if (!key || seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    uniqueTargets.push(target);
-  }
-
-  const topPromotionTargets = uniqueTargets
-    .sort((left, right) =>
-      (right.promotionScore || 0) - (left.promotionScore || 0)
-        || (right.centralityScore || 0) - (left.centralityScore || 0)
-        || String(left.id || '').localeCompare(String(right.id || ''))
-    )
-    .slice(0, 5);
-
-  const candidateCount = topPromotionTargets.length;
-  const folderizedFamilyCount = Math.max(
-    folderizationPromotionTarget ? 1 : 0,
-    Number(folderizationSummary.alreadyFolderizedFamilies || 0)
-  );
-  const emergentCandidateCount = topPromotionTargets.filter((item) => item.source === 'inventory' && item.role !== 'canonical').length;
-  const canonicalCandidateCount = topPromotionTargets.filter((item) => item.role === 'canonical').length;
-  const promotionState = inventoryState === 'ready' && candidateCount > 0 && (folderizationState == null || folderizationState === 'fresh')
-    ? 'ready'
-    : 'watching';
-  const nextAction = topPromotionTargets[0]?.nextAction
-    || folderizationSummary.nextAction
-    || inventorySummary.nextAction
-    || 'Promote the strongest emergent surface into a canonical API and migrate callers together.';
+  const topTargets = sortPromotionTargets(deduplicatePromotionTargets(allTargets));
+  const categories = countTargetCategories(topTargets, folderizationPromotionTarget, folderizationSummary);
+  const promotionState = resolvePromotionState(inventoryState, topTargets.length, folderizationState);
+  const nextAction = resolveNextAction(topTargets, folderizationSummary, inventorySummary);
 
   const summaryText = [
     `state=${promotionState}`,
-    `candidates=${candidateCount}`,
-    `folderized=${folderizedFamilyCount}`,
-    `emergent=${emergentCandidateCount}`,
-    `canonical=${canonicalCandidateCount}`,
+    `candidates=${topTargets.length}`,
+    `folderized=${categories.folderizedFamilyCount}`,
+    `emergent=${categories.emergentCandidateCount}`,
+    `canonical=${categories.canonicalCandidateCount}`,
     `inventory=${inventoryState}`,
     folderizationDecision ? `folderization=${folderizationDecision}` : null,
     `next=${nextAction}`
@@ -158,13 +177,13 @@ function buildPromotionSummary({
     inventoryState,
     folderizationState,
     folderizationDecision,
-    candidateCount,
-    folderizedFamilyCount,
-    emergentCandidateCount,
-    canonicalCandidateCount,
+    candidateCount: topTargets.length,
+    folderizedFamilyCount: categories.folderizedFamilyCount,
+    emergentCandidateCount: categories.emergentCandidateCount,
+    canonicalCandidateCount: categories.canonicalCandidateCount,
     nextAction,
     summaryText,
-    topPromotionTargets,
+    topPromotionTargets: topTargets,
     folderizationPromotionTarget,
     inventorySummary
   };

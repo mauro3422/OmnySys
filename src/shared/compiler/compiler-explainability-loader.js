@@ -8,13 +8,23 @@ import { buildFolderizationAutomationSummaryFromReport } from './folderization-a
 import { getDatabaseHealthSummary } from './database-health-summary.js';
 import { validateMetricCoherence } from './metric-coherence-validator.js';
 import { buildPropagationLedger } from './propagation-ledger.js';
+import { buildSemanticGranularityComparison } from './semantic-granularity-api.js';
+import {
+  getCompilerPolicyCodeHash,
+  shouldForceRescan,
+  setLastPolicyCodeHash
+} from './compiler-explainability-cache.js';
 
-function publishCompilerExplainabilityRefresh(sharedState = {}, compilerExplainability = null) {
+function publishCompilerExplainabilityRefresh(sharedState = {}, compilerExplainability = null, projectPath = null) {
   if (!sharedState || typeof sharedState !== 'object' || !compilerExplainability) {
     return compilerExplainability;
   }
 
   const refreshedAt = new Date().toISOString();
+  const currentHash = projectPath ? getCompilerPolicyCodeHash(projectPath) : null;
+  compilerExplainability._compilerPolicyCodeHash = currentHash;
+  setLastPolicyCodeHash(currentHash);
+
   const policyDriftCount = compilerExplainability.policySummary?.effectiveTotal
     ?? compilerExplainability.policySummary?.total
     ?? compilerExplainability.policyCoverage?.policyDriftCount
@@ -106,9 +116,22 @@ function buildFolderizationPropagationAdoptionTargets({
 
 export async function loadCompilerExplainability(projectPath, watcherAlerts = [], sharedState = {}, watcherStats = null, folderizationOptions = {}) {
   try {
-    const { scanCompilerPolicyDrift } = await import('./scan.js');
-    const findings = await scanCompilerPolicyDrift(projectPath, { limit: 1000 });
-    const policySummary = summarizeCompilerPolicyDrift(findings);
+    const existingExplainability = sharedState?.compilerExplainability || null;
+    const forceRescan = shouldForceRescan(projectPath, existingExplainability);
+
+    let policySummary;
+    if (forceRescan && existingExplainability?.policySummary) {
+      const { scanCompilerPolicyDrift } = await import('./scan.js');
+      const findings = await scanCompilerPolicyDrift(projectPath, { limit: 1000 });
+      policySummary = summarizeCompilerPolicyDrift(findings);
+    } else if (existingExplainability?.policySummary) {
+      policySummary = existingExplainability.policySummary;
+    } else {
+      const { scanCompilerPolicyDrift } = await import('./scan.js');
+      const findings = await scanCompilerPolicyDrift(projectPath, { limit: 1000 });
+      policySummary = summarizeCompilerPolicyDrift(findings);
+    }
+
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
     const repo = getRepository(projectPath);
     const databaseHealth = repo?.db ? getDatabaseHealthSummary(repo.db) : null;
@@ -168,6 +191,16 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         })
       : null;
 
+    const semanticGranularityComparison = repo?.db
+      ? buildSemanticGranularityComparison({
+          db: repo.db,
+          compilerExplainability: {
+            semanticSurfaceGranularity: snapshot.semanticSurfaceGranularity
+          },
+          source: 'compiler_explainability_loader'
+        })
+      : null;
+
     const propagationLedger = buildPropagationLedger({
       compilerExplainability: {
         policySummary,
@@ -192,6 +225,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       metadataExtractionCoverage: snapshot.metadataExtractionCoverage,
       semanticCanonicality: snapshot.semanticCanonicality,
       semanticSurfaceGranularity: snapshot.semanticSurfaceGranularity,
+      semanticGranularityComparison,
       fileUniverseGranularity: snapshot.fileUniverseGranularity,
       analysisGeneration: snapshot.analysisGeneration,
       watcherStats,
@@ -226,7 +260,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       },
       systemInventory,
       policyCoverage: systemInventory.policyCoverage || null
-    });
+    }, projectPath);
   } catch (error) {
     return {
       error: error.message

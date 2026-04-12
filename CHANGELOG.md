@@ -6,6 +6,18 @@ All notable changes are documented as individual files in [`changelogs/`](change
 
 ---
 
+## v0.9.439 — Hotspot Refactoring + Semantic Granularity API + Bug Fixes (2026-04-12)
+
+- Fixed `get_technical_debt_report` crash (`buildFolderizationReportFromRepo(...).catch is not a function`)
+- Fixed `persistFolderizationSnapshot` undefined `result` variable bug
+- Registered `semantic_surface_contracts` canonical surface + exported `buildSemanticGranularityComparison`
+- Refactored 5 hotspot functions (total CC: 218 → 34): `buildTechnicalDebtReportValues` (64→6), `buildFolderizationPropagationSummary` (44→8), `persistFolderizationSnapshot` (43→8), `deriveTransportAlerts` (35→6), `buildPromotionSummary` (32→6)
+- Net -164 lines removed across 14 files
+
+**Detalle completo**: [changelogs/v0.9.439.md](changelogs/v0.9.439.md)
+
+---
+
 ## v0.9.438 — MCP Bridge Hardening & Summary Coherence Repair (2026-04-10)
 
 - Hardened the OmnySys MCP bridge for Windows/WSL by keeping daemon URLs canonical and avoiding silent host rewrites
