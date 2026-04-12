@@ -835,3 +835,7 @@ export {
   getDailyToolMetrics,
   formatToolHealthDashboard
 } from './tool-health-trending.js';
+
+export {
+  CANONICAL_SURFACE_REGISTRY
+} from './canonical-surface-registry.js';

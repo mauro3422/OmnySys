@@ -10,7 +10,7 @@
  * AND propagates the obligation to the canonical promotion engine.
  */
 
-import { safeJson } from '#shared/compiler/index.js';
+import { safeJsonStringify } from '#shared/compiler/safe-json.js';
 import { buildSurfaceObligationsPropagationPlan } from '#shared/compiler/surface-obligations-propagator.js';
 
 // Canonical table registry: each table maps to its expected surface files
@@ -95,7 +95,7 @@ export async function detectMissingSurfaceAudit(ctx) {
           `Missing surface file: src/shared/compiler/${entry.requiredFiles[0]}.js`,
         filePath: `src/shared/compiler/${entry.requiredFiles[0]}.js`,
         symbol: `load${capitalize(entry.component)}`,
-        context_json: safeJson({
+        context_json: safeJsonStringify({
           table: entry.table,
           rowCount,
           component: entry.component,
