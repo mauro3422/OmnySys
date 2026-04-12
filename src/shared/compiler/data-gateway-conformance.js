@@ -165,6 +165,11 @@ export function detectDataGatewayConformanceFromSource(filePath, source = '', op
     return [];
   }
 
+  // Data access layer modules (query + storage) — they implement the gateway
+  if (/layer-c-memory\/query\//.test(normalizedPath) || /layer-c-memory\/storage\//.test(normalizedPath)) {
+    return [];
+  }
+
   return scanCompilerConformanceSource(
     filePath,
     source,
