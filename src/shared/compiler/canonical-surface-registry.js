@@ -67,71 +67,71 @@ export const CANONICAL_SURFACE_REGISTRY = {
     description: 'Health and metrics snapshots over time'
   },
 
-  // ─── Runtime Telemetry (MISSING surfaces) ───
+  // ─── Runtime Telemetry (4/4 complete) ───
   topology: {
     table: 'mcp_topology_events',
-    loadFn: null, // TODO: Create loadTopology in src/shared/compiler/mcp-topology-surface.js
-    file: null,
+    rowCount: 18,
+    loadFn: 'loadTopology',
+    file: 'src/shared/compiler/mcp-topology-surface.js',
     controlPlaneField: 'Topology',
-    state: 'missing_surface',
-    description: 'MCP topology events (client connect/disconnect, routing changes)',
-    suggestedFile: 'src/shared/compiler/mcp-topology-surface.js'
+    state: 'canonical',
+    description: 'MCP topology events (client connect/disconnect, routing changes)'
   },
   bridge_telemetry: {
     table: 'mcp_request_delivery_events',
-    loadFn: null, // TODO: Create loadBridgeTelemetry in src/shared/compiler/bridge-telemetry-surface.js
-    file: null,
+    rowCount: 119,
+    loadFn: 'loadBridgeTelemetry',
+    file: 'src/shared/compiler/bridge-telemetry-surface.js',
     controlPlaneField: 'Bridge',
-    state: 'missing_surface',
-    description: 'MCP request delivery telemetry (latency, errors, routing decisions)',
-    suggestedFile: 'src/shared/compiler/bridge-telemetry-surface.js'
+    state: 'canonical',
+    description: 'MCP request delivery telemetry (latency, errors, routing decisions)'
   },
   tool_telemetry: {
     table: 'mcp_tool_runs',
-    loadFn: null, // TODO: Create loadToolTelemetry in src/shared/compiler/tool-runs-surface.js
-    file: null,
+    rowCount: 55,
+    loadFn: 'loadToolRuns',
+    file: 'src/shared/compiler/tool-runs-surface.js',
     controlPlaneField: 'Tools',
-    state: 'missing_surface',
-    description: 'MCP tool execution telemetry (success rate, duration, repair outcomes)',
-    suggestedFile: 'src/shared/compiler/tool-runs-surface.js'
+    state: 'canonical',
+    description: 'MCP tool execution telemetry (success rate, duration, repair outcomes)'
   },
   session_lifecycle: {
     table: 'mcp_sessions',
-    loadFn: null, // TODO: Create loadSessionTelemetry in src/shared/compiler/sessions-surface.js
-    file: null,
+    rowCount: 3,
+    loadFn: 'loadSessions',
+    file: 'src/shared/compiler/sessions-surface.js',
     controlPlaneField: 'Sessions',
-    state: 'missing_surface',
-    description: 'MCP session lifecycle, lineage, and client synchronization',
-    suggestedFile: 'src/shared/compiler/sessions-surface.js'
+    state: 'canonical',
+    description: 'MCP session lifecycle, lineage, and client synchronization'
   },
 
-  // ─── Analysis Surfaces (MISSING or PARTIAL) ───
+  // ─── Analysis Surfaces (3/3 now complete!) ───
   atom_events: {
     table: 'atom_events',
-    loadFn: null,
-    file: null,
+    rowCount: 29586,
+    loadFn: 'loadAtomEvents',
+    file: 'src/shared/compiler/atom-events-surface.js',
     controlPlaneField: 'Events',
-    state: 'missing_surface',
-    description: 'Atom-level event (emitters, listeners, lifecycle transitions)',
-    suggestedFile: 'src/shared/compiler/atom-events-surface.js'
+    state: 'canonical',
+    description: 'Atom-level events (emitters, listeners, lifecycle transitions) — LARGEST table now surfaced'
   },
   societies: {
     table: 'societies',
-    loadFn: null,
-    file: null,
+    rowCount: 1828,
+    loadFn: 'loadSocieties',
+    file: 'src/shared/compiler/societies-surface.js',
     controlPlaneField: 'Societies',
-    state: 'missing_surface',
-    description: 'Functional cohesion clusters (society clustering results)',
-    suggestedFile: 'src/shared/compiler/societies-surface.js'
+    state: 'canonical',
+    description: 'Functional cohesion clusters (1,828 society clustering results)'
   },
   file_dependencies: {
     table: 'file_dependencies',
-    loadFn: null,
-    file: null,
+    rowCount: 4542,
+    loadFn: 'loadFileDependencies',
+    file: 'src/shared/compiler/file-deps-surface.js',
     controlPlaneField: 'FileDeps',
-    state: 'missing_surface',
-    description: 'File-level dependency graph (imports/exports at file level)',
-    suggestedFile: 'src/shared/compiler/file-deps-surface.js'
+    state: 'canonical',
+    description: 'File-level dependency graph (4,542 import/export edges)'
   },
   risk_assessments: {
     table: 'risk_assessments',
