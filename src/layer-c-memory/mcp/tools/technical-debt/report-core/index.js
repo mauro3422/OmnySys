@@ -67,15 +67,8 @@ export async function loadTechnicalDebtReportDetails({
   });
 }
 
-export function buildTechnicalDebtReportResult({
-  duplicatesResult,
-  conceptualResult,
-  pipelineHealthResult,
-  folderizationReport,
-  currentSnapshot,
-  fingerprint
-}) {
-  const summary = {
+function buildSummarySection(duplicatesResult, conceptualResult, pipelineHealthResult, folderizationReport, currentSnapshot) {
+  return {
     structuralDuplicates: duplicatesResult.duplicates?.summary || {},
     conceptualDuplicates: {
       ...(conceptualResult.summary || {}),
@@ -102,8 +95,10 @@ export function buildTechnicalDebtReportResult({
     },
     folderization: folderizationReport.summary
   };
+}
 
-  const structural = {
+function buildStructuralSection(duplicatesResult) {
+  return {
     totalGroups: duplicatesResult.duplicates?.summary?.duplicateGroups || 0,
     totalInstances: duplicatesResult.duplicates?.summary?.totalDuplicateInstances || 0,
     topIssues: (duplicatesResult.remediation?.items || []).slice(0, 5).map((item) => ({
@@ -114,8 +109,10 @@ export function buildTechnicalDebtReportResult({
       duplicateFiles: item.duplicateFiles?.length || 0
     }))
   };
+}
 
-  const conceptual = {
+function buildConceptualSection(conceptualResult) {
+  return {
     totalGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
     actionableGroups: conceptualResult.summary?.actionableGroups || conceptualResult.summary?.totalGroups || 0,
     rawGroups: conceptualResult.summary?.rawGroups || conceptualResult.summary?.totalGroups || 0,
@@ -133,8 +130,10 @@ export function buildTechnicalDebtReportResult({
       risk: group.risk
     }))
   };
+}
 
-  const pipelineOrphans = {
+function buildPipelineOrphansSection(pipelineHealthResult) {
+  return {
     total: pipelineHealthResult.orphanPipelineFunctions?.length || 0,
     items: (pipelineHealthResult.orphanPipelineFunctions || []).map((orphan) => ({
       name: orphan.name,
@@ -143,7 +142,9 @@ export function buildTechnicalDebtReportResult({
       diagnosis: orphan.diagnosis
     }))
   };
+}
 
+function buildFolderizationSection(folderizationReport) {
   const folderization = {
     candidates: folderizationReport.candidateReport?.topCandidates || [],
     familyState: folderizationReport.familyState,
@@ -165,14 +166,17 @@ export function buildTechnicalDebtReportResult({
     decision: folderizationReport.decision,
     summary: folderizationReport.summary
   };
-  const propagation = folderization.propagation || null;
-  const normalization = folderization.normalization || null;
+  return folderization;
+}
 
+function buildDebtScoreAndActions(structural, conceptual, folderization, normalization, pipelineHealthResult, duplicatesResult, conceptualResult, folderizationReport, summary) {
+  const pipelineOrphansTotal = pipelineHealthResult.orphanPipelineFunctions?.length || 0;
+  
   const debtScore = calculateTechnicalDebtScore({
     structuralGroups: structural.totalGroups,
     conceptualGroups: conceptual.totalGroups,
     highRiskConceptual: conceptual.highRiskGroups,
-    pipelineOrphans: pipelineOrphans.total,
+    pipelineOrphans: pipelineOrphansTotal,
     flatFamilies: folderization.familyState?.stateCounts?.flat || 0,
     mixedFamilies: folderization.familyState?.stateCounts?.mixed || 0,
     namingFamilies: folderization.naming?.familyCount || 0,
@@ -193,6 +197,31 @@ export function buildTechnicalDebtReportResult({
     folderizationNormalization: normalization,
     folderizationCreationGuidance: folderization.creationGuidance
   });
+
+  return { debtScore, priorityActions };
+}
+
+export function buildTechnicalDebtReportResult({
+  duplicatesResult,
+  conceptualResult,
+  pipelineHealthResult,
+  folderizationReport,
+  currentSnapshot,
+  fingerprint
+}) {
+  const summary = buildSummarySection(duplicatesResult, conceptualResult, pipelineHealthResult, folderizationReport, currentSnapshot);
+  const structural = buildStructuralSection(duplicatesResult);
+  const conceptual = buildConceptualSection(conceptualResult);
+  const pipelineOrphans = buildPipelineOrphansSection(pipelineHealthResult);
+  const folderization = buildFolderizationSection(folderizationReport);
+  const propagation = folderization.propagation || null;
+  const normalization = folderization.normalization || null;
+
+  const { debtScore, priorityActions } = buildDebtScoreAndActions(
+    structural, conceptual, folderization, normalization,
+    pipelineHealthResult, duplicatesResult, conceptualResult, folderizationReport,
+    summary
+  );
 
   return {
     success: true,

@@ -48,6 +48,65 @@ function getWslCodexConfigPath(runtime = {}) {
     return path.join(env.HOME || '', '.codex', 'config.toml');
 }
 
+function shouldRefreshTable(tableName, existingBody, updated, tableBody, runtime) {
+    if (!existingBody) {
+        return { shouldRefresh: true, tableBody: tableName === OMNYSYSTEM_TABLE ? buildWslOmnysystemTableBody(tableBody, runtime) : tableBody };
+    }
+
+    const isRefreshNeeded = (
+        !isWindowsOnlyOmnysystemTable(existingBody) &&
+        !isLegacyWslNodeBridgeTable(existingBody) &&
+        !shouldRefreshWrapperBackedWslOmnysystemTable(existingBody)
+    ) || (
+        isWrapperBackedWslOmnysystemTable(existingBody) &&
+        shouldRefreshWrapperBackedWslOmnysystemTable(existingBody)
+    );
+
+    if (!isRefreshNeeded) {
+        return { shouldRefresh: false };
+    }
+
+    return {
+        shouldRefresh: true,
+        tableBody: tableName === OMNYSYSTEM_TABLE ? buildWslOmnysystemTableBody(tableBody, runtime) : tableBody
+    };
+}
+
+function processMcpTable(tableName, windowsContent, updatedContent, existingWslTables, runtime) {
+    const tableBody = extractTomlTable(windowsContent, tableName);
+    if (!tableBody) {
+        return { updated: updatedContent, synced: false, adapted: false, skipped: false };
+    }
+
+    if (!existingWslTables.has(tableName)) {
+        const nextTableBody = tableName === OMNYSYSTEM_TABLE
+            ? buildWslOmnysystemTableBody(tableBody, runtime)
+            : tableBody;
+        const newContent = upsertTomlTable(updatedContent, tableName, nextTableBody);
+        return {
+            updated: newContent,
+            synced: true,
+            adapted: tableName === OMNYSYSTEM_TABLE,
+            skipped: false
+        };
+    }
+
+    const existingBody = extractTomlTable(updatedContent, tableName);
+    const refreshResult = shouldRefreshTable(tableName, existingBody, updatedContent, tableBody, runtime);
+
+    if (!refreshResult.shouldRefresh) {
+        return { updated: updatedContent, synced: false, adapted: false, skipped: true };
+    }
+
+    const newContent = upsertTomlTable(updatedContent, tableName, refreshResult.tableBody);
+    return {
+        updated: newContent,
+        synced: false,
+        adapted: tableName === OMNYSYSTEM_TABLE,
+        skipped: false
+    };
+}
+
 export async function syncWindowsCodexMcpToWsl(options = {}) {
     const runtime = {
         platform: options.platform || process.platform,
@@ -57,42 +116,26 @@ export async function syncWindowsCodexMcpToWsl(options = {}) {
     };
 
     if (!isWslEnvironment(runtime)) {
-        return {
-            applied: false,
-            reason: 'not_wsl'
-        };
+        return { applied: false, reason: 'not_wsl' };
     }
 
     const windowsConfigPath = getWindowsCodexConfigPath(runtime);
     const wslConfigPath = getWslCodexConfigPath(runtime);
 
     if (!windowsConfigPath || !wslConfigPath) {
-        return {
-            applied: false,
-            reason: 'missing_paths'
-        };
+        return { applied: false, reason: 'missing_paths' };
     }
 
     let windowsContent = '';
     try {
         windowsContent = stripBom(await fs.readFile(windowsConfigPath, 'utf8'));
     } catch {
-        return {
-            applied: false,
-            reason: 'windows_config_missing',
-            windowsConfigPath,
-            wslConfigPath
-        };
+        return { applied: false, reason: 'windows_config_missing', windowsConfigPath, wslConfigPath };
     }
 
     const mcpTables = getTableHeaders(windowsContent).filter(isMcpTable);
     if (mcpTables.length === 0) {
-        return {
-            applied: false,
-            reason: 'no_windows_mcp_tables',
-            windowsConfigPath,
-            wslConfigPath
-        };
+        return { applied: false, reason: 'no_windows_mcp_tables', windowsConfigPath, wslConfigPath };
     }
 
     let wslContent = '';
@@ -109,43 +152,18 @@ export async function syncWindowsCodexMcpToWsl(options = {}) {
     const adaptedTables = [];
 
     for (const tableName of mcpTables) {
-        const tableBody = extractTomlTable(windowsContent, tableName);
-        if (!tableBody) {
-            continue;
-        }
+        const result = processMcpTable(tableName, windowsContent, updated, existingWslTables, runtime);
+        updated = result.updated;
 
-        if (!existingWslTables.has(tableName)) {
-            const nextTableBody = tableName === OMNYSYSTEM_TABLE
-                ? buildWslOmnysystemTableBody(tableBody, runtime)
-                : tableBody;
-            updated = upsertTomlTable(updated, tableName, nextTableBody);
+        if (result.synced) {
             syncedTables.push(tableName);
-            if (tableName === OMNYSYSTEM_TABLE) {
-                adaptedTables.push(tableName);
-            }
-            continue;
         }
-
-        if (tableName !== OMNYSYSTEM_TABLE) {
+        if (result.adapted) {
+            adaptedTables.push(tableName);
+        }
+        if (result.skipped) {
             skippedExistingTables.push(tableName);
-            continue;
         }
-
-        const existingBody = extractTomlTable(updated, tableName);
-        if (
-            !existingBody ||
-            (!isWindowsOnlyOmnysystemTable(existingBody) &&
-                !isLegacyWslNodeBridgeTable(existingBody) &&
-                !shouldRefreshWrapperBackedWslOmnysystemTable(existingBody)) ||
-            (isWrapperBackedWslOmnysystemTable(existingBody) &&
-                !shouldRefreshWrapperBackedWslOmnysystemTable(existingBody))
-        ) {
-            skippedExistingTables.push(tableName);
-            continue;
-        }
-
-        updated = upsertTomlTable(updated, tableName, buildWslOmnysystemTableBody(tableBody, runtime));
-        adaptedTables.push(tableName);
     }
 
     if (updated === wslContent) {

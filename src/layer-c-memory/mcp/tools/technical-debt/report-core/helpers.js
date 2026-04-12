@@ -43,16 +43,32 @@ export async function loadTechnicalDebtReportArtifacts({
   ] = await Promise.all([
     needs.needsStructuralDetails
       ? aggregateTool.execute({ aggregationType: 'duplicates', limit: 10 }, context)
+          .catch((error) => {
+            console.error('[technical-debt] Failed to load duplicates:', error.message);
+            return buildEmptyDuplicatesResult();
+          })
       : buildEmptyDuplicatesResult(),
     needs.needsConceptualDetails
       ? aggregateTool.execute({ aggregationType: 'conceptual_duplicates', limit: 10 }, context)
+          .catch((error) => {
+            console.error('[technical-debt] Failed to load conceptual duplicates:', error.message);
+            return buildEmptyConceptualResult();
+          })
       : buildEmptyConceptualResult(),
     needs.needsPipelineDetails
       ? aggregateTool.execute({ aggregationType: 'pipeline_health' }, context)
+          .catch((error) => {
+            console.error('[technical-debt] Failed to load pipeline health:', error.message);
+            return buildEmptyPipelineHealthResult();
+          })
       : buildEmptyPipelineHealthResult(),
     folderizationSnapshotReport
       || (repo && needs.needsFolderizationDetails
         ? buildFolderizationReportFromRepo(repo, folderizationOptions)
+            .catch((error) => {
+              console.error('[technical-debt] Failed to load folderization report:', error.message);
+              return buildEmptyFolderizationReport(folderizationOptions);
+            })
         : buildEmptyFolderizationReport(folderizationOptions))
   ]);
 
