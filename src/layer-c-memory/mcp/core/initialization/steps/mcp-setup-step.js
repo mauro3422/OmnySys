@@ -22,7 +22,6 @@ import {
   executeToolCall,
   buildToolExecutionContext
 } from './mcp-tool-call-helpers.js';
-import { normalizeTransportOrigin, inferTransportOrigin } from '../../transport-provenance.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
 
@@ -32,14 +31,8 @@ const logger = createLogger('OmnySys:mcp:setup:step');
  */
 function buildStdioTransportContext(server) {
   const clientInfo = server?.clientInfo || {};
-  const inferred = inferTransportOrigin({
-    clientInfo,
-    metadata: { transport_origin: 'stdio_bridge' },
-    requestContext: { defaultOrigin: 'stdio_bridge' }
-  });
-
   return {
-    origin: normalizeTransportOrigin(inferred, 'stdio_bridge'),
+    origin: 'stdio_bridge',
     source: 'stdio-bridge',
     clientInfo,
     clientId: clientInfo?.client_id || clientInfo?.name || 'stdio-client',

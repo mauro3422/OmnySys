@@ -24,7 +24,7 @@ import {
 import {
   buildTransportProvenance,
   normalizeTransportOrigin
-} from '../../transport-provenance.js';
+} from '../../../transport-provenance.js';
 
 const logger = createLogger('OmnySys:mcp:tool-telemetry');
 

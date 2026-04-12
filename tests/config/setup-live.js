@@ -1,22 +1,18 @@
-import { vi, afterAll, beforeEach } from 'vitest';
+import { vi, beforeEach, afterAll } from 'vitest';
 import Database from 'better-sqlite3';
-import { readFileSync, existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-const __fileUrl = new URL(import.meta.url);
+const __fileUrl = new URL(import.meta.url');
 const schemaPath = resolve(dirname(fileURLToPath(__fileUrl)), '../../src/layer-c-memory/storage/database/schema.sql');
 
-let dbInstance = null;
-
-function getRealDbPath() {
-  const projectRoot = resolve(dirname(fileURLToPath(__fileUrl)), '../..');
-  return resolve(projectRoot, '.omnysysdata', 'omnysys.db');
-}
-
 vi.mock('../../src/layer-c-memory/storage/database/connection.js', async () => {
-  const actual = await importOriginal();
-  const dbPath = getRealDbPath();
+  const actual = await vi.importActual('../../src/layer-c-memory/storage/database/connection.js');
+  const projectRoot = resolve(dirname(fileURLToPath(__fileUrl)), '../..');
+  const dbPath = resolve(projectRoot, '.omnysysdata', 'omnysys.db');
+
+  let dbInstance = null;
 
   return {
     ...actual,
@@ -24,7 +20,7 @@ vi.mock('../../src/layer-c-memory/storage/database/connection.js', async () => {
       if (!dbInstance) {
         const dir = dirname(dbPath);
         if (!existsSync(dir)) {
-          require('fs').mkdirSync(dir, { recursive: true });
+          mkdirSync(dir, { recursive: true });
         }
 
         dbInstance = new Database(dbPath, {
@@ -37,7 +33,7 @@ vi.mock('../../src/layer-c-memory/storage/database/connection.js', async () => {
         dbInstance.pragma('synchronous = NORMAL');
 
         if (existsSync(schemaPath)) {
-          const sql = readFileSync(schemaPath, 'utf8');
+          const sql = require('fs').readFileSync(schemaPath, 'utf8');
           dbInstance.exec(sql);
         }
       }
@@ -62,5 +58,5 @@ vi.mock('../../src/layer-c-memory/storage/database/connection.js', async () => {
 });
 
 beforeEach(() => {
-  console.log('[LIVE MODE] Usando DB real - servidor MCP debe estar corriendo');
+  console.log('[LIVE MODE] Usando DB real - servidor MCP corriendo');
 });
