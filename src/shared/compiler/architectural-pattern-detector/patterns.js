@@ -4,7 +4,7 @@
  * @module shared/compiler/architectural-pattern-detector-patterns
  */
 
-import { suggestDirectoryForFile } from '../directory-structure-analyzer.js';
+import { suggestDirectoryForFile } from '../directory-structure-analyzer/index.js';
 import { ARCHITECTURAL_PATTERNS } from '../architectural-pattern-detector-constants.js';
 
 export function detectHelperUtilityPattern(fileName, metadata) {

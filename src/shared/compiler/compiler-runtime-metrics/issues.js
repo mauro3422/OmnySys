@@ -5,7 +5,7 @@
  */
 
 import { getPipelineOrphanSummary } from '../pipeline-orphans.js';
-import { getDeadCodePlausibilitySummary } from '../dead-code-reporting.js';
+import { getDeadCodePlausibilitySummary } from '../dead-code/index.js';
 import {
   auditWatcherIssues,
   countOrphanedWatcherIssues,

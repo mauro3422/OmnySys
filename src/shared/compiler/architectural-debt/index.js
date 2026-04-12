@@ -12,15 +12,15 @@
  * @module shared/compiler/architectural-debt-score
  */
 
-import { createLogger } from '#utils/logger.js';
-import { CATEGORY_WEIGHTS, getSeverityLevel, sortIssuesBySeverityAndLocation } from './architectural-debt-score-helpers.js';
+import { createLogger } from '../../../utils/logger.js';
+import { CATEGORY_WEIGHTS, getSeverityLevel, sortIssuesBySeverityAndLocation } from './helpers.js';
 import {
   calculateDirectoryStructureScore,
   calculatePatternScore,
   calculateCouplingScore,
   calculateDuplicationScore
-} from './architectural-debt-score/calculators/index.js';
-import { analyzeDirectoryStructure } from './directory-structure-analyzer.js';
+} from '../architectural-debt-score/calculators/index.js';
+import { analyzeDirectoryStructure } from '../directory-structure-analyzer/index.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');
 

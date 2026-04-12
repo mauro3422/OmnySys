@@ -1,6 +1,6 @@
 import { createLogger } from '#utils/logger.js';
 import { loadDistinctFilePaths } from '../../architectural-debt-score-repository.js';
-import { detectFileType, validateFileLocation } from '../../directory-structure-analyzer.js';
+import { detectFileType, validateFileLocation } from '../../directory-structure-analyzer/index.js';
 import {
   buildFolderizationCandidateReport,
   buildFolderizationFamilyStateReportFromRepo,

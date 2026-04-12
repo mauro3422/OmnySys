@@ -21,10 +21,10 @@ export {
   detectFileType,
   suggestDirectoryForFile,
   getDirectoryStructureDefaults
-} from './directory-structure-analyzer-conventions.js';
+} from '../directory-structure-analyzer-conventions.js';
 
 export {
   validateFileLocation,
   detectArchitecturalDrift,
   calculateArchitectureOrganizationScore
-} from './directory-structure-analyzer-validation.js';
+} from './validation.js';

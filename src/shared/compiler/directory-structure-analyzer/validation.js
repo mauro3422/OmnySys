@@ -1,5 +1,5 @@
 import path from 'path';
-import { suggestDirectoryForFile } from './directory-structure-analyzer-conventions.js';
+import { suggestDirectoryForFile } from '../directory-structure-analyzer-conventions.js';
 
 export function validateFileLocation(filePath, fileType, conventions) {
   const expectedDirectory = suggestDirectoryForFile(path.basename(filePath), fileType, conventions);

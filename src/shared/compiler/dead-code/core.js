@@ -7,16 +7,16 @@
 export {
     isLowSignalDeadCodeName,
     normalizeDeadCodeAtom
-} from './dead-code-normalization.js';
+} from '../dead-code-normalization.js';
 
 export {
     isSuspiciousDeadCodeAtom
-} from './dead-code-suspicion.js';
+} from '../dead-code-suspicion.js';
 
 export {
     getDeadCodeSqlPredicate
-} from './dead-code-sql.js';
+} from '../dead-code-sql.js';
 
 export {
     detectDeadCodeDrift
-} from './dead-code-drift.js';
+} from '../dead-code-drift.js';

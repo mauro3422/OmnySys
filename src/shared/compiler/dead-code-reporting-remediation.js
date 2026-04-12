@@ -9,8 +9,8 @@ import { getRecommendation } from './recommendations/RecommendationEngine.js';
 import {
   normalizeDeadCodeAtom,
   getDeadCodeSqlPredicate
-} from './dead-code-core.js';
-import { getSuspiciousDeadCodeCount } from './dead-code-reporting-summary.js';
+} from './dead-code/core.js';
+import { getSuspiciousDeadCodeCount } from './dead-code/reporting-summary.js';
 
 export function loadSuspiciousDeadCodeCandidates(db, options = {}) {
   const {

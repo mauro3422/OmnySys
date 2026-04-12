@@ -10,7 +10,7 @@ export {
     isSuspiciousDeadCodeAtom,
     getDeadCodeSqlPredicate,
     detectDeadCodeDrift
-} from './dead-code-core.js';
+} from './dead-code/core.js';
 
 export {
     getFlaggedDeadCodeCount,
@@ -19,4 +19,4 @@ export {
     loadSuspiciousDeadCodeCandidates,
     buildDeadCodeRemediation,
     buildDeadCodeRemediationPlan
-} from './dead-code-reporting.js';
+} from './dead-code/index.js';

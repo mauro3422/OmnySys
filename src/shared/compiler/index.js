@@ -702,7 +702,7 @@ export {
   validateFileLocation,
   detectArchitecturalDrift,
   calculateArchitectureOrganizationScore
-} from './directory-structure-analyzer.js';
+} from './directory-structure-analyzer/index.js';
 
 export {
   detectArchitecturalPattern,
@@ -717,7 +717,7 @@ export {
 export {
   calculateArchitecturalDebtScore,
   getSeverityLevel
-} from './architectural-debt-score.js';
+} from './architectural-debt/index.js';
 
 export {
   buildDuplicateDebtHistory,

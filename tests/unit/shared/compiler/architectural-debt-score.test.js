@@ -62,7 +62,7 @@ vi.mock('../../../../src/shared/compiler/recommendations/RecommendationEngine.js
   getRecommendation: h.getRecommendation
 }));
 
-import { calculateArchitecturalDebtScore } from '../../../../src/shared/compiler/architectural-debt-score.js';
+import { calculateArchitecturalDebtScore } from '../../../../src/shared/compiler/architectural-debt/index.js';
 
 function createRepo() {
   return {

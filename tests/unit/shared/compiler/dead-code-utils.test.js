@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   isSuspiciousDeadCodeAtom,
   normalizeDeadCodeAtom
-} from '../../../../src/shared/compiler/dead-code-core.js';
+} from '../../../../src/shared/compiler/dead-code/core.js';
 import {
   buildDeadCodeRemediationPlan,
   getDeadCodePlausibilitySummary
-} from '../../../../src/shared/compiler/dead-code-reporting.js';
+} from '../../../../src/shared/compiler/dead-code/index.js';
 
 function createFakeDb({ flagged = 0, suspicious = 0, candidates = [] } = {}) {
   return {

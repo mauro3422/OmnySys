@@ -4,7 +4,7 @@
  * @module shared/compiler/dead-code-reporting-summary
  */
 
-import { getDeadCodeSqlPredicate } from './dead-code-core.js';
+import { getDeadCodeSqlPredicate } from './core.js';
 
 export function getFlaggedDeadCodeCount(db, options = {}) {
   const { fileGlob = 'src/%' } = options;

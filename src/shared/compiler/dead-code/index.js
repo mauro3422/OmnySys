@@ -8,10 +8,10 @@ export {
   getFlaggedDeadCodeCount,
   getSuspiciousDeadCodeCount,
   getDeadCodePlausibilitySummary
-} from './dead-code-reporting-summary.js';
+} from './reporting-summary.js';
 
 export {
   loadSuspiciousDeadCodeCandidates,
   buildDeadCodeRemediation,
   buildDeadCodeRemediationPlan
-} from './dead-code-reporting-remediation.js';
+} from '../dead-code-reporting-remediation.js';
