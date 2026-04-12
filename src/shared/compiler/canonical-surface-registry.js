@@ -19,6 +19,7 @@ export const CANONICAL_SURFACE_REGISTRY = {
   // ─── Graph Core (complete) ───
   atom_graph: {
     table: 'atoms',
+    rowCount: 14827,
     loadFn: 'query_graph',
     file: 'src/layer-c-memory/mcp/tools/query-graph.js',
     controlPlaneField: 'Database',
