@@ -13,7 +13,12 @@ export function extractStatusContext(status = {}) {
   const current = metricsSnapshot.current || {};
   const daily = metricsSnapshot.daily || null;
   const lifetime = metricsSnapshot.lifetime || null;
-  const mcpSessions = status.background?.mcpSessionSummary || status.mcpSessions || {};
+  const mcpSessions = {
+    ...(status.background?.mcpSessionSummary || {}),
+    ...(status.mcpSessions || {}),
+    requestDeliverySummary: status.requestDeliverySummary || status.background?.mcpRequestDeliverySummary || null,
+    topologySummary: status.topologySummary || status.background?.mcpTopologySummary || null
+  };
   const watcher = compactWatcherSummary(status.watcher) || {};
   const toolInventory = compactToolInventory(status.toolInventory) || {};
   const recentErrorSummary = status.recentErrors?.summary || {};

@@ -97,9 +97,14 @@ export function buildStatusSummaryPayload(status, recentErrors) {
         actionableRatio: status.background.conceptualDuplicates.actionableRatio
       } : null,
       issueSummary: status.background.issueSummary || null,
-      mcpSessionSummary: status.background.mcpSessionSummary || null
+      mcpSessionSummary: status.background.mcpSessionSummary || null,
+      mcpRequestDeliverySummary: status.background.mcpRequestDeliverySummary || null,
+      mcpTopologySummary: status.background.mcpTopologySummary || null
     } : null,
     mcpSessions: status.mcpSessions || null,
+    transport: status.transport || null,
+    requestDeliverySummary: status.requestDeliverySummary || null,
+    topologySummary: status.topologySummary || null,
     compilerReadiness: status.compilerReadiness ? {
       ready: status.compilerReadiness.ready,
       health: status.compilerReadiness.health,

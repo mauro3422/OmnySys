@@ -8,6 +8,8 @@ import { getPhase2PendingFiles } from '../compiler-runtime-metrics-db.js';
 import { getPipelineOrphanSummary } from '../pipeline-orphans.js';
 import { buildPipelineTimingTelemetrySummary } from '../pipeline-timing-telemetry.js';
 import { buildToolRunTelemetrySummary } from '../tool-run-telemetry/telemetry.js';
+import { buildMcpRequestDeliverySummary } from '../mcp-request-delivery-telemetry.js';
+import { buildMcpTopologySummary } from '../mcp-topology-telemetry.js';
 import { asNumber } from '../core-utils.js';
 import { normalizeSnapshotPath } from '#shared/compiler/snapshot-path.js';
 
@@ -23,7 +25,9 @@ export function buildCurrentSummaries({
   recentErrors,
   phase2PendingFiles,
   toolRunTelemetryWindowDays,
-  mcpSessionSummary
+  mcpSessionSummary,
+  proxyRuntimeTelemetry,
+  bridgeRuntimeTelemetry
 }) {
   const graphCoverage = (() => {
     try {
@@ -106,6 +110,38 @@ export function buildCurrentSummaries({
       return null;
     }
   })();
+  const requestDeliveryTelemetry = (() => {
+    try {
+      return db ? buildMcpRequestDeliverySummary(db, {
+        projectPath,
+        scopePath,
+        focusPath,
+        windowDays: toolRunTelemetryWindowDays
+      }) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const topologyTelemetry = (() => {
+    try {
+      return db ? buildMcpTopologySummary(db, {
+        projectPath,
+        scopePath,
+        focusPath,
+        windowDays: toolRunTelemetryWindowDays,
+        sessionSummary: mcpSessionSummary,
+        requestDeliverySummary: requestDeliveryTelemetry,
+        proxyRuntimeTelemetry,
+        bridgeRuntimeTelemetry,
+        recentErrors,
+        persist: false,
+        captureSource: 'status.runtime',
+        snapshotKind: 'status'
+      }) : null;
+    } catch {
+      return null;
+    }
+  })();
   const behavior = buildBehaviorScore({
     healthScore: databaseHealth?.healthScore,
     issueCount: issueSummary.total,
@@ -143,6 +179,8 @@ export function buildCurrentSummaries({
     pendingFiles,
     pipelineTimingTelemetry,
     toolTelemetry,
+    requestDeliveryTelemetry,
+    topologyTelemetry,
     behavior,
     normalizeSnapshotPath
   };

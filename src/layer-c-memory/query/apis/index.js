@@ -16,3 +16,4 @@ export * from './connections-api.js';
 export * from './risk-api.js';
 export * from './export-api.js';
 export * from './mcp-sessions-api.js';
+export * from './mcp-topology-api.js';

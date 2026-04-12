@@ -25,6 +25,16 @@ import {
 } from './clients-helpers.js';
 import { getNodeCommand } from './node-command.js';
 
+function buildHttpDirectHeaders(clientId, transportOriginSource) {
+    return {
+        'X-OmnySys-Client-Id': clientId,
+        'X-OmnySys-Client-Route-Id': clientId,
+        'X-OmnySys-Client-Name': clientId,
+        'X-OmnySys-Transport-Origin': 'http_direct',
+        'X-OmnySys-Transport-Origin-Source': transportOriginSource
+    };
+}
+
 export async function applyCodexConfig(url, projectPath = repoRoot) {
     const targetPath = CONFIG_PATHS.codex;
     const projectConfigPath = path.join(projectPath, '.codex', 'config.toml');
@@ -129,6 +139,10 @@ export async function applyClaudeConfig(url, projectPath) {
             ...(existingGlobal || {}),
             type: 'http',
             url,
+            headers: {
+                ...(existingGlobal?.headers && typeof existingGlobal.headers === 'object' ? existingGlobal.headers : {}),
+                ...buildHttpDirectHeaders('claude', 'claude-config')
+            },
             disabled: false
         };
         clearLegacyAliases(globalServers);
@@ -148,6 +162,10 @@ export async function applyClaudeConfig(url, projectPath) {
             ...(existingProject || {}),
             type: 'http',
             url,
+            headers: {
+                ...(existingProject?.headers && typeof existingProject.headers === 'object' ? existingProject.headers : {}),
+                ...buildHttpDirectHeaders('claude', 'claude-config')
+            },
             disabled: false
         };
         clearLegacyAliases(projectServers);
@@ -171,11 +189,18 @@ export async function applyOpenCodeConfig(url) {
         }
 
         const existing = getPrimaryWithLegacyFallback(config.mcp);
+        const existingHeaders = existing?.headers && typeof existing.headers === 'object' ? existing.headers : {};
         config.mcp[SERVER_KEY] = {
             type: 'remote',
             url,
             enabled: existing?.enabled !== false,
-            timeout: typeof existing?.timeout === 'number' ? existing.timeout : 30000
+            timeout: typeof existing?.timeout === 'number'
+                ? Math.min(existing.timeout, 15000)
+                : 15000,
+            headers: {
+                ...existingHeaders,
+                ...buildHttpDirectHeaders('opencode', 'opencode-config')
+            }
         };
         clearLegacyAliases(config.mcp);
 

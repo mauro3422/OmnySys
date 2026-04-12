@@ -25,6 +25,10 @@ function normalizeCandidate(candidate) {
   return candidate.trim().toLowerCase().replace(/[\s-]+/g, '_');
 }
 
+function normalizeIdentityValue(candidate) {
+  return typeof candidate === 'string' ? candidate.trim() : '';
+}
+
 export function normalizeTransportOrigin(value, fallback = 'unknown') {
   const normalized = normalizeCandidate(value);
   if (!normalized) {
@@ -40,11 +44,14 @@ export function inferTransportOrigin({
   metadata = {},
   requestContext = {}
 } = {}) {
+  const normalizedClientInfo = clientInfo && typeof clientInfo === 'object' ? clientInfo : {};
+  const normalizedMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+  const normalizedRequestContext = requestContext && typeof requestContext === 'object' ? requestContext : {};
   const explicitOrigin = normalizeTransportOrigin(
-    metadata.transport_origin
-      || metadata.transportOrigin
-      || clientInfo.transport_origin
-      || clientInfo.transportOrigin,
+    normalizedMetadata.transport_origin
+      || normalizedMetadata.transportOrigin
+      || normalizedClientInfo.transport_origin
+      || normalizedClientInfo.transportOrigin,
     'unknown'
   );
 
@@ -52,24 +59,93 @@ export function inferTransportOrigin({
     return explicitOrigin;
   }
 
-  if (metadata.shell_http_fallback === true || clientInfo.shell_http_fallback === true || requestContext.shellHttpFallback === true) {
+  if (normalizedMetadata.shell_http_fallback === true || normalizedClientInfo.shell_http_fallback === true || normalizedRequestContext.shellHttpFallback === true) {
     return 'shell_http_fallback';
   }
 
   if (
-    clientInfo.bridge_recovery === true
-    || clientInfo.bridge_recovery_trigger
-    || clientInfo.recovery_mode === 'bridge'
-    || requestContext.transportMode === 'stdio'
+    normalizedClientInfo.bridge_recovery === true
+    || normalizedClientInfo.bridge_recovery_trigger
+    || normalizedClientInfo.recovery_mode === 'bridge'
+    || normalizedRequestContext.transportMode === 'stdio'
   ) {
     return 'stdio_bridge';
   }
 
-  if (requestContext.transportMode === 'http' || requestContext.isHttpRequest === true) {
+  if (normalizedRequestContext.transportMode === 'http' || normalizedRequestContext.isHttpRequest === true) {
     return 'http_direct';
   }
 
-  return normalizeTransportOrigin(requestContext.defaultOrigin || 'native_mcp', 'native_mcp');
+  return normalizeTransportOrigin(normalizedRequestContext.defaultOrigin || 'native_mcp', 'native_mcp');
+}
+
+export function buildTransportHandshakeSignature({
+  clientInfo = {},
+  metadata = {},
+  requestContext = {},
+  sessionKind = null
+} = {}) {
+  const origin = normalizeTransportOrigin(
+    metadata?.transport_origin
+      || clientInfo?.transport_origin
+      || requestContext?.transportOrigin,
+    'unknown'
+  );
+  const originSource = normalizeIdentityValue(
+    metadata?.transport_origin_source
+      || clientInfo?.transport_origin_source
+      || requestContext?.transportOriginSource
+      || 'inferred'
+  ) || 'inferred';
+  const clientRouteId = normalizeIdentityValue(
+    metadata?.transport_client_route_id
+      || clientInfo?.client_route_id
+      || clientInfo?.original_client_route_id
+      || clientInfo?.transport_client_route_id
+      || metadata?.client_route_id
+      || metadata?.original_client_route_id
+      || ''
+  );
+  const clientId = normalizeIdentityValue(
+    metadata?.transport_client_id
+      || clientInfo?.client_id
+      || clientInfo?.original_client_id
+      || clientInfo?.transport_client_id
+      || metadata?.client_id
+      || metadata?.original_client_id
+      || ''
+  );
+  const requestPhase = normalizeIdentityValue(
+    metadata?.transport_request_phase
+      || requestContext?.transportRequestPhase
+      || sessionKind
+      || 'http-session'
+  ) || 'http-session';
+  const resolvedSessionKind = normalizeIdentityValue(
+    metadata?.transport_session_kind
+      || sessionKind
+      || requestContext?.sessionKind
+      || 'unknown'
+  ) || 'unknown';
+  const headerState = metadata?.transport_session_header_present === true
+    || clientInfo?.transport_session_header_present === true
+    || requestContext?.transportSessionHeaderPresent === true
+    ? 'header-present'
+    : 'header-missing';
+
+  if (!clientRouteId && !clientId) {
+    return 'unknown';
+  }
+
+  return [
+    origin,
+    originSource,
+    clientRouteId || 'unknown',
+    clientId || 'unknown',
+    requestPhase,
+    resolvedSessionKind,
+    headerState
+  ].join('|');
 }
 
 export function buildTransportProvenance({
@@ -81,13 +157,85 @@ export function buildTransportProvenance({
   clientId = null,
   sessionKind = null
 } = {}) {
+  const transportClientId = normalizeIdentityValue(
+    metadata?.transport_client_id
+      || clientInfo?.transport_client_id
+      || clientInfo?.client_id
+      || clientInfo?.original_client_id
+      || clientId
+  ) || null;
+  const transportClientRouteId = normalizeIdentityValue(
+    metadata?.transport_client_route_id
+      || clientInfo?.transport_client_route_id
+      || clientInfo?.client_route_id
+      || clientInfo?.original_client_route_id
+      || transportClientId
+  ) || null;
+  const transportClientName = normalizeIdentityValue(
+    metadata?.transport_client_name
+      || clientInfo?.transport_client_name
+      || clientInfo?.name
+      || clientInfo?.original_name
+      || transportClientId
+      || transportClientRouteId
+  ) || null;
+  const transportRequestPhase = normalizeIdentityValue(
+    metadata?.transport_request_phase
+      || clientInfo?.transport_request_phase
+      || sessionKind
+      || null
+  ) || null;
+  const transportRouteOriginHint = normalizeIdentityValue(
+    metadata?.transport_route_origin_hint
+      || clientInfo?.transport_route_origin_hint
+      || null
+  ) || null;
+  const transportSessionHeaderPresent = metadata?.transport_session_header_present === true
+    || clientInfo?.transport_session_header_present === true;
+  const transportHandshakeSignature = normalizeIdentityValue(
+    metadata?.transport_handshake_signature
+      || clientInfo?.transport_handshake_signature
+      || buildTransportHandshakeSignature({
+        clientInfo,
+        metadata,
+        requestContext: {
+          transportOrigin: origin,
+          transportOriginSource: source,
+          transportRequestPhase,
+          transportSessionHeaderPresent,
+          sessionKind
+        },
+        sessionKind
+      })
+  ) || 'unknown';
+  const transportMetadata = {
+    ...(metadata || {}),
+    transport_origin: normalizeTransportOrigin(origin, 'unknown'),
+    transport_origin_source: source,
+    transport_client_id: transportClientId,
+    transport_client_route_id: transportClientRouteId,
+    transport_client_name: transportClientName,
+    transport_request_phase: transportRequestPhase,
+    transport_session_header_present: transportSessionHeaderPresent,
+    transport_route_origin_hint: transportRouteOriginHint,
+    transport_handshake_signature: transportHandshakeSignature,
+    transport_session_kind: sessionKind,
+    transport_session_id: sessionId || null
+  };
+
   return {
     transport_origin: normalizeTransportOrigin(origin, 'unknown'),
     transport_origin_source: source,
     transport_session_kind: sessionKind,
     transport_session_id: sessionId || null,
-    transport_client_id: clientId || null,
+    transport_client_id: transportClientId,
+    transport_client_route_id: transportClientRouteId,
+    transport_client_name: transportClientName,
+    transport_request_phase: transportRequestPhase,
+    transport_session_header_present: transportSessionHeaderPresent,
+    transport_route_origin_hint: transportRouteOriginHint,
+    transport_handshake_signature: transportHandshakeSignature,
     transport_client_info: clientInfo || null,
-    transport_metadata: metadata || null
+    transport_metadata: transportMetadata
   };
 }

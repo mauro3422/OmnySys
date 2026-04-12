@@ -136,7 +136,38 @@ export function mapSessionsSummary(current = {}) {
     clientSyncState: current.mcpSessionSummary.clientSyncState || null,
     clientSyncReason: current.mcpSessionSummary.clientSyncReason || null,
     clientSyncRecommendation: current.mcpSessionSummary.clientSyncRecommendation || null,
-    clientSyncSummary: current.mcpSessionSummary.clientSyncSummary || null
+    clientSyncSummary: current.mcpSessionSummary.clientSyncSummary || null,
+    transportOriginCounts: current.mcpSessionSummary.transportOriginCounts || null,
+    transportOriginTotal: current.mcpSessionSummary.transportOriginTotal || 0,
+    transportOriginDistinctCount: current.mcpSessionSummary.transportOriginDistinctCount || 0,
+    transportOriginKnownCount: current.mcpSessionSummary.transportOriginKnownCount || 0,
+    dominantTransportOrigin: current.mcpSessionSummary.dominantTransportOrigin || null,
+    dominantTransportOriginCount: current.mcpSessionSummary.dominantTransportOriginCount || 0,
+    transportOriginMix: Array.isArray(current.mcpSessionSummary.transportOriginMix)
+      ? current.mcpSessionSummary.transportOriginMix.slice(0, 8)
+      : [],
+    transportProvenanceState: current.mcpSessionSummary.transportProvenanceState || null,
+    transportProvenanceHealthy: current.mcpSessionSummary.transportProvenanceHealthy === true,
+    transportProvenanceTrustworthy: current.mcpSessionSummary.transportProvenanceTrustworthy !== false,
+    transportProvenanceReason: current.mcpSessionSummary.transportProvenanceReason || null,
+    transportProvenanceRecommendation: current.mcpSessionSummary.transportProvenanceRecommendation || null,
+    transportProvenanceSummary: current.mcpSessionSummary.transportProvenanceSummary || null,
+    transportSessionStateCounts: current.mcpSessionSummary.transportSessionStateCounts || null,
+    transportRequestPhaseCounts: current.mcpSessionSummary.transportRequestPhaseCounts || null,
+    transportClientRouteIdCounts: current.mcpSessionSummary.transportClientRouteIdCounts || null,
+    transportHandshakeSignatureCounts: current.mcpSessionSummary.transportHandshakeSignatureCounts || null,
+    transportSessionHeaderPresentCount: current.mcpSessionSummary.transportSessionHeaderPresentCount || 0,
+    transportSessionHeaderMissingCount: current.mcpSessionSummary.transportSessionHeaderMissingCount || 0,
+    transportAlertState: current.mcpSessionSummary.transportAlertState || null,
+    transportAlertCount: current.mcpSessionSummary.transportAlertCount || 0,
+    transportAlertHealthy: current.mcpSessionSummary.transportAlertHealthy === true,
+    transportAlertTrustworthy: current.mcpSessionSummary.transportAlertTrustworthy !== false,
+    transportAlertReason: current.mcpSessionSummary.transportAlertReason || null,
+    transportAlertRecommendation: current.mcpSessionSummary.transportAlertRecommendation || null,
+    transportAlertSummary: current.mcpSessionSummary.transportAlertSummary || null,
+    transportAlerts: Array.isArray(current.mcpSessionSummary.transportAlerts)
+      ? current.mcpSessionSummary.transportAlerts.slice(0, 8)
+      : []
   };
 }
 
@@ -189,6 +220,11 @@ export function buildHealthPanelNowSummary(now = {}) {
     clientSyncSeverity: now.clientSyncSeverity || null,
     clientSyncReason: now.clientSyncReason || null,
     clientSyncRecommendation: now.clientSyncRecommendation || null,
+    transportProvenanceState: now.transportProvenanceState || null,
+    transportProvenanceHealthy: now.transportProvenanceHealthy === true,
+    transportProvenanceTrustworthy: now.transportProvenanceTrustworthy !== false,
+    transportProvenanceReason: now.transportProvenanceReason || null,
+    transportProvenanceRecommendation: now.transportProvenanceRecommendation || null,
     folderizationPropagation: now.folderizationPropagation || null,
     canonicalPromotion: now.canonicalPromotion || null,
     propagationExpansionState: now.propagationExpansionState || null,
@@ -221,6 +257,7 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
     compact.systemInventory ? `systems=${compact.systemInventory.inventoryState || 'watching'}:${compact.systemInventory.totalSystemCount || 0}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,
+    now.transportProvenanceState && now.transportProvenanceState !== 'fresh' ? `transport=${now.transportProvenanceState}` : null,
     perf?.status ? `perf=${perf.status}:${Math.round(perf.current?.totalDurationMs || 0)}ms` : null,
     tools?.totalRuns > 0 ? `tools=${tools.successfulRuns || 0}/${tools.totalRuns} ok` : 'tools=0',
     tools?.pressureRuns > 0 ? `repair=${tools.repairedRuns || 0}/${tools.pressureRuns}` : null,

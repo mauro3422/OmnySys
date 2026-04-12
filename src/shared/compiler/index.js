@@ -109,6 +109,12 @@ export {
 } from './snapshot.js';
 
 export {
+  buildMcpTopologyTelemetry,
+  persistMcpTopologyTelemetry,
+  buildMcpTopologySummary
+} from './mcp-topology-telemetry.js';
+
+export {
   buildCompilerMetricsSnapshotSummary
 } from './metrics/snapshot-summary-text.js';
 
@@ -287,6 +293,12 @@ export {
 export {
   buildToolRunTelemetrySummary
 } from './tool-run-telemetry/summary.js';
+
+export {
+  buildMcpRequestDeliveryTelemetry,
+  persistMcpRequestDeliveryTelemetry,
+  buildMcpRequestDeliverySummary
+} from './mcp-request-delivery-telemetry.js';
 
 export {
   buildCompilerHistoricalStorageSummary

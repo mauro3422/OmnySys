@@ -13,6 +13,7 @@
 | 4 | `mcp-worker-periodic-exit-after-ready.md` | El worker procesal hace exit periodico despues de ready | High | Investigado |
 | 5 | `mcp-wsl-route-dedup-transport-closed.md` | Colision de route identity y sesion en launcher WSL | High | Investigado |
 | 6 | `vscode-codex-wsl-startup-freeze.md` | Codex de VS Code queda congelado al arrancar por WSL aunque Windows MCP siga sano | High | Investigado localmente |
+| 7 | `mcp-transport-provenance-drift-multi-client-churn.md` | Drift de provenance de transporte entre HTTP directo, bridge y fallback bajo churn multi-cliente | High | Investigado |
 
 ## Contexto
 
@@ -23,6 +24,9 @@ Cada archivo intenta separar una frontera distinta:
 - bridge, reconnect y session handshake
 - launcher identity entre Windows y WSL
 - superficie de arranque de Codex dentro de VS Code
+- provenance de transporte entre clientes HTTP directos y stdio bridge
+- topologia MCP viva con `mcp_topology_events` y `omnysys://mcp-topology`
+- request delivery gaps where a tool ran but the response did not traverse the transport cleanly
 
 La leccion repetida es que `Transport closed`, spinner infinito o `healthy` en `/health`
 no describen un solo bug. Son sintomas que pueden nacer en capas distintas.

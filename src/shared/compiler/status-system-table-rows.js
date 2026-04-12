@@ -136,11 +136,36 @@ function buildDebtRow(current, totalDuplicates) {
 }
 
 function buildSessionsRow(current, mcpSessions) {
+  const transportMix = Array.isArray(mcpSessions.transportOriginMix)
+    ? mcpSessions.transportOriginMix.slice(0, 3).map((item) => `${item.origin}:${item.count}`).join(', ')
+    : Object.entries(mcpSessions.transportOriginCounts || {}).slice(0, 3).map(([origin, count]) => `${origin}:${count}`).join(', ');
+  const transportAlertSuffix = mcpSessions.transportAlertState && mcpSessions.transportAlertState !== 'fresh'
+    ? ` | alert=${mcpSessions.transportAlertState}${mcpSessions.transportAlertCount ? ` (${normalizeCount(mcpSessions.transportAlertCount)})` : ''}`
+    : '';
+  const deliverySuffix = mcpSessions.requestDeliverySummary?.state && mcpSessions.requestDeliverySummary.state !== 'fresh'
+    ? ` | delivery=${mcpSessions.requestDeliverySummary.state}${mcpSessions.requestDeliverySummary.totalRequests ? ` (${normalizeCount(mcpSessions.requestDeliverySummary.totalRequests)})` : ''}`
+    : '';
   return {
     area: 'Sessions',
-    state: current.clientSyncState || mcpSessions.clientSyncState || 'fresh',
-    detail: `persistent=${normalizeCount(mcpSessions.totalPersistentActive || mcpSessions.totalPersistent || 0)} active / ${normalizeCount(mcpSessions.totalPersistent || 0)} total | clients=${normalizeCount(mcpSessions.uniqueClients || 0)}`,
+    state: current.transportProvenanceState || mcpSessions.transportProvenanceState || current.clientSyncState || mcpSessions.clientSyncState || 'fresh',
+    detail: `persistent=${normalizeCount(mcpSessions.totalPersistentActive || mcpSessions.totalPersistent || 0)} active / ${normalizeCount(mcpSessions.totalPersistent || 0)} total | clients=${normalizeCount(mcpSessions.uniqueClients || 0)} | transport=${mcpSessions.transportProvenanceState || 'missing'}${transportMix ? ` (${transportMix})` : ''}${transportAlertSuffix}${deliverySuffix}`,
     source: 'mcp_sessions'
+  };
+}
+
+function buildTopologyRow(current, mcpSessions) {
+  const topology = mcpSessions.topologySummary || current.topologySummary || {};
+  const transportMix = Array.isArray(topology.transportOriginMix)
+    ? topology.transportOriginMix.slice(0, 3).map((item) => `${item.origin}:${item.count}`).join(', ')
+    : Object.entries(topology.transportOriginCounts || {}).slice(0, 3).map(([origin, count]) => `${origin}:${count}`).join(', ');
+  const alertSuffix = Array.isArray(topology.alerts) && topology.alerts.length > 0
+    ? ` | alerts=${topology.alerts.slice(0, 3).map((alert) => alert.code || 'unknown').join(',')}`
+    : '';
+  return {
+    area: 'Topology',
+    state: topology.topologyState || topology.state || current.topologyState || 'missing',
+    detail: `clients=${normalizeCount(topology.connectedClients || 0)} | active=${normalizeCount(topology.activeSessions || 0)} | repl=${normalizeCount(topology.sessionReplacementCount || 0)} | reuse=${normalizeCount(topology.sessionReuseCount || 0)} | bridge=${topology.bridgeState || 'missing'} | proxy=${topology.proxyState || 'missing'} | delivery=${topology.requestDeliveryState || 'missing'}${transportMix ? ` | transport=${transportMix}` : ''}${alertSuffix}`,
+    source: 'mcp_topology_events + mcp_sessions + request delivery telemetry'
   };
 }
 
@@ -282,6 +307,7 @@ export function buildStatusTableRows(status = {}) {
     buildPropagationLedgerRow(ctx.propagationLedger),
     buildDebtRow(ctx.current, ctx.totalDuplicates),
     buildSessionsRow(ctx.current, ctx.mcpSessions),
+    buildTopologyRow(ctx.current, ctx.mcpSessions),
     buildToolsRow(ctx.toolInventory),
     buildSystemsRow(ctx.controlPlaneContracts, ctx.metricAlignment),
     buildRegistryRow(ctx.controlPlaneContracts.controlPlane),

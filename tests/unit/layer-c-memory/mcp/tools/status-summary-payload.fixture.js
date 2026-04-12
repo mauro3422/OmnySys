@@ -52,6 +52,28 @@ export function buildStatusSummaryPayloadFixture() {
       }
     },
     toolInventory: { totalTools: 40, dominantCategory: 'action', concentration: 50 },
+    topologySummary: {
+      topologyState: 'watchful',
+      state: 'watchful',
+      connectedClients: 2,
+      activeSessions: 2,
+      sessionReplacementCount: 1,
+      sessionReuseCount: 3,
+      bridgeState: 'watchful',
+      proxyState: 'stable',
+      requestDeliveryState: 'watchful',
+      transportOriginCounts: {
+        http_direct: 1,
+        stdio_bridge: 1
+      },
+      transportOriginMix: [
+        { origin: 'http_direct', count: 1 },
+        { origin: 'stdio_bridge', count: 1 }
+      ],
+      alerts: [
+        { code: 'mixed_transport_provenance' }
+      ]
+    },
     systemInventory: {
       inventoryState: 'watching',
       canonicalSurfaceCount: 12,
@@ -96,7 +118,16 @@ export function buildStatusSummaryPayloadFixture() {
       totalPersistentActive: 2,
       totalPersistent: 4,
       uniqueClients: 2,
-      clientSyncState: 'watchful'
+      clientSyncState: 'watchful',
+      transportProvenanceState: 'watchful',
+      transportOriginCounts: {
+        http_direct: 1,
+        stdio_bridge: 1
+      },
+      transportOriginMix: [
+        { origin: 'http_direct', count: 1 },
+        { origin: 'stdio_bridge', count: 1 }
+      ]
     },
     proxyRuntimeTelemetry: {
       state: 'stable',

@@ -81,7 +81,8 @@ export function buildCurrentMetrics({
   driftAssessment = null,
   toolRunTelemetryWindowDays = 7,
   phase2PendingFiles = null,
-  mcpSessionSummary = null
+  mcpSessionSummary = null,
+  mcpRequestDeliverySummary = null
 } = {}) {
   const db = repo?.db || null;
   const summaries = buildCurrentSummaries({
@@ -96,7 +97,9 @@ export function buildCurrentMetrics({
     recentErrors,
     phase2PendingFiles,
     toolRunTelemetryWindowDays,
-    mcpSessionSummary
+    mcpSessionSummary,
+    proxyRuntimeTelemetry,
+    bridgeRuntimeTelemetry
   });
   const {
     graphCoverage,
@@ -113,8 +116,12 @@ export function buildCurrentMetrics({
     pendingFiles,
     pipelineTimingTelemetry,
     toolTelemetry,
+    requestDeliveryTelemetry,
+    topologyTelemetry,
     behavior
   } = summaries;
+  const requestDeliverySummary = mcpRequestDeliverySummary || requestDeliveryTelemetry || null;
+  const topologySummary = topologyTelemetry || null;
   const dataGatewayContract = controlPlaneFoundations?.dataGatewayContract || compilerExplainability?.dataGatewayContract || null;
   const liveRowSync = controlPlaneFoundations?.liveRowSync || databaseHealth?.metrics?.liveRowSync || null;
   const metricAlignment = buildMetricAlignmentSignal({
@@ -194,6 +201,79 @@ export function buildCurrentMetrics({
     clientSyncReason: mcpSessionSummary?.clientSyncReason || null,
     clientSyncRecommendation: mcpSessionSummary?.clientSyncRecommendation || null,
     clientSyncEvidence: mcpSessionSummary?.clientSyncEvidence || null,
+    transportOriginCounts: mcpSessionSummary?.transportOriginCounts || null,
+    transportOriginTotal: asNumber(mcpSessionSummary?.transportOriginTotal, 0),
+    transportOriginDistinctCount: asNumber(mcpSessionSummary?.transportOriginDistinctCount, 0),
+    transportOriginKnownCount: asNumber(mcpSessionSummary?.transportOriginKnownCount, 0),
+    dominantTransportOrigin: mcpSessionSummary?.dominantTransportOrigin || null,
+    dominantTransportOriginCount: asNumber(mcpSessionSummary?.dominantTransportOriginCount, 0),
+    transportOriginMix: Array.isArray(mcpSessionSummary?.transportOriginMix) ? mcpSessionSummary.transportOriginMix.slice(0, 8) : [],
+    transportProvenanceState: mcpSessionSummary?.transportProvenanceState || null,
+    transportProvenanceHealthy: mcpSessionSummary?.transportProvenanceHealthy === true,
+    transportProvenanceTrustworthy: mcpSessionSummary?.transportProvenanceTrustworthy !== false,
+    transportProvenanceReason: mcpSessionSummary?.transportProvenanceReason || null,
+    transportProvenanceRecommendation: mcpSessionSummary?.transportProvenanceRecommendation || null,
+    transportProvenanceEvidence: mcpSessionSummary?.transportProvenanceEvidence || null,
+    transportSessionStateCounts: mcpSessionSummary?.transportSessionStateCounts || null,
+    transportRequestPhaseCounts: mcpSessionSummary?.transportRequestPhaseCounts || null,
+    transportClientRouteIdCounts: mcpSessionSummary?.transportClientRouteIdCounts || null,
+    transportHandshakeSignatureCounts: mcpSessionSummary?.transportHandshakeSignatureCounts || null,
+    transportSessionHeaderPresentCount: asNumber(mcpSessionSummary?.transportSessionHeaderPresentCount, 0),
+    transportSessionHeaderMissingCount: asNumber(mcpSessionSummary?.transportSessionHeaderMissingCount, 0),
+    transportAlertState: mcpSessionSummary?.transportAlertState || null,
+    transportAlertCount: asNumber(mcpSessionSummary?.transportAlertCount, 0),
+    transportAlertHealthy: mcpSessionSummary?.transportAlertHealthy === true,
+    transportAlertTrustworthy: mcpSessionSummary?.transportAlertTrustworthy !== false,
+    transportAlertReason: mcpSessionSummary?.transportAlertReason || null,
+    transportAlertRecommendation: mcpSessionSummary?.transportAlertRecommendation || null,
+    transportAlertEvidence: mcpSessionSummary?.transportAlertEvidence || null,
+    transportAlerts: Array.isArray(mcpSessionSummary?.transportAlerts) ? mcpSessionSummary.transportAlerts.slice(0, 8) : [],
+    transportAlertSummary: mcpSessionSummary?.transportAlertSummary || null,
+    requestDeliverySummary,
+    requestDeliveryState: requestDeliverySummary?.state || null,
+    requestDeliveryHealthy: requestDeliverySummary?.healthy === true,
+    requestDeliveryTrustworthy: requestDeliverySummary?.trustworthy !== false,
+    requestDeliveryReason: requestDeliverySummary?.summary || null,
+    requestDeliveryRecommendation: requestDeliverySummary?.recommendation || null,
+    requestDeliveryEvidence: requestDeliverySummary?.evidence || null,
+    requestDeliveryTotalRequests: asNumber(requestDeliverySummary?.totalRequests, 0),
+    requestDeliveryDeliveredRequests: asNumber(requestDeliverySummary?.deliveredRequests, 0),
+    requestDeliveryInterruptedRequests: asNumber(requestDeliverySummary?.interruptedRequests, 0),
+    requestDeliveryFailedRequests: asNumber(requestDeliverySummary?.failedRequests, 0),
+    requestDeliveryPendingRequests: asNumber(requestDeliverySummary?.pendingRequests, 0),
+    requestDeliveryUnknownRequests: asNumber(requestDeliverySummary?.unknownRequests, 0),
+    requestDeliveryUnknownOriginRequests: asNumber(requestDeliverySummary?.unknownOriginRequests, 0),
+    requestDeliveryDeliveryStateCounts: requestDeliverySummary?.deliveryStateCounts || null,
+    requestDeliveryRequestKindCounts: requestDeliverySummary?.requestKindCounts || null,
+    requestDeliveryTransportOriginCounts: requestDeliverySummary?.transportOriginCounts || null,
+    requestDeliveryAverageRequestDurationMs: asNumber(requestDeliverySummary?.averageRequestDurationMs, 0),
+    requestDeliveryAverageDeliveryLatencyMs: asNumber(requestDeliverySummary?.averageDeliveryLatencyMs, 0),
+    requestDeliveryAverageToolOutcomeGapMs: asNumber(requestDeliverySummary?.averageToolOutcomeGapMs, 0),
+    requestDeliveryDeliverySuccessRate: asNumber(requestDeliverySummary?.deliverySuccessRate, 0),
+    requestDeliveryInterruptionRate: asNumber(requestDeliverySummary?.interruptionRate, 0),
+    requestDeliveryFailureRate: asNumber(requestDeliverySummary?.failureRate, 0),
+    requestDeliveryUnknownOriginRate: asNumber(requestDeliverySummary?.unknownOriginRate, 0),
+    requestDeliveryAlerts: Array.isArray(requestDeliverySummary?.alerts) ? requestDeliverySummary.alerts.slice(0, 8) : [],
+    topologySummary,
+    topologyState: topologySummary?.topologyState || topologySummary?.state || null,
+    topologyHealthy: topologySummary?.healthy === true,
+    topologyTrustworthy: topologySummary?.trustworthy !== false,
+    topologyReason: topologySummary?.summary || null,
+    topologyRecommendation: topologySummary?.recommendation || null,
+    topologyEvidence: topologySummary?.evidence || null,
+    topologyEventCounts: topologySummary?.eventTypeCounts || null,
+    topologyComponentCounts: topologySummary?.componentCounts || null,
+    topologyStateCounts: topologySummary?.stateCounts || null,
+    topologyTransportOriginCounts: topologySummary?.transportOriginCounts || null,
+    topologyTransportOriginMix: Array.isArray(topologySummary?.transportOriginMix) ? topologySummary.transportOriginMix.slice(0, 8) : [],
+    topologyConnectedClients: asNumber(topologySummary?.connectedClients, 0),
+    topologyActiveSessions: asNumber(topologySummary?.activeSessions, 0),
+    topologySessionReplacementCount: asNumber(topologySummary?.sessionReplacementCount, 0),
+    topologySessionReuseCount: asNumber(topologySummary?.sessionReuseCount, 0),
+    topologySnapshotEventCount: asNumber(topologySummary?.snapshotEventCount, 0),
+    topologyBridgeState: topologySummary?.bridgeState || null,
+    topologyProxyState: topologySummary?.proxyState || null,
+    topologyRequestDeliveryState: topologySummary?.requestDeliveryState || null,
     systemInventory: systemInventory || null,
     canonicalPromotion: canonicalPromotion || null,
     policyCoverage: systemInventory?.policyCoverage || null,
@@ -230,6 +310,18 @@ export function buildCurrentMetrics({
     `atoms=${current.activeAtoms}`,
     current.clientSyncState && current.clientSyncState !== 'fresh'
       ? `clientsync=${current.clientSyncState}`
+      : null,
+    current.transportProvenanceState && current.transportProvenanceState !== 'fresh'
+      ? `transport=${current.transportProvenanceState}`
+      : null,
+    current.transportAlertState && current.transportAlertState !== 'fresh'
+      ? `transportAlerts=${current.transportAlertState}`
+      : null,
+    current.requestDeliveryState && current.requestDeliveryState !== 'fresh'
+      ? `delivery=${current.requestDeliveryState}`
+      : null,
+    current.topologyState && current.topologyState !== 'fresh'
+      ? `topology=${current.topologyState}`
       : null,
     current.pipelineTimingTelemetry?.current?.totalDurationMs
       ? `perf=${current.pipelineTimingTelemetry.performanceState || current.pipelineTimingTelemetry.status || 'unknown'}:${Math.round(current.pipelineTimingTelemetry.current.totalDurationMs)}ms`

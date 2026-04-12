@@ -28,13 +28,13 @@ export function showHelp() {
 Uso: omnysys <comando>
 
 Comandos:
-  up, start     Inicia LLM + MCP + configura OpenCode
+  up, start     Inicia el daemon MCP y configura todos los clientes soportados
   down, stop    Detiene todos los servicios
   status        Muestra estado de los servicios
   tools         Lista herramientas disponibles
   trust         Baseline de confianza y drifts de DB
   call <tool>   Ejecuta una herramienta
-  setup         Configura OpenCode y verifica instalación
+  setup         Configura todos los clientes MCP soportados y verifica instalaciÃ³n
   help          Muestra esta ayuda
 
 Ejemplos:

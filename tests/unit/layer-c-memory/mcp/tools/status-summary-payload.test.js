@@ -11,9 +11,15 @@ describe('status summary payload', () => {
     expect(payload).toHaveProperty('updateSurface');
     expect(payload).toHaveProperty('systemInventory');
     expect(payload).toHaveProperty('canonicalPromotion');
+    expect(payload).toHaveProperty('topologySummary');
     expect(payload.updateSurface).toMatchObject({
       state: 'synced',
       source: 'atom/function update pipeline'
+    });
+    expect(payload.topologySummary).toMatchObject({
+      topologyState: 'watchful',
+      connectedClients: 2,
+      activeSessions: 2
     });
     expect(payload.systemInventory).toMatchObject({
       inventoryState: 'watching',
@@ -70,6 +76,31 @@ describe('status summary payload', () => {
     expect(historyRow.detail).toContain('ready=2/2');
     expect(historyRow.detail).toContain('health-history.db:ready:2kb');
     expect(historyRow.detail).toContain('atom-history.db:ready:4kb');
+
+    const sessionsRow = payload.systemTable.rows.find((row) => row.area === 'Sessions');
+    expect(sessionsRow).toMatchObject({
+      area: 'Sessions',
+      state: 'watchful'
+    });
+    expect(sessionsRow.detail).toContain('transport=watchful');
+    expect(sessionsRow.detail).toContain('http_direct:1');
+    expect(sessionsRow.detail).toContain('stdio_bridge:1');
+
+    const topologyRow = payload.systemTable.rows.find((row) => row.area === 'Topology');
+    expect(topologyRow).toMatchObject({
+      area: 'Topology',
+      state: 'watchful',
+      source: 'mcp_topology_events + mcp_sessions + request delivery telemetry'
+    });
+    expect(topologyRow.detail).toContain('clients=2');
+    expect(topologyRow.detail).toContain('active=2');
+    expect(topologyRow.detail).toContain('repl=1');
+    expect(topologyRow.detail).toContain('reuse=3');
+    expect(topologyRow.detail).toContain('bridge=watchful');
+    expect(topologyRow.detail).toContain('proxy=stable');
+    expect(topologyRow.detail).toContain('delivery=watchful');
+    expect(topologyRow.detail).toContain('transport=http_direct:1, stdio_bridge:1');
+    expect(topologyRow.detail).toContain('alerts=mixed_transport_provenance');
 
     const systemsRow = payload.systemTable.rows.find((row) => row.area === 'Systems');
     expect(systemsRow).toMatchObject({
@@ -139,14 +170,19 @@ describe('status summary payload', () => {
       'Behavior',
       'Drift',
       'Propagation',
+      'Propagation Ledger',
       'Debt',
       'Sessions',
+      'Topology',
       'Tools',
       'Systems',
+      'Registry',
+      'Telemetry Gate',
       'Aduana',
       'Promotion',
       'Automation',
       'Adoption',
+      'Naming Drift',
       'Cache',
       'Watcher',
       'Errors'

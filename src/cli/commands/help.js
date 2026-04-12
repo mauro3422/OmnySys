@@ -14,13 +14,13 @@ export async function helpLogic(options = {}) {
 Uso: omnysys <comando>
 
 Comandos:
-  up, start          Inicia LLM + MCP + configura OpenCode
+  up, start          Inicia el daemon MCP y configura todos los clientes soportados
   down, stop         Detiene todos los servicios
   status             Muestra estado de los servicios
   tools              Lista herramientas disponibles
   trust, investigate  Baseline de confianza, drifts de DB y plan por batches
   call <tool>        Ejecuta una herramienta
-  setup              Configura OpenCode y verifica instalación
+  setup              Configura todos los clientes MCP soportados y verifica instalaciÃ³n
   setup-terminal     Configura auto-start del daemon MCP en terminales
   help               Muestra esta ayuda
 

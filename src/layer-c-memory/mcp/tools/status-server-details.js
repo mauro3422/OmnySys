@@ -3,6 +3,7 @@ import {
   getCachedMetadata,
   getDatabaseHealthSummary,
   getMcpSessionSummary,
+  buildMcpRequestDeliverySummary,
   buildTelemetryProvenance,
   summarizeSurfaceAuditForStatus,
   buildCompilerMetricsSnapshot,
@@ -16,6 +17,7 @@ import {
   buildCompilerToolInventoryReport,
   buildCompilerSystemInventoryReport,
   buildCompilerSystemInventorySnapshot,
+  persistMcpTopologyTelemetry,
   loadCompilerExplainability,
   compactDatabaseHealth,
   compactWatcherSummary,
@@ -182,9 +184,55 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     recentErrors,
     sessionDb: repo?.db || null
   });
+  const requestDeliverySummary = buildMcpRequestDeliverySummary(repo?.db || null, {
+    projectPath,
+    scopePath: args?.scopePath || null,
+    focusPath: args?.focusPath || null,
+    windowDays: 7
+  });
   const proxyRuntimeTelemetry = summarizeProxyRuntimeTelemetry(readProxyRuntimeTelemetry(projectPath));
   const bridgeRuntimeTelemetry = summarizeBridgeRuntimeTelemetry(readBridgeRuntimeTelemetry(projectPath));
   const bridgeCallReliability = summarizeBridgeCallReliability(readBridgeRuntimeTelemetry(projectPath));
+  const transportSummary = {
+    state: sessionSummary.transportProvenanceState || 'missing',
+    healthy: sessionSummary.transportProvenanceHealthy === true,
+    trustworthy: sessionSummary.transportProvenanceTrustworthy !== false,
+    reason: sessionSummary.transportProvenanceReason || null,
+    recommendation: sessionSummary.transportProvenanceRecommendation || null,
+    transportSessionStateCounts: sessionSummary.transportSessionStateCounts || {},
+    transportRequestPhaseCounts: sessionSummary.transportRequestPhaseCounts || {},
+    transportClientRouteIdCounts: sessionSummary.transportClientRouteIdCounts || {},
+    transportHandshakeSignatureCounts: sessionSummary.transportHandshakeSignatureCounts || {},
+    transportSessionHeaderPresentCount: sessionSummary.transportSessionHeaderPresentCount || 0,
+    transportSessionHeaderMissingCount: sessionSummary.transportSessionHeaderMissingCount || 0,
+    alertState: sessionSummary.transportAlertState || 'missing',
+    alertCount: sessionSummary.transportAlertCount || 0,
+    alertHealthy: sessionSummary.transportAlertHealthy === true,
+    alertTrustworthy: sessionSummary.transportAlertTrustworthy !== false,
+    alertReason: sessionSummary.transportAlertReason || null,
+    alertRecommendation: sessionSummary.transportAlertRecommendation || null,
+    alertSummary: sessionSummary.transportAlertSummary || null,
+    transportOriginCounts: sessionSummary.transportOriginCounts || {},
+    transportOriginTotal: sessionSummary.transportOriginTotal || 0,
+    transportOriginDistinctCount: sessionSummary.transportOriginDistinctCount || 0,
+    transportOriginKnownCount: sessionSummary.transportOriginKnownCount || 0,
+    dominantTransportOrigin: sessionSummary.dominantTransportOrigin || null,
+    dominantTransportOriginCount: sessionSummary.dominantTransportOriginCount || 0,
+    transportOriginMix: Array.isArray(sessionSummary.transportOriginMix) ? sessionSummary.transportOriginMix.slice(0, 8) : [],
+    transportAlerts: Array.isArray(sessionSummary.transportAlerts) ? sessionSummary.transportAlerts.slice(0, 8) : [],
+    requestDeliverySummary,
+    requestDeliveryState: requestDeliverySummary?.state || 'missing',
+    requestDeliveryHealthy: requestDeliverySummary?.healthy === true,
+    requestDeliveryTrustworthy: requestDeliverySummary?.trustworthy !== false,
+    requestDeliveryReason: requestDeliverySummary?.summary || null,
+    requestDeliveryRecommendation: requestDeliverySummary?.recommendation || null,
+    requestDeliveryAlerts: Array.isArray(requestDeliverySummary?.alerts) ? requestDeliverySummary.alerts.slice(0, 8) : [],
+    requestDeliveryTotalRequests: requestDeliverySummary?.totalRequests || 0,
+    requestDeliveryDeliveredRequests: requestDeliverySummary?.deliveredRequests || 0,
+    requestDeliveryInterruptedRequests: requestDeliverySummary?.interruptedRequests || 0,
+    requestDeliveryFailedRequests: requestDeliverySummary?.failedRequests || 0,
+    topologySummary: null
+  };
   const metricsSnapshot = buildCompilerMetricsSnapshot({
     projectPath,
     repo,
@@ -192,6 +240,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     watcherAlerts: compactNotifications.watcherAlerts || [],
     recentErrors,
     mcpSessionSummary: sessionSummary,
+    mcpRequestDeliverySummary: requestDeliverySummary,
     systemInventory,
     canonicalPromotion,
     startupTelemetry: server?.startupTelemetry || null,
@@ -202,16 +251,28 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     captureSource: 'status.runtime',
     snapshotKind: 'status'
   });
+  if (repo?.db && metricsSnapshot?.current?.topologySummary?.event) {
+    try {
+      persistMcpTopologyTelemetry(repo.db, metricsSnapshot.current.topologySummary.event);
+    } catch {
+      // Best effort persistence only.
+    }
+  }
   status.metricsSnapshot = metricsSnapshot;
   status.metricsSnapshot.systemInventory = systemInventory;
   status.metricsSnapshot.systemInventoryDetail = systemInventoryDetail;
   status.metricsSnapshot.canonicalPromotion = canonicalPromotion;
   status.metricsSnapshot.canonicalPromotionDetail = canonicalPromotionDetail;
   status.metricsSnapshot.startupTelemetry = server?.startupTelemetry || null;
+  status.metricsSnapshot.requestDeliverySummary = requestDeliverySummary;
+  status.metricsSnapshot.topologySummary = metricsSnapshot.current?.topologySummary || null;
+  transportSummary.topologySummary = metricsSnapshot.current?.topologySummary || null;
   if (status.metricsSnapshot.current && typeof status.metricsSnapshot.current === 'object') {
     status.metricsSnapshot.current.systemInventory = systemInventory;
     status.metricsSnapshot.current.canonicalPromotion = canonicalPromotion;
     status.metricsSnapshot.current.startupTelemetry = server?.startupTelemetry || null;
+    status.metricsSnapshot.current.requestDeliverySummary = requestDeliverySummary;
+    status.metricsSnapshot.current.topologySummary = metricsSnapshot.current?.topologySummary || null;
   }
   status.healthSnapshot = buildCompilerHealthDashboard(metricsSnapshot, compilerExplainability, {
     watcherAlerts: mergedNotifications.watcherAlerts || [],
@@ -265,6 +326,10 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
   status.bridgeRuntimeTelemetry = bridgeRuntimeTelemetry;
   status.bridgeCallReliability = bridgeCallReliability;
+  status.mcpSessions = sessionSummary;
+  status.transport = transportSummary;
+  status.requestDeliverySummary = requestDeliverySummary;
+  status.topologySummary = metricsSnapshot.current?.topologySummary || null;
   status.observability = observability;
   status.observabilitySummary = observabilitySummary;
   status.metricsSnapshot.proxyRuntimeTelemetry = proxyRuntimeTelemetry;
@@ -287,6 +352,9 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     status.metricsSnapshot.propagation = status.propagation;
     status.metricsSnapshot.observability = observability;
   }
+  status.background = status.background || {};
+  status.background.mcpRequestDeliverySummary = requestDeliverySummary;
+  status.background.mcpTopologySummary = metricsSnapshot.current?.topologySummary || null;
   return {
     repo,
     recentErrors

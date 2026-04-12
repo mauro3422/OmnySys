@@ -13,8 +13,10 @@ import {
 } from './session-manager-helpers.js';
 import {
   inferTransportOrigin,
-  normalizeTransportOrigin
+  normalizeTransportOrigin,
+  buildTransportHandshakeSignature
 } from '../transport-provenance.js';
+import { persistMcpTopologyTelemetry } from '#shared/compiler/mcp-topology-telemetry.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 
@@ -62,6 +64,22 @@ function canUseSessionDb(manager) {
   return connectionManager.isInitialized()
     && Boolean(connectionManager.db && connectionManager.db.open !== false)
     && Boolean(manager?.statements);
+}
+
+function normalizeSessionIdentityValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function persistTopologyEvent(event = null) {
+  if (!connectionManager.db || !event) {
+    return null;
+  }
+
+  try {
+    return persistMcpTopologyTelemetry(connectionManager.db, event);
+  } catch {
+    return null;
+  }
 }
 
 export function getSessionPersistenceState() {
@@ -228,6 +246,45 @@ export function reconcileActiveSessions(options = {}) {
     if (removedSessions > 0) {
       const reasonSuffix = options.reason ? ` (${options.reason})` : '';
       logger.info(`[DEDUP] Reconciled ${repairedClients.length} client bucket(s) and removed ${removedSessions} duplicate session row(s)${reasonSuffix}`);
+
+      for (const repairedClient of repairedClients) {
+        persistTopologyEvent({
+          projectPath: process.cwd(),
+          captureSource: 'session.manager',
+          snapshotKind: 'session',
+          eventType: 'session_reconciled',
+          component: 'session',
+          state: 'watchful',
+          severity: 'medium',
+          clientId: repairedClient.clientId,
+          sessionId: repairedClient.keepSessionId,
+          previousSessionId: null,
+          reason: `Reconciled ${repairedClient.totalSessions} session(s) for ${repairedClient.clientId}.`,
+          recommendation: 'Keep the active bucket on one session per client route to reduce churn.',
+          metadataJson: JSON.stringify(repairedClient)
+        });
+      }
+
+      // Emit session churn event when multiple clients are affected
+      if (repairedClients.length >= 2) {
+        persistTopologyEvent({
+          projectPath: process.cwd(),
+          captureSource: 'session.manager',
+          snapshotKind: 'session',
+          eventType: 'session_churn_excessive',
+          component: 'session',
+          state: 'blocked',
+          severity: 'high',
+          clientId: repairedClients.map(c => c.clientId).join(', '),
+          reason: `Session churn affected ${repairedClients.length} client(s) with ${removedSessions} duplicate(s) removed.`,
+          recommendation: 'Reduce reconnect churn and keep one active session per client route whenever possible.',
+          metadataJson: JSON.stringify({
+            repairedClients: repairedClients.length,
+            removedSessions,
+            reason: options.reason || 'auto-heal'
+          })
+        });
+      }
     }
 
     return {
@@ -265,42 +322,164 @@ export function deduplicateSessions(clientId, keepSessionId) {
 
 export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
   try {
-    const clientId = extractClientId(clientInfo);
-    const forceFreshSession = isFreshSessionRequest(clientInfo);
+    const baseClientInfo = clientInfo && typeof clientInfo === 'object' ? clientInfo : {};
+    const normalizedMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+    const clientId = extractClientId(baseClientInfo);
+    const forceFreshSession = isFreshSessionRequest(baseClientInfo);
     const transportOrigin = inferTransportOrigin({
-      clientInfo,
-      metadata,
+      clientInfo: baseClientInfo,
+      metadata: normalizedMetadata,
       requestContext: { defaultOrigin: 'native_mcp' }
     });
+    const transportClientId = normalizeSessionIdentityValue(
+      normalizedMetadata.transport_client_id
+        || baseClientInfo.transport_client_id
+        || baseClientInfo.client_id
+        || baseClientInfo.original_client_id
+        || baseClientInfo.name
+        || baseClientInfo.original_name
+        || clientId
+    ) || clientId;
+    const transportClientRouteId = normalizeSessionIdentityValue(
+      normalizedMetadata.transport_client_route_id
+        || baseClientInfo.transport_client_route_id
+        || baseClientInfo.client_route_id
+        || baseClientInfo.original_client_route_id
+        || transportClientId
+    ) || transportClientId;
+    const transportClientName = normalizeSessionIdentityValue(
+      normalizedMetadata.transport_client_name
+        || baseClientInfo.transport_client_name
+        || baseClientInfo.name
+        || baseClientInfo.original_name
+        || transportClientRouteId
+        || transportClientId
+    ) || transportClientId;
+    const transportRequestPhase = normalizeSessionIdentityValue(
+      normalizedMetadata.transport_request_phase
+        || baseClientInfo.transport_request_phase
+        || 'http-session'
+    ) || 'http-session';
+    const transportSessionHeaderPresent = normalizedMetadata.transport_session_header_present === true
+      || baseClientInfo.transport_session_header_present === true;
+    const transportRouteOriginHint = normalizeSessionIdentityValue(
+      normalizedMetadata.transport_route_origin_hint
+        || baseClientInfo.transport_route_origin_hint
+    ) || '';
     const sessionMetadata = {
-      ...metadata,
+      ...normalizedMetadata,
       transport_origin: normalizeTransportOrigin(
-        metadata.transport_origin || transportOrigin,
+        normalizedMetadata.transport_origin || transportOrigin,
         transportOrigin
       ),
-      transport_origin_source: metadata.transport_origin_source
-        || clientInfo?.transport_origin_source
-        || (metadata.transport_origin || clientInfo?.transport_origin
+      transport_origin_source: normalizedMetadata.transport_origin_source
+        || baseClientInfo.transport_origin_source
+        || (normalizedMetadata.transport_origin || baseClientInfo.transport_origin
           ? 'explicit'
-          : 'inferred')
+          : 'inferred'),
+      transport_client_id: transportClientId,
+      transport_client_route_id: transportClientRouteId,
+      transport_client_name: transportClientName,
+      transport_request_phase: transportRequestPhase,
+      transport_session_header_present: transportSessionHeaderPresent,
+      transport_route_origin_hint: transportRouteOriginHint || undefined,
+      transport_handshake_signature: normalizeSessionIdentityValue(
+        normalizedMetadata.transport_handshake_signature
+          || baseClientInfo.transport_handshake_signature
+      ) || buildTransportHandshakeSignature({
+        clientInfo: {
+          ...baseClientInfo,
+          transport_client_id: transportClientId,
+          transport_client_route_id: transportClientRouteId,
+          transport_client_name: transportClientName,
+          transport_session_header_present: transportSessionHeaderPresent
+        },
+        metadata: {
+          ...normalizedMetadata,
+          transport_origin: normalizeTransportOrigin(
+            normalizedMetadata.transport_origin || transportOrigin,
+            transportOrigin
+          ),
+          transport_origin_source: normalizedMetadata.transport_origin_source
+            || baseClientInfo.transport_origin_source
+            || (normalizedMetadata.transport_origin || baseClientInfo.transport_origin
+              ? 'explicit'
+              : 'inferred'),
+          transport_client_id: transportClientId,
+          transport_client_route_id: transportClientRouteId,
+          transport_client_name: transportClientName,
+          transport_request_phase: transportRequestPhase,
+          transport_session_header_present: transportSessionHeaderPresent,
+          transport_route_origin_hint: transportRouteOriginHint || undefined
+        },
+        requestContext: {
+          defaultOrigin: 'native_mcp',
+          isHttpRequest: true,
+          transportMode: transportOrigin === 'stdio_bridge' ? 'stdio' : 'http',
+          transportRequestPhase,
+          transportSessionHeaderPresent
+        },
+        sessionKind: 'http'
+      })
     };
-    const normalizedClientInfo = clientInfo && typeof clientInfo === 'object'
+    const normalizedClientInfo = baseClientInfo && typeof baseClientInfo === 'object'
       ? {
-          ...clientInfo,
+          ...baseClientInfo,
           transport_origin: sessionMetadata.transport_origin,
-          transport_origin_source: sessionMetadata.transport_origin_source
+          transport_origin_source: sessionMetadata.transport_origin_source,
+          transport_client_id: sessionMetadata.transport_client_id,
+          transport_client_route_id: sessionMetadata.transport_client_route_id,
+          transport_client_name: sessionMetadata.transport_client_name,
+          transport_request_phase: sessionMetadata.transport_request_phase,
+          transport_session_header_present: sessionMetadata.transport_session_header_present,
+          transport_route_origin_hint: sessionMetadata.transport_route_origin_hint,
+          transport_handshake_signature: sessionMetadata.transport_handshake_signature
         }
-      : clientInfo;
-    this.releasePendingSession(sessionId, clientInfo);
+      : baseClientInfo;
+    this.releasePendingSession(sessionId, normalizedClientInfo);
 
     if (!forceFreshSession) {
       const existingSession = this.findLatestSessionByClientId(clientId);
       if (existingSession && existingSession.id !== sessionId) {
         logger.debug(`[DEDUP] Client ${clientId} already has session ${existingSession.id}, reusing instead of ${sessionId}`);
 
+        // Session lineage: mark old session as replaced by new one
+        if (canUseSessionDb(this)) {
+          runWithBusyRetry(
+            () => this.statements.updateLineage.run(existingSession.id, sessionId, now),
+            `updateSessionLineage(${existingSession.id} -> ${sessionId})`
+          );
+        }
+
         this.updateActivity(existingSession.id);
         this.deleteSession(sessionId);
         this.deduplicateSessions(clientId, existingSession.id);
+
+        persistTopologyEvent({
+          projectPath: process.cwd(),
+          captureSource: 'session.manager',
+          snapshotKind: 'session',
+          eventType: 'session_reused',
+          component: 'session',
+          state: 'fresh',
+          severity: 'low',
+          clientId,
+          clientRouteId: transportClientRouteId,
+          clientName: transportClientName,
+          sessionId: existingSession.id,
+          previousSessionId: sessionId,
+          transportOrigin: sessionMetadata.transport_origin,
+          transportOriginSource: sessionMetadata.transport_origin_source,
+          transportRequestPhase,
+          reason: `Reused existing session ${existingSession.id} instead of proposed ${sessionId}.`,
+          recommendation: 'Keep the client route identity stable so bridge reconnects do not look like new sessions.',
+          metadataJson: JSON.stringify({
+            forceFreshSession,
+            reusedSource: 'existing',
+            proposedSessionId: sessionId,
+            lineageUpdated: true
+          })
+        });
 
         return existingSession.id;
       }
@@ -309,6 +488,9 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
     const now = new Date().toISOString();
     const existing = this.getSession(sessionId);
     const createdAt = existing ? existing.created_at : now;
+
+    // Detect session lineage: if updating existing session, track replaced_session_id
+    const replacedSessionId = null; // New sessions don't replace anything yet
 
     if (canUseSessionDb(this)) {
       runWithBusyRetry(
@@ -320,7 +502,9 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
           JSON.stringify(sessionMetadata),
           createdAt,
           now,
-          1
+          1,
+          null, // replaced_by_session_id (null for new sessions)
+          replacedSessionId // replaced_session_id (null for new sessions)
         ),
         `saveSession(${sessionId})`
       );
@@ -346,6 +530,36 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
     if (!canUseSessionDb(this)) {
       logger.debug(`[DEDUP] Saved in-memory session ${sessionId} for ${clientId} (DB unavailable)`);
       return sessionId;
+    }
+
+    if (!existing || existing.id !== sessionId) {
+      persistTopologyEvent({
+        projectPath: process.cwd(),
+        captureSource: 'session.manager',
+        snapshotKind: 'session',
+        eventType: 'session_created',
+        component: 'session',
+        state: forceFreshSession ? 'fresh' : 'watchful',
+        severity: forceFreshSession ? 'low' : 'medium',
+        clientId,
+        clientRouteId: transportClientRouteId,
+        clientName: transportClientName,
+        sessionId,
+        previousSessionId: null,
+        transportOrigin: sessionMetadata.transport_origin,
+        transportOriginSource: sessionMetadata.transport_origin_source,
+        transportRequestPhase,
+        reason: `Saved session ${sessionId} for ${clientId}.`,
+        recommendation: forceFreshSession
+          ? 'Keep the recovery session fresh and avoid reusing stale handshake state.'
+          : 'Keep the active session warm and maintain a stable transport origin.',
+        metadataJson: JSON.stringify({
+          forceFreshSession,
+          transportSessionHeaderPresent,
+          transportHandshakeSignature: sessionMetadata.transport_handshake_signature,
+          transportRouteOriginHint
+        })
+      });
     }
 
     logger.debug(`[DEDUP] Saved session ${sessionId} for ${clientId}`);
@@ -436,39 +650,4 @@ export function getAllSessions(activeOnly = false) {
     return activeOnly ? this.statements.getAllActive.all() : this.statements.getAll.all();
   } catch (err) {
     if (!isTransientSqliteAvailabilityError(err)) {
-      logger.error(`Failed to get all sessions: ${err.message}`);
-    }
-    return [];
-  }
-}
-
-export function getDedupStats() {
-  try {
-    const all = this.getAllSessions(false);
-    const active = this.getAllSessions(true);
-    const activeByClient = new Map();
-
-    for (const session of active) {
-      const cid = session.client_id || 'unknown';
-      if (!activeByClient.has(cid)) activeByClient.set(cid, []);
-      activeByClient.get(cid).push(session);
-    }
-
-    const duplicates = [];
-    for (const [clientId, sessions] of activeByClient.entries()) {
-      if (sessions.length > 1) {
-        duplicates.push({ clientId, count: sessions.length });
-      }
-    }
-
-    return {
-      totalSessions: all.length,
-      activeSessions: active.length,
-      uniqueClients: activeByClient.size,
-      clientsWithDuplicates: duplicates.length,
-      duplicateDetails: duplicates
-    };
-  } catch (err) {
-    return { error: err.message };
-  }
-}
+      logger.error(`Failed to get a

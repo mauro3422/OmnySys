@@ -127,18 +127,28 @@ Crear `opencode.json` en la raíz del proyecto:
 ```json
 {
   "mcp": {
-    "servers": [{
-      "name": "omnysys",
-      "command": "node",
-      "args": ["/ruta/a/OmnySys/src/layer-c-memory/mcp-server.js", "/ruta/a/tu/proyecto"]
-    }]
+    "omnysys": {
+      "type": "remote",
+      "url": "http://127.0.0.1:9999/mcp",
+      "timeout": 15000,
+      "headers": {
+        "X-OmnySys-Client-Id": "opencode",
+        "X-OmnySys-Client-Route-Id": "opencode",
+        "X-OmnySys-Client-Name": "opencode",
+        "X-OmnySys-Transport-Origin": "http_direct",
+        "X-OmnySys-Transport-Origin-Source": "opencode-config"
+      }
+    }
   }
 }
 ```
 
 ### Uso
 
-OpenCode detecta automáticamente las 21 tools MCP disponibles.
+OpenCode detecta automáticamente las tools MCP disponibles via HTTP directo.
+Si el servidor o la red muestran latencia, revisar primero `omnysys://transport`
+y `mcp_sessions.transportProvenanceState` antes de asumir que el daemon esta
+caido.
 
 ---
 

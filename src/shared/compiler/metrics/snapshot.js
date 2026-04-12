@@ -51,6 +51,7 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     watcherAlerts = [],
     recentErrors = null,
     mcpSessionSummary = null,
+    mcpRequestDeliverySummary = null,
     phase2PendingFiles = null,
     compareDays = 3,
     toolRunTelemetryWindowDays = 7,
@@ -76,7 +77,8 @@ export function buildCompilerMetricsSnapshot(options = {}) {
     driftAssessment: compilerExplainability?.driftAssessment || null,
     toolRunTelemetryWindowDays,
     phase2PendingFiles,
-    mcpSessionSummary
+    mcpSessionSummary,
+    mcpRequestDeliverySummary
   });
 
   current.snapshotFingerprint = buildSnapshotFingerprint({

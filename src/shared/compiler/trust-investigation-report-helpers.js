@@ -210,6 +210,32 @@ export function buildTrustGates({
       reason: sessionState?.clientSyncReason || 'Session sync is fresh.',
       recommendation: sessionState?.clientSyncRecommendation || 'Keep MCP session persistence in sync.',
       evidence: sessionState || null
+    },
+    {
+      key: 'transport_alerts',
+      state: sessionState?.transportAlertState === 'blocked'
+        ? 'blocked'
+        : sessionState?.transportAlertState === 'watchful'
+          ? 'watching'
+          : sessionState?.transportAlertState === 'fresh'
+            ? 'green'
+            : 'watching',
+      blocking: sessionState?.transportAlertState === 'blocked',
+      reason: sessionState?.transportAlertReason || 'Transport alert summary is unavailable.',
+      recommendation: sessionState?.transportAlertRecommendation || 'Keep transport alert buckets active so session drift remains visible.',
+      evidence: sessionState || null
+    },
+    {
+      key: 'transport_provenance',
+      state: sessionState?.transportProvenanceState === 'fresh'
+        ? 'green'
+        : sessionState?.transportProvenanceState === 'watchful'
+          ? 'watching'
+          : 'watching',
+      blocking: false,
+      reason: sessionState?.transportProvenanceReason || 'Transport provenance is not available.',
+      recommendation: sessionState?.transportProvenanceRecommendation || 'Attach explicit transport provenance headers so direct HTTP and stdio bridge clients can be distinguished.',
+      evidence: sessionState || null
     }
   ];
 }

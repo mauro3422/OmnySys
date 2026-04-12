@@ -68,6 +68,19 @@ export function attachPhase2Status(status, server, cache, cachedMetadata, cached
     clientSyncSeverity: sessionSummary.clientSyncSeverity || null,
     clientSyncReason: sessionSummary.clientSyncReason || null,
     clientSyncRecommendation: sessionSummary.clientSyncRecommendation || null,
+    transportOriginCounts: sessionSummary.transportOriginCounts || null,
+    transportOriginTotal: sessionSummary.transportOriginTotal || 0,
+    transportOriginDistinctCount: sessionSummary.transportOriginDistinctCount || 0,
+    transportOriginKnownCount: sessionSummary.transportOriginKnownCount || 0,
+    dominantTransportOrigin: sessionSummary.dominantTransportOrigin || null,
+    dominantTransportOriginCount: sessionSummary.dominantTransportOriginCount || 0,
+    transportOriginMix: Array.isArray(sessionSummary.transportOriginMix) ? sessionSummary.transportOriginMix.slice(0, 8) : [],
+    transportProvenanceState: sessionSummary.transportProvenanceState || null,
+    transportProvenanceHealthy: sessionSummary.transportProvenanceHealthy === true,
+    transportProvenanceTrustworthy: sessionSummary.transportProvenanceTrustworthy !== false,
+    transportProvenanceReason: sessionSummary.transportProvenanceReason || null,
+    transportProvenanceRecommendation: sessionSummary.transportProvenanceRecommendation || null,
+    transportProvenanceSummary: sessionSummary.transportProvenanceSummary || null,
     health: runtimeSessionCount > 20 ? 'STRESSED' : 'HEALTHY'
   };
   status.compilerReadiness = buildCompilerReadinessStatus({

@@ -136,6 +136,33 @@ export function buildTelemetryRegistry({
       reason: bridgeRuntimeTelemetry?.summary || 'Bridge runtime telemetry was not attached to this snapshot.',
       recommendation: bridgeRuntimeTelemetry?.recommendation || 'Attach bridge runtime telemetry when validating client disconnect behavior.',
       sourceOfTruth: 'bridge runtime telemetry'
+    }),
+    buildTelemetryObligation({
+      key: 'session_transport',
+      label: 'Session Transport',
+      required: false,
+      state: metricsSnapshot?.current?.transportProvenanceState || 'deferred',
+      reason: metricsSnapshot?.current?.transportProvenanceReason || 'Session transport provenance was not attached to this snapshot.',
+      recommendation: metricsSnapshot?.current?.transportProvenanceRecommendation || 'Attach explicit transport provenance so direct HTTP and stdio bridge clients remain distinguishable.',
+      sourceOfTruth: 'mcp session summary'
+    }),
+    buildTelemetryObligation({
+      key: 'request_delivery',
+      label: 'Request Delivery',
+      required: false,
+      state: metricsSnapshot?.current?.requestDeliveryState || 'deferred',
+      reason: metricsSnapshot?.current?.requestDeliveryReason || 'MCP request delivery telemetry was not attached to this snapshot.',
+      recommendation: metricsSnapshot?.current?.requestDeliveryRecommendation || 'Attach request delivery telemetry so transport gaps are visible even when tool execution succeeds.',
+      sourceOfTruth: 'mcp request delivery telemetry'
+    }),
+    buildTelemetryObligation({
+      key: 'mcp_topology',
+      label: 'MCP Topology',
+      required: false,
+      state: metricsSnapshot?.current?.topologyState || 'deferred',
+      reason: metricsSnapshot?.current?.topologyReason || 'MCP topology telemetry was not attached to this snapshot.',
+      recommendation: metricsSnapshot?.current?.topologyRecommendation || 'Attach MCP topology telemetry so client identity, bridge freshness, proxy heartbeat and request delivery stay visible together.',
+      sourceOfTruth: 'mcp topology telemetry'
     })
   ];
 

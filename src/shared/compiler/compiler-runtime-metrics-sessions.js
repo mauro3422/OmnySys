@@ -90,25 +90,28 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     sessionSyncGraceMs,
     recentErrors
   });
+  const transportOriginCounts = sessionDbSnapshot?.transportOriginCounts || {};
   return {
     ...buildMcpSessionMetricsResult({
-    hasRuntimeSessionCount,
-    runtimeSessionCount,
-    totalPersistent,
-    totalPersistentActive,
-    uniqueClients,
-    clientsWithDuplicates,
-    duplicateDetails,
-    actionableDuplicateClients,
-    actionableDuplicateDetails,
-    toleratedDuplicateClients,
-    toleratedDuplicateDetails,
-    multiClientActive,
-    sessionCountDrift,
-    multiClientChurn,
-    persistenceState,
-    clientSync
+      hasRuntimeSessionCount,
+      runtimeSessionCount,
+      totalPersistent,
+      totalPersistentActive,
+      uniqueClients,
+      clientsWithDuplicates,
+      duplicateDetails,
+      actionableDuplicateClients,
+      actionableDuplicateDetails,
+      toleratedDuplicateClients,
+      toleratedDuplicateDetails,
+      multiClientActive,
+      sessionCountDrift,
+      multiClientChurn,
+      persistenceState,
+      clientSync,
+      transportOriginCounts,
+      sessionSnapshot: sessionDbSnapshot
     }),
-    transportOriginCounts: sessionDbSnapshot?.transportOriginCounts || {}
+    transportOriginCounts
   };
 }

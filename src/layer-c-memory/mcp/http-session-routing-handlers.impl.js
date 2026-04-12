@@ -11,11 +11,62 @@ import {
   buildTransportProvenance,
   inferTransportOrigin
 } from './transport-provenance.js';
+import {
+  buildMcpRequestDeliveryTelemetry,
+  persistMcpRequestDeliveryTelemetry
+} from '../../shared/compiler/index.js';
 
 const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
 const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DELAY_MS || 250);
 const sharedEventStore = new (await import('@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js')).InMemoryEventStore();
 const staleInitRecoveryInFlight = new Set();
+
+function getRequestHeaderValue(headers = {}, name) {
+  const target = String(name || '').toLowerCase();
+  if (!target) return '';
+
+  const direct = headers[target];
+  if (typeof direct === 'string') {
+    return direct.trim();
+  }
+
+  const matchedKey = Object.keys(headers).find((key) => key.toLowerCase() === target);
+  if (!matchedKey) return '';
+
+  const value = headers[matchedKey];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function buildHttpTransportIdentityFromHeaders(requestHeaders = {}) {
+  const clientId = getRequestHeaderValue(requestHeaders, 'x-omnysys-client-id');
+  const clientRouteId = getRequestHeaderValue(requestHeaders, 'x-omnysys-client-route-id') || clientId;
+  const clientName = getRequestHeaderValue(requestHeaders, 'x-omnysys-client-name') || clientId;
+  const transportOrigin = getRequestHeaderValue(requestHeaders, 'x-omnysys-transport-origin');
+  const transportOriginSource = getRequestHeaderValue(requestHeaders, 'x-omnysys-transport-origin-source');
+  const transportRouteOriginHint = getRequestHeaderValue(requestHeaders, 'x-omnysys-route-origin-hint');
+  const transportHandshakeSignature = getRequestHeaderValue(requestHeaders, 'x-omnysys-handshake-signature')
+    || getRequestHeaderValue(requestHeaders, 'x-mcp-handshake-signature');
+
+  return {
+    client_id: clientId || undefined,
+    original_client_id: clientId || undefined,
+    client_route_id: clientRouteId || undefined,
+    original_client_route_id: clientRouteId || undefined,
+    name: clientName || undefined,
+    original_name: clientName || undefined,
+    transport_client_id: clientId || undefined,
+    transport_client_route_id: clientRouteId || undefined,
+    transport_client_name: clientName || undefined,
+    transport_origin: transportOrigin || undefined,
+    transport_origin_source: transportOriginSource || undefined,
+    transport_route_origin_hint: transportRouteOriginHint || undefined,
+    transport_handshake_signature: transportHandshakeSignature || undefined,
+    transport_session_header_present: Boolean(
+      getRequestHeaderValue(requestHeaders, 'mcp-session-id')
+      || getRequestHeaderValue(requestHeaders, 'x-mcp-session-id')
+    )
+  };
+}
 
 export function shouldSkipStaleInitRecovery(sessionId) {
   const key = String(sessionId || 'unknown');
@@ -49,30 +100,159 @@ async function waitForPersistedSession(sessionManager, sessionId) {
 function buildSessionTransportContext({
   clientInfo = {},
   metadata = {},
+  requestHeaders = {},
   sessionId = null,
   sessionKind = 'http'
 } = {}) {
+  const headerClientInfo = buildHttpTransportIdentityFromHeaders(requestHeaders);
+  const mergedClientInfo = {
+    ...headerClientInfo,
+    ...(clientInfo && typeof clientInfo === 'object' ? clientInfo : {})
+  };
+  const mergedMetadata = {
+    ...headerClientInfo,
+    ...metadata
+  };
+  const transportRequestPhase = mergedMetadata.transport_request_phase || sessionKind || 'http-session';
+  const transportSessionHeaderPresent = mergedMetadata.transport_session_header_present
+    ?? mergedClientInfo.transport_session_header_present
+    ?? false;
   const origin = inferTransportOrigin({
-    clientInfo,
-    metadata,
+    clientInfo: mergedClientInfo,
+    metadata: mergedMetadata,
     requestContext: {
       defaultOrigin: 'native_mcp',
       isHttpRequest: true,
-      transportMode: metadata.transport_origin === 'stdio_bridge' ? 'stdio' : 'http'
+      transportMode: mergedMetadata.transport_origin === 'stdio_bridge' ? 'stdio' : 'http',
+      transportRequestPhase,
+      transportSessionHeaderPresent
     }
   });
 
   return buildTransportProvenance({
     origin,
-    source: metadata.transport_origin_source
-      || clientInfo.transport_origin_source
-      || (clientInfo.bridge_recovery ? 'bridge-recovery' : 'http-session'),
-    clientInfo,
-    metadata,
+    source: mergedMetadata.transport_origin_source
+      || mergedClientInfo.transport_origin_source
+      || (mergedClientInfo.bridge_recovery ? 'bridge-recovery' : 'http-session'),
+    clientInfo: mergedClientInfo,
+    metadata: mergedMetadata,
     sessionId,
-    clientId: clientInfo?.client_id || clientInfo?.original_client_id || clientInfo?.name || clientInfo?.original_name || 'unknown',
+    clientId: mergedClientInfo?.client_id || mergedClientInfo?.original_client_id || mergedClientInfo?.name || mergedClientInfo?.original_name || 'unknown',
     sessionKind
   });
+}
+
+function classifyMcpRequestKind(body = {}) {
+  const method = typeof body?.method === 'string' ? body.method.trim() : '';
+  if (!method) {
+    return body?.params?.name ? 'tools_call' : 'unknown';
+  }
+
+  if (method === 'initialize') return 'initialize';
+  if (method === 'tools/list') return 'tools_list';
+  if (method === 'tools/call') return 'tools_call';
+  if (method === 'resources/read') return 'resource_read';
+  if (method === 'ping') return 'ping';
+
+  return method.toLowerCase().replace(/[\s/.-]+/g, '_');
+}
+
+function createMcpRequestDeliveryTracker({
+  transportContext,
+  req,
+  startedAt = new Date()
+} = {}) {
+  const startedAtIso = startedAt.toISOString();
+  const startedAtMs = startedAt.getTime();
+  let toolOutcomeReadyAtMs = null;
+  let responseFinishedAtMs = null;
+  let responseClosedAtMs = null;
+  let responseStatusCode = null;
+
+  return {
+    markToolOutcomeReady() {
+      if (!toolOutcomeReadyAtMs) {
+        toolOutcomeReadyAtMs = Date.now();
+      }
+    },
+    markResponseFinished(statusCode = null) {
+      if (!responseFinishedAtMs) {
+        responseFinishedAtMs = Date.now();
+      }
+      if (Number.isFinite(Number(statusCode))) {
+        responseStatusCode = Number(statusCode);
+      }
+    },
+    markResponseClosed() {
+      if (!responseClosedAtMs) {
+        responseClosedAtMs = Date.now();
+      }
+    },
+    finalize({ errorMessage = null } = {}) {
+      const requestFinishedAtMs = Date.now();
+      const requestKind = classifyMcpRequestKind(req?.body || {});
+      const transportMetadata = transportContext?.transport_metadata || {};
+      const responseFinishedIso = responseFinishedAtMs ? new Date(responseFinishedAtMs).toISOString() : null;
+      const responseClosedIso = responseClosedAtMs ? new Date(responseClosedAtMs).toISOString() : null;
+      const toolOutcomeReadyIso = toolOutcomeReadyAtMs ? new Date(toolOutcomeReadyAtMs).toISOString() : null;
+      const requestFinishedIso = new Date(requestFinishedAtMs).toISOString();
+      const deliveryState = errorMessage
+        ? 'failed'
+        : responseFinishedAtMs
+          ? 'delivered'
+          : responseClosedAtMs
+            ? 'interrupted'
+            : 'unknown';
+      const deliveryReason = errorMessage
+        || (deliveryState === 'delivered'
+          ? 'response_finished'
+          : deliveryState === 'interrupted'
+            ? 'response_closed_before_finish'
+            : 'response_not_observed');
+      const deliveryLatencyMs = responseFinishedAtMs
+        ? Math.max(0, responseFinishedAtMs - startedAtMs)
+        : Math.max(0, requestFinishedAtMs - startedAtMs);
+      const toolOutcomeGapMs = toolOutcomeReadyAtMs && responseFinishedAtMs
+        ? Math.max(0, responseFinishedAtMs - toolOutcomeReadyAtMs)
+        : 0;
+
+      return buildMcpRequestDeliveryTelemetry({
+        projectPath: transportContext?.projectPath || null,
+        sessionId: transportContext?.transport_session_id || null,
+        clientId: transportContext?.transport_client_id || null,
+        clientRouteId: transportContext?.transport_client_route_id || null,
+        clientName: transportContext?.transport_client_name || null,
+        transportOrigin: transportContext?.transport_origin || 'unknown',
+        transportOriginSource: transportContext?.transport_origin_source || 'unknown',
+        transportRequestPhase: transportContext?.transport_request_phase || 'unknown',
+        transportSessionId: transportContext?.transport_session_id || null,
+        transportSessionHeaderPresent: transportContext?.transport_session_header_present === true,
+        transportHandshakeSignature: transportContext?.transport_handshake_signature || 'unknown',
+        requestMethod: req?.method || null,
+        requestKind,
+        requestId: req?.body?.id ?? null,
+        toolName: req?.body?.params?.name || null,
+        captureSource: 'mcp.http',
+        requestStartedAt: startedAtIso,
+        requestFinishedAt: requestFinishedIso,
+        requestDurationMs: Math.max(0, requestFinishedAtMs - startedAtMs),
+        toolOutcomeReadyAt: toolOutcomeReadyIso,
+        responseFinishedAt: responseFinishedIso,
+        responseClosedAt: responseClosedIso,
+        responseStatusCode,
+        deliveryState,
+        deliveryReason,
+        deliveryLatencyMs,
+        toolOutcomeGapMs,
+        errorMessage,
+        argsJson: typeof req?.body === 'object' ? JSON.stringify(req.body) : null,
+        createdAt: requestFinishedIso
+      });
+    },
+    buildEvent({ deliveryState = 'unknown', deliveryReason = null, errorMessage = null } = {}) {
+      return this.finalize({ errorMessage });
+    }
+  };
 }
 
 export async function executeMcpToolCall(request, dependencies) {
@@ -273,6 +453,7 @@ async function recoverPersistedSession(sessionId, sessions, sessionManager, buil
       transport_session_header_present: true,
       transport_session_state: 'persisted'
     },
+    requestHeaders: {},
     sessionId,
     sessionKind: 'http-recovered'
   });
@@ -297,7 +478,7 @@ async function recoverPersistedSession(sessionId, sessions, sessionManager, buil
   sessionServer = buildSessionServer(transportContext);
   await sessionServer.connect(transport);
 
-  return { transport, sessionServer, resolvedSessionId };
+  return { transport, sessionServer, resolvedSessionId, transportContext };
 }
 
 function handleStaleInitializeRecovery(sessionId, req, res, sessions, sessionManager, buildSessionServer, buildSessionTransportContext, logger) {
@@ -318,7 +499,13 @@ function handleStaleInitializeRecovery(sessionId, req, res, sessions, sessionMan
 
   let sessionServer = null;
   let resolvedSessionId = null;
-  const clientInfo = req.body.params?.clientInfo || {};
+  const requestHeaders = req.headers || {};
+  const clientInfo = {
+    ...buildHttpTransportIdentityFromHeaders(requestHeaders),
+    ...(req.body.params?.clientInfo && typeof req.body.params.clientInfo === 'object'
+      ? req.body.params.clientInfo
+      : {})
+  };
   const transportContext = buildSessionTransportContext({
     clientInfo,
     metadata: {
@@ -328,6 +515,7 @@ function handleStaleInitializeRecovery(sessionId, req, res, sessions, sessionMan
       transport_session_header_present: true,
       transport_session_state: 'stale'
     },
+    requestHeaders: req.headers || {},
     sessionId,
     sessionKind: 'http-reinitialize'
   });
@@ -336,7 +524,8 @@ function handleStaleInitializeRecovery(sessionId, req, res, sessions, sessionMan
     enableJsonResponse: true,
     eventStore: sharedEventStore,
     onsessioninitialized: (newSessionId) => {
-      resolvedSessionId = sessionManager.saveSession(newSessionId, req.body.params?.clientInfo, {
+      resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {
+        ...(transportContext.transport_metadata || {}),
         transport_origin: transportContext.transport_origin,
         transport_origin_source: transportContext.transport_origin_source,
         transport_request_phase: transportContext.transport_metadata?.transport_request_phase || 'http-reinitialize',
@@ -356,14 +545,20 @@ function handleStaleInitializeRecovery(sessionId, req, res, sessions, sessionMan
 
   sessionServer = buildSessionServer(transportContext);
   
-  return { transport, sessionServer, resolvedSessionId, clientInfo };
+  return { transport, sessionServer, resolvedSessionId, clientInfo, transportContext };
 }
 
 function handleNewSessionInit(req, res, sessions, sessionManager, buildSessionServer, buildSessionTransportContext, logger) {
   let sessionServer = null;
   let resolvedSessionId = null;
 
-  const clientInfo = req.body.params?.clientInfo;
+  const requestHeaders = req.headers || {};
+  const clientInfo = {
+    ...buildHttpTransportIdentityFromHeaders(requestHeaders),
+    ...(req.body.params?.clientInfo && typeof req.body.params.clientInfo === 'object'
+      ? req.body.params.clientInfo
+      : {})
+  };
   const transportContext = buildSessionTransportContext({
     clientInfo,
     metadata: {
@@ -373,6 +568,7 @@ function handleNewSessionInit(req, res, sessions, sessionManager, buildSessionSe
       transport_session_header_present: false,
       transport_session_state: 'fresh'
     },
+    requestHeaders,
     sessionId: null,
     sessionKind: 'http-initialize'
   });
@@ -393,6 +589,7 @@ function handleNewSessionInit(req, res, sessions, sessionManager, buildSessionSe
     eventStore: sharedEventStore,
     onsessioninitialized: (newSessionId) => {
       resolvedSessionId = sessionManager.saveSession(newSessionId, clientInfo, {
+        ...(transportContext.transport_metadata || {}),
         transport_origin: transportContext.transport_origin,
         transport_origin_source: transportContext.transport_origin_source,
         transport_request_phase: transportContext.transport_metadata?.transport_request_phase || 'http-initialize',
@@ -421,7 +618,7 @@ function handleNewSessionInit(req, res, sessions, sessionManager, buildSessionSe
 
   sessionServer = buildSessionServer(transportContext);
 
-  return { transport, sessionServer, resolvedSessionId, sessionIdToUse, clientInfo, isNewSession, clientId };
+  return { transport, sessionServer, resolvedSessionId, sessionIdToUse, clientInfo, isNewSession, clientId, transportContext };
 }
 
 function sendSessionExpiredResponse(res, req, reason) {
@@ -471,16 +668,36 @@ export async function handleMcpRequest(req, res, dependencies) {
     normalizeMcpRequestHeaders
   } = dependencies;
 
+  const sessionManager = await getSessionManager().catch(() => null);
   let transport;
+  let activeTransportContext = null;
+  let requestDeliveryTracker = null;
+  if (!sessionManager) {
+    sendInternalServerErrorResponse(res, req, logger, 'Session manager unavailable');
+    return;
+  }
   try {
     const rawSessionId = req.headers['mcp-session-id'];
     const sessionId = Array.isArray(rawSessionId) ? rawSessionId[0] : rawSessionId;
 
     if (sessionId && sessions.has(sessionId)) {
-      transport = sessions.get(sessionId).transport;
+      const entry = sessions.get(sessionId);
+      transport = entry.transport;
+      activeTransportContext = entry.transportContext || buildSessionTransportContext({
+        clientInfo: {},
+        metadata: {
+          transport_origin: entry.transportContext?.transport_origin,
+          transport_origin_source: entry.transportContext?.transport_origin_source,
+          transport_request_phase: entry.transportContext?.transport_request_phase || 'http-session',
+          transport_session_header_present: entry.transportContext?.transport_session_header_present === true,
+          transport_session_state: entry.transportContext?.transport_metadata?.transport_session_state || 'active'
+        },
+        requestHeaders: req.headers || {},
+        sessionId,
+        sessionKind: 'http-session'
+      });
     } else if (sessionId && !sessions.has(sessionId)) {
       const isInitRequest = req.method === 'POST' && isInitializeRequest(req.body);
-      const sessionManager = await getSessionManager();
       const persistedSession = await waitForPersistedSession(sessionManager, sessionId);
 
       if (persistedSession) {
@@ -490,10 +707,12 @@ export async function handleMcpRequest(req, res, dependencies) {
           return;
         }
         transport = recovered.transport;
+        activeTransportContext = recovered.transportContext || null;
       } else if (isInitRequest) {
         const result = handleStaleInitializeRecovery(sessionId, req, res, sessions, sessionManager, buildSessionServer, buildSessionTransportContext, logger);
         if (!result) return;
         transport = result.transport;
+        activeTransportContext = result.transportContext || null;
         await connectSessionWithRecovery(result.transport, result.sessionServer, sessionId, req.body.params?.clientInfo, sessionManager);
       } else {
         logger.warn(`[SESSION_EXPIRED] sessionId="${sessionId}" not found. Client must re-initialize.`);
@@ -501,13 +720,36 @@ export async function handleMcpRequest(req, res, dependencies) {
         return;
       }
     } else if (!sessionId && req.method === 'POST' && isInitializeRequest(req.body)) {
-      const sessionManager = await getSessionManager();
       const result = handleNewSessionInit(req, res, sessions, sessionManager, buildSessionServer, buildSessionTransportContext, logger);
       transport = result.transport;
+      activeTransportContext = result.transportContext || null;
       await connectSessionWithRecovery(result.transport, result.sessionServer, result.sessionIdToUse, result.clientInfo, sessionManager);
     } else {
       sendBadRequestResponse(res, req);
       return;
+    }
+
+    if (activeTransportContext && typeof activeTransportContext === 'object') {
+      requestDeliveryTracker = createMcpRequestDeliveryTracker({
+        transportContext: activeTransportContext,
+        req,
+        startedAt: new Date()
+      });
+      activeTransportContext.requestDeliveryTracker = requestDeliveryTracker;
+      res.once('finish', () => {
+        try {
+          requestDeliveryTracker.markResponseFinished(res.statusCode);
+        } catch {
+          // best effort
+        }
+      });
+      res.once('close', () => {
+        try {
+          requestDeliveryTracker.markResponseClosed();
+        } catch {
+          // best effort
+        }
+      });
     }
 
     if (typeof normalizeMcpRequestHeaders === 'function') {
@@ -516,7 +758,30 @@ export async function handleMcpRequest(req, res, dependencies) {
       logger?.debug?.('[MCP COMPAT] normalizeMcpRequestHeaders helper unavailable; continuing without header normalization.');
     }
     await transport.handleRequest(req, res, req.body);
+    if (requestDeliveryTracker && (res.finished || res.writableEnded || res.headersSent)) {
+      requestDeliveryTracker.markResponseFinished(res.statusCode);
+    }
+    if (requestDeliveryTracker && sessionManager?.db) {
+      const deliveryEvent = requestDeliveryTracker.finalize({
+        errorMessage: null
+      });
+      persistMcpRequestDeliveryTelemetry(sessionManager.db, deliveryEvent);
+    }
   } catch (error) {
+    if (requestDeliveryTracker && sessionManager?.db) {
+      try {
+        const deliveryEvent = requestDeliveryTracker.finalize({
+          errorMessage: error.message || String(error)
+        });
+        persistMcpRequestDeliveryTelemetry(sessionManager.db, deliveryEvent);
+      } catch {
+        // best effort only
+      }
+    }
     sendInternalServerErrorResponse(res, req, logger, error.message);
+  } finally {
+    if (activeTransportContext && typeof activeTransportContext === 'object') {
+      delete activeTransportContext.requestDeliveryTracker;
+    }
   }
 }

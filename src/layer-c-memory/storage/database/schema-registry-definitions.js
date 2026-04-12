@@ -391,11 +391,14 @@ export const TABLE_DEFINITIONS = {
       { name: 'session_metadata_json', type: 'TEXT', nullable: true, description: 'Metadata de la sesión' },
       { name: 'created_at', type: 'TEXT', nullable: false, description: 'Fecha de creación' },
       { name: 'updated_at', type: 'TEXT', nullable: false, description: 'Fecha de última actividad' },
-      { name: 'is_active', type: 'BOOLEAN', default: 1, description: 'Estado de la sesión' }
+      { name: 'is_active', type: 'BOOLEAN', default: 1, description: 'Estado de la sesión' },
+      { name: 'replaced_by_session_id', type: 'TEXT', nullable: true, description: 'ID de la sesión que reemplazó esta (session lineage)', addedIn: 'v3.4-session-lineage' },
+      { name: 'replaced_session_id', type: 'TEXT', nullable: true, description: 'ID de la sesión que esta sesión reemplazó (session lineage)', addedIn: 'v3.4-session-lineage' }
     ],
     indexes: [
       { name: 'idx_mcp_sessions_updated', columns: ['updated_at'] },
-      { name: 'idx_mcp_sessions_active', columns: ['is_active'] }
+      { name: 'idx_mcp_sessions_active', columns: ['is_active'] },
+      { name: 'idx_mcp_sessions_lineage', columns: ['replaced_by_session_id', 'replaced_session_id'], addedIn: 'v3.4-session-lineage' }
     ]
   },
 
@@ -439,6 +442,96 @@ export const TABLE_DEFINITIONS = {
       { name: 'idx_mcp_tool_runs_tool_time', columns: ['project_path', 'tool_name', 'ended_at DESC'] },
       { name: 'idx_mcp_tool_runs_scope', columns: ['project_path', 'scope_path', 'focus_path'] },
       { name: 'idx_mcp_tool_runs_fingerprint', columns: ['snapshot_fingerprint'] }
+    ]
+  },
+
+  mcp_request_delivery_events: {
+    description: 'Historial de entrega de requests MCP y finalización del response',
+    addedIn: 'v3.2-transport-telemetry',
+    columns: [
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
+      { name: 'project_path', type: 'TEXT', nullable: false, description: 'Proyecto' },
+      { name: 'session_id', type: 'TEXT', nullable: true, description: 'ID de la sesión MCP' },
+      { name: 'client_id', type: 'TEXT', nullable: true, description: 'Identificador del cliente' },
+      { name: 'client_route_id', type: 'TEXT', nullable: true, description: 'Route id del cliente' },
+      { name: 'client_name', type: 'TEXT', nullable: true, description: 'Nombre del cliente' },
+      { name: 'transport_origin', type: 'TEXT', nullable: true, description: 'Origen del transporte MCP' },
+      { name: 'transport_origin_source', type: 'TEXT', nullable: true, description: 'Fuente del origen del transporte' },
+      { name: 'transport_request_phase', type: 'TEXT', nullable: true, description: 'Fase del request MCP' },
+      { name: 'transport_session_id', type: 'TEXT', nullable: true, description: 'ID de la sesión de transporte' },
+      { name: 'transport_session_header_present', type: 'BOOLEAN', default: 0, description: 'Si el header de sesión estaba presente' },
+      { name: 'transport_handshake_signature', type: 'TEXT', nullable: true, description: 'Firma canónica del handshake' },
+      { name: 'request_method', type: 'TEXT', nullable: true, description: 'Método HTTP' },
+      { name: 'request_kind', type: 'TEXT', nullable: true, description: 'Tipo canónico de request MCP' },
+      { name: 'request_id', type: 'TEXT', nullable: true, description: 'ID JSON-RPC' },
+      { name: 'tool_name', type: 'TEXT', nullable: true, description: 'Tool invocada, si aplica' },
+      { name: 'capture_source', type: 'TEXT', nullable: true, description: 'Origen de captura' },
+      { name: 'request_started_at', type: 'TEXT', nullable: false, description: 'Timestamp de inicio del request' },
+      { name: 'request_finished_at', type: 'TEXT', nullable: true, description: 'Timestamp de fin del request' },
+      { name: 'request_duration_ms', type: 'REAL', default: 0, description: 'Duración total del request' },
+      { name: 'tool_outcome_ready_at', type: 'TEXT', nullable: true, description: 'Timestamp cuando el resultado quedó listo' },
+      { name: 'response_finished_at', type: 'TEXT', nullable: true, description: 'Timestamp cuando el response terminó de salir' },
+      { name: 'response_closed_at', type: 'TEXT', nullable: true, description: 'Timestamp cuando el response cerró el stream' },
+      { name: 'response_status_code', type: 'INTEGER', nullable: true, description: 'Status HTTP final' },
+      { name: 'delivery_state', type: 'TEXT', nullable: true, description: 'Estado: delivered, interrupted, failed, pending, unknown' },
+      { name: 'delivery_reason', type: 'TEXT', nullable: true, description: 'Motivo del estado de entrega' },
+      { name: 'delivery_latency_ms', type: 'REAL', default: 0, description: 'Latencia total de entrega observable' },
+      { name: 'tool_outcome_gap_ms', type: 'REAL', default: 0, description: 'Gap entre resultado de tool y fin del response' },
+      { name: 'error_message', type: 'TEXT', nullable: true, description: 'Error principal' },
+      { name: 'args_json', type: 'TEXT', nullable: true, description: 'Args o payload del request' },
+      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Timestamp de persistencia' }
+    ],
+    indexes: [
+      { name: 'idx_mcp_request_delivery_project_time', columns: ['project_path', 'request_started_at DESC'] },
+      { name: 'idx_mcp_request_delivery_state', columns: ['project_path', 'delivery_state', 'request_started_at DESC'] },
+      { name: 'idx_mcp_request_delivery_origin', columns: ['project_path', 'transport_origin', 'request_started_at DESC'] },
+      { name: 'idx_mcp_request_delivery_session', columns: ['project_path', 'session_id', 'request_started_at DESC'] },
+      { name: 'idx_mcp_request_delivery_kind', columns: ['project_path', 'request_kind', 'request_started_at DESC'] }
+    ]
+  },
+
+  mcp_topology_events: {
+    description: 'Historial de topologia MCP, vida del daemon y drift de clientes',
+    addedIn: 'v3.3-topology-telemetry',
+    columns: [
+      { name: 'id', type: 'INTEGER', pk: true, autoIncrement: true },
+      { name: 'project_path', type: 'TEXT', nullable: false, description: 'Proyecto' },
+      { name: 'capture_source', type: 'TEXT', nullable: true, description: 'Origen de captura' },
+      { name: 'snapshot_kind', type: 'TEXT', nullable: true, description: 'Tipo de captura: status, session, bridge, proxy, manual' },
+      { name: 'event_type', type: 'TEXT', nullable: false, description: 'Tipo de evento topologico' },
+      { name: 'component', type: 'TEXT', nullable: true, description: 'Componente: topology, session, bridge, proxy, transport, alert' },
+      { name: 'state', type: 'TEXT', nullable: true, description: 'Estado: fresh, watchful, blocked, missing' },
+      { name: 'severity', type: 'TEXT', nullable: true, description: 'Severidad del evento' },
+      { name: 'client_id', type: 'TEXT', nullable: true, description: 'Identificador del cliente' },
+      { name: 'client_route_id', type: 'TEXT', nullable: true, description: 'Route id del cliente' },
+      { name: 'client_name', type: 'TEXT', nullable: true, description: 'Nombre del cliente' },
+      { name: 'session_id', type: 'TEXT', nullable: true, description: 'Sesion actual' },
+      { name: 'previous_session_id', type: 'TEXT', nullable: true, description: 'Sesion reemplazada o previa' },
+      { name: 'transport_origin', type: 'TEXT', nullable: true, description: 'Origen del transporte' },
+      { name: 'transport_origin_source', type: 'TEXT', nullable: true, description: 'Fuente del origen' },
+      { name: 'transport_request_phase', type: 'TEXT', nullable: true, description: 'Fase del request' },
+      { name: 'bridge_state', type: 'TEXT', nullable: true, description: 'Estado del bridge' },
+      { name: 'proxy_state', type: 'TEXT', nullable: true, description: 'Estado del proxy' },
+      { name: 'daemon_state', type: 'TEXT', nullable: true, description: 'Estado del daemon' },
+      { name: 'request_delivery_state', type: 'TEXT', nullable: true, description: 'Estado de entrega del request' },
+      { name: 'alert_state', type: 'TEXT', nullable: true, description: 'Estado de alertas' },
+      { name: 'alert_code', type: 'TEXT', nullable: true, description: 'Codigo de alerta' },
+      { name: 'alert_lifecycle', type: 'TEXT', nullable: true, description: 'Lifecycle de la alerta' },
+      { name: 'call_impact_state', type: 'TEXT', nullable: true, description: 'Estado de impacto de callers' },
+      { name: 'reason', type: 'TEXT', nullable: true, description: 'Motivo principal' },
+      { name: 'recommendation', type: 'TEXT', nullable: true, description: 'Recomendacion principal' },
+      { name: 'evidence_json', type: 'TEXT', nullable: true, description: 'Evidencia serializada' },
+      { name: 'metadata_json', type: 'TEXT', nullable: true, description: 'Metadata serializada' },
+      { name: 'captured_at', type: 'TEXT', nullable: false, description: 'Timestamp de captura' },
+      { name: 'created_at', type: 'TEXT', nullable: false, description: 'Timestamp de persistencia' }
+    ],
+    indexes: [
+      { name: 'idx_mcp_topology_project_time', columns: ['project_path', 'captured_at DESC'] },
+      { name: 'idx_mcp_topology_event_type', columns: ['project_path', 'event_type', 'captured_at DESC'] },
+      { name: 'idx_mcp_topology_component', columns: ['project_path', 'component', 'captured_at DESC'] },
+      { name: 'idx_mcp_topology_state', columns: ['project_path', 'state', 'captured_at DESC'] },
+      { name: 'idx_mcp_topology_session', columns: ['project_path', 'session_id', 'captured_at DESC'] },
+      { name: 'idx_mcp_topology_origin', columns: ['project_path', 'transport_origin', 'captured_at DESC'] }
     ]
   },
 

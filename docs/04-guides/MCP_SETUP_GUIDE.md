@@ -29,12 +29,13 @@ curl http://127.0.0.1:9999/health
 
 ## Connection Methods
 
-### 1. **HTTP Direct** (Claude CLI, Gemini CLI)
+### 1. **HTTP Direct** (Claude CLI, Gemini CLI, OpenCode)
 - Connects directly to `http://127.0.0.1:9999/mcp`
 - Requires daemon to be running before CLI starts
 - Configuration location:
   - Claude: `~/.claude.json` (global + per-project)
   - Gemini: `~/.gemini/settings.json`
+  - OpenCode: `~/.config/opencode/opencode.json`
 
 ### 2. **STDIO Bridge** (Qwen CLI, Antigravity)
 - Uses `mcp-stdio-bridge.js` as intermediary
@@ -80,7 +81,7 @@ When you open the OmnySystem workspace in VS Code, a background task automatical
 | Antigravity | `~/.gemini/antigravity/mcp_config.json` | STDIO Bridge |
 | Cline (VS Code) | `%APPDATA%\Code\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json` | HTTP |
 | Cursor | `%APPDATA%\Cursor\User\globalStorage\saoudrizwan.claude-dev\settings\cline_mcp_settings.json` | HTTP |
-| OpenCode | `~/.config\opencode\opencode.json` | HTTP |
+| OpenCode | `~/.config\opencode\opencode.json` | HTTP direct |
 | **Kimi (VS Code)** | `~/.kimi/mcp.json` | HTTP |
 
 ### Workspace Configuration

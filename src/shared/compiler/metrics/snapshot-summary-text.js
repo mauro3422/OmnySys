@@ -16,6 +16,7 @@ export function buildCompilerMetricsSnapshotSummary(current = {}, trend = {}) {
     `behavior=${current.behaviorState}`,
     `dbsync=${current.activeAtomsDriftState || 'missing'}`,
     current.clientSyncState && current.clientSyncState !== 'fresh' ? `clientsync=${current.clientSyncState}` : null,
+    current.transportProvenanceState && current.transportProvenanceState !== 'fresh' ? `transport=${current.transportProvenanceState}` : null,
     current.toolTelemetry?.totalRuns > 0 ? `tools=${current.toolTelemetry.successfulRuns}/${current.toolTelemetry.totalRuns} ok` : 'tools=0',
     current.toolTelemetry?.pressureRuns > 0 ? `repair=${current.toolTelemetry.repairedRuns}/${current.toolTelemetry.pressureRuns}` : null,
     `dups=${asNumber(current.structuralGroups, 0) + asNumber(current.conceptualGroups, 0)}`,

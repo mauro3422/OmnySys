@@ -289,6 +289,17 @@ export async function executeToolCall(handler, name, server, args = {}, transpor
     logger.warn(`[tool-telemetry] Failed to persist run for ${name}: ${error.message}`);
   }
 
+  const toolOutcomeReadyAt = new Date().toISOString();
+  try {
+    transportContext?.requestDeliveryTracker?.markToolOutcomeReady?.({
+      at: toolOutcomeReadyAt,
+      toolName: name,
+      success: toolError === null
+    });
+  } catch {
+    // Delivery telemetry is advisory; never fail the tool path.
+  }
+
   if (toolError) {
     throw toolError;
   }

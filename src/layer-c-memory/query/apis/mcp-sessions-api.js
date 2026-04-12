@@ -26,6 +26,17 @@ function getAgeMs(updatedAt, now = Date.now()) {
   return Number.isFinite(parsed) ? Math.max(0, now - parsed) : null;
 }
 
+function collectGroupedCountMap(rows, valueKey) {
+  return Array.isArray(rows) ? rows.reduce((acc, row) => {
+    const key = String(row?.[valueKey] || 'unknown').trim() || 'unknown';
+    const count = asNumber(row?.count);
+    if (count > 0) {
+      acc[key] = count;
+    }
+    return acc;
+  }, {}) : {};
+}
+
 /**
  * Collects a canonical snapshot of mcp_sessions without exposing raw SQL to callers.
  *
@@ -68,16 +79,46 @@ export function collectSessionDbSnapshot(sessionDb) {
       clientId: row.client_id,
       count: asNumber(row.count)
     }));
-    const transportOriginCounts = db.prepare(`
+    const transportOriginCounts = collectGroupedCountMap(db.prepare(`
       SELECT COALESCE(transport_origin, 'unknown') AS transport_origin, COUNT(*) AS count
       FROM mcp_sessions
       GROUP BY COALESCE(transport_origin, 'unknown')
       ORDER BY count DESC, transport_origin ASC
-    `).all().reduce((acc, row) => {
-      const origin = String(row.transport_origin || 'unknown').trim() || 'unknown';
-      acc[origin] = asNumber(row.count);
-      return acc;
-    }, {});
+    `).all(), 'transport_origin');
+    const transportSessionStateCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown') AS transport_session_state, COUNT(*) AS count
+      FROM mcp_sessions
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown')
+      ORDER BY count DESC, transport_session_state ASC
+    `).all(), 'transport_session_state');
+    const transportRequestPhaseCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown') AS transport_request_phase, COUNT(*) AS count
+      FROM mcp_sessions
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown')
+      ORDER BY count DESC, transport_request_phase ASC
+    `).all(), 'transport_request_phase');
+    const transportClientRouteIdCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown') AS transport_client_route_id, COUNT(*) AS count
+      FROM mcp_sessions
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown')
+      ORDER BY count DESC, transport_client_route_id ASC
+    `).all(), 'transport_client_route_id');
+    const transportHandshakeSignatureCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown') AS transport_handshake_signature, COUNT(*) AS count
+      FROM mcp_sessions
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown')
+      ORDER BY count DESC, transport_handshake_signature ASC
+    `).all(), 'transport_handshake_signature');
+    const transportSessionHeaderPresentCount = asNumber(db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 1
+    `).get()?.count);
+    const transportSessionHeaderMissingCount = asNumber(db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 0
+    `).get()?.count);
 
     return {
       available: true,
@@ -93,7 +134,13 @@ export function collectSessionDbSnapshot(sessionDb) {
       latestUpdatedAtAgeMs: getAgeMs(latestSessionRow?.updated_at),
       latestActiveUpdatedAt: latestActiveSessionRow?.updated_at || null,
       latestActiveUpdatedAtAgeMs: getAgeMs(latestActiveSessionRow?.updated_at),
-      transportOriginCounts
+      transportOriginCounts,
+      transportSessionStateCounts,
+      transportRequestPhaseCounts,
+      transportClientRouteIdCounts,
+      transportHandshakeSignatureCounts,
+      transportSessionHeaderPresentCount,
+      transportSessionHeaderMissingCount
     };
   } catch {
     return null;

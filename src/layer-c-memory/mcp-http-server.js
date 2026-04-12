@@ -126,6 +126,15 @@ import {
 } from './mcp-http-session-routing.js';
 import { buildInventoryReport, buildInventorySnapshot } from './mcp/tools/list-tools.js';
 import { handleHealthApiRequest } from './mcp/api/health.js';
+import {
+  buildMcpRequestDeliverySummary,
+  buildMcpTopologySummary,
+  getMcpSessionSummary,
+  readProxyRuntimeTelemetry,
+  summarizeProxyRuntimeTelemetry,
+  readBridgeRuntimeTelemetry,
+  summarizeBridgeRuntimeTelemetry
+} from '../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:http');
 
@@ -174,15 +183,22 @@ async function getRuntimeResourceSnapshot() {
   }, {});
 
   let background = null;
+  let requestDeliverySummary = null;
+  let db = null;
   try {
     const { getRepository } = await import('./storage/repository/index.js');
     const repo = getRepository(projectPath);
-    const db = repo?.db || null;
+    db = repo?.db || null;
     if (db) {
+      requestDeliverySummary = buildMcpRequestDeliverySummary(db, {
+        projectPath,
+        windowDays: 7
+      });
       background = {
         phase2PendingFiles: db.prepare('SELECT COUNT(DISTINCT file_path) as n FROM atoms WHERE is_phase2_complete = 0').get()?.n || 0,
         societiesCount: db.prepare('SELECT COUNT(*) as n FROM societies').get()?.n || 0,
-        phase2: core.orchestrator?.phase2Status || null
+        phase2: core.orchestrator?.phase2Status || null,
+        mcpRequestDeliverySummary: requestDeliverySummary
       };
     }
   } catch {
@@ -203,7 +219,61 @@ async function getRuntimeResourceSnapshot() {
     persistedActiveSessions: runtimeSessions.length,
     persistedTotalSessions: allSessions.length,
     dedupStats,
-    transportOriginCounts
+    transportOriginCounts,
+    transportProvenanceState: runtimeSessions.length > 0 || allSessions.length > 0
+      ? (Object.keys(transportOriginCounts).length > 1 || transportOriginCounts.unknown > 0
+        ? 'watchful'
+        : 'fresh')
+      : 'missing',
+    transportProvenanceReason: runtimeSessions.length > 0 || allSessions.length > 0
+      ? (Object.keys(transportOriginCounts).length > 1 || transportOriginCounts.unknown > 0
+        ? 'Multiple transport origins are active in the MCP session pool.'
+        : 'Transport provenance is anchored to one origin.')
+      : 'Transport provenance is not available yet.',
+    transportProvenanceRecommendation: runtimeSessions.length > 0 || allSessions.length > 0
+      ? 'Keep explicit transport provenance attached to each client so direct HTTP and stdio bridge sessions remain distinguishable.'
+      : 'Attach explicit transport provenance headers so the daemon can distinguish direct HTTP, stdio bridge and fallback clients.'
+  };
+  const proxyRuntimeTelemetry = summarizeProxyRuntimeTelemetry(readProxyRuntimeTelemetry(projectPath));
+  const bridgeRuntimeTelemetry = summarizeBridgeRuntimeTelemetry(readBridgeRuntimeTelemetry(projectPath));
+  const topologySummary = buildMcpTopologySummary(db, {
+    projectPath,
+    windowDays: 7,
+    captureSource: 'status.runtime',
+    snapshotKind: 'status',
+    sessionSummary,
+    requestDeliverySummary,
+    proxyRuntimeTelemetry,
+    bridgeRuntimeTelemetry,
+    persist: false
+  });
+  if (background && typeof background === 'object') {
+    background.mcpTopologySummary = topologySummary;
+  }
+  const transportSummary = {
+    state: sessionSummary.transportProvenanceState,
+    healthy: sessionSummary.transportProvenanceState === 'fresh',
+    trustworthy: sessionSummary.transportProvenanceState !== 'missing',
+    reason: sessionSummary.transportProvenanceReason,
+    recommendation: sessionSummary.transportProvenanceRecommendation,
+    transportOriginCounts: sessionSummary.transportOriginCounts,
+    transportOriginTotal: runtimeSessions.length,
+    transportOriginDistinctCount: Object.keys(transportOriginCounts).length,
+    transportOriginMix: Object.entries(transportOriginCounts).map(([origin, count]) => ({ origin, count })),
+    dominantTransportOrigin: Object.entries(transportOriginCounts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'unknown',
+    dominantTransportOriginCount: Object.entries(transportOriginCounts).sort((left, right) => right[1] - left[1])[0]?.[1] || 0,
+    requestDeliverySummary,
+    requestDeliveryState: requestDeliverySummary?.state || 'missing',
+    requestDeliveryHealthy: requestDeliverySummary?.healthy === true,
+    requestDeliveryTrustworthy: requestDeliverySummary?.trustworthy !== false,
+    requestDeliveryReason: requestDeliverySummary?.summary || null,
+    requestDeliveryRecommendation: requestDeliverySummary?.recommendation || null,
+    requestDeliveryAlerts: Array.isArray(requestDeliverySummary?.alerts) ? requestDeliverySummary.alerts.slice(0, 8) : [],
+    requestDeliveryTotalRequests: requestDeliverySummary?.totalRequests || 0,
+    requestDeliveryDeliveredRequests: requestDeliverySummary?.deliveredRequests || 0,
+    requestDeliveryInterruptedRequests: requestDeliverySummary?.interruptedRequests || 0,
+    requestDeliveryFailedRequests: requestDeliverySummary?.failedRequests || 0,
+    topologySummary
   };
 
   return {
@@ -211,6 +281,8 @@ async function getRuntimeResourceSnapshot() {
       ...health,
       phase2: core.orchestrator?.phase2Status || null,
       sessionSummary,
+      transport: transportSummary,
+      requestDeliverySummary,
       toolInventory: {
         totalTools: toolInventory.summary.totalTools,
         categories: toolInventory.summary.categories
@@ -218,10 +290,12 @@ async function getRuntimeResourceSnapshot() {
     },
     health,
     sessions: sessionSummary,
+    transport: transportSummary,
     tools: {
       snapshot: toolInventory,
       report: toolInventoryReport
     },
+    topology: topologySummary,
     schema: {
       protocol: '2025-11-25',
       server: {
@@ -236,8 +310,10 @@ async function getRuntimeResourceSnapshot() {
       resources: [
         'omnysys://status',
         'omnysys://health',
-        'omnysys://sessions',
-        'omnysys://tools',
+      'omnysys://sessions',
+      'omnysys://transport',
+      'omnysys://mcp-topology',
+      'omnysys://tools',
         'omnysys://schema'
       ],
       toolInventory: {
@@ -353,7 +429,9 @@ const buildSessionServer = (transportContext = null) => buildServerForSession({
   getLiveToolDefinitions,
   executeMcpToolCall: executeLiveMcpToolCall,
   getRuntimeResourceSnapshot,
-  transportContext
+  transportContext: transportContext
+    ? Object.assign(transportContext, { projectPath })
+    : { projectPath }
 });
 
 const getSessionManager = async () => {

@@ -2,7 +2,7 @@
 
 **Status**: Draft temporal  
 **Scope**: startup, client bootstrap, reconnect, restart boundary  
-**Last verified**: 2026-03-30
+**Last verified**: 2026-04-12
 
 This note collects what we learned while tracing OmnySys startup and client
 connection paths. It is intentionally temporary. The runtime is still moving,
@@ -44,6 +44,10 @@ touch lifecycle:
 - `src/layer-c-memory/mcp-http-session-routing.js` now exposes read-only MCP
   resources for discovery so the client can inspect live status without going
   through a tool call first.
+- `src/shared/compiler/mcp-topology-telemetry.js` builds the canonical
+  lifecycle summary and persists `mcp_topology_events`.
+- `src/layer-c-memory/query/apis/mcp-topology-api.js` is the read API for the
+  canonical topology snapshot.
 - `src/layer-c-memory/mcp-stdio-bridge.js` bridges stdio clients to the HTTP
   daemon and can auto-start the daemon if it is not available.
 - `src/layer-c-memory/mcp/core/session-manager.js` deduplicates sessions by
@@ -115,6 +119,35 @@ phase metadata:
 - `transport_request_phase`
 - `transport_session_header_present`
 - `transport_session_state`
+- `transport_client_id`
+- `transport_session_id`
+
+The live MCP surface also exposes a dedicated `omnysys://transport` resource
+and the `mcp_sessions` summary now includes `transportProvenanceState`,
+`transportOriginCounts` and a normalized origin mix so drift can be observed
+without guessing from the raw session list.
+
+There is now a second lifecycle surface, `omnysys://mcp-topology`, which is
+the canonical runtime view for connected clients, session replacement, bridge
+freshness, proxy heartbeat and request delivery. Use:
+
+- `omnysys://transport` when you only need transport provenance and session
+  identity
+- `omnysys://mcp-topology` when you need the full live lifecycle picture
+
+The bridge can therefore be `stable` without being fully `fresh`. Stable means
+the runtime is operating with reconnect/retry debt; fresh means the topology
+window is clean enough that provenance, delivery and bridge state agree.
+
+The runtime now also raises explicit transport alerts when:
+
+- `mixed_transport_provenance`
+- `transport_origin_unknown`
+- `session_churn_excessive`
+- `stale_handshake_replay`
+
+That alert bucket is the recommended place to watch for transport drift when
+multiple CLIs, bridges or launcher surfaces are active at once.
 
 That metadata is what lets OmnySys distinguish:
 
@@ -159,7 +192,7 @@ This is the right place to keep future lifecycle automation.
 | Claude CLI | HTTP direct | Uses daemon URL written by the standardizer. |
 | Gemini CLI | HTTP direct | Also points to the shared daemon URL. |
 | Cline in VS Code / Cursor | Streamable HTTP | Configured to talk to the daemon directly. |
-| OpenCode | Remote HTTP | Uses the shared daemon URL. |
+| OpenCode | Remote HTTP | Uses the shared daemon URL and should carry explicit provenance headers. |
 | Codex | STDIO bridge | Launches the bridge, which can start the daemon. |
 | Qwen | STDIO bridge | Uses bridge + auto-start. |
 | Antigravity | STDIO bridge | Uses bridge + auto-start and session replay. |
@@ -196,6 +229,54 @@ This is the right place to keep future lifecycle automation.
   `Reconnecting...`, the likely fault is the client/app-server bridge, not the
   daemon.
 
+## Transport Choice
+
+Use `HTTP direct` when the client can connect cleanly to the daemon URL and you
+want a simple, explicit transport with headers and timeouts you control.
+
+Use `stdio bridge` when the client benefits from local process launch,
+auto-start, reconnect replay, or WSL-friendly bootstrap behavior.
+
+That means the hybrid model is intentional, not a compromise:
+
+- `HTTP direct` is better for clients that already own a robust network layer.
+- `stdio bridge` is better for clients that need recovery, launcher control,
+  or tighter local session management.
+
+The system should not try to force every client onto one transport if that
+creates more churn. Instead, it should standardize the metadata around both:
+
+- `transport_origin`
+- `transport_origin_source`
+- `transport_session_id`
+- `transport_client_id`
+- `transport_client_info`
+- `transport_session_kind`
+
+## Autoregulation And Alerts
+
+The runtime already exposes several guardrails:
+
+- watcher alerts for conceptual duplicates and governance debt
+- health panel summaries for live drift and readiness
+- system inventory for canonical surfaces and bridges
+- transport provenance summaries for mixed-client churn
+- topology summaries for bridge freshness, proxy heartbeat, session replacement
+  and request delivery
+- request delivery summaries for tool-result delivery gaps and interrupted responses
+
+The important control-loop rule is:
+
+- If inventory and schema are healthy but transport provenance is mixed or
+  unknown, treat the issue as a client/bridge drift problem.
+- If `mcp-topology` is `watchful`, the runtime is usable but not normalized for
+  multi-client churn yet.
+- If the health panel reports `metric_alignment` or `telemetry_obligations`
+  blocked, that is a signal to reconcile the canonical summary with the field
+  data, not to assume the daemon is down.
+- If watcher alerts stay active after a change, the system should prefer the
+  canonical source of truth and avoid adding another duplicate implementation.
+
 ## Current Finding - Transport Provenance Drift
 
 The latest live checks show the daemon, schema, pipeline integrity, and tool
@@ -217,8 +298,11 @@ What the telemetry currently says:
 - `get_schema()` reports a healthy, synchronized database schema.
 - `check_pipeline_integrity()` passes all checks.
 - `get_tool_inventory_report()` shows a coherent tool catalog.
-- The remaining drift is in policy/propagation surfaces and in transport
-  provenance clarity.
+- `bridge-runtime-telemetry.json` is currently `stable` but still shows reconnect
+  debt (`reconnectCount=16`, `retryableErrorCount=7`), so it is usable but not
+  perfectly clean.
+- The remaining drift is in policy/propagation surfaces, transport provenance
+  clarity, and the admin/status surface when `transport_origin` is null.
 
 What we still do not know with certainty:
 
@@ -246,6 +330,8 @@ tool catalog:
 - `omnysys://sessions` - session persistence and deduplication summary.
 - `omnysys://tools` - current tool registry snapshot and inventory report.
 - `omnysys://schema` - MCP capability and runtime resource schema summary.
+- `omnysys://transport` - transport provenance and session identity summary.
+- `omnysys://mcp-topology` - live MCP topology, bridge freshness and delivery summary.
 
 These resources are intentionally lightweight JSON snapshots. They give the
 client something useful to list and read even before it starts invoking tools.
@@ -562,6 +648,8 @@ The next architecture step should be a single daemon-managed restart boundary:
 - `src/layer-c-memory/mcp-http-proxy.js`
 - `src/layer-c-memory/mcp-http-server.js`
 - `src/layer-c-memory/mcp-stdio-bridge.js`
+- `src/shared/compiler/mcp-topology-telemetry.js`
+- `src/layer-c-memory/query/apis/mcp-topology-api.js`
 - `src/layer-c-memory/mcp/core/session-manager.js`
 - `src/layer-c-memory/mcp/restart-runtime.js`
 - `src/cli/commands/up.js`

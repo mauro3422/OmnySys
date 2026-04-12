@@ -7,7 +7,7 @@
  * - omnysys up       : Inicia LLM + MCP + Dashboard
  * - omnysys down     : Detiene todo
  * - omnysys status   : Muestra estado
- * - omnysys setup    : Configura OpenCode automáticamente
+ * - omnysys setup    : Configura todos los clientes MCP soportados
  * - omnysys tools    : Lista herramientas disponibles
  * - omnysys call     : Ejecuta una herramienta
  * 

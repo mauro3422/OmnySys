@@ -51,8 +51,12 @@ export function createSessionStatements(db) {
   return {
     upsert: db.prepare(`
       INSERT OR REPLACE INTO mcp_sessions (
-        id, client_id, transport_origin, client_info_json, session_metadata_json, created_at, updated_at, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        id, client_id, transport_origin, client_info_json, session_metadata_json,
+        created_at, updated_at, is_active, replaced_by_session_id, replaced_session_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `),
+    updateLineage: db.prepare(`
+      UPDATE mcp_sessions SET replaced_by_session_id = ?, updated_at = ? WHERE id = ?
     `),
     get: db.prepare('SELECT * FROM mcp_sessions WHERE id = ?'),
     getByClientId: db.prepare('SELECT * FROM mcp_sessions WHERE client_id = ? ORDER BY updated_at DESC LIMIT 1'),

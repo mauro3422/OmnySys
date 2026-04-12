@@ -16,6 +16,7 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - The snapshot should also carry the active atom count and historical pipeline phase timings so the system can spot data drift and ms regressions as part of health.
 - The snapshot should be able to show whether the MCP/runtime actually improved after a fix, not just whether a single check passed.
 - The snapshot should distinguish daemon health from client/session drift so reconnect loops can be diagnosed without guessing.
+- The snapshot should distinguish tool execution from actual transport delivery, because a terminal log can show a tool call even when the assistant never receives the response cleanly.
 - Tool executions should be measured as causal repair events, so the system can track how often a watcher alert or runtime error was followed by a successful tool run that improved the snapshot.
 - The snapshot should expose a success threshold and a behavioral readiness score so the project can answer "is the MVP healthy enough?" instead of only "is it healthy today?".
 - A compact health dashboard should sit on top of the snapshot so one call can show current health, trend, tool success, top regressors, and MVP readiness.
@@ -42,6 +43,8 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Phase 2 execution telemetry: `phase2TotalMs`, `phase2ThroughputItemsPerSec`, `phase2BacklogRemaining`, `phase2ParseFailureCount`, `phase2ParseFailureRate`
 - Tool-run telemetry: `totalRuns`, `repairedRuns`, `thrashingRuns`, `toolSuccessRate`, `repairYield`, `alertClearanceRate`, `errorClearanceRate`, `averageDurationMs`
 - MCP session/reconnect telemetry: `clientSyncState`, `clientSyncReason`, `transportReconnectAttempts`, `sessionRecoverySuccessRate`, `freshSessionResets`, `duplicateClientBuckets`
+- MCP request-delivery telemetry: `requestDeliveryState`, `requestDeliveryReason`, `requestDeliveryRecommendation`, `requestDeliveryTotalRequests`, `requestDeliveryDeliveredRequests`, `requestDeliveryInterruptedRequests`, `requestDeliveryFailedRequests`, `requestDeliveryUnknownOriginRequests`, `requestDeliveryAverageDeliveryLatencyMs`, `requestDeliveryAverageToolOutcomeGapMs`, `requestDeliveryUnknownOriginRate`
+- MCP topology telemetry: `topologyState`, `topologyReason`, `topologyRecommendation`, `topologyConnectedClients`, `topologyActiveSessions`, `topologySessionReplacementCount`, `topologySessionReuseCount`, `topologyBridgeState`, `topologyProxyState`, `topologyRequestDeliveryState`, `topologyEventCounts`, `topologyTransportOriginCounts`
 - HTTP compatibility telemetry: `normalizedAcceptRequests`, `jsonPostResponses`, `compatHandshakeRepairs`, `compat406AvoidedCount`
 - Database drift telemetry: `dbSyncState`, `dbBusyCount`, `reconciliationCount`, `reconciliationStaleRows`, `calledByResolutionRate`, `orphanReconciliationDelta`
 
@@ -60,6 +63,8 @@ Build a canonical metrics snapshot layer that stores the system health picture o
 - Persist causal tool-run telemetry so watcher alerts, errors, and fixes can be scored as a repair cycle instead of inferred only from point-in-time snapshots.
 - Persist pipeline phase timing telemetry so startup and reindex ms regressions can be scored and alerted like any other health drift.
 - Persist reconnect and session-drift telemetry so the system can tell the difference between a dead daemon, a stale client cache, and a loop triggered by session reuse.
+- Persist request-delivery telemetry so the system can tell the difference between a tool that ran successfully and a response that was interrupted, delayed, or delivered through an unknown transport origin.
+- Persist topology telemetry so bridge freshness, proxy heartbeat, session replacement and request delivery can be compared historically in one canonical series.
 - Persist compatibility-shim telemetry so the system can tell when a reconnect was saved by request normalization instead of assuming the client was healthy.
 - Add a direct metric for `extractDataFlow` parse failures so malformed test/factory snippets stop being invisible performance debt.
 - Add an MVP readiness dashboard that explains why the system is or is not above the success threshold.

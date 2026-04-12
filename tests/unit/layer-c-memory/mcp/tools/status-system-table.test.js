@@ -189,6 +189,23 @@ describe('status system table', () => {
         dominantCategory: 'action',
         concentration: 50
       },
+      topologySummary: {
+        topologyState: 'watchful',
+        connectedClients: 2,
+        activeSessions: 2,
+        sessionReplacementCount: 1,
+        sessionReuseCount: 2,
+        bridgeState: 'watchful',
+        proxyState: 'stable',
+        requestDeliveryState: 'watchful',
+        transportOriginMix: [
+          { origin: 'http_direct', count: 1 },
+          { origin: 'stdio_bridge', count: 1 }
+        ],
+        alerts: [
+          { code: 'mixed_transport_provenance' }
+        ]
+      },
       background: {
         mcpSessionSummary: {
           totalPersistentActive: 2,
@@ -196,6 +213,25 @@ describe('status system table', () => {
           uniqueClients: 2,
           clientSyncState: 'watchful'
         }
+      },
+      mcpSessions: {
+        totalActive: 2,
+        totalPersistent: 4,
+        totalPersistentActive: 2,
+        uniqueClients: 2,
+        clientsWithDuplicates: 0,
+        clientSyncState: 'fresh',
+        transportProvenanceState: 'watchful',
+        transportProvenanceReason: 'HTTP-direct and stdio-bridge sessions are active together (http_direct:1, stdio_bridge:1).',
+        transportProvenanceRecommendation: 'Standardize explicit client headers and route identity for HTTP-direct clients.',
+        transportOriginCounts: {
+          http_direct: 1,
+          stdio_bridge: 1
+        },
+        transportOriginMix: [
+          { origin: 'http_direct', count: 1 },
+          { origin: 'stdio_bridge', count: 1 }
+        ],
       },
       cachePolicy: {
         decision: 'freshness-first',
@@ -258,6 +294,31 @@ describe('status system table', () => {
     expect(behaviorRow.detail).toContain('blockers=2');
     expect(behaviorRow.detail).toContain('primary=drift_assessment');
     expect(behaviorRow.detail).toContain('reason=blocked');
+
+    const sessionsRow = summary.rows.find((row) => row.area === 'Sessions');
+    expect(sessionsRow).toMatchObject({
+      area: 'Sessions',
+      state: 'watchful'
+    });
+    expect(sessionsRow.detail).toContain('transport=watchful');
+    expect(sessionsRow.detail).toContain('http_direct:1');
+    expect(sessionsRow.detail).toContain('stdio_bridge:1');
+
+    const topologyRow = summary.rows.find((row) => row.area === 'Topology');
+    expect(topologyRow).toMatchObject({
+      area: 'Topology',
+      state: 'watchful',
+      source: 'mcp_topology_events + mcp_sessions + request delivery telemetry'
+    });
+    expect(topologyRow.detail).toContain('clients=2');
+    expect(topologyRow.detail).toContain('active=2');
+    expect(topologyRow.detail).toContain('repl=1');
+    expect(topologyRow.detail).toContain('reuse=2');
+    expect(topologyRow.detail).toContain('bridge=watchful');
+    expect(topologyRow.detail).toContain('proxy=stable');
+    expect(topologyRow.detail).toContain('delivery=watchful');
+    expect(topologyRow.detail).toContain('transport=http_direct:1, stdio_bridge:1');
+    expect(topologyRow.detail).toContain('alerts=mixed_transport_provenance');
 
     const propagationRow = summary.rows.find((row) => row.area === 'Propagation');
     expect(propagationRow).toMatchObject({
@@ -373,14 +434,19 @@ describe('status system table', () => {
       'Behavior',
       'Drift',
       'Propagation',
+      'Propagation Ledger',
       'Debt',
       'Sessions',
+      'Topology',
       'Tools',
       'Systems',
+      'Registry',
+      'Telemetry Gate',
       'Aduana',
       'Promotion',
       'Automation',
       'Adoption',
+      'Naming Drift',
       'Cache',
       'Watcher',
       'Errors'

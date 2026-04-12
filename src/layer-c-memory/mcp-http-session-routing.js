@@ -21,6 +21,8 @@ const RESOURCE_URIS = {
   status: 'omnysys://status',
   health: 'omnysys://health',
   sessions: 'omnysys://sessions',
+  transport: 'omnysys://transport',
+  mcpTopology: 'omnysys://mcp-topology',
   tools: 'omnysys://tools',
   schema: 'omnysys://schema'
 };
@@ -144,6 +146,20 @@ export function buildServerForSession({
         mimeType: 'application/json'
       },
       {
+        uri: RESOURCE_URIS.transport,
+        name: 'transport',
+        title: 'MCP Transport',
+        description: 'Current transport provenance and drift summary.',
+        mimeType: 'application/json'
+      },
+      {
+        uri: RESOURCE_URIS.mcpTopology,
+        name: 'mcp-topology',
+        title: 'MCP Topology',
+        description: 'Live MCP transport, session, bridge, proxy, and request delivery topology.',
+        mimeType: 'application/json'
+      },
+      {
         uri: RESOURCE_URIS.tools,
         name: 'tools',
         title: 'MCP Tools',
@@ -209,6 +225,34 @@ export function buildServerForSession({
             name: 'sessions',
             title: 'MCP Sessions',
             description: 'Current session persistence and deduplication summary.'
+          }
+        )]
+      };
+    }
+
+    if (uri === RESOURCE_URIS.transport) {
+      return {
+        contents: [asJsonResource(
+          uri,
+          snapshot.transport,
+          {
+            name: 'transport',
+            title: 'MCP Transport',
+            description: 'Current transport provenance and drift summary.'
+          }
+        )]
+      };
+    }
+
+    if (uri === RESOURCE_URIS.mcpTopology) {
+      return {
+        contents: [asJsonResource(
+          uri,
+          snapshot.topology,
+          {
+            name: 'mcp-topology',
+            title: 'MCP Topology',
+            description: 'Live MCP transport, session, bridge, proxy, and request delivery topology.'
           }
         )]
       };
