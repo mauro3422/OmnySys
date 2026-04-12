@@ -6,10 +6,12 @@
  * provides a canonical read API, the control plane will show "unknown"/"missing"
  * for that component (Proxy, Bridge, Topology, etc.).
  *
- * This guard closes the loop: it tells the system "you have data but nobody reads it."
+ * This guard closes the loop: it tells the system "you have data but nobody reads it"
+ * AND propagates the obligation to the canonical promotion engine.
  */
 
 import { safeJson } from '#shared/compiler/index.js';
+import { buildSurfaceObligationsPropagationPlan } from '#shared/compiler/surface-obligations-propagator.js';
 
 // Canonical table registry: each table maps to its expected surface files
 const CANONICAL_SURFACE_REGISTRY = [
@@ -80,6 +82,11 @@ export async function detectMissingSurfaceAudit(ctx) {
       const isCritical = ['mcp_topology_events', 'mcp_request_delivery_events', 'mcp_tool_runs'].includes(entry.table);
       const finalSeverity = isCritical ? 'critical' : severity;
 
+      const propagationPlan = buildSurfaceObligationsPropagationPlan(db);
+      const matchingObligation = propagationPlan.obligations?.find(
+        o => o.sourceTable === entry.table
+      );
+
       findings.push({
         type: 'missing_surface',
         severity: finalSeverity,
@@ -96,9 +103,12 @@ export async function detectMissingSurfaceAudit(ctx) {
           description: entry.description || '',
           controlPlaneField: entry.controlPlaneField || null,
           checkType: 'missing_canonical_surface',
+          propagationState: matchingObligation ? 'propagated' : 'pending_propagation',
+          obligationId: matchingObligation?.id || null,
+          estimatedImpact: matchingObligation?.estimatedImpact || '',
           suggestedFix: `Create canonical surface: export function load${capitalize(entry.component)}(db) { ... } in src/shared/compiler/${entry.requiredFiles[0]}.js`
         }),
-        suggestion: `Create src/shared/compiler/${entry.requiredFiles[0]}.js with a canonical load${capitalize(entry.component)}(db) function that reads from ${entry.table}. Register in data_gateway_contract.surfaces.`
+        suggestion: `Create src/shared/compiler/${entry.requiredFiles[0]}.js with a canonical load${capitalize(entry.component)}(db) function that reads from ${entry.table}. Register in data_gateway_contract.surfaces. Propagation obligation: ${matchingObligation?.id || 'pending'}`
       });
     }
   } catch (err) {
