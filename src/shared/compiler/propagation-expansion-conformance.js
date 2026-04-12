@@ -47,6 +47,8 @@ function isPropagationExemptPath(normalizedPath = '') {
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt-report-cache-helpers.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/compiler-snapshot-service-helpers.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/get-canonical-promotion-report-helpers.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/status-metadata.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt-report-sql.js')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/diagnose-tool-health/')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt/')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter.js')
