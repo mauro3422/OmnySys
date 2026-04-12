@@ -43,6 +43,12 @@ const CONSUMER_PREFIXES = [
  * Returns true if a file is a consumer that should use the data gateway.
  */
 function isConsumerModule(normalizedPath = '') {
+  // Governance/diagnostic modules are auditors, not consumers
+  if (normalizedPath.includes('governance-alerts')
+    || normalizedPath.includes('detect-db-access')
+    || normalizedPath.includes('pipeline-health')) {
+    return false;
+  }
   return CONSUMER_PREFIXES.some(prefix => normalizedPath.includes(prefix));
 }
 
