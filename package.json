@@ -23,6 +23,7 @@
     "smoke": "node tests/smoke-test.js",
     "test": "vitest run",
     "test:unit": "vitest run --config tests/config/vitest.unit.config.js",
+    "test:unit:live": "vitest run --config tests/config/vitest.live.config.js",
     "test:integration": "vitest run --config tests/config/vitest.integration.config.js",
     "test:integration:layer-a": "vitest run tests/integration/layer-a --config tests/config/vitest.integration.config.js",
     "test:integration:layer-b": "vitest run tests/integration/layer-b --config tests/config/vitest.integration.config.js",
