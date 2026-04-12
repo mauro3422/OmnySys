@@ -17,7 +17,7 @@ import {
   buildAtomsSchemaResult,
   buildDatabaseSchemaResult,
   buildRegistrySchemaResult
-} from './get-schema-helpers.js';
+} from './helpers.js';
 
 /**
  * MCP Tool: get_schema

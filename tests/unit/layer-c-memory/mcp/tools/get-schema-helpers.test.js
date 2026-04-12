@@ -56,7 +56,7 @@ vi.mock('../../../../../src/layer-c-memory/mcp/tools/get-schema-stats.js', () =>
   computeCorrelations: mocks.computeCorrelations
 }));
 
-import { buildDatabaseSchemaResult } from '../../../../../src/layer-c-memory/mcp/tools/get-schema-helpers.js';
+import { buildDatabaseSchemaResult } from '../../../../../src/layer-c-memory/mcp/tools/get-schema/helpers.js';
 
 describe('get-schema-helpers', () => {
   beforeEach(() => {

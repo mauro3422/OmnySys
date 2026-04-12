@@ -1,4 +1,4 @@
-import { get_schema } from './get-schema.js';
+import { get_schema } from './get-schema/schema.js';
 import { get_server_status, get_recent_errors } from './status.js';
 import { get_metrics_snapshot } from './get-metrics-snapshot.js';
 import { get_health_snapshot } from './get-health-snapshot.js';

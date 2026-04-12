@@ -1,13 +1,13 @@
-import { getAllAtoms } from '#layer-c/storage/index.js';
+import { getAllAtoms } from '../../../storage/index.js';
 import { getFieldToolCoverage, getAvailableFields } from '#layer-a/extractors/metadata/registry.js';
-import { getDatabase } from '../../storage/database/connection.js';
+import { getDatabase } from '../../../storage/database/connection.js';
 import {
   getRegisteredTables,
   getTableDefinition,
   getTableColumns,
   generateSchemaReport,
   exportSchemaSQL
-} from '../../storage/database/schema-registry/index.js';
+} from '../../../storage/database/schema-registry/index.js';
 import {
   buildCompilerHistoricalStorageSummary,
   buildCompilerControlPlaneFoundations,
@@ -15,8 +15,8 @@ import {
   summarizePropagationPlan,
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
-} from '../../../shared/compiler/index.js';
-import { deriveSchema, fieldEvolution, computeCorrelations } from './get-schema-stats.js';
+} from '../../../../shared/compiler/index.js';
+import { deriveSchema, fieldEvolution, computeCorrelations } from './index.js';
 
 void summarizePropagationPlan;
 
