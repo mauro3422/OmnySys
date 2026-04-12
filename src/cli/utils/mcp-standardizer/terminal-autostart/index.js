@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { stripTerminalAutoStartConfig } from './terminal-autostart-helpers.js';
+import { stripTerminalAutoStartConfig } from './helpers.js';
 
 const homeDir = os.homedir();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

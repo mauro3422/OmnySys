@@ -6,7 +6,7 @@
  * Configures automatic MCP daemon startup for all terminal shells.
  */
 
-import { applyTerminalAutoStartConfig } from '../utils/mcp-standardizer/terminal-autostart.js';
+import { applyTerminalAutoStartConfig } from '../utils/mcp-standardizer/terminal-autostart/index.js';
 import { log } from '../utils/logger.js';
 
 export const aliases = ['terminal-setup', 'setup-terminal'];

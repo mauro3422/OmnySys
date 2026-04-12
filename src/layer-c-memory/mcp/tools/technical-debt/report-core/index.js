@@ -1,8 +1,8 @@
 import {
   buildTechnicalDebtPriorityActions,
   calculateTechnicalDebtScore
-} from './report-helpers.js';
-import { loadTechnicalDebtReportArtifacts } from './report-core-helpers.js';
+} from '../report-helpers.js';
+import { loadTechnicalDebtReportArtifacts } from './helpers.js';
 
 function loadLatestFolderizationSnapshotReport(db, {
   projectPath = null,

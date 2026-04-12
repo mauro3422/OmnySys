@@ -3,8 +3,8 @@ import { getMcpUrl } from './utils.js';
 import { CONFIG_PATHS } from './constants.js';
 import { getWorkspaceConfigPaths, getVsCodeConfigPaths, getUnifiedConfigPath, getClientConfigPath } from './paths.js';
 import { applyWorkspaceMcpConfig, applyVsCodeAutostartConfig, writeUnifiedConfig } from './workspace.js';
-import { applyTerminalAutoStartConfig } from './terminal-autostart.js';
-import { syncWindowsCodexMcpToWsl } from './wsl-codex-sync.js';
+import { applyTerminalAutoStartConfig } from './terminal-autostart/index.js';
+import { syncWindowsCodexMcpToWsl } from './wsl-codex-sync/sync.js';
 import {
     applyCodexConfig,
     applyClineConfig,

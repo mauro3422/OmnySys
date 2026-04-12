@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 
-import { stripBom, upsertTomlTable } from './utils.js';
+import { stripBom, upsertTomlTable } from '../utils.js';
 import {
     OMNYSYSTEM_TABLE,
     getTableHeaders,
@@ -12,7 +12,7 @@ import {
     isWindowsOnlyOmnysystemTable,
     isWrapperBackedWslOmnysystemTable,
     shouldRefreshWrapperBackedWslOmnysystemTable
-} from './wsl-codex-sync-helpers.js';
+} from './index.js';
 
 function isWslEnvironment(runtime = {}) {
     const platform = runtime.platform || process.platform;

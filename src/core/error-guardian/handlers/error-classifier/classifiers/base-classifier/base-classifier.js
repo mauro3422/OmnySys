@@ -6,9 +6,9 @@
  * @module core/error-guardian/handlers/error-classifier/classifiers/base-classifier
  */
 
-import { createLogger } from '../../../../utils/logger.js';
-import { SEVERITY, ERROR_PATTERNS } from '../patterns/constants.js';
-import { getClassifierStats } from '../utils/stats.js';
+import { createLogger } from '../../../../../utils/logger.js';
+import { SEVERITY, ERROR_PATTERNS } from '../../patterns/constants.js';
+import { getClassifierStats } from '../../utils/stats.js';
 import {
   buildClassifierPatterns,
   selectMatchingPattern,

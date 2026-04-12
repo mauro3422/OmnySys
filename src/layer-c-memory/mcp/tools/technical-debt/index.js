@@ -23,7 +23,7 @@ import {
 import {
   buildTechnicalDebtReportResult,
   loadTechnicalDebtReportDetails
-} from './report-core.js';
+} from './report-core/index.js';
 import { loadNotifications, buildRecentErrorsResponse } from '../status-notifications.js';
 import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../../core/governance-alerts.js';
 

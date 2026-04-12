@@ -4,7 +4,7 @@ import path from 'path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { syncWindowsCodexMcpToWsl } from '../../../../../src/cli/utils/mcp-standardizer/wsl-codex-sync.js';
+import { syncWindowsCodexMcpToWsl } from '../../../../../src/cli/utils/mcp-standardizer/wsl-codex-sync/sync.js';
 
 async function createTempDir(prefix) {
   return await fs.mkdtemp(path.join(os.tmpdir(), prefix));
