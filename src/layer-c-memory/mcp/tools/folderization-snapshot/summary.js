@@ -99,15 +99,7 @@ export function summarizeLiveRowSync(liveRowSync = null, dataGatewaySummary = nu
   return buildLiveRowSyncSummary({ liveRowSync, liveRowSignal, staleRows, dataGatewaySummary });
 }
 
-export function buildFolderizationSnapshotSummary({
-  folderizationReport = null,
-  databaseHealth = null,
-  scopePath = null,
-  focusPath = null,
-  history = []
-} = {}) {
-  const summary = folderizationReport?.summary || {};
-  const creationGuidance = folderizationReport?.creationGuidance || {};
+function buildFoundationsAndContracts(databaseHealth) {
   const foundations = buildCompilerControlPlaneFoundations({
     dbSurfaces: { databaseHealth }
   });
@@ -117,40 +109,73 @@ export function buildFolderizationSnapshotSummary({
     foundations.liveRowSync || null,
     dataGatewaySummary
   );
-  const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: liveRowSync.state } }, history);
-  const folderizationDrift = folderizationReport?.drift || {
+  return { foundations, dataGatewayContract, dataGatewaySummary, liveRowSync };
+}
+
+function buildDriftInfo(folderizationReport, liveRowSync) {
+  return folderizationReport?.drift || {
     state: liveRowSync.state,
     score: liveRowSync.state === 'blocked' ? 100 : liveRowSync.state === 'stale' ? 50 : 0,
     reason: liveRowSync.reason || null,
     recommendation: liveRowSync.recommendation || null,
     evidence: liveRowSync.evidence || null
   };
-  const recommendation = folderizationReport?.recommendation || {};
+}
+
+function determineRecommendedToolAndAction(liveRowSync, recommendation, creationGuidance) {
   const preferredFolder = creationGuidance.preferredFolder || creationGuidance.preferredDirectory || null;
-  const preferredRoleStems = Array.isArray(creationGuidance.preferredRoleStems)
-    ? creationGuidance.preferredRoleStems
-    : [];
+  const preferredRoleStems = Array.isArray(creationGuidance.preferredRoleStems) ? creationGuidance.preferredRoleStems : [];
   const nextBestStem = preferredRoleStems[0]?.stem || 'core.js';
-  const recommendedTool = liveRowSync.state !== 'fresh'
-    ? null
-    : recommendation.strategy === 'split_large_file'
-      ? 'split_large_file'
-      : preferredFolder
-        ? 'folderize_family'
-        : null;
-  const recommendedAction = liveRowSync.state !== 'fresh'
-    ? liveRowSync.recommendation
-    : preferredFolder
-      ? `${creationGuidance.selectionReason || 'Reuse the closest DB-backed family.'} Create the next file inside ${preferredFolder} using ${nextBestStem}.`
-      : recommendation.action
-        || (recommendation.strategy === 'split_large_file'
-          ? 'Use split_large_file to decompose the monolith before folderizing.'
-          : 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.');
-  const whyThisFirst = liveRowSync.state !== 'fresh'
-    ? liveRowSync.reason
-    : recommendation.strategy === 'split_large_file'
-      ? recommendation.message || 'The current family is monolithic; split it before folderizing.'
-      : creationGuidance.selectionReason || 'The current scope has the strongest reusable folderization match in the DB.';
+
+  if (liveRowSync.state !== 'fresh') {
+    return {
+      recommendedTool: null,
+      recommendedAction: liveRowSync.recommendation,
+      nextBestFolder: preferredFolder,
+      nextBestStem,
+      whyThisFirst: liveRowSync.reason
+    };
+  }
+
+  const recommendedTool = recommendation.strategy === 'split_large_file'
+    ? 'split_large_file'
+    : preferredFolder ? 'folderize_family' : null;
+
+  const recommendedAction = preferredFolder
+    ? `${creationGuidance.selectionReason || 'Reuse the closest DB-backed family.'} Create the next file inside ${preferredFolder} using ${nextBestStem}.`
+    : recommendation.action || (recommendation.strategy === 'split_large_file'
+      ? 'Use split_large_file to decompose the monolith before folderizing.'
+      : 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.');
+
+  const whyThisFirst = recommendation.strategy === 'split_large_file'
+    ? recommendation.message || 'The current family is monolithic; split it before folderizing.'
+    : creationGuidance.selectionReason || 'The current scope has the strongest reusable folderization match in the DB.';
+
+  return { recommendedTool, recommendedAction, nextBestFolder: preferredFolder, nextBestStem, whyThisFirst };
+}
+
+export function buildFolderizationSnapshotSummary({
+  folderizationReport = null,
+  databaseHealth = null,
+  scopePath = null,
+  focusPath = null,
+  history = []
+} = {}) {
+  const summary = folderizationReport?.summary || {};
+  const creationGuidance = folderizationReport?.creationGuidance || {};
+  const recommendation = folderizationReport?.recommendation || {};
+
+  const { dataGatewaySummary, liveRowSync } = buildFoundationsAndContracts(databaseHealth);
+  const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: liveRowSync.state } }, history);
+  const folderizationDrift = buildDriftInfo(folderizationReport, liveRowSync);
+
+  const {
+    recommendedTool,
+    recommendedAction,
+    nextBestFolder,
+    nextBestStem,
+    whyThisFirst
+  } = determineRecommendedToolAndAction(liveRowSync, recommendation, creationGuidance);
 
   return {
     scopePath,
@@ -178,7 +203,7 @@ export function buildFolderizationSnapshotSummary({
     recommendationStrategy: summary.recommendationStrategy || null,
     recommendedTool,
     recommendedAction,
-    nextBestFolder: preferredFolder,
+    nextBestFolder,
     nextBestStem,
     whyThisFirst,
     trend,
