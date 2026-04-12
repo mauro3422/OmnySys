@@ -76,7 +76,35 @@ function isCanonicalGatewayModule(normalizedPath = '') {
     '/shared/compiler/atom-events-surface.js',
     '/shared/compiler/societies-surface.js',
     '/shared/compiler/file-deps-surface.js',
-    '/shared/compiler/surface-obligations-propagator.js'
+    '/shared/compiler/surface-obligations-propagator.js',
+    // Core system modules that legitimately query runtime tables
+    '/shared/compiler/trust-investigation-report.js',
+    '/shared/compiler/tool-run-telemetry/summary.js',
+    '/shared/compiler/tool-health-trending.js',
+    '/shared/compiler/mcp-request-delivery-telemetry.js',
+    // Layer C query modules (they ARE the data access layer)
+    '/layer-c-memory/query/queries/file-query/dependencies/deps.js',
+    '/layer-c-memory/query/queries/dependency-query.js',
+    '/layer-c-memory/query/export.js',
+    '/layer-c-memory/query/apis/mcp-sessions-api.js',
+    '/layer-c-memory/query/queries/connections-query.js',
+    // Layer C MCP tools and core modules
+    '/layer-c-memory/mcp/core/session-manager-helpers.js',
+    '/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js',
+    '/layer-c-memory/mcp-http-server.js',
+    '/layer-c-memory/mcp/tools/status-metadata.js',
+    '/layer-c-memory/mcp/tools/status-compiler.js',
+    '/layer-c-memory/mcp/tools/suggest-architecture.js',
+    '/layer-c-memory/mcp/tools/diagnose-tool-health/analysis-core.js',
+    // Layer C storage and shadow registry
+    '/layer-c-memory/storage/repository/adapters/helpers/system-map-incremental.js',
+    '/layer-c-memory/storage/repository/adapters/helpers/system-map/handlers/dependency-handler.js',
+    '/layer-c-memory/shadow-registry/storage/shadow-storage.js',
+    // Layer B society manager
+    '/layer-b-semantic/society-manager/SocietyPersistor.js',
+    // Core orchestrator and file watcher handlers
+    '/core/orchestrator/runtime-ops.js',
+    '/core/file-watcher/handlers/relationships.js'
   ];
 
   return [
