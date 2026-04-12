@@ -105,7 +105,14 @@ function isCanonicalGatewayModule(normalizedPath = '') {
     '/layer-b-semantic/society-manager/SocietyPersistor.js',
     // Core orchestrator and file watcher handlers
     '/core/orchestrator/runtime-ops.js',
-    '/core/file-watcher/handlers/relationships.js'
+    '/core/file-watcher/handlers/relationships.js',
+    // Layer C storage helpers (they implement the persistence layer)
+    '/layer-c-memory/storage/repository/adapters/helpers/system-map-incremental.js',
+    '/layer-c-memory/storage/repository/adapters/helpers/system-map/handlers/file-handler.js',
+    '/layer-c-memory/storage/repository/adapters/helpers/system-map/handlers/semantic-handler.js',
+    '/layer-c-memory/storage/repository/adapters/helpers/call-target-resolver.js',
+    // Core meta-detector
+    '/core/meta-detector/pipeline-integrity-detector/data-checks.js'
   ];
 
   return [
