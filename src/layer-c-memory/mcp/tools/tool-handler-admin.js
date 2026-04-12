@@ -14,7 +14,6 @@ import { get_atom_history } from './get-atom-history.js';
 import { get_tool_inventory_report, list_tools } from './list-tools.js';
 import { diagnose_tool_health } from './diagnose-tool-health/health.js';
 import { consolidate_policy_drifts } from './consolidate-policy-drifts.js';
-import { surfaceAutoLoopTool } from './surface-auto-loop.js';
 
 export const adminToolHandlers = {
   mcp_omnysystem_get_schema: get_schema,
@@ -34,6 +33,5 @@ export const adminToolHandlers = {
   mcp_omnysystem_execute_sql: execute_sql,
   mcp_omnysystem_get_atom_history: get_atom_history,
   mcp_omnysystem_diagnose_tool_health: diagnose_tool_health,
-  mcp_omnysystem_consolidate_policy_drifts: consolidate_policy_drifts,
-  mcp_omnysystem_surface_auto_loop: surfaceAutoLoopTool
+  mcp_omnysystem_consolidate_policy_drifts: consolidate_policy_drifts
 };

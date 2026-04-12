@@ -290,18 +290,5 @@ export const adminToolDefinitions = [
       },
       required: []
     }
-  },
-  {
-    name: 'mcp_omnysystem_surface_auto_loop',
-    description: 'Auto-generates canonical surface files for DB tables that have data but no read API. Supports dry-run mode. Flow: detect → scaffold → safe-check → apply → verify.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        projectPath: { type: 'string', description: 'Project path (default: current project)' },
-        tableName: { type: 'string', description: 'Specific table to create surface for (optional — creates all if omitted)' },
-        dryRun: { type: 'boolean', default: true, description: 'If true, only preview generated code without writing files' }
-      },
-      required: []
-    }
   }
 ];
