@@ -8,5 +8,5 @@
  */
 
 export { normalizeCount } from '../surface-utils.js';
-export { buildSurface, buildInvariant, buildSurfaceInventory } from '../compiler-contract-layer-helpers-surface.js';
+export { buildSurface, buildInvariant, buildSurfaceInventory } from '../contract-layer-helpers-surface/index.js';
 export { buildCanonicalEntrypoints } from '../compiler-contract-layer-helpers-entrypoints.js';

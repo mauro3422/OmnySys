@@ -3,7 +3,7 @@ import { buildCanonicalPromotionReport } from './canonical-promotion-summary.js'
 import { getDatabaseHealthSummary } from './database-health-summary.js';
 import { loadCompilerExplainability } from './compiler-explainability-loader.js';
 import { buildCompilerMetricsSnapshot } from './metrics/snapshot.js';
-import { summarizeCompilerMetricsSnapshot } from './metrics/snapshot-summary.js';
+import { summarizeCompilerMetricsSnapshot } from './metrics/snapshot-summary/index.js';
 import { getGraphCoverageSummary, getIssueSummary, getMcpSessionSummary } from './compiler-runtime-metrics/index.js';
 import { getMetadataExtractionCoverage, summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
 import { buildCompilerSystemInventoryReport } from './system-inventory-summary.js';

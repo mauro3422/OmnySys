@@ -30,7 +30,7 @@ import {
   persistCompilerMetricsArchiveSnapshot
 } from '../compiler-health-archive.js';
 import { validateSnapshotSummaryCoherence } from '../metric-coherence-validator.js';
-import { summarizeCompilerMetricsSnapshot } from './snapshot-summary.js';
+import { summarizeCompilerMetricsSnapshot } from './snapshot-summary/index.js';
 
 export { summarizeCompilerMetricsSnapshot };
 

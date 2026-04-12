@@ -1,5 +1,5 @@
-import { normalizeCount } from './surface-utils.js';
-import { buildInvariant, buildSurface } from './compiler-contract-layer-helpers-surface-models.js';
+import { normalizeCount } from '../surface-utils.js';
+import { buildInvariant, buildSurface } from './models.js';
 
 export function buildSurfaceInventory({
   persistedFileCoverage = null,
