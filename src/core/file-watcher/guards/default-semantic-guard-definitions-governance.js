@@ -56,5 +56,13 @@ export const semanticGuardDefinitionsGovernance = [
     'arch',
     '1.0.0',
     'Detects trust in advisory surfaces without validating their integrity metadata first'
+  ),
+  defineVersionedLazyGuard(
+    'semantic-surface-collapse',
+    () => import('./semantic-surface-collapse-guard.js'),
+    (mod) => mod.detectSemanticSurfaceCollapse,
+    'runtime',
+    '1.0.0',
+    'Detects when semantic_connections drop >50% after reindex, indicating merge/fallback bug in saveSemanticData()'
   )
 ];

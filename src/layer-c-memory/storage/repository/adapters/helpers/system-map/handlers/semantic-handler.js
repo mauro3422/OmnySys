@@ -180,12 +180,23 @@ export function syncSystemFileSemanticConnections(db, now = Date.now()) {
 export function saveSemanticData(db, connections, issues, now) {
   const repo = new BaseSqlRepository(db, 'SemanticHandler');
 
-  // Connections
+  // Connections: MERGE both sources (atom-derived + fallback) with deduplication.
+  // BUG FIX: Previously derivedRows replaced fallbackRows entirely, causing 88% loss
+  // of semantic_connections (885 → 109) because atom surface is a strict subset of
+  // what detectAllSemanticConnections() finds via text-based static analysis.
   repo.clearTable('semantic_connections');
   const derivedRows = buildDerivedSemanticRows(db, now);
-  const connRows = derivedRows.length > 0
-    ? derivedRows
-    : buildFallbackSemanticRows(connections, now);
+  const fallbackRows = buildFallbackSemanticRows(connections, now);
+
+  // Union both sources, deduplicating by source_path + target_path + connection_type + connection_key
+  const seen = new Set();
+  const connRows = [];
+  for (const row of [...derivedRows, ...fallbackRows]) {
+    const key = `${row.source_path}::${row.target_path}::${row.connection_type}::${row.connection_key || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    connRows.push(row);
+  }
 
   if (connRows.length) {
     repo.saveTableRows('semantic_connections',
