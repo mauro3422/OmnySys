@@ -10,7 +10,7 @@
  */
 
 import { SEVERITY, ERROR_PATTERNS } from './patterns/constants.js';
-import { ErrorClassifier } from './classifiers/base-classifier.js';
+import { ErrorClassifier } from './classifiers/base-classifier/base-classifier.js';
 // Methods now integrated in the base class via base-classifier.js
 
 export { SEVERITY, ERROR_PATTERNS, ErrorClassifier };

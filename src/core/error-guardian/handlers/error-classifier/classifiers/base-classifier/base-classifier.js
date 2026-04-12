@@ -14,7 +14,7 @@ import {
   selectMatchingPattern,
   buildClassification,
   recordClassificationHistory
-} from './base-classifier-helpers.js';
+} from '../base-classifier-helpers.js';
 
 const logger = createLogger('OmnySys:error:classifier');
 
