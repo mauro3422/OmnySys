@@ -43,6 +43,11 @@ export function analyzeRiskProfile(obj, usages, filePath) {
   ({ score, factors } = analyzeMutability(obj, type, score, factors));
   ({ score, factors } = analyzeUsageCount(usages, type, score, factors));
 
+  if (filePath && /\/pattern-detection\/detectors\//i.test(filePath)) {
+    score -= 12;
+    factors.push('location:analysis_infrastructure');
+  }
+
   if (filePath && /config\/(change-)?types|config\/constants|types\.js$/i.test(filePath)) {
     score -= 15;
     factors.push('location:config_file');

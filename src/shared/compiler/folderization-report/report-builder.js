@@ -24,6 +24,7 @@ import { buildFolderizationRecommendation, buildEmptyRecommendation } from './re
 import { buildFolderizationPropagationSummary } from './propagation-summary.js';
 import { buildFolderizationSummary } from './summary-builder.js';
 import { buildFolderizationDriftSignal } from './drift-signal.js';
+import { buildFolderizationNamingDriftSignal } from './naming-drift-signal.js';
 import { buildFolderizationCreationGuidance } from './creation-guidance.js';
 
 function buildFolderizationReport({
@@ -72,6 +73,13 @@ function buildFolderizationReport({
     naming,
     recommendation
   });
+  const namingDrift = buildFolderizationNamingDriftSignal({
+    databaseHealthy,
+    liveRowSyncState,
+    naming,
+    familyState,
+    recommendation
+  });
   const propagation = buildFolderizationPropagationSummary({
     candidateReport,
     familyState,
@@ -93,6 +101,7 @@ function buildFolderizationReport({
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     recommendation,
     drift,
+    namingDrift,
     propagation
   });
 
@@ -112,6 +121,7 @@ function buildFolderizationReport({
     existingFolderizedFamily: existingFolderizedFamily || null,
     recommendation,
     drift,
+    namingDrift,
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     summary
   };

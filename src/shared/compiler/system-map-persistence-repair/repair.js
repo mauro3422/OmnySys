@@ -37,15 +37,22 @@ export function repairSystemMapPersistenceCoverage(db) {
     const primaryRepair = repairFromPrimaryFiles(db, Date.now());
     if (primaryRepair.repaired === true) {
       const dependencyRepair = repairFromSystemFileDependsOn(db);
-      if (dependencyRepair.repaired === true) {
+      const semanticRepair = shouldRepairSemanticSurface
+        ? repairSemanticConnectionsFromAtoms(db, Date.now())
+        : null;
+      if (dependencyRepair.repaired === true || semanticRepair?.repaired === true) {
         return {
           ...primaryRepair,
           repaired: true,
-          dependencies: dependencyRepair.dependencies,
+          dependencies: dependencyRepair.repaired === true ? dependencyRepair.dependencies : 0,
           inserted: primaryRepair.inserted,
           sources: primaryRepair.sources,
-          semanticConnections: primaryRepair.semanticConnections,
-          rebuiltFrom: `${primaryRepair.rebuiltFrom}+${dependencyRepair.rebuiltFrom}`
+          semanticConnections: semanticRepair?.semanticConnections || primaryRepair.semanticConnections,
+          rebuiltFrom: [
+            primaryRepair.rebuiltFrom,
+            dependencyRepair.repaired === true ? dependencyRepair.rebuiltFrom : null,
+            semanticRepair?.repaired === true ? semanticRepair.rebuiltFrom : null
+          ].filter(Boolean).join('+')
         };
       }
 

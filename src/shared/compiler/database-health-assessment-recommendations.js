@@ -37,10 +37,21 @@ export function buildDatabaseHealthAssessment({
   }
 
   if (semanticSurface?.materiallyDrifting === true) {
-    const penalty = 15 + (semanticSurface.materialIssues?.length || 0) * 5;
-    score -= penalty;
-    warnings.push(...(semanticSurface.advisories || []).map((message) => buildFinding('semantic_surface_advisory', 'medium', message)));
-    criticalFindings.push(...(semanticSurface.materialIssues || []).map((message) => buildFinding('semantic_surface_drift', 'medium', message)));
+    const isCanonicalDrift = semanticSurface?.contract?.status === 'drift';
+    const isAdvisorySurface = semanticSurface?.contract?.status === 'advisory_only';
+    if (isCanonicalDrift) {
+      const penalty = 15 + (semanticSurface.materialIssues?.length || 0) * 5;
+      score -= penalty;
+      warnings.push(...(semanticSurface.advisories || []).map((message) => buildFinding('semantic_surface_advisory', 'medium', message)));
+      criticalFindings.push(...(semanticSurface.materialIssues || []).map((message) => buildFinding('semantic_surface_drift', 'medium', message)));
+    } else if (isAdvisorySurface) {
+      warnings.push(...(semanticSurface.advisories || []).map((message) => buildFinding('semantic_surface_advisory', 'low', message)));
+    } else {
+      const penalty = 8 + (semanticSurface.materialIssues?.length || 0) * 3;
+      score -= penalty;
+      warnings.push(...(semanticSurface.advisories || []).map((message) => buildFinding('semantic_surface_advisory', 'medium', message)));
+      criticalFindings.push(...(semanticSurface.materialIssues || []).map((message) => buildFinding('semantic_surface_drift', 'medium', message)));
+    }
   }
 
   if (orphanAtoms > 0) {

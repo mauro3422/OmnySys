@@ -220,3 +220,5 @@ export async function buildIndexedValidationResult(repo, filePath, fileData, bro
 
 export const collectFilesystemImportState = collectDatabaseImportState;
 export const buildFilesystemOnlyValidation = buildDatabaseOnlyValidation;
+export { loadIndexedFileAnalysis };
+export { normalizeComparablePath };

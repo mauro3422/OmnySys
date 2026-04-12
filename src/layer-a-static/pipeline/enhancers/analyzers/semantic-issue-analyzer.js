@@ -52,12 +52,23 @@ function isLoggingInfrastructureFile(filePath = '') {
   );
 }
 
+function isAnalysisInfrastructureFile(filePath = '') {
+  const normalized = normalizePath(filePath);
+  return (
+    normalized.includes('/pattern-detection/detectors/') ||
+    normalized.includes('/pipeline/enhancers/analyzers/') ||
+    normalized.includes('/pipeline/enhancers/') ||
+    normalized.includes('/detector-base.js')
+  );
+}
+
 function getCouplingSeverity(filePath, connCount, highThreshold) {
   if (connCount < 4) return null;
 
   const nonProductionSurface =
     isTestOrFactoryFile(filePath) ||
-    isLoggingInfrastructureFile(filePath);
+    isLoggingInfrastructureFile(filePath) ||
+    isAnalysisInfrastructureFile(filePath);
 
   if (connCount >= highThreshold) {
     return nonProductionSurface ? 'medium' : 'high';

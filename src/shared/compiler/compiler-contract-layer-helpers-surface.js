@@ -8,6 +8,7 @@ export function buildSurfaceInventory({
   metadataExtractionCoverage = null,
   semanticSurfaceGranularity = null,
   semanticCanonicality = null,
+  dataGatewayContract = null,
   systemMapPersistenceCoverage = null,
   tableCounts = {}
 } = {}) {
@@ -77,7 +78,7 @@ export function buildSurfaceInventory({
     buildSurface({
       id: 'semantic_connections',
       kind: 'table',
-      status: semanticCanonicality?.status === 'drift' ? 'drifting_summary' : 'advisory',
+      status: semanticCanonicality?.status === 'drift' ? 'drifting_summary' : 'advisory_only',
       sourceOfTruth: false,
       scope: 'file-level semantic summary',
       surface: 'semantic_connections',
@@ -89,6 +90,29 @@ export function buildSurfaceInventory({
         fileLevelTotal: semanticSummaryCount,
         canonicalFileLevelTotal: normalizeCount(semanticSurfaceGranularity?.canonicalAdapterView?.total),
         atomLevelTotal: semanticDetailCount
+      }
+    }),
+    buildSurface({
+      id: 'data_gateway_contract',
+      kind: 'contract',
+      status: dataGatewayContract?.summary?.trustworthy === true
+        ? 'canonical'
+        : (dataGatewayContract?.summary?.primaryIssue?.state || 'watching'),
+      sourceOfTruth: true,
+      scope: 'canonical data gateway freshness and coverage gate',
+      surface: 'data_gateway_contract',
+      backingSurface: 'atoms + files + atom_relations',
+      trustworthy: dataGatewayContract?.summary?.trustworthy !== false,
+      healthy: dataGatewayContract?.summary?.trustworthy !== false,
+      summary: dataGatewayContract?.summary?.nextAction
+        || 'Canonical data gateway contract governs freshness, coverage and drift.',
+      evidence: {
+        state: dataGatewayContract?.summary?.state || null,
+        fresh: dataGatewayContract?.summary?.fresh || 0,
+        partial: dataGatewayContract?.summary?.partial || 0,
+        stale: dataGatewayContract?.summary?.stale || 0,
+        missing: dataGatewayContract?.summary?.missing || 0,
+        blocked: dataGatewayContract?.summary?.blocked || 0
       }
     }),
     buildSurface({

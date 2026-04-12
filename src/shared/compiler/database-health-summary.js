@@ -38,7 +38,7 @@ export function getDatabaseHealthSummary(db, options = {}) {
     };
   }
 
-  const semanticSurface = getSemanticSurfaceGranularity(db);
+  let semanticSurface = getSemanticSurfaceGranularity(db);
   const liveRowSync = resolveDatabaseHealthLiveRowSync(db, options);
   const phase2PendingFiles = getPhase2PendingFiles(db);
   let systemMapCoverage = getSystemMapPersistenceCoverage(db);
@@ -49,6 +49,15 @@ export function getDatabaseHealthSummary(db, options = {}) {
 
     if (repairResult?.repaired === true) {
       systemMapCoverage = getSystemMapPersistenceCoverage(db);
+      semanticSurface = getSemanticSurfaceGranularity(db);
+    }
+  }
+
+  if (semanticSurface.materiallyDrifting === true && canAutoRepairSystemMap) {
+    const repairResult = repairSystemMapPersistenceCoverage(db);
+    if (repairResult?.repaired === true) {
+      systemMapCoverage = getSystemMapPersistenceCoverage(db);
+      semanticSurface = getSemanticSurfaceGranularity(db);
     }
   }
 

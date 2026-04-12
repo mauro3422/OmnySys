@@ -9,6 +9,7 @@ function buildFolderizationSummary({
   decision,
   recommendation,
   drift,
+  namingDrift,
   propagation
 }) {
   return {
@@ -40,7 +41,12 @@ function buildFolderizationSummary({
     driftScore: drift?.score || 0,
     driftReason: drift?.reason || null,
     driftRecommendation: drift?.recommendation || null,
-    driftEvidence: drift?.evidence || null
+    driftEvidence: drift?.evidence || null,
+    namingDriftState: namingDrift?.state || 'fresh',
+    namingDriftScore: namingDrift?.score || 0,
+    namingDriftReason: namingDrift?.reason || null,
+    namingDriftRecommendation: namingDrift?.recommendation || null,
+    namingDriftEvidence: namingDrift?.evidence || null
   };
 }
 

@@ -41,6 +41,7 @@ export function buildCompilerContractLayer({
     metadataExtractionCoverage,
     semanticSurfaceGranularity,
     semanticCanonicality,
+    dataGatewayContract,
     systemMapPersistenceCoverage,
     tableCounts
   });
