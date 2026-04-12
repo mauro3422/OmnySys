@@ -64,5 +64,13 @@ export const semanticGuardDefinitionsGovernance = [
     'runtime',
     '1.0.0',
     'Detects when semantic_connections drop >50% after reindex, indicating merge/fallback bug in saveSemanticData()'
+  ),
+  defineVersionedLazyGuard(
+    'missing-surface-audit',
+    () => import('./missing-surface-audit-guard.js'),
+    (mod) => mod.detectMissingSurfaceAudit,
+    'arch',
+    '1.0.0',
+    'Detects DB tables with data but no canonical read surface (Proxy/Bridge/Topology/Sessions show unknown)'
   )
 ];
