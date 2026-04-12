@@ -22,7 +22,7 @@ import {
   executeToolCall,
   buildToolExecutionContext
 } from './mcp-tool-call-helpers.js';
-import { normalizeTransportOrigin, inferTransportOrigin } from '../../../../transport-provenance.js';
+import { normalizeTransportOrigin, inferTransportOrigin } from '../../../transport-provenance.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
 
