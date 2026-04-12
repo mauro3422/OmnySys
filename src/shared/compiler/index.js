@@ -115,6 +115,16 @@ export {
 } from './mcp-topology-telemetry.js';
 
 export {
+  resolveSessionSyncGraceMs
+} from './compiler-runtime-metrics-sessions-client-sync.js';
+
+export {
+  buildMcpRequestDeliveryTelemetry,
+  persistMcpRequestDeliveryTelemetry,
+  buildMcpRequestDeliverySummary
+} from './mcp-request-delivery-telemetry.js';
+
+export {
   buildCompilerMetricsSnapshotSummary
 } from './metrics/snapshot-summary-text.js';
 
@@ -293,12 +303,6 @@ export {
 export {
   buildToolRunTelemetrySummary
 } from './tool-run-telemetry/summary.js';
-
-export {
-  buildMcpRequestDeliveryTelemetry,
-  persistMcpRequestDeliveryTelemetry,
-  buildMcpRequestDeliverySummary
-} from './mcp-request-delivery-telemetry.js';
 
 export {
   buildCompilerHistoricalStorageSummary

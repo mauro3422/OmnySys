@@ -16,7 +16,7 @@ import {
   normalizeTransportOrigin,
   buildTransportHandshakeSignature
 } from '../transport-provenance.js';
-import { persistMcpTopologyTelemetry } from '#shared/compiler/mcp-topology-telemetry.js';
+import { persistMcpTopologyTelemetry } from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 

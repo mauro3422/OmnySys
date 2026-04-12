@@ -8,7 +8,7 @@
  * @since 2026-04-02
  */
 
-import { resolveSessionSyncGraceMs } from '#shared/compiler/compiler-runtime-metrics-sessions-client-sync.js';
+import { resolveSessionSyncGraceMs } from '#shared/compiler/index.js';
 
 function asNumber(value, fallback = 0) {
   const parsed = Number(value);
