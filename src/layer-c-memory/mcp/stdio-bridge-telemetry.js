@@ -27,6 +27,31 @@ export function resolveBridgeTelemetryNamespace({
   return [hostFlavor, wslDistro, clientTag].filter(Boolean).join(':');
 }
 
+function computeEventCounters(current, type) {
+  return {
+    connectCount: (current.connectCount || 0) + (type === 'bridge-connect' ? 1 : 0),
+    reconnectCount: (current.reconnectCount || 0) + (type === 'bridge-reconnect' ? 1 : 0),
+    transportClosedCount: (current.transportClosedCount || 0) + (type === 'transport-closed' ? 1 : 0),
+    sessionExpiredCount: (current.sessionExpiredCount || 0) + (type === 'session-expired' ? 1 : 0),
+    retryableErrorCount: (current.retryableErrorCount || 0) + (type === 'bridge-recovery-needed' ? 1 : 0),
+    stdioCloseCount: (current.stdioCloseCount || 0) + (type === 'stdio-close' ? 1 : 0)
+  };
+}
+
+function buildNextTelemetryForEvent(current, projectPath, bridgeNamespace, type, events, details) {
+  return {
+    ...current,
+    projectPath,
+    bridgeNamespace,
+    updatedAt: nowIso(),
+    ...computeEventCounters(current, type),
+    events,
+    lastEventType: type,
+    lastEventAt: events[events.length - 1]?.at || nowIso(),
+    ...details
+  };
+}
+
 export function createBridgeTelemetryController({ projectPath, log, bridgeNamespace = 'default' }) {
   let bridgeTelemetry = readBridgeRuntimeTelemetry(projectPath) || null;
 
@@ -74,22 +99,7 @@ export function createBridgeTelemetryController({ projectPath, log, bridgeNamesp
     const events = Array.isArray(current.events) ? current.events.slice(-29) : [];
     events.push({ type, at: nowIso(), ...details });
 
-    const nextTelemetry = {
-      ...(bridgeTelemetry || {}),
-      projectPath,
-      bridgeNamespace,
-      updatedAt: nowIso(),
-      connectCount: (current.connectCount || 0) + (type === 'bridge-connect' ? 1 : 0),
-      reconnectCount: (current.reconnectCount || 0) + (type === 'bridge-reconnect' ? 1 : 0),
-      transportClosedCount: (current.transportClosedCount || 0) + (type === 'transport-closed' ? 1 : 0),
-      sessionExpiredCount: (current.sessionExpiredCount || 0) + (type === 'session-expired' ? 1 : 0),
-      retryableErrorCount: (current.retryableErrorCount || 0) + (type === 'bridge-recovery-needed' ? 1 : 0),
-      stdioCloseCount: (current.stdioCloseCount || 0) + (type === 'stdio-close' ? 1 : 0),
-      events,
-      lastEventType: type,
-      lastEventAt: events[events.length - 1]?.at || nowIso(),
-      ...details
-    };
+    const nextTelemetry = buildNextTelemetryForEvent(current, projectPath, bridgeNamespace, type, events, details);
 
     return persistBridgeTelemetry({
       ...nextTelemetry,

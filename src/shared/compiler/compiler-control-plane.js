@@ -123,6 +123,69 @@ export function buildCompilerControlPlane({
   };
 }
 
+function summarizeSystems(systems) {
+  if (!systems) return null;
+  return {
+    state: systems.state || 'missing',
+    total: systems.total || 0,
+    canonical: systems.canonical || 0,
+    emergent: systems.emergent || 0,
+    bridge: systems.bridge || 0,
+    wrapper: systems.wrapper || 0,
+    metadataCoveragePct: systems.metadataCoveragePct || 0,
+    integrationCoveragePct: systems.integrationCoveragePct || 0
+  };
+}
+
+function summarizeTelemetry(telemetry) {
+  if (!telemetry) return null;
+  return {
+    state: telemetry.state || 'missing',
+    requiredCount: telemetry.requiredCount || 0,
+    requiredSatisfiedCount: telemetry.requiredSatisfiedCount || 0,
+    requiredMissingCount: telemetry.requiredMissingCount || 0,
+    optionalMissingCount: telemetry.optionalMissingCount || 0,
+    blockedCount: telemetry.blockedCount || 0,
+    nextAction: telemetry.nextAction || null
+  };
+}
+
+function summarizePropagation(propagation) {
+  if (!propagation) return null;
+  return {
+    state: propagation.state || 'missing',
+    expectedSystemCount: propagation.expectedSystemCount || 0,
+    surfacedSystemCount: propagation.surfacedSystemCount || 0,
+    missingSystemCount: propagation.missingSystemCount || 0,
+    coverageRatio: propagation.coverageRatio || 0,
+    missingSystemNames: takeSample(propagation.missingSystemNames || [], 8),
+    recommendation: propagation.recommendation || null
+  };
+}
+
+function summarizeGaps(gaps) {
+  if (!Array.isArray(gaps)) return [];
+  return gaps.slice(0, 5).map((gap) => ({
+    key: gap.key || null,
+    state: gap.state || null,
+    severity: gap.severity || null,
+    count: gap.count || 0,
+    reason: gap.reason || null,
+    recommendation: gap.recommendation || null
+  }));
+}
+
+function summarizeSignals(signals) {
+  if (!Array.isArray(signals)) return [];
+  return signals.slice(0, 8).map((signal) => ({
+    key: signal.key || null,
+    state: signal.state || null,
+    severity: signal.severity || null,
+    reason: signal.reason || null,
+    recommendation: signal.recommendation || null
+  }));
+}
+
 export function summarizeCompilerControlPlane(controlPlane = null) {
   if (!controlPlane || typeof controlPlane !== 'object') {
     return null;
@@ -138,55 +201,13 @@ export function summarizeCompilerControlPlane(controlPlane = null) {
     summaryText: controlPlane.summaryText || null,
     oneLine: controlPlane.oneLine || null,
     counts: controlPlane.counts || null,
-    systems: controlPlane.systems ? {
-      state: controlPlane.systems.state || 'missing',
-      total: controlPlane.systems.total || 0,
-      canonical: controlPlane.systems.canonical || 0,
-      emergent: controlPlane.systems.emergent || 0,
-      bridge: controlPlane.systems.bridge || 0,
-      wrapper: controlPlane.systems.wrapper || 0,
-      metadataCoveragePct: controlPlane.systems.metadataCoveragePct || 0,
-      integrationCoveragePct: controlPlane.systems.integrationCoveragePct || 0
-    } : null,
-    telemetry: controlPlane.telemetry ? {
-      state: controlPlane.telemetry.state || 'missing',
-      requiredCount: controlPlane.telemetry.requiredCount || 0,
-      requiredSatisfiedCount: controlPlane.telemetry.requiredSatisfiedCount || 0,
-      requiredMissingCount: controlPlane.telemetry.requiredMissingCount || 0,
-      optionalMissingCount: controlPlane.telemetry.optionalMissingCount || 0,
-      blockedCount: controlPlane.telemetry.blockedCount || 0,
-      nextAction: controlPlane.telemetry.nextAction || null
-    } : null,
+    systems: summarizeSystems(controlPlane.systems),
+    telemetry: summarizeTelemetry(controlPlane.telemetry),
     metricAlignment: summarizeMetricAlignment(controlPlane.metricAlignment || null),
     alignmentSummary: controlPlane.alignmentSummary || null,
-    propagation: controlPlane.propagation ? {
-      state: controlPlane.propagation.state || 'missing',
-      expectedSystemCount: controlPlane.propagation.expectedSystemCount || 0,
-      surfacedSystemCount: controlPlane.propagation.surfacedSystemCount || 0,
-      missingSystemCount: controlPlane.propagation.missingSystemCount || 0,
-      coverageRatio: controlPlane.propagation.coverageRatio || 0,
-      missingSystemNames: takeSample(controlPlane.propagation.missingSystemNames || [], 8),
-      recommendation: controlPlane.propagation.recommendation || null
-    } : null,
-    topGaps: Array.isArray(controlPlane.gaps)
-      ? controlPlane.gaps.slice(0, 5).map((gap) => ({
-          key: gap.key || null,
-          state: gap.state || null,
-          severity: gap.severity || null,
-          count: gap.count || 0,
-          reason: gap.reason || null,
-          recommendation: gap.recommendation || null
-        }))
-      : [],
-    signals: Array.isArray(controlPlane.signals)
-      ? controlPlane.signals.slice(0, 8).map((signal) => ({
-          key: signal.key || null,
-          state: signal.state || null,
-          severity: signal.severity || null,
-          reason: signal.reason || null,
-          recommendation: signal.recommendation || null
-        }))
-      : []
+    propagation: summarizePropagation(controlPlane.propagation),
+    topGaps: summarizeGaps(controlPlane.gaps),
+    signals: summarizeSignals(controlPlane.signals)
   };
 }
 
