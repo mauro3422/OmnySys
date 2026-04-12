@@ -26,7 +26,7 @@ export {
 export {
   buildFolderizationNamingReportFromRows,
   buildFolderizationNamingReportFromRepo
-} from './directory-structure-folderization-naming.js';
+} from './directory-structure-folderization-naming/index.js';
 
 export {
   buildFolderizationReportFromRows,

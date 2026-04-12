@@ -10,7 +10,7 @@
 import {
   deleteCacheEntriesWithDependents,
   purgeCacheState
-} from './cache/cache-maintenance.js';
+} from '../cache/cache-maintenance.js';
 
 export function calculateAtomicCacheMemoryUsage(cache) {
   let memoryBytes = 0;

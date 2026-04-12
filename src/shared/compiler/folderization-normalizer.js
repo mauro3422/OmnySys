@@ -2,7 +2,7 @@ import {
   buildFolderizationNamingPlanFromRows,
   buildFolderizationNamingReportFromRows,
   loadFolderizationRowsForNaming
-} from './directory-structure-folderization-naming.js';
+} from './directory-structure-folderization-naming/index.js';
 import { normalizeSnapshotPath } from './snapshot-path.js';
 
 function normalizeCandidatePaths(candidatePaths = []) {

@@ -14,7 +14,7 @@ import {
   buildFolderizationNamingReportFromRepo,
   buildFolderizationNamingReportFromRows,
   findBestFolderizedFamilyForPaths
-} from '../directory-structure-folderization-naming.js';
+} from '../directory-structure-folderization-naming/index.js';
 import {
   buildFolderizationNormalizationPlanFromRepo,
   buildFolderizationNormalizationPlanFromRows

@@ -3,7 +3,7 @@ import {
   buildFolderizedFamilySuggestion,
   findBestFolderizedFamilyForPaths,
   loadFolderizationRowsForNaming
-} from './directory-structure-folderization-naming-helpers.js';
+} from './helpers.js';
 
 function normalizeTargetStem(target = {}) {
   return String(target?.recommendedName || '')

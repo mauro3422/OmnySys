@@ -514,7 +514,7 @@ export {
   findBestFolderizedFamilyForPaths,
   buildFolderizationNamingPlanFromRows,
   buildFolderizationNamingPlanFromRepo
-} from './directory-structure-folderization-naming.js';
+} from './directory-structure-folderization-naming/index.js';
 
 export {
   buildFolderizationNormalizationPlanFromRows,

@@ -21,11 +21,11 @@ import {
   invalidateAtomicCacheFile,
   deriveAtomicCache,
   purgeAtomicCache
-} from './atomic-cache-helpers.js';
+} from './index.js';
 import {
   buildAtomicCacheOptions,
   initializeAtomicCacheState
-} from './atomic-cache-factory-helpers.js';
+} from '../atomic-cache-factory-helpers.js';
 
 /**
  * AtomicCache - Gestiona caché de átomos con invalidación inteligente

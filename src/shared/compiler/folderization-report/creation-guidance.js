@@ -1,6 +1,6 @@
 import {
   findBestFolderizedFamilyForPaths
-} from '../directory-structure-folderization-naming.js';
+} from '../directory-structure-folderization-naming/index.js';
 import { normalizeGuidancePath, getPathTailSegment } from './path-utils.js';
 import { selectGuidanceFamily } from './family-selection.js';
 
