@@ -1,10 +1,10 @@
-import { buildFolderizationSnapshotTrend } from './folderization-snapshot-helpers.js';
+import { buildFolderizationSnapshotTrend } from './index.js';
 import {
   buildCompilerControlPlaneFoundations,
   buildCompilerDriftAssessment,
   summarizeDataGatewayContract,
   summarizeSemanticCanonicality
-} from '../../../shared/compiler/index.js';
+} from '../../../../shared/compiler/index.js';
 
 /**
  * Trunca semanticSurface para el snapshot, eliminando vistas legacy redundantes

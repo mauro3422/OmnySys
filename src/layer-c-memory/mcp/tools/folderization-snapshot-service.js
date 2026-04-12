@@ -12,12 +12,12 @@ import {
   buildFolderizationSnapshotFingerprint,
   loadFolderizationSnapshotHistory,
   persistFolderizationSnapshot
-} from './folderization-snapshot-helpers.js';
+} from './folderization-snapshot/index.js';
 import {
   buildFolderizationSnapshotSummary,
   buildHistoryWithCurrent,
   summarizeSemanticSurfaceForSnapshot
-} from './folderization-snapshot-summary.js';
+} from './folderization-snapshot/summary.js';
 
 function normalizeFilePaths(filePaths = []) {
   return Array.isArray(filePaths)

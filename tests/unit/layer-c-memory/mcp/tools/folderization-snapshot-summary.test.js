@@ -25,7 +25,7 @@ vi.mock('../../../../../src/shared/compiler/semantic-surface-granularity-contrac
   summarizeSemanticCanonicality: mocks.summarizeSemanticCanonicality
 }));
 
-import { buildFolderizationSnapshotSummary } from '../../../../../src/layer-c-memory/mcp/tools/folderization-snapshot-summary.js';
+import { buildFolderizationSnapshotSummary } from '../../../../../src/layer-c-memory/mcp/tools/folderization-snapshot/summary.js';
 
 describe('folderization-snapshot-summary', () => {
   beforeEach(() => {

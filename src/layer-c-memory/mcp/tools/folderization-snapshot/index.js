@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
+import { normalizeSnapshotPath } from '../../../../shared/compiler/index.js';
 
 /**
  * Elimina snapshots duplicados del mismo día, manteniendo solo el más reciente.
