@@ -8,18 +8,14 @@ function clampPercent(value) {
 
 function severityFromAlignmentState(state) {
   switch (state) {
-    case 'blocked':
-      return 'critical';
-    case 'drifting':
-      return 'high';
-    case 'watching':
-      return 'medium';
-    default:
-      return 'low';
+    case 'blocked': return 'critical';
+    case 'drifting': return 'high';
+    case 'watching': return 'medium';
+    default: return 'low';
   }
 }
 
-function resolvePreferredMetadataCoverage(compilerExplainability = null, systemInventory = null, current = null) {
+function resolveMetadataCoverage(compilerExplainability, systemInventory, current) {
   const fieldCoveragePct = clampPercent(
     compilerExplainability?.metadataExtractionCoverage?.summary?.fieldCoveragePct
       ?? compilerExplainability?.metadataExtractionCoverage?.summary?.coveragePct
@@ -43,16 +39,7 @@ function resolvePreferredMetadataCoverage(compilerExplainability = null, systemI
   };
 }
 
-export function buildMetricAlignmentSignal({
-  compilerExplainability = null,
-  systemInventory = null,
-  current = null,
-  bridgeCallReliability = null,
-  trust = null
-} = {}) {
-  const schemaHealthy = compilerExplainability?.databaseHealth?.healthy === true;
-  const databaseHealthy = schemaHealthy;
-  const metadata = resolvePreferredMetadataCoverage(compilerExplainability, systemInventory, current);
+function resolvePolicyStates(systemInventory, current, trust) {
   const policyCoverageState = normalizeState(
     systemInventory?.policyCoverage?.coverageState
       || systemInventory?.policyCoverageState
@@ -69,58 +56,67 @@ export function buildMetricAlignmentSignal({
       || 'watching',
     policyCoverageState || 'watching'
   );
+
+  return { policyCoverageState, propagationState };
+}
+
+function computeCoverageDrift(metadata, systemInventory, current) {
+  const inventoryCoveragePct = clampPercent(systemInventory?.metadataCoveragePct ?? current?.metadataCoveragePct ?? 0);
+  const metadataDriftPct = Math.abs(metadata.metadataCoveragePct - inventoryCoveragePct);
+  const weightedDriftPct = Math.abs(metadata.fieldCoveragePct - metadata.weightedCoveragePct);
+  return { inventoryCoveragePct, metadataDriftPct, weightedDriftPct };
+}
+
+function determineAlignmentState(schemaHealthy, hasCoverageDrift, hasPolicyDrift, hasBridgeDrift, metadataDriftPct, bridgeState) {
+  if (!schemaHealthy) return 'blocked';
+  if (!hasCoverageDrift && !hasPolicyDrift && !hasBridgeDrift) return 'aligned';
+  return metadataDriftPct >= 15 || bridgeState === 'thrashing' ? 'drifting' : 'watching';
+}
+
+function buildAlignmentReasons(schemaHealthy, metadataDriftPct, weightedDriftPct, policyCoverageState, propagationState, bridgeState) {
+  const reasons = [];
+  if (!schemaHealthy) reasons.push('schema/database health is degraded');
+  if (metadataDriftPct >= 5) reasons.push(`metadata coverage drifts by ${metadataDriftPct}% between field truth and inventory summary`);
+  if (weightedDriftPct >= 5) reasons.push(`weighted metadata coverage differs from field coverage by ${weightedDriftPct}%`);
+  if (policyCoverageState !== 'fresh') reasons.push(`policy coverage is ${policyCoverageState}`);
+  if (propagationState === 'stale' || propagationState === 'blocked') reasons.push(`propagation is ${propagationState}`);
+  if (bridgeState === 'thrashing') reasons.push('bridge calls are thrashing');
+  return reasons;
+}
+
+function buildAlignmentRecommendation(state) {
+  if (state === 'aligned') return 'Keep using the field-level metadata coverage as the canonical source of truth.';
+  if (state === 'blocked') return 'Repair schema or database health before trusting the control plane.';
+  return 'Reconcile the inventory summary and policy propagation with field-level metadata truth.';
+}
+
+export function buildMetricAlignmentSignal({
+  compilerExplainability = null,
+  systemInventory = null,
+  current = null,
+  bridgeCallReliability = null,
+  trust = null
+} = {}) {
+  const schemaHealthy = compilerExplainability?.databaseHealth?.healthy === true;
+  const metadata = resolveMetadataCoverage(compilerExplainability, systemInventory, current);
+  const { policyCoverageState, propagationState } = resolvePolicyStates(systemInventory, current, trust);
   const bridgeState = normalizeState(
     bridgeCallReliability?.state || current?.bridgeCallReliability?.state || 'stable',
     'stable'
   );
+  const { inventoryCoveragePct, metadataDriftPct, weightedDriftPct } = computeCoverageDrift(metadata, systemInventory, current);
 
-  const inventoryCoveragePct = clampPercent(systemInventory?.metadataCoveragePct ?? current?.metadataCoveragePct ?? 0);
-  const metadataDriftPct = Math.abs(metadata.metadataCoveragePct - inventoryCoveragePct);
-  const weightedDriftPct = Math.abs(metadata.fieldCoveragePct - metadata.weightedCoveragePct);
   const hasCoverageDrift = metadataDriftPct >= 5 || weightedDriftPct >= 5;
   const hasPolicyDrift = policyCoverageState !== 'fresh' || propagationState === 'stale' || propagationState === 'blocked';
   const hasBridgeDrift = bridgeState === 'thrashing';
-
-  let state = 'aligned';
-  if (!schemaHealthy || !databaseHealthy) {
-    state = 'blocked';
-  } else if (hasCoverageDrift || hasPolicyDrift || hasBridgeDrift) {
-    state = metadataDriftPct >= 15 || bridgeState === 'thrashing' ? 'drifting' : 'watching';
-  }
-
-  const reasons = [];
-  if (!schemaHealthy) {
-    reasons.push('schema/database health is degraded');
-  }
-  if (metadataDriftPct >= 5) {
-    reasons.push(`metadata coverage drifts by ${metadataDriftPct}% between field truth and inventory summary`);
-  }
-  if (weightedDriftPct >= 5) {
-    reasons.push(`weighted metadata coverage differs from field coverage by ${weightedDriftPct}%`);
-  }
-  if (policyCoverageState !== 'fresh') {
-    reasons.push(`policy coverage is ${policyCoverageState}`);
-  }
-  if (propagationState === 'stale' || propagationState === 'blocked') {
-    reasons.push(`propagation is ${propagationState}`);
-  }
-  if (bridgeState === 'thrashing') {
-    reasons.push('bridge calls are thrashing');
-  }
-
-  const reason = reasons.length > 0 ? reasons.join('; ') : 'schema, metadata, inventory, policy and bridge signals are aligned';
-  const recommendation =
-    state === 'aligned'
-      ? 'Keep using the field-level metadata coverage as the canonical source of truth.'
-      : state === 'blocked'
-        ? 'Repair schema or database health before trusting the control plane.'
-        : 'Reconcile the inventory summary and policy propagation with field-level metadata truth.';
+  const state = determineAlignmentState(schemaHealthy, hasCoverageDrift, hasPolicyDrift, hasBridgeDrift, metadataDriftPct, bridgeState);
+  const reasons = buildAlignmentReasons(schemaHealthy, metadataDriftPct, weightedDriftPct, policyCoverageState, propagationState, bridgeState);
 
   return {
     state,
     healthy: state === 'aligned',
     trustworthy: state === 'aligned',
-    databaseHealthy,
+    databaseHealthy: schemaHealthy,
     schemaHealthy,
     coverage: {
       fieldCoveragePct: metadata.fieldCoveragePct,
@@ -132,8 +128,8 @@ export function buildMetricAlignmentSignal({
     policyCoverageState,
     propagationState,
     bridgeState,
-    reason,
-    recommendation,
+    reason: reasons.length > 0 ? reasons.join('; ') : 'schema, metadata, inventory, policy and bridge signals are aligned',
+    recommendation: buildAlignmentRecommendation(state),
     severity: severityFromAlignmentState(state)
   };
 }
