@@ -15,7 +15,7 @@ export const impactGuardDefinitionsCore = [
     },
     { domain: 'arch', version: '2.0.0', description: 'Analyzes blast radius of changes (impact wave)' }
   ),
-  defineVersionedLazyGuard(
+  defineGuard(
     'duplicate-risk',
     async () => {
       const mod = await loadGuardMember(
@@ -39,9 +39,7 @@ export const impactGuardDefinitionsCore = [
         });
       };
     },
-    'code',
-    '2.0.0',
-    'Detects duplicate symbols by DNA hash'
+    { domain: 'code', version: '2.0.0', description: 'Detects duplicate symbols by DNA hash' }
   ),
   defineGuard(
     'circular-dependencies',
