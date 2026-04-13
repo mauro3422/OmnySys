@@ -18,9 +18,9 @@ export const impactGuardDefinitionsCore = [
   defineVersionedLazyGuard(
     'duplicate-risk',
     async () => {
-      const { runStructuralDuplicateDetection } = await loadGuardMember(
+      const mod = await loadGuardMember(
         () => import('./duplicate-risk/detection.js'),
-        (mod) => ({ runStructuralDuplicateDetection: mod.runStructuralDuplicateDetection })
+        (m) => m
       );
       return async (rootPath, filePath, context, options = {}) => {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -28,7 +28,7 @@ export const impactGuardDefinitionsCore = [
         if (!repo?.db) {
           return [];
         }
-        return runStructuralDuplicateDetection({
+        return mod.runStructuralDuplicateDetection({
           repo,
           normalizedFilePath: filePath,
           providedAtoms: options.previousAtoms || null,

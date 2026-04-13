@@ -23,6 +23,7 @@ export { buildPipelineOrphanPropagationPlan } from './change-type-plans/pipeline
 export { buildDuplicateRiskPropagationPlan } from './change-type-plans/duplicate-risk.js';
 export { buildIntegrityGuardPropagationPlan } from './change-type-plans/integrity-guard.js';
 export { buildMetricCoherencePropagationPlan } from './change-type-plans/metric-coherence.js';
+export { buildNamingDebtPropagationPlan } from './change-type-plans/naming-debt.js';
 
 // Default export — import named exports first so they're in scope
 import { buildPropagationCacheKey } from './cache.js';
@@ -36,6 +37,7 @@ import { buildPipelineOrphanPropagationPlan } from './change-type-plans/pipeline
 import { buildDuplicateRiskPropagationPlan } from './change-type-plans/duplicate-risk.js';
 import { buildIntegrityGuardPropagationPlan } from './change-type-plans/integrity-guard.js';
 import { buildMetricCoherencePropagationPlan } from './change-type-plans/metric-coherence.js';
+import { buildNamingDebtPropagationPlan } from './change-type-plans/naming-debt.js';
 import { clearPropagationPlanCache, getPropagationPlanCacheEntry, setPropagationPlanCacheEntry } from './cache.js';
 
 export default {
