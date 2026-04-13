@@ -47,7 +47,13 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     normalizationSafetyLevel,
     policyCoverageState,
     promotionState,
-    connectedSystemCount: connectedSystems.length
+    connectedSystemCount: connectedSystems.length,
+    // Nuevas señales de metadata del report
+    fileCohesion: folderizationReport.cohesion?.score || 0,
+    namingPatternConsistency: folderizationReport.namingPattern?.consistency || 0,
+    importDensity: folderizationReport.importAnalysis?.density || 0,
+    sharedPrefixStrength: folderizationReport.prefixAnalysis?.strength || 0,
+    externalDependencyCount: folderizationReport.dependencyAnalysis?.externalCount || 0
   });
   const riskScore = Math.max(0, 100 - confidence + (normalizationSafetyLevel === 'risky' ? 10 : 0));
   const shouldExecute = automationState === 'ready';

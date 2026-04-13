@@ -12,45 +12,47 @@ import {
   semanticGuardDefinitions
 } from './default-guard-definitions.js';
 
-async function registerGuardDefinitions(definitions, registerGuard, logger) {
+async function registerGuardDefinitions(definitions, registerGuard, logger, guardType) {
+  let registeredCount = 0;
+  let failedCount = 0;
+  
   for (const definition of definitions) {
     try {
       const guard = await definition.loadGuard();
       registerGuard(definition.name, guard, definition.metadata);
+      registeredCount++;
     } catch (error) {
-      logger?.warn(`Failed to register guard '${definition.name}': ${error.message}`);
+      failedCount++;
+      logger?.warn(`Failed to register ${guardType} guard '${definition.name}': ${error.message}`);
     }
   }
+  
+  return { registeredCount, failedCount };
 }
 
-async function registerDefaultGuardGroup(registry, definitions, registerGuard) {
-  try {
-    await registerGuardDefinitions(definitions, registerGuard, registry.logger);
-  } catch (error) {
-    throw error;
-  }
+async function registerDefaultGuardGroup(registry, definitions, registerGuard, guardType) {
+  return registerGuardDefinitions(definitions, registerGuard, registry.logger, guardType);
 }
 
 export async function registerAllDefaultSemanticGuards(registry) {
-  try {
-    await registerDefaultGuardGroup(
-      registry,
-      semanticGuardDefinitions,
-      (name, guard, metadata) => registry.registerSemanticGuard(name, guard, metadata)
-    );
-  } catch (error) {
-    throw new Error(`Failed to register default semantic guards: ${error.message}`);
-  }
+  return registerDefaultGuardGroup(
+    registry,
+    semanticGuardDefinitions,
+    (name, guard, metadata) => registry.registerSemanticGuard(name, guard, metadata),
+    'semantic'
+  );
 }
 
 export async function registerAllDefaultImpactGuards(registry) {
-  try {
-    await registerDefaultGuardGroup(
-      registry,
-      impactGuardDefinitions,
-      (name, guard, metadata) => registry.registerImpactGuard(name, guard, metadata)
-    );
-  } catch (error) {
-    throw new Error(`Failed to register default impact guards: ${error.message}`);
-  }
+  return registerDefaultGuardGroup(
+    registry,
+    impactGuardDefinitions,
+    (name, guard, metadata) => registry.registerImpactGuard(name, guard, metadata),
+    'impact'
+  );
 }
+
+export default {
+  registerAllDefaultSemanticGuards,
+  registerAllDefaultImpactGuards
+};

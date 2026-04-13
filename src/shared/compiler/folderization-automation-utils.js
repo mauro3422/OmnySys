@@ -152,7 +152,13 @@ export function calculateConfidence({
   normalizationSafetyLevel,
   policyCoverageState,
   promotionState,
-  connectedSystemCount
+  connectedSystemCount,
+  // Nuevas señales de metadata
+  fileCohesion = 0,
+  namingPatternConsistency = 0,
+  importDensity = 0,
+  sharedPrefixStrength = 0,
+  externalDependencyCount = 0
 }) {
   if (automationState === 'already_folderized') {
     return 100;
@@ -163,7 +169,22 @@ export function calculateConfidence({
   }
 
   if (automationState === 'review') {
-    return Math.max(20, 58 - (normalizationSafetyLevel === 'risky' ? 10 : 0) - (policyCoverageState === 'stale' ? 5 : 0) - (promotionState === 'watching' ? 5 : 0));
+    // Base más alta si hay evidencia fuerte de metadata
+    const metadataBonus = Math.min(15, 
+      (fileCohesion * 0.3) + 
+      (namingPatternConsistency * 0.3) + 
+      (importDensity * 0.2) + 
+      (sharedPrefixStrength * 0.2)
+    );
+    
+    const externalDependencyPenalty = Math.min(10, externalDependencyCount * 2);
+    
+    let confidence = 58 + metadataBonus - externalDependencyPenalty;
+    confidence -= (normalizationSafetyLevel === 'risky' ? 10 : 0);
+    confidence -= (policyCoverageState === 'stale' ? 3 : 0); // Reducido de 5 a 3
+    confidence -= (promotionState === 'watching' ? 3 : 0); // Reducido de 5 a 3
+    
+    return Math.max(25, Math.min(85, confidence));
   }
 
   return Math.max(0, 20 - (normalizationSafetyLevel === 'missing' ? 10 : 0));
