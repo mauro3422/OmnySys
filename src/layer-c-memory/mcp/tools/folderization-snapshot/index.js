@@ -211,7 +211,7 @@ function computeDriftScores(liveRowSync = {}) {
 }
 
 function computeHealthIndicators(databaseHealth = {}) {
-  const healthy = databaseHealth.healthy === true;
+  const healthy = databaseHealth?.healthy === true;
   return {
     stability_score: healthy ? 100 : 70,
     success_score: healthy ? 100 : 75,
