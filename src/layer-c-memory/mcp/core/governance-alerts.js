@@ -1,4 +1,4 @@
-import { normalizeRecentNotifications } from './recent-notifications.js';
+import { normalizeRecentNotifications } from './notifications.js';
 
 function asNumber(value, fallback = 0) {
   const parsed = Number(value);

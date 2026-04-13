@@ -1,5 +1,5 @@
-import { createLogger } from '#utils/logger.js';
-import { isTransientSqliteAvailabilityError } from '#shared/utils/normalize-helpers.js';
+import { createLogger } from '../../../utils/logger.js';
+import { isTransientSqliteAvailabilityError } from '../../../shared/utils/normalize-helpers.js';
 import { connectionManager } from '../../storage/database/connection.js';
 import {
   isDedupFresh,
@@ -16,7 +16,7 @@ import {
   normalizeTransportOrigin,
   buildTransportHandshakeSignature
 } from '../transport-provenance.js';
-import { persistMcpTopologyTelemetry } from '#shared/compiler/index.js';
+import { persistMcpTopologyTelemetry } from '../../../shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 

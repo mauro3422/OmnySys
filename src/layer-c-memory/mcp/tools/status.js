@@ -17,7 +17,7 @@ import {
 import {
   buildServerStatusEnvelope
 } from './status-runtime.js';
-import { enrichServerStatus } from './status-server-details.js';
+import { enrichServerStatus } from './details.js';
 import {
   buildRecentErrorsResponse,
   loadNotifications

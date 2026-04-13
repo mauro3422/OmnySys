@@ -19,7 +19,7 @@ import {
   isDedupFresh,
   createSessionStatements
 } from './helpers.js';
-import * as sessionManagerMethods from './session-manager-methods.js';
+import * as sessionManagerMethods from './persistence.js';
 import { connectionManager } from '../../storage/database/connection.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');

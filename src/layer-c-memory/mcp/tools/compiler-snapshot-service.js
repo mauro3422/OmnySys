@@ -6,7 +6,7 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { compactRecentNotifications } from '../core/recent-notifications.js';
+import { compactRecentNotifications } from '../core/notifications.js';
 import { loadNotifications } from './status-notifications.js';
 import { loadCompilerExplainability } from '../../../shared/compiler/index.js';
 import {

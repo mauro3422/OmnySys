@@ -11,7 +11,7 @@ import {
 } from '../../../../../shared/runtime-debug-flags.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { createLogger } from '../../../../../utils/logger.js';
-import { compactRecentNotifications, collectRecentNotifications, normalizeRecentNotifications } from '../../recent-notifications.js';
+import { compactRecentNotifications, collectRecentNotifications, normalizeRecentNotifications } from '../../notifications.js';
 import { buildRecentErrorsResponse } from '../../../tools/status-notifications.js';
 import {
   loadCompilerExplainability,

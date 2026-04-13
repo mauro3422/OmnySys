@@ -2,7 +2,7 @@ import {
   collectRecentNotifications,
   compactRecentNotifications,
   normalizeRecentNotifications
-} from '../core/recent-notifications.js';
+} from '../core/notifications.js';
 import {
   buildCompilerReadinessStatus,
   buildRuntimeCodeFreshness,

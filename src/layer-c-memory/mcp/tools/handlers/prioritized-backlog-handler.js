@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import { collectRecentNotifications, normalizeRecentNotifications } from '../../core/recent-notifications.js';
+import { collectRecentNotifications, normalizeRecentNotifications } from '../../core/notifications.js';
 import { getRiskAssessment } from '../../../query/queries/risk-query.js';
 import { buildPrioritizedItems } from './prioritized-backlog/items.js';
 import { generatePredictions } from './prioritized-backlog/predictions.js';
