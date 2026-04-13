@@ -16,7 +16,7 @@ import {
   resolveSessionCountDrift,
   resolveMcpSessionMetricsBaseline,
   resolveSessionSyncGraceMs
-} from './compiler-runtime-metrics-sessions-state.js';
+} from './state.js';
 
 export function collectMcpSessionMetrics(sessionManager, options = {}) {
   const hasRuntimeSessionCount = Number.isFinite(options.runtimeSessionCount);

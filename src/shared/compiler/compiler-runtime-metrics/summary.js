@@ -5,7 +5,7 @@
  */
 
 import { computeGraphCoverageMetrics } from './graph.js';
-import { collectMcpSessionMetrics } from '../compiler-runtime-metrics-sessions.js';
+import { collectMcpSessionMetrics } from '../sessions.js';
 import {
   collectIssueMetrics,
   collectConceptualDuplicateMetrics,
