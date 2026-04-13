@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
+import { normalizeSnapshotPath } from '../../../../shared/compiler/index.js';
 import {
   buildTechnicalDebtReportValues,
   persistTechnicalDebtReportWithValues
-} from './technical-debt-report-cache-helpers.js';
+} from './helpers.js';
 
 export const TECHNICAL_DEBT_SNAPSHOT_KIND = 'technical_debt';
 

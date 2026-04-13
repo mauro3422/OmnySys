@@ -1,5 +1,5 @@
-import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
-import { runTechnicalDebtReportInsert, persistTechnicalDebtReportWithValues } from './technical-debt-report-sql.js';
+import { normalizeSnapshotPath } from '../../../../shared/compiler/index.js';
+import { runTechnicalDebtReportInsert, persistTechnicalDebtReportWithValues } from '../technical-debt-report-sql.js';
 
 export { runTechnicalDebtReportInsert, persistTechnicalDebtReportWithValues };
 

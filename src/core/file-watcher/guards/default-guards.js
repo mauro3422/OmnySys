@@ -12,16 +12,20 @@ import {
   semanticGuardDefinitions
 } from './default-guard-definitions.js';
 
-async function registerGuardDefinitions(definitions, registerGuard) {
+async function registerGuardDefinitions(definitions, registerGuard, logger) {
   for (const definition of definitions) {
-    const guard = await definition.loadGuard();
-    registerGuard(definition.name, guard, definition.metadata);
+    try {
+      const guard = await definition.loadGuard();
+      registerGuard(definition.name, guard, definition.metadata);
+    } catch (error) {
+      logger?.warn(`Failed to register guard '${definition.name}': ${error.message}`);
+    }
   }
 }
 
 async function registerDefaultGuardGroup(registry, definitions, registerGuard) {
   try {
-    await registerGuardDefinitions(definitions, registerGuard);
+    await registerGuardDefinitions(definitions, registerGuard, registry.logger);
   } catch (error) {
     throw error;
   }

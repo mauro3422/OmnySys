@@ -6,7 +6,7 @@ import {
   buildEmptyConceptualResult,
   buildEmptyDuplicatesResult,
   buildEmptyPipelineHealthResult
-} from '../../technical-debt-report-cache.js';
+} from '../../technical-debt-report-cache/index.js';
 
 function buildTechnicalDebtReportNeeds(snapshotCurrent = {}, folderizationSnapshotReport = null) {
   return {

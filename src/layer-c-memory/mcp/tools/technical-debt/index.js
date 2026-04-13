@@ -19,7 +19,7 @@ import {
   buildTechnicalDebtFingerprint,
   loadCachedTechnicalDebtReport,
   persistTechnicalDebtReport
-} from '../technical-debt-report-cache.js';
+} from '../technical-debt-report-cache/index.js';
 import {
   buildTechnicalDebtReportResult,
   loadTechnicalDebtReportDetails

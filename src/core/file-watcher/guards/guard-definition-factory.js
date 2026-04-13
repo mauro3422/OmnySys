@@ -49,8 +49,18 @@ export function defineVersionedLazyGuard(
 
 export async function loadGuardMember(moduleLoader, selector, label = 'guard') {
   try {
+    if (typeof selector !== 'function') {
+      throw new TypeError(`selector must be a function, got ${typeof selector}: ${String(selector)}`);
+    }
     const mod = await moduleLoader();
-    return selector(mod);
+    if (!mod || typeof mod !== 'object') {
+      throw new Error(`Module loaded but is not an object: ${typeof mod}`);
+    }
+    const result = selector(mod);
+    if (typeof result !== 'function' && result !== undefined) {
+      throw new Error(`Selector returned ${typeof result}, expected a guard function`);
+    }
+    return result;
   } catch (error) {
     throw new Error(`Failed to load ${label}: ${error.message}`);
   }
