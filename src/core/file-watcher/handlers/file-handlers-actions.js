@@ -1,6 +1,6 @@
 import { runAsyncBoundary } from '../../../shared/compiler/index.js';
 import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave/index.js';
-import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk.js';
+import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk/risk.js';
 import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 
 async function runGuardAction(guardFn, fileWatcher, filePath, options = {}, previousAtoms = []) {

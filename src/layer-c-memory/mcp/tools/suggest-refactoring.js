@@ -76,7 +76,7 @@ function enrichAtomsWithCompilerEvaluation(atoms = []) {
 /**
  * Tool principal
  */
-export async function suggest_refactoring(args, context) {
+export async function suggest_refactoring(args = {}, context = {}) {
   const { filePath, severity = 'all', limit = 20 } = args;
   const { projectPath } = context;
 
@@ -151,7 +151,12 @@ export async function suggest_refactoring(args, context) {
     };
   } catch (error) {
     logger.error(`[Tool] suggest_refactoring failed: ${error.message}`);
-    return { error: error.message };
+    logger.error(`[Tool] Stack: ${error.stack}`);
+    return {
+      success: false,
+      error: error.message,
+      stack: error.stack
+    };
   }
 }
 

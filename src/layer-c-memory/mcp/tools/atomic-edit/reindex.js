@@ -13,7 +13,7 @@ import { saveFileResult } from '#layer-a/pipeline/single-file-db.js';
 import { buildFileAnalysis, resolveFileImports } from '#layer-a/pipeline/single-file-utils.js';
 import * as atomExtractor from '#layer-a/pipeline/phases/atom-extraction/extraction/atom-extractor.js';
 import { clearWatcherIssue } from '../../../../core/file-watcher/watcher-issue-persistence.js';
-import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/runtime-table-health.js';
+import { syncRuntimeTableHealthIssues } from '../../../../core/diagnostics/tables.js';
 const extractAtoms = atomExtractor.extractAtoms || atomExtractor.default.extractAtoms;
 
 const logger = createLogger('OmnySys:atomic:reindex');

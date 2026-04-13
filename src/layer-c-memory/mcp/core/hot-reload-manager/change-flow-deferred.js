@@ -1,7 +1,7 @@
 import { createLogger } from '../../../utils/logger.js';
 import { buildCompilerReadinessStatus, getMcpSessionSummary } from '../../../../shared/compiler/index.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { sessionManager } from '../session-manager.js';
+import { sessionManager } from '../manager.js';
 import { isMutationBatchActive } from '../shared/mutation-batch.js';
 
 const logger = createLogger('OmnySys:hot-reload');

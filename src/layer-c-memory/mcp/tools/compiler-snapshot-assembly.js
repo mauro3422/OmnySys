@@ -195,6 +195,8 @@ export function buildDashboardAndContracts({
   return { contracts };
 }
 
+export { buildCompilerSnapshotResult };
+
 export default {
   buildInventoryAndPromotion,
   buildNotificationsWithAlerts,

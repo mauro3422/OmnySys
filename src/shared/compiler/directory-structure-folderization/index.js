@@ -3,7 +3,7 @@ export {
   normalizeFolderizationPath,
   parseFolderizationArray,
   parseImportTarget
-} from './directory-structure-folderization-data.js';
+} from '../directory-structure-folderization-data.js';
 
 export {
   deriveFlatFamilyRoot,
@@ -16,25 +16,25 @@ export {
   buildFolderizationFamilyStateReportFromRows,
   buildFolderizationFamilyStateReportFromRepo,
   buildFolderizationCandidateReport
-} from './directory-structure-folderization-analysis.js';
+} from './analysis.js';
 
 export {
   buildFolderizationMigrationPlanFromRows,
   buildFolderizationMigrationPlanFromRepo
-} from './directory-structure-folderization-migration.js';
+} from '../directory-structure-folderization-migration.js';
 
 export {
   buildFolderizationNamingReportFromRows,
   buildFolderizationNamingReportFromRepo
-} from './directory-structure-folderization-naming/index.js';
+} from '../directory-structure-folderization-naming/index.js';
 
 export {
   buildFolderizationReportFromRows,
   buildFolderizationReportFromRepo,
   buildEmptyFolderizationReport
-} from './folderization-report.js';
+} from '../folderization-report.js';
 
 export {
   buildFolderizationAutomationSummaryFromRows,
   buildFolderizationAutomationSummaryFromRepo
-} from './folderization-automation-summary.js';
+} from '../folderization-automation-summary.js';

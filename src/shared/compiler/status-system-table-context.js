@@ -5,7 +5,7 @@ import {
   compactToolInventory,
   resolveControlPlaneContracts,
   resolvePolicyCoverageSummary
-} from './status-summary-helpers.js';
+} from './status-summary/index.js';
 
 export function extractStatusContext(status = {}) {
   const databaseHealth = status.databaseHealth || {};

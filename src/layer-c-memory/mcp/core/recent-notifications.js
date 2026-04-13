@@ -1,5 +1,5 @@
 import { getRecentLogs, clearRecentLogs } from '../../../utils/logger.js';
-import { syncRuntimeTableHealthIssues } from '../../../core/diagnostics/runtime-table-health.js';
+import { syncRuntimeTableHealthIssues } from '../../../core/diagnostics/tables.js';
 import {
   buildTelemetryProvenance,
   buildRuntimeCodeFreshness,

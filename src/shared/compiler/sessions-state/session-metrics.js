@@ -5,7 +5,7 @@
  * @module shared/compiler/sessions-state/session-metrics
  */
 
-import { buildMcpSessionSummaryText } from './compiler-runtime-metrics-sessions-format.js';
+import { buildMcpSessionSummaryText } from '../compiler-runtime-metrics-sessions-format.js';
 import { buildMcpSessionTransportProvenance } from './transport-provenance.js';
 
 export function buildMcpSessionMetricsResult({

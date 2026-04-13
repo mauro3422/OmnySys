@@ -2,7 +2,7 @@ import { loadFolderizationRows, normalizeFolderizationPath } from './directory-s
 import {
   findFolderizationCandidateForPaths,
   findFolderizationCandidatesFromRepo
-} from './directory-structure-folderization-analysis.js';
+} from './directory-structure-folderization/analysis.js';
 
 function getMemberBasename(filePath = '') {
   const normalized = normalizeFolderizationPath(filePath);

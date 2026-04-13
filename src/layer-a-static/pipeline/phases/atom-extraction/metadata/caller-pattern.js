@@ -16,6 +16,7 @@
  * - truly_dead:        Realmente no usado
  */
 
+import { isTestFile as canonicalIsTestFile } from '../../../../../shared/utils/path-utils.js';
 export const CALLER_PATTERNS = {
   DIRECT_CALL: {
     id: 'direct_call',
@@ -125,9 +126,7 @@ export const CALLER_PATTERNS = {
 // ── File-type detection helpers ───────────────────────────────────────────────
 
 function isTestFile(filePath) {
-  return filePath.includes('.test.') || filePath.includes('.spec.') ||
-    filePath.includes('/tests/') || filePath.includes('__tests__/') ||
-    filePath.includes('test-cases/') || filePath.startsWith('test-');
+  return canonicalIsTestFile(filePath);
 }
 
 function isScriptOrInstallFile(filePath) {

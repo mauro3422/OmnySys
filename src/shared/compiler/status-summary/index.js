@@ -2,19 +2,19 @@
  * Canonical compact helpers for MCP status summaries.
  */
 
-import { normalizeCount } from './contract-helpers.js';
+import { normalizeCount } from '../contract-helpers.js';
 import {
   summarizeCompilerHealthDashboard,
   summarizeCompilerHealthPanel
-} from './dashboard.js';
+} from '../dashboard.js';
 import {
   compactToolInventory,
   resolveControlPlaneContracts,
   resolveDashboardControlPlaneContracts,
   resolvePolicyCoverageSummary,
   summarizeNodeVitals
-} from './status-control-plane-contracts.js';
-import { takeSample } from './sample-helpers.js';
+} from '../status-control-plane-contracts.js';
+import { takeSample } from '../sample-helpers.js';
 
 export function compactDatabaseHealth(databaseHealth) {
   if (!databaseHealth || typeof databaseHealth !== 'object') return databaseHealth;

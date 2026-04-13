@@ -1,8 +1,8 @@
-import { CANONICAL_COMPILER_FAMILIES } from './standardization-report-catalog.js';
-import { asNumber } from './core-utils.js';
-import { buildCompilerToolInventorySnapshot } from './tool-inventory-summary.js';
-import { inferSystemKind } from './system-inventory-kind-helpers.js';
-import { clampScore, normalizeText } from '#shared/utils/normalize-helpers.js';
+import { CANONICAL_COMPILER_FAMILIES } from '../standardization-report-catalog.js';
+import { asNumber } from '../core-utils.js';
+import { buildCompilerToolInventorySnapshot } from '../tool-inventory-summary.js';
+import { inferSystemKind } from '../system-inventory-kind-helpers.js';
+import { clampScore, normalizeText } from '../../utils/normalize-helpers.js';
 
 export { clampScore };
 

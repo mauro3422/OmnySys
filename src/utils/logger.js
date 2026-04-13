@@ -8,6 +8,7 @@
  */
 
 import { isBugModeEnabled } from '../shared/runtime-debug-flags.js';
+import { createLogger as canonicalCreateLogger } from '../shared/logger-system.js';
 
 let notificationBridge = null;
 const recentLogs = [];
@@ -129,7 +130,7 @@ export class Logger {
 
 // Factory function
 export function createLogger(name, options) {
-  return new Logger(name, options);
+  return canonicalCreateLogger(name, options);
 }
 
 // Default logger

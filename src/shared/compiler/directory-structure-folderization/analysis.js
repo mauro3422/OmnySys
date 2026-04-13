@@ -1,6 +1,6 @@
-import { getRecommendation } from './recommendations/RecommendationEngine.js';
-import { loadFolderizationRows, normalizeFolderizationPath } from './directory-structure-folderization-data.js';
-import { buildFamilyStateReport, buildFolderizationCandidateReport, summarizeFamilyEvolution } from './directory-structure-folderization-analysis-helpers.js';
+import { getRecommendation } from '../recommendations/RecommendationEngine.js';
+import { loadFolderizationRows, normalizeFolderizationPath } from '../directory-structure-folderization-data.js';
+import { buildFamilyStateReport, buildFolderizationCandidateReport, summarizeFamilyEvolution } from './helpers.js';
 
 const FOLDERIZATION_SUFFIXES = new Set([
   'analysis',

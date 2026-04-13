@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { connectionManager } from '../../../../../src/layer-c-memory/storage/database/connection.js';
-import { isDedupFresh, SessionManager } from '../../../../../src/layer-c-memory/mcp/core/session-manager.js';
+import { isDedupFresh, SessionManager } from '../../../../../src/layer-c-memory/mcp/core/manager.js';
 
 describe('SessionManager', () => {
   let manager;

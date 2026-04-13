@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildStatusSummaryPayload } from '../../../../../src/shared/compiler/status-summary-payload.js';
+import { buildStatusSummaryPayload } from '../../../../../src/shared/compiler/status-summary/payload.js';
 import { buildStatusSummaryPayloadFixture } from './status-summary-payload.fixture.js';
 
 describe('status summary payload', () => {

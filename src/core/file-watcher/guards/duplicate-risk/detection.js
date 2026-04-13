@@ -3,8 +3,8 @@ import {
     collectCandidateDnas,
     loadStructuralDuplicateRows,
     buildStructuralFindings
-} from './duplicate-structural/index.js';
-import { isLowSignalName } from './guard-standards.js';
+} from '../duplicate-structural/index.js';
+import { isLowSignalName } from '../guard-standards.js';
 
 export function runStructuralDuplicateDetection({
     repo,

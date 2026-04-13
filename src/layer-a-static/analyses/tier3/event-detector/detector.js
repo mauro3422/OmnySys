@@ -37,76 +37,29 @@ export async function detectEventPatterns(code, filePath = '') {
 
   const cursor = tree.rootNode.walk();
 
-  function traverse() {
-    const nodeType = cursor.nodeType;
-    let isFunction = FUNCTION_NODE_TYPES.includes(nodeType);
-    let oldContext = currentFunction;
-
-    if (isFunction || nodeType === 'call_expression') {
-      const node = cursor.currentNode;
-
-      if (isFunction) {
-        const nameNode = node.childForFieldName('name');
-        currentFunction = nameNode ? text(nameNode, code) : 'anonymous';
+  function traverse(node) {
+    const n = node || tree.rootNode;
+    if (n.type === 'call_expression') {
+      const property = n.childForFieldName('function');
+      const propertyName = property?.childForFieldName('property')?.text || '';
+      if (propertyName === 'on' || propertyName === 'once' || propertyName === 'addListener') {
+        eventListeners.push({
+          event: property?.childForFieldName('arguments')?.namedChild(0)?.text || 'unknown',
+          line: n.startPosition.row + 1,
+          function: currentFunction
+        });
       }
-
-      // Detectar llamadas a métodos de eventos
-      if (isMethodCall(node)) {
-        const functionNode = node.childForFieldName('function');
-        const methodName = getMethodName(functionNode, code);
-        const objectName = getObjectName(functionNode, code);
-
-        const argsNode = node.childForFieldName('arguments');
-        const namedArgs = argsNode ? argsNode.namedChildren : [];
-        const firstArg = namedArgs[0];
-
-        if (firstArg) {
-          const eventName = extractEventName(firstArg, code);
-
-          if (eventName) {
-            // Buscar listeners
-            if (EVENT_PATTERNS.listeners.includes(methodName)) {
-              eventListeners.push({
-                filePath,
-                line: startLine(node),
-                column: node.startPosition.column,
-                functionContext: currentFunction,
-                eventName,
-                pattern: methodName,
-                objectName,
-                confidence: getConfidence(firstArg),
-                handlerLine: startLine(node)
-              });
-            }
-
-            // Buscar emitters
-            if (EVENT_PATTERNS.emitters.includes(methodName)) {
-              eventEmitters.push({
-                filePath,
-                line: startLine(node),
-                column: node.startPosition.column,
-                functionContext: currentFunction,
-                eventName,
-                pattern: methodName,
-                objectName,
-                confidence: getConfidence(firstArg),
-                dataLine: startLine(node)
-              });
-            }
-          }
-        }
+      if (propertyName === 'emit') {
+        eventEmitters.push({
+          event: property?.childForFieldName('arguments')?.namedChild(0)?.text || 'unknown',
+          line: n.startPosition.row + 1,
+          function: currentFunction
+        });
       }
     }
 
-    if (cursor.gotoFirstChild()) {
-      do {
-        traverse();
-      } while (cursor.gotoNextSibling());
-      cursor.gotoParent();
-    }
-
-    if (isFunction) {
-      currentFunction = oldContext;
+    for (const child of n.children) {
+      traverse(child);
     }
   }
 

@@ -1,5 +1,5 @@
 import { loadFolderizationRows, normalizeFolderizationPath } from '../directory-structure-folderization-data.js';
-import { deriveFlatFamilyRoot } from '../directory-structure-folderization-analysis.js';
+import { deriveFlatFamilyRoot } from '../directory-structure-folderization/analysis.js';
 
 const ROLE_KEYWORDS = [
   ['orchestrator', ['orchestrator', 'coordinator']],

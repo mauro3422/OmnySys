@@ -14,7 +14,7 @@ import {
     getIssueSummary,
     summarizePropagationPlan
 } from '../../../../../shared/compiler/index.js';
-import { syncRuntimeTableHealthIssues } from '../../../../../core/diagnostics/runtime-table-health.js';
+import { syncRuntimeTableHealthIssues } from '../../../../../core/diagnostics/tables.js';
 import {
     loadExpectedPipelineTableCounts,
     buildLiveRowTableCounts,

@@ -130,11 +130,11 @@ export {
 
 export {
   buildCompilerStatusSummaryEnvelope
-} from './status-summary.js';
+} from './status-summary/summary.js';
 
 export {
   buildStatusSummaryPayload
-} from './status-summary-payload.js';
+} from './status-summary/payload.js';
 
 export {
   buildSystemTableSummary
@@ -155,7 +155,7 @@ export {
   compactToolInventory,
   summarizeNodeVitals,
   takeSample
-} from './status-summary-helpers.js';
+} from './status-summary/index.js';
 
 export {
   summarizeCompilerExplainability
@@ -190,7 +190,7 @@ export {
   buildCompilerSystemInventoryReport,
   buildCompilerSystemInventorySnapshot,
   summarizeCompilerSystemInventory
-} from './system-inventory-summary.js';
+} from './system-inventory/summary.js';
 
 export {
   buildCompilerPolicyCoverageSummary
@@ -493,7 +493,7 @@ export {
   buildEmptyFolderizationReport,
   loadFolderizationRows,
   normalizeFolderizationPath
-} from './directory-structure-folderization.js';
+} from './directory-structure-folderization/index.js';
 
 export {
   buildImpactWavePropagationPlan,

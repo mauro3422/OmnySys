@@ -1,4 +1,5 @@
 const CODE_FILE_PATTERN = /\.(js|ts|jsx|tsx|mjs|cjs)$/i;
+import { normalizePath as canonicalNormalizePath } from '../../shared/utils/path-utils.js';
 const METADATA_FILE_NAMES = new Set([
   'package.json',
   'package-lock.json',
@@ -18,7 +19,7 @@ const BUILD_CONFIG_PATTERNS = [
 ];
 
 function normalizePath(filePath) {
-  return String(filePath || '').replace(/\\/g, '/');
+  return canonicalNormalizePath(filePath);
 }
 
 export const WATCHER_SURFACE_KIND = {

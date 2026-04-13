@@ -24,11 +24,9 @@
  * @param {Object} semanticResults - Resultados del análisis semántico
  * @returns {Object} Issues y estadísticas
  */
+import { normalizePath as canonicalNormalizePath } from '../../../../shared/utils/path-utils.js';
 function normalizePath(filePath = '') {
-  return String(filePath || '')
-    .toLowerCase()
-    .replace(/\\/g, '/')
-    .replace(/^\.?\//, '');
+  return canonicalNormalizePath(filePath);
 }
 
 function isTestOrFactoryFile(filePath = '') {

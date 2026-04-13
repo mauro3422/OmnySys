@@ -33,7 +33,7 @@ import {
   buildCompilerSystemInventoryReport,
   buildStatusSummaryPayload
 } from '#shared/compiler/index.js';
-import { sessionManager } from '../session-manager.js';
+import { sessionManager } from '../manager.js';
 import {
   buildBootstrapUpdateSurface,
   buildDashboardDetailLines,

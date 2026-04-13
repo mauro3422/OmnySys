@@ -7,7 +7,7 @@ import {
   buildFolderizationMigrationPlanFromRepo,
   buildFolderizationNamingReportFromRepo,
   findFolderizationCandidatesFromRepo
-} from '../../directory-structure-folderization.js';
+} from '../../directory-structure-folderization/index.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 
 const logger = createLogger('OmnySys:ArchitecturalDebtScore');

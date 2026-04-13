@@ -6,7 +6,7 @@ import { buildCompilerMetricsSnapshot } from './metrics/snapshot.js';
 import { summarizeCompilerMetricsSnapshot } from './metrics/snapshot-summary/index.js';
 import { getGraphCoverageSummary, getIssueSummary, getMcpSessionSummary } from './compiler-runtime-metrics/index.js';
 import { getMetadataExtractionCoverage, summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
-import { buildCompilerSystemInventoryReport } from './system-inventory-summary.js';
+import { buildCompilerSystemInventoryReport } from './system-inventory/summary.js';
 import { buildToolRunTelemetrySummary } from './tool-run-telemetry/telemetry.js';
 import { normalizeSnapshotPath } from './snapshot-path.js';
 import { asNumber } from './core-utils.js';

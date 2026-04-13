@@ -14,11 +14,11 @@
  */
 
 import { getDatabase } from '../../storage/database/connection.js';
-import { createLogger } from '#utils/logger.js';
+import { createLogger } from '../../../utils/logger.js';
 import {
   isDedupFresh,
   createSessionStatements
-} from './session-manager-helpers.js';
+} from './helpers.js';
 import * as sessionManagerMethods from './session-manager-methods.js';
 import { connectionManager } from '../../storage/database/connection.js';
 

@@ -12,14 +12,14 @@ import {
   resolveControlPlaneContracts,
   summarizeNodeVitals,
   takeSample
-} from './status-summary-helpers.js';
-import { summarizeCompilerMetricsSnapshot as compactCompilerMetricsSnapshotSummary } from './snapshot.js';
-import { summarizeCompilerExplainability as compactCompilerExplainabilitySummary } from './compiler-explainability-summary.js';
-import { buildSystemTableSummary } from './status-system-table.js';
-import { buildUpdateSurfaceSummary } from './update-surface-summary.js';
-import { buildCachePolicySummary } from './cache-policy-summary.js';
-import { summarizeSurfaceAuditForStatus } from './surface-audit/audit.js';
-import { buildCompilerStatusSummaryEnvelope } from './status-summary.js';
+} from './index.js';
+import { summarizeCompilerMetricsSnapshot as compactCompilerMetricsSnapshotSummary } from '../snapshot.js';
+import { summarizeCompilerExplainability as compactCompilerExplainabilitySummary } from '../compiler-explainability-summary.js';
+import { buildSystemTableSummary } from '../status-system-table.js';
+import { buildUpdateSurfaceSummary } from '../update-surface-summary.js';
+import { buildCachePolicySummary } from '../cache-policy-summary.js';
+import { summarizeSurfaceAuditForStatus } from '../surface-audit/audit.js';
+import { buildCompilerStatusSummaryEnvelope } from './summary.js';
 
 export function buildStatusSummaryPayload(status, recentErrors) {
   const databaseHealth = compactDatabaseHealth(status.databaseHealth);

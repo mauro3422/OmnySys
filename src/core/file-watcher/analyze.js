@@ -1,6 +1,6 @@
 import { collectAndBuildFileAnalysis, runFileWatcherSemanticGuards } from './analyze-flow.js';
 import { buildFileWatcherCompileLogMessage } from './analyze-output.js';
-import { _calculateContentHash, _detectChangeType } from './analyze-utils.js';
+import { _calculateContentHash, _detectChangeType } from './detection.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('OmnySys:analyze');

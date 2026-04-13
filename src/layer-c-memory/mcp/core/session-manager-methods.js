@@ -10,7 +10,7 @@ import {
   removeSessionFromCache,
   updateCachedSessionActivity,
   upsertActiveSessionCache
-} from './session-manager-helpers.js';
+} from './helpers.js';
 import {
   inferTransportOrigin,
   normalizeTransportOrigin,

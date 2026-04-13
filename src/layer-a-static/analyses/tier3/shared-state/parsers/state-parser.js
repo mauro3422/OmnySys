@@ -63,7 +63,6 @@ export async function detectGlobalState(code, filePath = '') {
               (root === 'process' && parts[1] === 'env');
 
             if (isGlobal) {
-              // Si es process.env.KEY, extraemos el KEY para propName. De lo contrario usamos parts[1]
               const objName = root === 'process' ? 'process.env' : root;
               const propName = root === 'process' ? (parts[2] || 'env') : (parts[1] || 'unknown');
               const fullRef = fullPath;

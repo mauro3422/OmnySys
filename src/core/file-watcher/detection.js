@@ -6,4 +6,4 @@ export {
 } from './analyze-utils-imports.js';
 export {
   buildFileResult
-} from './analyze-utils-result.js';
+} from './result.js';

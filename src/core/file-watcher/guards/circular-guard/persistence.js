@@ -4,4 +4,4 @@ export {
   persistFunctionalCycleIssue
 } from './cycle-reporters.js';
 
-export { isLikelyInfrastructureCycleAtom } from './cycle-filters.js';
+export { isLikelyInfrastructureCycleAtom } from './filters.js';

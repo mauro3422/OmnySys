@@ -45,16 +45,16 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
     const visited = new Set();
     const nodes = [];
     const edges = [];
-    
+
     const traverse = (currentId, currentDepth) => {
       if (currentDepth > depth || visited.has(currentId)) return;
       visited.add(currentId);
-      
+
       const atom = this.getById(currentId);
       if (!atom) return;
-      
+
       nodes.push(atom);
-      
+
       if (atom.calls) {
         for (const call of atom.calls) {
           const calleeId = typeof call === 'string' ? call : call.id || call.callee;
@@ -63,7 +63,7 @@ export class SQLiteRelationOperations extends SQLiteQueryOperations {
         }
       }
     };
-    
+
     traverse(id, 0);
     
     return { rootId: id, nodes, edges, depth };

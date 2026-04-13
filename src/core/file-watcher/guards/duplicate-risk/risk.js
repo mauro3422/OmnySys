@@ -1,5 +1,5 @@
-import { createLogger } from '../../../utils/logger.js';
-import { executeDuplicateRisk } from './duplicate-risk-execution.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { executeDuplicateRisk } from './index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 

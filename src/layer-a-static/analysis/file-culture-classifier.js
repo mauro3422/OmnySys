@@ -26,6 +26,7 @@
  * @param {Array} fileNode.classes - List of classes
  * @returns {Object} - Culture and classification metadata
  */
+import { isTestFile as canonicalIsTestFile } from '../../shared/utils/path-utils.js';
 export function classifyFileCulture(fileNode) {
   // Support both 'path' and 'filePath' keys
   const filePath = fileNode.filePath || fileNode.path || '';
@@ -121,10 +122,7 @@ export function classifyFileCulture(fileNode) {
  * @returns {boolean}
  */
 function isTestFile(filePath) {
-  return /\.(test|spec)\.js$/.test(filePath) || 
-         /^tests?\//.test(filePath) ||
-         /\/tests?\//.test(filePath) ||
-         /__tests__/.test(filePath);
+  return canonicalIsTestFile(filePath);
 }
 
 /**

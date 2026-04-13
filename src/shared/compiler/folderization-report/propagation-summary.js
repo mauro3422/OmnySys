@@ -57,8 +57,8 @@ function buildPropagationPayload({
   };
 }
 
-function extractTopCandidates(migrationPlans = {}, limit = 5) {
-  const candidates = Array.isArray(migrationPlans.candidates) ? migrationPlans.candidates : [];
+function extractTopCandidates(migrationPlans = null, limit = 5) {
+  const candidates = Array.isArray(migrationPlans?.candidates) ? migrationPlans.candidates : [];
   return candidates.slice(0, limit).map((plan) => ({
     familyRoot: plan?.candidate?.familyRoot || null,
     directory: plan?.candidate?.directory || null,
@@ -69,8 +69,8 @@ function extractTopCandidates(migrationPlans = {}, limit = 5) {
   }));
 }
 
-function extractTopImpactedFiles(importImpact = {}, limit = 5) {
-  const files = Array.isArray(importImpact.impactedFiles) ? importImpact.impactedFiles : [];
+function extractTopImpactedFiles(importImpact = null, limit = 5) {
+  const files = Array.isArray(importImpact?.impactedFiles) ? importImpact.impactedFiles : [];
   return files.slice(0, limit).map((item) => ({
     filePath: item.filePath || null,
     importCount: Number(item.importCount || 0),

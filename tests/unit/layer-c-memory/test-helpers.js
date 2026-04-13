@@ -1,12 +1,8 @@
 import { vi } from 'vitest';
+import { createLogger as canonicalCreateLogger } from '../../../src/shared/logger-system.js';
 
 export function createLogger() {
-  return {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn()
-  };
+  return canonicalCreateLogger(...args);
 }
 
 export function createResponse() {

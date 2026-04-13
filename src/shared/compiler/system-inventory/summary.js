@@ -7,9 +7,9 @@
  * "what systems exist, what is emerging, and what should be promoted next?"
  */
 
-import { asNumber } from './core-utils.js';
-import { buildCompilerHistoricalStorageSummary } from './compiler-persistence-paths.js';
-import { buildCompilerPolicyCoverageSummary } from './policy-coverage-summary.js';
+import { asNumber } from '../core-utils.js';
+import { buildCompilerHistoricalStorageSummary } from '../compiler-persistence-paths.js';
+import { buildCompilerPolicyCoverageSummary } from '../policy-coverage-summary.js';
 import {
   buildCandidateEntry,
   buildInventoryState,
@@ -19,9 +19,9 @@ import {
   dedupeById,
   deriveRoleFromSurface,
   sortByCentrality
-} from './system-inventory-summary-helpers.js';
-import { CANONICAL_COMPILER_FAMILIES } from './standardization-report-catalog.js';
-import { buildCompilerSystemInventoryReport } from './system-inventory-report.js';
+} from './index.js';
+import { CANONICAL_COMPILER_FAMILIES } from '../standardization-report-catalog.js';
+import { buildCompilerSystemInventoryReport } from './report.js';
 
 const CANONICAL_FAMILY_IDS = new Set(CANONICAL_COMPILER_FAMILIES.map((family) => family.id));
 
@@ -250,7 +250,7 @@ export function summarizeCompilerSystemInventory(inventory = null) {
   return buildCompilerSystemInventoryReport(inventory);
 }
 
-export { buildCompilerSystemInventoryReport } from './system-inventory-report.js';
+export { buildCompilerSystemInventoryReport } from './report.js';
 
 export default {
   buildCompilerSystemInventorySnapshot,

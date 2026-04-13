@@ -12,7 +12,7 @@ import {
   upsertWatcherIssueRecord
 } from '../file-watcher/watcher-issue-persistence.js';
 import { getPhase2PendingFiles } from '../../shared/compiler/index.js';
-import { buildRuntimeHealthIssues, buildDeepRuntimeHealthIssues, getRuntimeHealthIssueTypes } from './runtime-table-health-helpers.js';
+import { buildRuntimeHealthIssues, buildDeepRuntimeHealthIssues, getRuntimeHealthIssueTypes } from './helpers.js';
 import { repairRiskAssessmentsIfEmpty } from './risk-assessment-repair.js';
 
 const logger = createLogger('OmnySys:runtime:table-health');

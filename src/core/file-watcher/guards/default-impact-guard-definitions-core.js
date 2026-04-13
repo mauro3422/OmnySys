@@ -17,8 +17,8 @@ export const impactGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'duplicate-risk',
-    () => import('./duplicate-risk.js'),
-    (mod) => mod.detectDuplicateRisk,
+    () => import('./duplicate-risk/detection.js'),
+    (mod) => mod.runStructuralDuplicateDetection,
     'code',
     '2.0.0',
     'Detects duplicate symbols by DNA hash'

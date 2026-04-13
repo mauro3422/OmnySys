@@ -4,7 +4,7 @@ import {
   buildCompilerSystemInventoryReport,
   buildCompilerSystemInventorySnapshot,
   summarizeCompilerSystemInventory
-} from '../../../../src/shared/compiler/system-inventory-summary.js';
+} from '../../../../src/shared/compiler/system-inventory/summary.js';
 
 function createExplainability() {
   return {

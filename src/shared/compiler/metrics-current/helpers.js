@@ -173,9 +173,9 @@ export function buildBehaviorScore(current = {}, trend = {}, driftAssessment = n
     (asNumber(current.structuralGroups, 0) * 4.5) +
     (asNumber(current.conceptualGroups, 0) * 4) +
     (asNumber(current.pipelineOrphans, 0) * 5) +
-    (asNumber(current.watcherAlertCount, 0) * 2) +
-    (asNumber(current.recentWarningCount, 0) * 1) +
-    (asNumber(current.recentErrorCount, 0) * 6) +
+    (asNumber(current.watcherAlertCount, 0) * 1) +
+    (asNumber(current.recentWarningCount, 0) * 0.5) +
+    (asNumber(current.recentErrorCount, 0) * 3) +
     (asNumber(current.phase2PendingFiles, 0) * 0.5) +
     (asNumber(current.namingDebt, 0) * 0.02) +
     (asNumber(current.flatFamilies, 0) * 0.05) +
@@ -186,10 +186,19 @@ export function buildBehaviorScore(current = {}, trend = {}, driftAssessment = n
   const coverageBonus = clampScore(asNumber(current.liveCoverageRatio, 0) * 100, 0, 100) * 0.12;
   const trustBonus = current.databaseTrustworthy ? 8 : 0;
   const trendBonus = clampScore(asNumber(trend.progressScore, 0) / 4, -10, 10);
+  // Repair bonus: premia consolidaciones exitosas (reduccion de duplicados vs raw)
+  // Si actionableImplementations < rawImplementations, hay un bonus proporcional
+  const rawImpl = asNumber(current.conceptualImplementations, 0);
+  // Usar conceptualGroups vs conceptualRawGroups como proxy de progreso
+  const rawGroups = asNumber(current.conceptualRawGroups, 0);
+  const actionableGroups = asNumber(current.conceptualGroups, 0);
+  // Ratio de consolidacion: cuanto mas cerca de 0 actionableGroups vs rawGroups, mejor
+  const consolidationRatio = rawGroups > 0 ? (rawGroups - actionableGroups) / rawGroups : 0;
+  const repairBonus = clampScore(consolidationRatio * 30, 0, 15); // Max 15 puntos, con 50%+ de consolidacion se obtiene el max
   const driftPenalty = (driftSummary.blocked * 20) + (driftSummary.stale * 10) + (driftSummary.missing * 6) + (driftSummary.partial * 2);
   const gateSummary = buildBehaviorGateSummary(current, driftSummary);
 
-  const stabilityScore = clampScore(100 - penalty + coverageBonus + trustBonus + trendBonus, 0, 100);
+  const stabilityScore = clampScore(100 - penalty + coverageBonus + trustBonus + trendBonus + repairBonus, 0, 100);
   const driftScore = clampScore(100 - driftPenalty, 0, 100);
   const successScore = clampScore(
     (asNumber(current.healthScore, 0) * 0.28) +

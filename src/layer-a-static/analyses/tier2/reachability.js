@@ -30,10 +30,7 @@ export function analyzeReachability(systemMap) {
     }
   }
 
-  // Traverse desde entry points
-  likelyEntryPoints.forEach(ep => traverse(ep));
-
-  // El resto es "unreachable"
+    // El resto es "unreachable"
   Object.keys(systemMap.files).forEach(file => {
     if (!reachable.has(file)) {
       unreachable.add(file);

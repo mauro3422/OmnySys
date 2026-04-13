@@ -5,7 +5,7 @@ import {
   findExistingFolderizedFamilyForPathsFromRows,
   findFolderizationCandidateForPaths,
   findFolderizationCandidatesFromRows
-} from '../directory-structure-folderization-analysis.js';
+} from '../directory-structure-folderization/analysis.js';
 import {
   buildFolderizationMigrationPlanFromRepo,
   buildFolderizationMigrationPlanFromRows

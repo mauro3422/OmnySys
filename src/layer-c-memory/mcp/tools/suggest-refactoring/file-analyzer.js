@@ -9,8 +9,9 @@
  * @param {string} filePath - File path filter
  * @returns {Array} - Array of suggestions
  */
+import { normalizePath as canonicalNormalizePath } from '../../../../shared/utils/path-utils.js';
 function normalizePath(filePath) {
-  return filePath ? String(filePath).replace(/\\/g, '/') : '';
+  return canonicalNormalizePath(filePath);
 }
 
 function getFileBucket(byFile, path) {

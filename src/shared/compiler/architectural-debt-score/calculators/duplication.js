@@ -4,7 +4,7 @@ import {
   findExistingFolderizedFamilyForPathsFromRepo,
   findFolderizationCandidateForPaths,
   findFolderizationCandidatesFromRepo
-} from '../../directory-structure-folderization.js';
+} from '../../directory-structure-folderization/index.js';
 import { normalizeFolderizationPath } from '../../directory-structure-folderization-data.js';
 import { getRecommendation } from '../../recommendations/RecommendationEngine.js';
 

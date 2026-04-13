@@ -9,6 +9,7 @@
 
 import { ValidationRule } from '../core/rules/index.js';
 import { ValidationResult } from '../core/results/index.js';
+import { resolveImportPath as canonicalResolveImportPath } from '../../layer-graph/utils/path-utils.js';
 
 /**
  * Invariante: Todos los IDs deben ser únicos
@@ -179,20 +180,7 @@ export const BidirectionalGraphInvariant = new ValidationRule({
  * Helper: Resuelve una ruta de import
  */
 function resolveImportPath(fromPath, importPath) {
-  // Normalizar path
-  const fromDir = fromPath.split('/').slice(0, -1).join('/');
-  const parts = importPath.split('/');
-  
-  let resolved = fromDir;
-  for (const part of parts) {
-    if (part === '..') {
-      resolved = resolved.split('/').slice(0, -1).join('/');
-    } else if (part !== '.') {
-      resolved = resolved ? `${resolved}/${part}` : part;
-    }
-  }
-  
-  return resolved;
+  return canonicalResolveImportPath(fromPath, importPath);
 }
 
 // Colección de todas las invariantes

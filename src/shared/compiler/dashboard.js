@@ -28,7 +28,7 @@ import {
   buildSessionsSection,
   buildTrendSection
 } from './dashboard-sections.js';
-import { resolveDashboardControlPlaneContracts } from './status-summary-helpers.js';
+import { resolveDashboardControlPlaneContracts } from './status-summary/index.js';
 
 // Keep the coordinator thin so the watcher stays below the dangerous size threshold.
 

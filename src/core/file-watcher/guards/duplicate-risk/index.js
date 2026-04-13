@@ -1,22 +1,22 @@
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../../../utils/logger.js';
 import {
     getDuplicateKeySqlForMode,
     DUPLICATE_MODES
-} from '#layer-c/storage/repository/utils/index.js';
+} from '../../../../layer-c-memory/storage/repository/utils/index.js';
 import {
     normalizeFilePath,
     isCanonicalDuplicateSignalPolicyFile
-} from '../../../shared/compiler/index.js';
-import { connectionManager } from '../../../layer-c-memory/storage/database/connection.js';
+} from '../../../../shared/compiler/index.js';
+import { connectionManager } from '../../../../layer-c-memory/storage/database/connection.js';
 import {
     clearStructuralDuplicateIssues
-} from './duplicate-structural/index.js';
+} from '../duplicate-structural/index.js';
 import {
     runStructuralDuplicateDetection
-} from './duplicate-risk-detection.js';
+} from './detection.js';
 import {
     persistStructuralDuplicateFinding
-} from './duplicate-risk-remediation/index.js';
+} from '../duplicate-risk-remediation/index.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:duplicate');
 const DUPLICATE_MODE = DUPLICATE_MODES.STRUCTURAL;

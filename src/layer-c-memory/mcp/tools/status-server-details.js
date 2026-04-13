@@ -28,7 +28,7 @@ import {
   summarizeBridgeRuntimeTelemetry,
   summarizeBridgeCallReliability
 } from '../../../shared/compiler/index.js';
-import { sessionManager } from '../core/session-manager.js';
+import { sessionManager } from '../core/manager.js';
 import { compactRecentNotifications } from '../core/recent-notifications.js';
 import { buildGovernanceAlerts, mergeRecentNotificationsWithGovernanceAlerts } from '../core/governance-alerts.js';
 import { getRepository, getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';

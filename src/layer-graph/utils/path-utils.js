@@ -10,6 +10,8 @@
 import path from 'path';
 
 import { normalizePath as canonicalNormalize } from '../../shared/utils/path-utils.js';
+import { normalizePath as canonicalNormalizePath } from '../../shared/utils/path-utils.js';
+import { getFileExtension as canonicalGetFileExtension } from '../../shared/utils/path-utils.js';
 
 /**
  * Normaliza un path (Windows -> Unix)
@@ -19,8 +21,7 @@ import { normalizePath as canonicalNormalize } from '../../shared/utils/path-uti
  * @returns {string} Path normalizado con forward slashes
  */
 export function normalizePath(filePath) {
-  if (filePath == null) return '';
-  return canonicalNormalize(path.normalize(filePath));
+  return canonicalNormalizePath(filePath);
 }
 
 /**
@@ -91,8 +92,7 @@ export function pathsEqual(pathA, pathB) {
  * @returns {string} Extensión (ej: '.js', '.ts')
  */
 export function getFileExtension(filePath) {
-  if (filePath == null) return '';
-  return path.extname(filePath).toLowerCase();
+  return canonicalGetFileExtension(filePath);
 }
 
 /**

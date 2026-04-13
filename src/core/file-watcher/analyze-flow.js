@@ -6,7 +6,7 @@ import { saveFileResult } from '../../layer-a-static/pipeline/single-file-db.js'
 import {
   _calculateContentHash,
   buildFileResult
-} from './analyze-utils.js';
+} from './detection.js';
 
 const logger = createLogger('OmnySys:analyze:flow');
 
