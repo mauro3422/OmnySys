@@ -435,7 +435,7 @@ const buildSessionServer = (transportContext = null) => buildServerForSession({
 });
 
 const getSessionManager = async () => {
-  const { sessionManager } = await import('./mcp/core/session-manager.js');
+  const { sessionManager } = await import('./mcp/core/manager.js');
   sessionManager.ensureInitialized();
   return sessionManager;
 };

@@ -13,6 +13,7 @@ import { consolidate_conceptual_cluster } from '../../../layer-c-memory/mcp/tool
 import { folderize_family } from '../../../layer-c-memory/mcp/tools/folderize-family.js';
 import { rename_folderized_family } from '../../../layer-c-memory/mcp/tools/rename-folderized-family.js';
 import { normalize_folderized_family_names } from '../../../layer-c-memory/mcp/tools/normalize-folderized-family.js';
+import { simulate_naming_debt_impact } from '../../../layer-c-memory/mcp/tools/naming-debt-impact-simulator.js';
 import { split_large_file } from '../../../layer-c-memory/mcp/tools/split-large-file.js';
 import { detect_folderization_opportunities } from '../../../layer-c-memory/mcp/tools/detect-folderization-opportunities.js';
 import { generate_tests } from '../../../layer-c-memory/mcp/tools/generate-tests/index.js';
@@ -32,6 +33,7 @@ const ACTION_HANDLERS = {
   folderize_family: async (args, context) => folderize_family(args, context),
   rename_folderized_family: async (args, context) => rename_folderized_family(args, context),
   normalize_folderized_family_names: async (args, context) => normalize_folderized_family_names(args, context),
+  simulate_naming_debt_impact: async (args, context) => simulate_naming_debt_impact(args.candidatePath, args.projectPath || context?.projectPath),
   split_large_file: async (args, context) => split_large_file(args, context),
   detect_folderization_opportunities: async (args, context) => detect_folderization_opportunities(args, context),
   generate_tests: async (args, context) => generate_tests(args, context),

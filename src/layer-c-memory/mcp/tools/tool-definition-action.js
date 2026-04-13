@@ -85,6 +85,18 @@ export const actionToolDefinitions = [
     }
   },
   {
+    name: 'mcp_omnysystem_simulate_naming_debt_impact',
+    description: 'Simula el impacto de aplicar cambios de naming debt antes de ejecutar. Muestra qué imports se romperían, archivos afectados y nivel de riesgo. Retorna un reporte detallado para decidir si es seguro proceder.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        candidatePath: { type: 'string', description: 'Ruta de referencia para identificar la familia folderizada dentro de la DB' },
+        projectPath: { type: 'string', description: 'Ruta del proyecto (opcional, usa el contexto si no se proporciona)' }
+      },
+      required: ['candidatePath']
+    }
+  },
+  {
     name: 'mcp_omnysystem_fix_imports',
     description: 'Resuelve automáticamente los imports rotos en un archivo buscando los símbolos en el grafo global del proyecto.',
     inputSchema: {

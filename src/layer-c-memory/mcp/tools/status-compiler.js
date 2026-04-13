@@ -99,7 +99,7 @@ function buildMcpSessionsStatus(sessionSummary) {
 export async function attachDeepVitals(status, projectPath, server) {
   try {
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
-    const { sessionManager } = await import('../core/session-manager.js');
+    const { sessionManager } = await import('../core/manager.js');
     const repo = getRepository(projectPath);
     if (!repo?.db) {
       return;
