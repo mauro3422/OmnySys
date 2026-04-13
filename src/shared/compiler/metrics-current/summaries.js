@@ -5,7 +5,7 @@
 import { buildBehaviorScore, buildStructuralDuplicateGroups } from './helpers.js';
 import { getGraphCoverageSummary, getIssueSummary, getConceptualDuplicateSummary } from '../compiler-runtime-metrics/summary.js';
 import { getPhase2PendingFiles } from '../compiler-runtime-metrics-db.js';
-import { getPipelineOrphanSummary } from '../pipeline-orphans.js';
+import { getPipelineOrphanSummary } from '../pipeline-orphans/index.js';
 import { buildPipelineTimingTelemetrySummary } from '../pipeline-timing-telemetry/telemetry.js';
 import { buildToolRunTelemetrySummary } from '../tool-run-telemetry/telemetry.js';
 import { buildMcpRequestDeliverySummary } from '../mcp-request-delivery-telemetry.js';

@@ -1,4 +1,4 @@
-import { getRecommendation } from './recommendations/RecommendationEngine.js';
+import { getRecommendation } from '../recommendations/RecommendationEngine.js';
 
 const MANUAL_ORPHAN_PATTERNS = [
   /(called_by_json|calls_json|callers_count|callees_count)/,

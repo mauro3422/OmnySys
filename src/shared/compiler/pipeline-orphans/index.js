@@ -5,7 +5,7 @@
  * @module shared/compiler/pipeline-orphans
  */
 
-import { getFileImportEvidenceCoverage } from './file-import-evidence.js';
+import { getFileImportEvidenceCoverage } from '../file-import-evidence.js';
 import {
   classifyPipelineOrphans,
   detectPipelineOrphanDrift,
@@ -13,16 +13,16 @@ import {
   hasFileLevelImportEvidence,
   isLikelyDisconnectedPipelineAtom,
   isPipelineProductionFile
-} from './pipeline-orphans-detection.js';
+} from './detection.js';
 import {
   getPipelineNamePatternSqlCondition,
   getPipelineOrphanCandidates,
   normalizePipelineOrphan
-} from './pipeline-orphans-candidates.js';
+} from '../pipeline-orphans-candidates.js';
 import {
   buildPipelineOrphanRemediation,
   buildPipelineOrphanRemediationPlan
-} from './pipeline-orphans-remediation.js';
+} from '../pipeline-orphans-remediation.js';
 
 export const PIPELINE_ORPHAN_NAME_PATTERNS = ['persist', 'analyze', 'compute', 'calculate', 'build', 'generate', 'process', 'index'];
 

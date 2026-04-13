@@ -1,5 +1,5 @@
 import { detectSignalCoverageDrift } from './coverage.js';
-import { detectPipelineOrphanDrift } from './pipeline-orphans.js';
+import { detectPipelineOrphanDrift } from './pipeline-orphans/index.js';
 import { detectDeadCodeDrift } from './dead-code-utils.js';
 import { detectLiveRowDrift } from './live-row-utils/index.js';
 

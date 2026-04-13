@@ -4,7 +4,7 @@
  * @module shared/compiler/compiler-runtime-metrics-issues
  */
 
-import { getPipelineOrphanSummary } from '../pipeline-orphans.js';
+import { getPipelineOrphanSummary } from '../pipeline-orphans/index.js';
 import { getDeadCodePlausibilitySummary } from '../dead-code/index.js';
 import {
   auditWatcherIssues,
