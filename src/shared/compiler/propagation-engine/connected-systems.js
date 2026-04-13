@@ -138,6 +138,24 @@ function buildConnectedSystems(changeType = 'folderization') {
     ];
   }
 
+  if (changeType === 'naming_debt') {
+    return [
+      { name: 'simulate_naming_debt_impact', role: 'simulator' },
+      { name: 'rename_folderized_family', role: 'normalizer' },
+      { name: 'normalize_folderized_family_names', role: 'executor' },
+      { name: 'folderization', role: 'context' },
+      { name: 'validate_imports', role: 'verification' },
+      { name: 'fix_imports', role: 'repair' },
+      { name: 'technical_debt_report', role: 'consumer' },
+      { name: 'status_panel', role: 'visibility' },
+      { name: 'health_snapshot', role: 'history' },
+      { name: 'compiler_explainability', role: 'explainability' },
+      { name: 'cache_policy', role: 'freshness' },
+      { name: 'watcher', role: 'reconciliation' },
+      { name: 'drift_assessment', role: 'governance' }
+    ];
+  }
+
   return folderizationSystems;
 }
 
