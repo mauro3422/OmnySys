@@ -17,8 +17,28 @@ export const impactGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'duplicate-risk',
-    () => import('./duplicate-risk/detection.js'),
-    (mod) => mod.runStructuralDuplicateDetection,
+    async () => {
+      const { runStructuralDuplicateDetection } = await loadGuardMember(
+        () => import('./duplicate-risk/detection.js'),
+        (mod) => ({ runStructuralDuplicateDetection: mod.runStructuralDuplicateDetection })
+      );
+      return async (rootPath, filePath, context, options = {}) => {
+        const { getRepository } = await import('#layer-c/storage/repository/index.js');
+        const repo = getRepository(rootPath);
+        if (!repo?.db) {
+          return [];
+        }
+        return runStructuralDuplicateDetection({
+          repo,
+          normalizedFilePath: filePath,
+          providedAtoms: options.previousAtoms || null,
+          minLinesOfCode: options.minLinesOfCode || 4,
+          maxFindings: options.maxFindings || 8,
+          duplicateMode: 'structural',
+          duplicateKeySql: options.duplicateKeySql || null
+        });
+      };
+    },
     'code',
     '2.0.0',
     'Detects duplicate symbols by DNA hash'
