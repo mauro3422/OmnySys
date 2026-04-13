@@ -5,7 +5,7 @@
  * @module shared/compiler/sessions-state/transport-alerts
  */
 
-import { asNumber } from './core-utils.js';
+import { asNumber } from '../core-utils.js';
 import {
   buildTransportAlert,
   normalizeTransportCountMap,

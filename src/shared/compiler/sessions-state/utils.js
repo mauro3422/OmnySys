@@ -5,7 +5,7 @@
  * @module shared/compiler/sessions-state/utils
  */
 
-import { asNumber } from './core-utils.js';
+import { asNumber } from '../core-utils.js';
 
 export function resolveSessionSyncGraceMs() {
   return 30000; // 30 seconds default

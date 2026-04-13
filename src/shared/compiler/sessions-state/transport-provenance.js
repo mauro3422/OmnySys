@@ -5,7 +5,7 @@
  * @module shared/compiler/sessions-state/transport-provenance
  */
 
-import { asNumber } from './core-utils.js';
+import { asNumber } from '../core-utils.js';
 import { normalizeTransportCountMap, normalizeTransportOriginCounts } from './utils.js';
 import { deriveTransportAlerts } from './transport-alerts.js';
 
