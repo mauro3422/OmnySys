@@ -113,27 +113,29 @@ function buildFoundationsAndContracts(databaseHealth) {
 }
 
 function buildDriftInfo(folderizationReport, liveRowSync) {
+  const lrs = liveRowSync || {};
   return folderizationReport?.drift || {
-    state: liveRowSync.state,
-    score: liveRowSync.state === 'blocked' ? 100 : liveRowSync.state === 'stale' ? 50 : 0,
-    reason: liveRowSync.reason || null,
-    recommendation: liveRowSync.recommendation || null,
-    evidence: liveRowSync.evidence || null
+    state: lrs.state,
+    score: lrs.state === 'blocked' ? 100 : lrs.state === 'stale' ? 50 : 0,
+    reason: lrs.reason || null,
+    recommendation: lrs.recommendation || null,
+    evidence: lrs.evidence || null
   };
 }
 
 function determineRecommendedToolAndAction(liveRowSync, recommendation, creationGuidance) {
+  const lrs = liveRowSync || {};
   const preferredFolder = creationGuidance.preferredFolder || creationGuidance.preferredDirectory || null;
   const preferredRoleStems = Array.isArray(creationGuidance.preferredRoleStems) ? creationGuidance.preferredRoleStems : [];
   const nextBestStem = preferredRoleStems[0]?.stem || 'core.js';
 
-  if (liveRowSync.state !== 'fresh') {
+  if (lrs.state !== 'fresh') {
     return {
       recommendedTool: null,
-      recommendedAction: liveRowSync.recommendation,
+      recommendedAction: lrs.recommendation,
       nextBestFolder: preferredFolder,
       nextBestStem,
-      whyThisFirst: liveRowSync.reason
+      whyThisFirst: lrs.reason
     };
   }
 
@@ -166,7 +168,7 @@ export function buildFolderizationSnapshotSummary({
   const recommendation = folderizationReport?.recommendation || {};
 
   const { dataGatewaySummary, liveRowSync } = buildFoundationsAndContracts(databaseHealth);
-  const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: liveRowSync.state } }, history);
+  const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: (liveRowSync || {}).state } }, history);
   const folderizationDrift = buildDriftInfo(folderizationReport, liveRowSync);
 
   const {
@@ -213,7 +215,7 @@ export function buildFolderizationSnapshotSummary({
       `naming=${summary.namingTargets || 0}`,
       `propagation=${summary.propagationImpactedFiles || 0}/${summary.propagationRewriteCount || 0}`,
       `drift=${folderizationDrift.state || 'fresh'}`,
-      `dbsync=${liveRowSync.state}`,
+      `dbsync=${(liveRowSync || {}).state}`,
       `health=${databaseHealth?.healthScore || 0}/${databaseHealth?.grade || 'F'}`
     ].join(' | '),
     liveRowSync
