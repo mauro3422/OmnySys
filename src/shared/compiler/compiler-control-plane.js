@@ -14,7 +14,7 @@ import {
   buildSignalEntries,
   buildSystemRegistry
 } from './compiler-control-plane-structure.js';
-import { buildTelemetryRegistry } from './compiler-control-plane-telemetry.js';
+import { buildTelemetryRegistry } from './telemetry.js';
 import {
   buildGapEntries,
   buildSummary,
