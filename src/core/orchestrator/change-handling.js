@@ -1,4 +1,4 @@
-import { loadCompilerExplainability } from '../../shared/compiler/compiler-explainability-loader.js';
+import { loadCompilerExplainability } from '../../shared/compiler/loader.js';
 
 const COMPILER_POLICY_PATHS = [
   'src/shared/compiler/',

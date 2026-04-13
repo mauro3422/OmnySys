@@ -285,7 +285,7 @@ export {
 
 export {
   loadCompilerExplainability
-} from './compiler-explainability-loader.js';
+} from './loader.js';
 
 export {
   evaluatePipelineTimingTelemetry,

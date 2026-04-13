@@ -1,7 +1,7 @@
 import { getRepository } from '#layer-c/storage/repository/index.js';
 import { buildCanonicalPromotionReport } from './canonical-promotion-summary.js';
 import { getDatabaseHealthSummary } from './database-health-summary.js';
-import { loadCompilerExplainability } from './compiler-explainability-loader.js';
+import { loadCompilerExplainability } from './loader.js';
 import { buildCompilerMetricsSnapshot } from './metrics/snapshot.js';
 import { summarizeCompilerMetricsSnapshot } from './metrics/snapshot-summary/index.js';
 import { getGraphCoverageSummary, getIssueSummary, getMcpSessionSummary } from './compiler-runtime-metrics/index.js';
