@@ -20,7 +20,7 @@ export function summarizeSemanticSurfaceForSnapshot(semanticSurface) {
     fileLevel: semanticSurface.fileLevel,
     atomLevel: semanticSurface.atomLevel,
     contract: semanticSurface.contract,
-    healthy: semanticSurface.healthy,
+    healthy: semanticSurface?.healthy,
     materiallyDrifting: semanticSurface.materiallyDrifting,
     materialIssues: semanticSurface.materialIssues || [],
     advisories: semanticSurface.advisories || [],
