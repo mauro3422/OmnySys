@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
-import { getTableColumns } from '../../src/layer-c-memory/storage/database/schema-registry.js';
+import { getTableColumns } from '../../src/layer-c-memory/storage/database/schema-registry/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..', '..');
