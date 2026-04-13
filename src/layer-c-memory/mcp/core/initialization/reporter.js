@@ -7,12 +7,12 @@
  * @module mcp/core/initialization/dashboard-reporter
  */
 
-import { PipelineIntegrityDetector } from '#core/meta-detector/pipeline-integrity-detector.js';
-import { IntegrityDashboard } from '#core/meta-detector/integrity-dashboard.js';
-import { createLogger } from '#utils/logger.js';
-import { getRepository } from '#layer-c/storage/repository/index.js';
-import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '#layer-c/storage/repository/utils/duplicate-dna.js';
-import { reconcileWatcherIssues } from '#core/file-watcher/watcher-issue-persistence.js';
+import { PipelineIntegrityDetector } from '../../../../core/meta-detector/pipeline-integrity-detector.js';
+import { IntegrityDashboard } from '../../../../core/meta-detector/integrity-dashboard.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { getRepository } from '../../../storage/repository/index.js';
+import { getValidDnaPredicate, getDuplicateEligiblePredicate } from '../../../storage/repository/utils/duplicate-dna.js';
+import { reconcileWatcherIssues } from '../../../../core/file-watcher/watcher-issue-persistence.js';
 import {
   getAtomCountSummary,
   getConceptualDuplicateSummary,
@@ -32,14 +32,14 @@ import {
   buildCompilerSystemInventorySnapshot,
   buildCompilerSystemInventoryReport,
   buildStatusSummaryPayload
-} from '#shared/compiler/index.js';
+} from '../../../../shared/compiler/index.js';
 import { sessionManager } from '../manager.js';
 import {
   buildBootstrapUpdateSurface,
   buildDashboardDetailLines,
   insertDashboardDetailLines,
   resolveDashboardHeader
-} from './dashboard-reporter-helpers.js';
+} from './helpers.js';
 
 const logger = createLogger('OmnySys:DashboardReporter');
 

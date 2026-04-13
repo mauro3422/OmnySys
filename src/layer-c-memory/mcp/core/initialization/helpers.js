@@ -1,5 +1,5 @@
-import { getRepositoryDiagnostics } from '#layer-c/storage/repository/index.js';
-import { getDatabaseHealthSummary, getSystemMapPersistenceCoverage, buildUpdateSurfaceSummary } from '#shared/compiler/index.js';
+import { getRepositoryDiagnostics } from '../../../storage/repository/index.js';
+import { getDatabaseHealthSummary, getSystemMapPersistenceCoverage, buildUpdateSurfaceSummary } from '../../../../shared/compiler/index.js';
 
 function getGraphDependencyTotal(db) {
   if (!db?.prepare) return 0;
