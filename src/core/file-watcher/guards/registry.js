@@ -53,7 +53,11 @@ class GuardRegistry {
   }
 
   async runSemanticGuards(rootPath, filePath, context, atoms, options = {}) {
-    await this.initializeDefaultGuards();
+    try {
+      await this.initializeDefaultGuards();
+    } catch (error) {
+      this.logger?.warn(`Semantic guards init skipped: ${error.message}`);
+    }
     return runGuardGroup(
       this,
       this.semanticGuards,
@@ -65,7 +69,11 @@ class GuardRegistry {
   }
 
   async runImpactGuards(rootPath, filePath, context, options = {}) {
-    await this.initializeDefaultGuards();
+    try {
+      await this.initializeDefaultGuards();
+    } catch (error) {
+      this.logger?.warn(`Impact guards init skipped: ${error.message}`);
+    }
     return runGuardGroup(
       this,
       this.impactGuards,

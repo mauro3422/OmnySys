@@ -70,15 +70,20 @@ export async function initializeDefaultGuards(registry) {
   }
 
   const initializationPromise = (async () => {
-    const { registerAllDefaultSemanticGuards, registerAllDefaultImpactGuards } = await import('../default-guards.js');
-    return initializeDefaultGuardsImpl({
-      semanticGuards: registry.semanticGuards,
-      impactGuards: registry.impactGuards,
-      logger: registry.logger,
-      registerAllDefaultSemanticGuards,
-      registerAllDefaultImpactGuards,
-      registry
-    });
+    try {
+      const { registerAllDefaultSemanticGuards, registerAllDefaultImpactGuards } = await import('../default-guards.js');
+      await initializeDefaultGuardsImpl({
+        semanticGuards: registry.semanticGuards,
+        impactGuards: registry.impactGuards,
+        logger: registry.logger,
+        registerAllDefaultSemanticGuards,
+        registerAllDefaultImpactGuards,
+        registry
+      });
+    } catch (error) {
+      registry.logger?.warn(`Guard initialization failed, will retry on next use: ${error.message}`);
+      throw error;
+    }
   })();
   registry.initializationPromise = initializationPromise;
   globalState.initializationPromise = initializationPromise;
