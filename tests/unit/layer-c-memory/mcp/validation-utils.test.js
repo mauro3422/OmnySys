@@ -8,7 +8,7 @@ import {
   validateFileExists,
   validatePath,
   validateBeforeWrite
-} from '../../../../src/layer-c-memory/mcp/core/validation-utils.js';
+} from '../../../../src/layer-c-memory/mcp/core/utils.js';
 
 describe('validation-utils - arquitectura correcta', () => {
   describe('validatePath', () => {

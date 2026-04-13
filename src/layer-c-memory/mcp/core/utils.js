@@ -8,8 +8,8 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { getAtomsByName } from '#layer-c/storage/index.js';
-import { getFileImpactSummary } from '#layer-c/query/apis/dependency-api.js';
+import { getAtomsByName } from '../../storage/index.js';
+import { getFileImpactSummary } from '../../query/apis/dependency-api.js';
 import { arePathsEqual, normalizePath } from '../../../shared/utils/path-utils.js';
 import { createLogger } from '../../../utils/logger.js';
 

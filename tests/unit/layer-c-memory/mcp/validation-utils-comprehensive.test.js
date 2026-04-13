@@ -13,7 +13,7 @@ import {
   getLineContext,
   validateNoDuplicates,
   validateImpact
-} from '../../../../src/layer-c-memory/mcp/core/validation-utils.js';
+} from '../../../../src/layer-c-memory/mcp/core/utils.js';
 
 describe('validation-utils - 20 casos de uso', () => {
   const testProjectPath = process.cwd();

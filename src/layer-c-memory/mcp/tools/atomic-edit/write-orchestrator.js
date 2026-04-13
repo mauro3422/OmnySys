@@ -10,7 +10,7 @@ import { extractExportsFromCode, checkExportConflictsInGraph } from './exports.j
 import { validateImportsInEdit } from './validators.js';
 import { analyzeFullImpact, analyzeNamespaceRisk } from './analysis.js';
 import { generateRefactoringSuggestionsOptimized } from './refactoring.js';
-import { validateBeforeWrite } from '../../core/validation-utils.js';
+import { validateBeforeWrite } from '../../core/utils.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:atomic:write:orchestrator');

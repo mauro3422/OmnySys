@@ -7,7 +7,7 @@ import path from 'path';
 import { AtomicMutationTool } from '#layer-c/mcp/core/shared/base-tools/atomic-mutation-tool.js';
 import { loadAtoms } from '#layer-c/storage/index.js';
 import { AnalysisEngine } from '../../core/shared/analysis-engine.js';
-import { validateBeforeEdit } from '../../core/validation-utils.js';
+import { validateBeforeEdit } from '../../core/utils.js';
 import { validateImportsInEdit } from './validators.js';
 import {
     DATA_DIR,
