@@ -187,7 +187,7 @@ export function buildFolderizationSnapshotSummary({
     driftReason: folderizationDrift.reason || null,
     driftRecommendation: folderizationDrift.recommendation || null,
     driftEvidence: folderizationDrift.evidence || null,
-    dbSyncState: liveRowSync.state,
+    dbSyncState: liveRowSync?.state || 'unknown',
     databaseHealthy: databaseHealth?.healthy === true,
     healthScore: Number(databaseHealth?.healthScore || 0),
     healthGrade: databaseHealth?.grade || 'F',
