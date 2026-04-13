@@ -35,5 +35,5 @@ export {
 } from './session-metrics.js';
 
 // Re-exports from external modules (kept for backward compatibility)
-export { buildClientSyncDiagnostics } from './compiler-runtime-metrics-sessions-client-sync.js';
+export { buildClientSyncDiagnostics } from '../compiler-runtime-metrics-sessions-client-sync.js';
 export { collectSessionDbSnapshot } from '#layer-c/query/apis/mcp-sessions-api.js';
