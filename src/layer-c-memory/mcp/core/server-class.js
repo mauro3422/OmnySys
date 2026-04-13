@@ -9,7 +9,7 @@ import { EventEmitter } from 'events';
 
 import { createLogger } from '../../../utils/logger.js';
 import { getErrorGuardian } from '../../../core/error-guardian/index.js';
-import { performServerShutdown } from './server-shutdown.js';
+import { performServerShutdown } from './shutdown.js';
 import {
   initializeHotReload,
   initializeRuntimeRestartState,
