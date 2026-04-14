@@ -2,8 +2,8 @@ import { isValidGuardTarget, extractAtomMetrics } from './guard-standards.js';
 
 export function loadHotspotAtoms(repo, filePath, maxAgeDays) {
     return repo.db.prepare(`
-        SELECT 
-            id, name, type, complexity, lines_of_code, is_async,
+        SELECT
+            id, name, atom_type as type, complexity, lines_of_code, is_async,
             change_frequency, age_days, fragility_score, risk_level,
             is_exported, is_dead_code
         FROM atoms
