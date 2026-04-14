@@ -1,11 +1,11 @@
 import { parentPort } from 'worker_threads';
 import fs from 'fs/promises';
-import { createLogger } from '../../utils/logger.js';
-import { analyzeFileCore } from './core-analyzer.js';
-import { getRepository } from '#layer-c/storage/repository/index.js';
-import { warmExtractorCache } from './phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
-import { deriveModuleName } from './single-file-utils.js';
-import { calculateContentHash, toProjectRelativePath } from './incremental-analysis-utils.js';
+import { createLogger } from '../../../utils/logger.js';
+import { analyzeFileCore } from '../core-analyzer.js';
+import { getRepository } from '../../../layer-c-memory/storage/repository/index.js';
+import { warmExtractorCache } from '../phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
+import { deriveModuleName } from '../single-file-utils.js';
+import { calculateContentHash, toProjectRelativePath } from '../incremental-analysis-utils.js';
 
 export const logger = createLogger('OmnySys:Worker:Analysis');
 

@@ -1,2 +1,1 @@
-export * from './index.js';
-export { default } from './index.js';
+export { getTableColumns } from './helpers.js';

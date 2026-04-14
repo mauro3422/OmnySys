@@ -13,16 +13,16 @@
  */
 
 import { parentPort, workerData } from 'worker_threads';
-import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getRepository } from '../../../layer-c-memory/storage/repository/index.js';
 import {
     analyzeAndPersistFile,
     flushProgress,
     logger,
     readFileSnapshot,
     withBusyRetry
-} from './worker-analysis-helpers.js';
-import { warmExtractorCache } from './phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
-import { saveFileSummariesBatch } from './file-summary-storage.js';
+} from './index.js';
+import { warmExtractorCache } from '../phases/atom-extraction/extraction/atom-extractor/extractor-loader.js';
+import { saveFileSummariesBatch } from '../file-summary-storage.js';
 
 const FLUSH_INTERVAL = 100; // Flush pending writes every N files
 
