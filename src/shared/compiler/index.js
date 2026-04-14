@@ -773,7 +773,7 @@ export {
   getPipelineNamePatternSqlCondition,
   normalizePipelineOrphan,
   classifyPipelineOrphans
-} from './pipeline-orphans.js';
+} from './pipeline-orphans/index.js';
 
 
 export {
@@ -781,7 +781,7 @@ export {
   getPipelineOrphanSummary,
   buildPipelineOrphanRemediation,
   buildPipelineOrphanRemediationPlan
-} from './pipeline-orphans.js';
+} from './pipeline-orphans/index.js';
 
 export {
   getPipelineFieldCoverageContext
