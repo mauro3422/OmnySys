@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCompilerPolicyIssueSummary,
   summarizeCompilerPolicyDrift
-} from '../../../../src/shared/compiler/policy-conformance-summary.js';
+} from '../../../../src/shared/compiler/policy-conformance/summary.js';
 
 describe('policy-conformance-summary', () => {
   it('separates total findings from active drift findings', () => {

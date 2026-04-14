@@ -8,8 +8,8 @@
  * New code should prefer `runAsyncBoundary` from shared/compiler/index.js.
  */
 
-import { runAsyncBoundary } from './async-boundary.js';
-import { createLogger } from '../../utils/logger.js';
+import { runAsyncBoundary } from '../async-boundary.js';
+import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:compiler:runtime-boundary');
 

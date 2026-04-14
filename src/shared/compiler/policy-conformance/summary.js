@@ -1,4 +1,4 @@
-import { COMPILER_POLICY_SEVERITY } from './policy-conformance-constants.js';
+import { COMPILER_POLICY_SEVERITY } from '../policy-conformance-constants.js';
 
 export function summarizeCompilerPolicyDrift(findings = []) {
   const normalizedFindings = findings.filter(Boolean);

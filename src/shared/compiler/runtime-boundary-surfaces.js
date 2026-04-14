@@ -12,7 +12,7 @@ export {
   executeWithBoundary,
   executeWithNetworkBoundary,
   withBoundaryLogging
-} from './runtime-boundary-execution.js';
+} from './runtime-boundary/index.js';
 
 export {
   classifyBoundaryError

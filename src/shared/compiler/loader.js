@@ -2,7 +2,7 @@ import {
   loadCompilerDiagnosticsSnapshot,
 } from './snapshot.js';
 import { buildCompilerSystemInventorySnapshot } from './system-inventory/summary.js';
-import { summarizeCompilerPolicyDrift } from './policy-conformance-summary.js';
+import { summarizeCompilerPolicyDrift } from './policy-conformance/summary.js';
 import { buildFolderizationReportFromRepo } from './folderization-report.js';
 import { buildFolderizationAutomationSummaryFromReport } from './folderization-automation-summary.js';
 import { getDatabaseHealthSummary } from './database-health-summary.js';

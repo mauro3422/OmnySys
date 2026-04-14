@@ -1,4 +1,4 @@
-import { asNumber } from './core-utils.js';
+import { asNumber } from '../core-utils.js';
 
 export const SLOW_TOOL_THRESHOLD_MS = 10000;
 export const DEFAULT_SAMPLE_LIMIT = 3;

@@ -1,19 +1,19 @@
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { buildCanonicalPromotionReport } from './canonical-promotion-summary.js';
-import { getDatabaseHealthSummary } from './database-health-summary.js';
-import { loadCompilerExplainability } from './loader.js';
-import { buildCompilerMetricsSnapshot } from './metrics/snapshot.js';
-import { summarizeCompilerMetricsSnapshot } from './metrics/snapshot-summary/index.js';
-import { getGraphCoverageSummary, getIssueSummary, getMcpSessionSummary } from './compiler-runtime-metrics/index.js';
-import { getMetadataExtractionCoverage, summarizeMetadataExtractionCoverage } from './metadata-extraction-coverage/coverage.js';
-import { buildCompilerSystemInventoryReport } from './system-inventory/summary.js';
-import { buildToolRunTelemetrySummary } from './tool-run-telemetry/telemetry.js';
-import { normalizeSnapshotPath } from './snapshot-path.js';
-import { asNumber } from './core-utils.js';
+import { buildCanonicalPromotionReport } from '../canonical-promotion-summary.js';
+import { getDatabaseHealthSummary } from '../database-health-summary.js';
+import { loadCompilerExplainability } from '../loader.js';
+import { buildCompilerMetricsSnapshot } from '../metrics/snapshot.js';
+import { summarizeCompilerMetricsSnapshot } from '../metrics/snapshot-summary/index.js';
+import { getGraphCoverageSummary, getIssueSummary, getMcpSessionSummary } from '../compiler-runtime-metrics/index.js';
+import { getMetadataExtractionCoverage, summarizeMetadataExtractionCoverage } from '../metadata-extraction-coverage/coverage.js';
+import { buildCompilerSystemInventoryReport } from '../system-inventory/summary.js';
+import { buildToolRunTelemetrySummary } from '../tool-run-telemetry/telemetry.js';
+import { normalizeSnapshotPath } from '../snapshot-path.js';
+import { asNumber } from '../core-utils.js';
 import {
   buildTrustRemediationBatchPlan,
   summarizeTrustRemediationBatchPlan
-} from './trust-remediation-batches.js';
+} from '../trust-remediation-batches.js';
 import {
   buildTrustConfidenceScore,
   buildTrustGates,
@@ -25,7 +25,7 @@ import {
   summarizeSnapshotRow,
   summarizeSystemMetadataRows,
   SLOW_TOOL_THRESHOLD_MS
-} from './trust-investigation-report-helpers.js';
+} from './index.js';
 
 function loadSystemMetadata(db) {
   if (!db?.prepare) {

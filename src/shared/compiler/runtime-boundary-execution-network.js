@@ -1,4 +1,4 @@
-import { executeWithBoundary } from './runtime-boundary-execution-core.js';
+import { executeWithBoundary } from './runtime-boundary/core.js';
 
 export async function executeWithNetworkBoundary(networkOperation, options = {}) {
   const {

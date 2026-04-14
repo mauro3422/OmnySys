@@ -51,7 +51,7 @@ export {
   scanCompilerPolicyDrift,
   summarizeCompilerPolicyDrift,
   buildCompilerPolicyIssueSummary
-} from './policy-conformance.js';
+} from './policy-conformance/index.js';
 
 export {
   isLowSignalDataFlowAlert,
@@ -213,7 +213,7 @@ export {
 export {
   buildTrustInvestigationReport,
   summarizeTrustInvestigationReport
-} from './trust-investigation-report.js';
+} from './trust-investigation/report.js';
 
 export {
   buildTrustRemediationBatchPlan,
