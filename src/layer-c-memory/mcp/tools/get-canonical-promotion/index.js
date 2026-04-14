@@ -1,5 +1,5 @@
 import { createLogger } from '../../../utils/logger.js';
-import { runCanonicalPromotionReport } from './get-canonical-promotion-report-runner.js';
+import { runCanonicalPromotionReport } from '../get-canonical-promotion-report-runner.js';
 
 const logger = createLogger('OmnySys:canonical-promotion');
 

@@ -6,7 +6,7 @@ import { get_health_panel } from './get-health-panel.js';
 import { get_folderization_snapshot } from './get-folderization-snapshot.js';
 import { get_system_inventory_report } from './get-system-inventory.js';
 import { get_trust_investigation_report } from './get-trust-investigation-report.js';
-import { get_canonical_promotion_report } from './get-canonical-promotion-report.js';
+import { get_canonical_promotion_report } from './get-canonical-promotion/index.js';
 import { restart_server } from './restart-server.js';
 import { detect_performance_hotspots } from './detect-performance-hotspots.js';
 import { execute_sql } from './execute-sql.js';
