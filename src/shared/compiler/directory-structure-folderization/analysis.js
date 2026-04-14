@@ -296,17 +296,21 @@ function scoreCandidateGroup(group, importerIndex, options = {}) {
   const internalImportEdges = enrichedMembers.reduce((sum, member) => sum + member.internalImportCount, 0);
   const externalImportEdges = enrichedMembers.reduce((sum, member) => sum + member.externalImportCount, 0);
   const exportingMembers = enrichedMembers.filter((member) => member.exportCount > 0).length;
-  const barrelPresenceScore = barrelFile ? 20 : 0;
-  const sizeScore = Math.min(35, enrichedMembers.length * 6);
+  
+  // IMPROVED: Better scoring formula for folderization confidence
+  // Previous formula was too harsh on small families with external deps
+  const sizeScore = Math.min(40, enrichedMembers.length * 8); // Increased from 6 to 8 per member
   const internalDensity = enrichedMembers.length > 1
     ? internalImportEdges / (enrichedMembers.length * (enrichedMembers.length - 1))
     : 0;
-  const densityScore = Math.round(internalDensity * 35);
-  const exportScore = Math.round((exportingMembers / Math.max(enrichedMembers.length, 1)) * 15);
-  const externalPenalty = Math.round(Math.min(15, externalImportEdges * 1.5));
+  const densityScore = Math.round(internalDensity * 30); // Reduced from 35 to balance
+  const exportScore = Math.round((exportingMembers / Math.max(enrichedMembers.length, 1)) * 20); // Increased from 15
+  const barrelPresenceScore = barrelFile ? 20 : 0;
+  // REDUCED external penalty: 1.0 per edge instead of 1.5 (safer for families with 3-5 deps)
+  const externalPenalty = Math.round(Math.min(12, externalImportEdges * 1.0));
   const namingPressure = Math.min(
-    20,
-    Math.max(0, Math.round(enrichedMembers.length * 3 + (familyEvolution?.folderFileCount || 0) * 2))
+    25,
+    Math.max(0, Math.round(enrichedMembers.length * 4 + (familyEvolution?.folderFileCount || 0) * 2))
   );
   const confidence = Math.max(
     0,
