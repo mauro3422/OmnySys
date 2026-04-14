@@ -193,6 +193,42 @@ export function calculateConfidence({
   return Math.max(0, 20 - (normalizationSafetyLevel === 'missing' ? 10 : 0));
 }
 
+/**
+ * IMPROVED: Calculate confidence for 'blocked' state families.
+ * Previously these were stuck at 10-20 confidence, making them impossible to folderize.
+ * Now we allow blocked families with strong metadata signals to proceed.
+ */
+export function calculateConfidenceForBlocked({
+  normalizationSafetyLevel,
+  fileCohesion = 0,
+  namingPatternConsistency = 0,
+  importDensity = 0,
+  sharedPrefixStrength = 0,
+  externalDependencyCount = 0
+} = {}) {
+  // Base confidence for blocked state
+  let confidence = 35;
+
+  // Add metadata bonuses
+  const metadataBonus = Math.min(20,
+    (fileCohesion * 0.4) +
+    (namingPatternConsistency * 0.3) +
+    (importDensity * 0.2) +
+    (sharedPrefixStrength * 0.1)
+  );
+  confidence += metadataBonus;
+
+  // Reduced penalty for external dependencies
+  const externalDependencyPenalty = Math.min(10, externalDependencyCount * 1.5);
+  confidence -= externalDependencyPenalty;
+
+  // Penalty for risky normalization
+  confidence -= (normalizationSafetyLevel === 'risky' ? 10 : 0);
+  confidence -= (normalizationSafetyLevel === 'missing' ? 5 : 0);
+
+  return Math.max(20, Math.min(75, confidence));
+}
+
 export function buildAutomationReason({
   automationState,
   decision,

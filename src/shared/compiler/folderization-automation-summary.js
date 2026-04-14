@@ -4,6 +4,7 @@ import {
   normalizeInventorySystems,
   buildPropagationAdoptionSummary,
   calculateConfidence,
+  calculateConfidenceForBlocked,
   buildAutomationReason,
   buildExecutionTarget
 } from './folderization-automation-utils.js';
@@ -42,19 +43,28 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
       : normalizationAction === 'execute' && propagationMode === 'move_and_rewrite' && normalizationSafetyLevel === 'safe' && propagationAdoption.adoptionState === 'ready'
         ? 'ready'
         : 'review';
-  const confidence = calculateConfidence({
-    automationState,
-    normalizationSafetyLevel,
-    policyCoverageState,
-    promotionState,
-    connectedSystemCount: connectedSystems.length,
-    // Nuevas señales de metadata del report
-    fileCohesion: folderizationReport.cohesion?.score || 0,
-    namingPatternConsistency: folderizationReport.namingPattern?.consistency || 0,
-    importDensity: folderizationReport.importAnalysis?.density || 0,
-    sharedPrefixStrength: folderizationReport.prefixAnalysis?.strength || 0,
-    externalDependencyCount: folderizationReport.dependencyAnalysis?.externalCount || 0
-  });
+  const confidence = automationState === 'blocked'
+    ? calculateConfidenceForBlocked({
+        normalizationSafetyLevel,
+        fileCohesion: folderizationReport.cohesion?.score || 0,
+        namingPatternConsistency: folderizationReport.namingPattern?.consistency || 0,
+        importDensity: folderizationReport.importAnalysis?.density || 0,
+        sharedPrefixStrength: folderizationReport.prefixAnalysis?.strength || 0,
+        externalDependencyCount: folderizationReport.dependencyAnalysis?.externalCount || 0
+      })
+    : calculateConfidence({
+        automationState,
+        normalizationSafetyLevel,
+        policyCoverageState,
+        promotionState,
+        connectedSystemCount: connectedSystems.length,
+        // Nuevas señales de metadata del report
+        fileCohesion: folderizationReport.cohesion?.score || 0,
+        namingPatternConsistency: folderizationReport.namingPattern?.consistency || 0,
+        importDensity: folderizationReport.importAnalysis?.density || 0,
+        sharedPrefixStrength: folderizationReport.prefixAnalysis?.strength || 0,
+        externalDependencyCount: folderizationReport.dependencyAnalysis?.externalCount || 0
+      });
   const riskScore = Math.max(0, 100 - confidence + (normalizationSafetyLevel === 'risky' ? 10 : 0));
   const shouldExecute = automationState === 'ready';
   const executionTarget = buildExecutionTarget({
