@@ -446,10 +446,32 @@ async function runDeferredGuards({ focusPlan, projectPath, moveContext, allTarge
   logger.info(`[DEFERRED GUARDS] Running semantic guards for ${allTargets.length} target files...`);
 
   const results = [];
+  
+  // Build guard context with all required functions
   const guardContext = {
     rootPath: projectPath,
     ...moveContext,
-    deferGuards: false // Ensure guards actually run this time
+    deferGuards: false,
+    // CRITICAL FIX: Add getAtomsForFile function that governance guards expect
+    async getAtomsForFile(filePath) {
+      try {
+        const { getRepository } = await import('#layer-c/storage/repository/index.js');
+        const repo = getRepository(projectPath);
+        if (!repo?.db) return [];
+        
+        const normalizedPath = filePath.replace(/\\/g, '/');
+        return repo.db.prepare(`
+          SELECT id, name, type as atom_type, file_path, line_start, line_end,
+                 complexity, lines_of_code, is_exported, is_async, dna_json
+          FROM atoms
+          WHERE file_path = ? AND (is_removed IS NULL OR is_removed = 0)
+          ORDER BY line_start
+        `).all(normalizedPath) || [];
+      } catch (error) {
+        logger.warn(`[DEFERRED GUARDS] getAtomsForFile failed for ${filePath}: ${error.message}`);
+        return [];
+      }
+    }
   };
 
   // Run guards against each final target file

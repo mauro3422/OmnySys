@@ -49,20 +49,23 @@ export function loadStructuralDuplicateRows(repo, candidateDnas, normalizedFileP
     }
 
     const placeholders = candidateDnas.map(() => '?').join(',');
-    
+
     // Build WHERE clause without leading "WHERE " and with proper AND indentation
-    const whereClause = buildDuplicateWhereSql({
+    let whereClause = buildDuplicateWhereSql({
         alias: 'a',
         requireValidDna: false
-    }).replace(/^WHERE /i, '').replace(/\n\s*AND\s*/g, '\n                AND ');
-    
+    }).replace(/^WHERE /i, '').replace(/\n\s*AND\s*/g, '\n                AND ').trim();
+
+    // CRITICAL FIX: If whereClause is empty, don't add trailing AND
+    const andClause = whereClause ? `AND ${whereClause}` : '';
+
     return repo.db.prepare(`
         SELECT a.name, a.file_path, a.dna_json, a.line_start,
                ${duplicateKeySql} AS duplicate_key
         FROM atoms a
         WHERE (${duplicateKeySql}) IN (${placeholders})
             AND a.file_path != ?
-            AND ${whereClause}
+            ${andClause}
         ORDER BY a.dna_json, a.file_path
     `).all(...candidateDnas, normalizedFilePath);
 }

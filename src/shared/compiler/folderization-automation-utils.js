@@ -170,21 +170,24 @@ export function calculateConfidence({
 
   if (automationState === 'review') {
     // Base más alta si hay evidencia fuerte de metadata
-    const metadataBonus = Math.min(15, 
-      (fileCohesion * 0.3) + 
-      (namingPatternConsistency * 0.3) + 
-      (importDensity * 0.2) + 
+    const metadataBonus = Math.min(15,
+      (fileCohesion * 0.3) +
+      (namingPatternConsistency * 0.3) +
+      (importDensity * 0.2) +
       (sharedPrefixStrength * 0.2)
     );
-    
-    const externalDependencyPenalty = Math.min(10, externalDependencyCount * 2);
-    
-    let confidence = 58 + metadataBonus - externalDependencyPenalty;
-    confidence -= (normalizationSafetyLevel === 'risky' ? 10 : 0);
-    confidence -= (policyCoverageState === 'stale' ? 3 : 0); // Reducido de 5 a 3
-    confidence -= (promotionState === 'watching' ? 3 : 0); // Reducido de 5 a 3
-    
-    return Math.max(25, Math.min(85, confidence));
+
+    // IMPROVED: Reduced external dependency penalty from 2 per dep to 1 per dep
+    // This allows families with 3-5 dependents to still be folderized safely
+    // since the import rewriting handles them correctly
+    const externalDependencyPenalty = Math.min(8, externalDependencyCount * 1);
+
+    let confidence = 62 + metadataBonus - externalDependencyPenalty;
+    confidence -= (normalizationSafetyLevel === 'risky' ? 8 : 0);
+    confidence -= (policyCoverageState === 'stale' ? 2 : 0); // Reduced from 3 to 2
+    confidence -= (promotionState === 'watching' ? 2 : 0); // Reduced from 3 to 2
+
+    return Math.max(30, Math.min(90, confidence));
   }
 
   return Math.max(0, 20 - (normalizationSafetyLevel === 'missing' ? 10 : 0));
