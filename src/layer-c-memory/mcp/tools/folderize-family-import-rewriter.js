@@ -19,80 +19,86 @@ function buildMoveMap(projectPath, moveTargets = []) {
 
     const fromPath = normalizeComparablePath(path.resolve(projectPath, target.from));
     const toPath = path.resolve(projectPath, target.to);
+    
+    // Store multiple keys for flexible matching:
+    // 1. Full resolved path
+    // 2. Path without extension (for extensionless imports)
+    // 3. Relative path from project root
     moveMap.set(fromPath, toPath);
+    
+    const fromWithoutExt = fromPath.replace(/\.js$/, '');
+    if (fromWithoutExt !== fromPath) {
+      moveMap.set(fromWithoutExt, toPath);
+    }
+    
+    const fromRelative = target.from.replace(/\\/g, '/');
+    if (!moveMap.has(fromRelative)) {
+      moveMap.set(fromRelative, toPath);
+    }
   }
 
   return moveMap;
 }
 
 /**
- * Build a moveMap by scanning ACTUAL files on disk after the move.
- * This handles cases where the MoveOrchestrator renamed files differently
- * than the plan predicted (e.g., stripped family prefixes).
+ * Normalize import source path for comparison.
+ * FIXED: Handle TypeScript (.ts/.tsx) and extensionless imports
  */
-async function buildActualMoveMap(projectPath, moveTargets = []) {
-  const moveMap = new Map();
-
-  // Group targets by destination directory
-  const dirGroups = new Map();
-  for (const target of moveTargets) {
-    if (!target?.from || !target?.to) continue;
-    const toDir = path.dirname(path.resolve(projectPath, target.to));
-    if (!dirGroups.has(toDir)) dirGroups.set(toDir, []);
-    dirGroups.get(toDir).push(target);
-  }
-
-  // For each destination directory, scan actual files
-  for (const [toDir, targets] of dirGroups) {
-    try {
-      const entries = await fs.readdir(toDir, { withFileTypes: true });
-      const actualFiles = entries
-        .filter(e => e.isFile() && e.name.endsWith('.js'))
-        .map(e => path.resolve(toDir, e.name));
-
-      for (const target of targets) {
-        const fromPath = normalizeComparablePath(path.resolve(projectPath, target.from));
-        const fromBasename = path.basename(target.from).replace(/\.js$/, '');
-        const toPath = path.resolve(projectPath, target.to);
-
-        // Try to find the actual file on disk that corresponds to this target
-        // Match by basename similarity (stripped prefix)
-        let bestMatch = null;
-        let bestScore = 0;
-
-        for (const actualFile of actualFiles) {
-          const actualBasename = path.basename(actualFile).replace(/\.js$/, '');
-          // Score: how many tokens from the original basename are in the actual name
-          const tokens = new Set(fromBasename.split(/[-_.]/));
-          const actualTokens = new Set(actualBasename.split(/[-_.]/));
-          let matchCount = 0;
-          for (const t of tokens) {
-            if (actualTokens.has(t)) matchCount++;
-          }
-          const score = matchCount / Math.max(tokens.size, 1);
-          if (score > bestScore) {
-            bestScore = score;
-            bestMatch = actualFile;
-          }
-        }
-
-        if (bestMatch && bestScore >= 0.5) {
-          moveMap.set(fromPath, bestMatch);
-        } else {
-          // Fallback to plan target
-          moveMap.set(fromPath, toPath);
-        }
-      }
-    } catch {
-      // If directory doesn't exist yet, use plan targets
-      for (const target of targets) {
-        const fromPath = normalizeComparablePath(path.resolve(projectPath, target.from));
-        moveMap.set(fromPath, path.resolve(projectPath, target.to));
-      }
+function normalizeImportSourceForComparison(source) {
+  // Normalize path separators
+  let normalized = source.replace(/\\/g, '/');
+  
+  // Add .js extension if missing and not an alias or node_modules
+  if (!normalized.match(/\.(js|ts|tsx|mjs|cjs)$/)) {
+    // Don't add extension to aliases like #layer-a/... or node_modules
+    if (!normalized.startsWith('#') && !normalized.startsWith('node:')) {
+      normalized = normalized + '.js';
     }
   }
+  
+  return normalized;
+}
 
-  return moveMap;
+/**
+ * Resolve aliased imports (#layer-a/...) to absolute paths.
+ * Uses DB metadata to resolve the actual file paths.
+ */
+async function resolveAliasImport(aliasImport, projectPath, repo) {
+  if (!aliasImport.startsWith('#')) {
+    return null;
+  }
+
+  // Remove the alias prefix
+  const relativePath = aliasImport.replace(/^#layer-a\//, '');
+  
+  if (!repo?.db) {
+    return null;
+  }
+
+  try {
+    // Try to find the file in the atoms table
+    const row = repo.db.prepare(`
+      SELECT path FROM files 
+      WHERE path LIKE ? AND is_removed = 0 
+      LIMIT 1
+    `).get(`%${relativePath.replace(/\.js$/, '')}%`);
+    
+    return row ? row.path : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a file exists at the given path.
+ */
+async function fileExists(path) {
+  try {
+    await fs.access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function collectRewriteTargets(moveTargets = [], impactedFiles = []) {

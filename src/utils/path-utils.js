@@ -1,5 +1,6 @@
 
 import path from 'path';
+import fs from 'fs';
 
 /**
  * Calcula el path relativo para un import tras un movimiento
@@ -22,11 +23,30 @@ export function calculateRelativeImport(callerPath, targetPath, projectPath = '.
         relative = './' + relative;
     }
 
-    // Check if original targetPath had extension
-    // We try to be conservative. If it's a .js file, we can optionally strip it
-    // if the project style prefers it. Based on observation, OmnySys uses .js.
-
     return relative;
+}
+
+/**
+ * Try to resolve an import with different extensions (.js, .ts, .tsx, or none).
+ * FIXED: Handle TypeScript and extensionless imports
+ */
+function tryResolveWithExtensions(resolvedPath) {
+    // If file exists as-is, return it
+    if (fs.existsSync(resolvedPath)) {
+        return resolvedPath;
+    }
+    
+    // Try adding extensions
+    const extensions = ['.js', '.ts', '.tsx', '.mjs', '.cjs', '.jsx'];
+    
+    for (const ext of extensions) {
+        const withExt = resolvedPath + ext;
+        if (fs.existsSync(withExt)) {
+            return withExt;
+        }
+    }
+    
+    return resolvedPath; // Return original even if not found
 }
 
 /**
@@ -56,13 +76,17 @@ export function normalizeImportToAbsolute(importSource, currentFile, projectPath
         for (const [alias, realPath] of Object.entries(aliasMap)) {
             if (importSource.startsWith(alias)) {
                 const relativePart = importSource.slice(alias.length + 1);
-                return path.resolve(projectPath, realPath, relativePart);
+                const resolved = path.resolve(projectPath, realPath, relativePart);
+                // FIXED: Try to resolve with different extensions
+                return tryResolveWithExtensions(resolved);
             }
         }
     }
 
     if (importSource.startsWith('.')) {
-        return path.resolve(path.dirname(path.resolve(projectPath, currentFile)), importSource);
+        const resolved = path.resolve(path.dirname(path.resolve(projectPath, currentFile)), importSource);
+        // FIXED: Try to resolve with different extensions
+        return tryResolveWithExtensions(resolved);
     }
 
     return importSource; // node_module or absolute

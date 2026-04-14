@@ -24,17 +24,40 @@ export function extractImportsFromCode(code) {
 /**
  * Extrae importaciones y re-exportaciones de módulos desde un string de código.
  * Se usa para mover/renombrar archivos que también están referenciados por barrels.
+ * 
+ * FIXED: Now handles:
+ * - Dynamic imports: import('./foo.js')
+ * - TypeScript: .ts/.tsx extensions
+ * - Extensionless imports: import('./foo')
+ * - Aliased imports: import('#layer-a/foo')
+ * - Mixed quotes and whitespace
  */
 export function extractModuleDependencySourcesFromCode(code) {
-  const sources = new Set(extractImportsFromCode(code));
-  const exportRegex = /export\s+(?:\*|\{[\s\S]*?\})\s+from\s+['"]([^'"]+)['"]/g;
+  const sources = new Set();
+  
+  // Static imports: import { foo } from '...' or import foo from '...' or import '...'
+  // FIXED: Handle .ts, .tsx, .js, or no extension
+  const importRegex = /import\s+(?:{[^}]+}|[^'"]+)?\s*from\s+['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]/g;
   let match;
+  while ((match = importRegex.exec(code)) !== null) {
+    const source = match[1] || match[2];
+    if (source) sources.add(source);
+  }
 
+  // Re-exports: export * from '...' or export { foo } from '...'
+  // FIXED: Also match TypeScript re-exports
+  const exportRegex = /export\s+(?:\*|\{[\s\S]*?\})\s+from\s+['"]([^'"]+)['"]/g;
   while ((match = exportRegex.exec(code)) !== null) {
     const source = match[1];
-    if (source) {
-      sources.add(source);
-    }
+    if (source) sources.add(source);
+  }
+
+  // Dynamic imports: import('./foo.js') or import("./bar.ts")
+  // NEW: Detect dynamic imports that need rewriting
+  const dynamicImportRegex = /import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+  while ((match = dynamicImportRegex.exec(code)) !== null) {
+    const source = match[1];
+    if (source) sources.add(source);
   }
 
   return Array.from(sources);

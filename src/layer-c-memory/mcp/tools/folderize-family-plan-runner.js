@@ -1,4 +1,5 @@
 import path from 'path';
+import fs from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
 import { runAsyncBoundary } from '../../../shared/compiler/index.js';
 import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
@@ -7,6 +8,7 @@ import { withMutationBatch } from '../core/shared/mutation-batch.js';
 import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
 import { buildFolderizedFamilyGroups, buildFolderizedFamilySuggestion } from '../../../shared/compiler/index.js';
 import { rewriteFolderizedFamilyImports } from './folderize-family-import-rewriter.js';
+import { extractModuleDependencySourcesFromCode } from './atomic-edit/exports.js';
 import { runFileWatcherSemanticGuards } from '../../../core/file-watcher/analyze-flow.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family:runner');
@@ -22,6 +24,135 @@ function sortMoveTargets(moveTargets = [], barrelPath = null) {
 
     return a.from.localeCompare(b.from);
   });
+}
+
+/**
+ * Detect potential circular imports BEFORE folderization.
+ * Returns warnings if moving files would create import cycles.
+ */
+async function detectCircularImportRisks(moveTargets, projectPath, repo) {
+  const risks = [];
+  
+  if (!repo?.db) return risks;
+  
+  // Build a map of old path → new path
+  const pathMapping = new Map();
+  for (const target of moveTargets) {
+    pathMapping.set(target.from, target.to);
+  }
+  
+  // For each moved file, check if it imports other moved files
+  for (const target of moveTargets) {
+    try {
+      const fullPath = path.resolve(projectPath, target.to);
+      const code = await fs.readFile(fullPath, 'utf8');
+      const imports = extractModuleDependencySourcesFromCode(code);
+      
+      for (const imp of imports) {
+        // Check if this import points to another moved file
+        const impResolved = path.resolve(path.dirname(fullPath), imp).replace(/\\/g, '/');
+        const projectNormalized = path.resolve(projectPath).replace(/\\/g, '/');
+        const impRelative = impResolved.replace(projectNormalized + '/', '').replace(/\\/g, '/');
+        
+        // Check if this matches another moved file
+        for (const [oldPath, newPath] of pathMapping) {
+          if (newPath === impRelative || impResolved.includes(path.basename(newPath, '.js'))) {
+            // Check for cycle: does the target also import back to this file?
+            const targetFullPath = path.resolve(projectPath, newPath);
+            try {
+              const targetCode = await fs.readFile(targetFullPath, 'utf8');
+              const targetImports = extractModuleDependencySourcesFromCode(targetCode);
+              
+              for (const targetImp of targetImports) {
+                if (targetImp.includes(path.basename(target.to, '.js'))) {
+                  risks.push({
+                    type: 'circular',
+                    fileA: target.to,
+                    fileB: newPath,
+                    severity: 'medium',
+                    message: `Circular import risk: ${path.basename(target.to)} ↔ ${path.basename(newPath)}`
+                  });
+                }
+              }
+            } catch {
+              // File might not exist yet
+            }
+          }
+        }
+      }
+    } catch {
+      // File might not exist yet
+    }
+  }
+  
+  return risks;
+}
+
+/**
+ * Rewrite barrel file atomically: read all, rewrite all, write once.
+ * This prevents partial writes that can corrupt the barrel.
+ */
+async function atomicBarrelRewrite(barrelPath, projectPath, moveTargets) {
+  const absPath = path.resolve(projectPath, barrelPath);
+  
+  try {
+    let code = await fs.readFile(absPath, 'utf8');
+    let modified = false;
+    const rewrites = [];
+    
+    // Build old → new mapping for all moved files
+    const oldToNewMap = new Map();
+    for (const target of moveTargets) {
+      const oldBasename = path.basename(target.from, '.js');
+      const newBasename = path.basename(target.to, '.js');
+      oldToNewMap.set(oldBasename, newBasename);
+    }
+    
+    // Process each line
+    const lines = code.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check if line is an export/import from a moved file
+      for (const [oldName, newName] of oldToNewMap) {
+        if (line.includes(oldName) && (line.includes('from') || line.includes('export'))) {
+          lines[i] = line.replace(new RegExp(oldName, 'g'), newName);
+          modified = true;
+          rewrites.push({
+            line: i + 1,
+            from: oldName,
+            to: newName,
+            lineContent: lines[i]
+          });
+        }
+      }
+    }
+    
+    if (modified) {
+      // Write ALL changes at once - atomic
+      await fs.writeFile(absPath, lines.join('\n'), 'utf8');
+      return {
+        success: true,
+        path: barrelPath,
+        rewrites,
+        atomic: true
+      };
+    }
+    
+    return {
+      success: true,
+      path: barrelPath,
+      rewrites: [],
+      atomic: true
+    };
+  } catch (error) {
+    return {
+      success: false,
+      path: barrelPath,
+      error: error.message,
+      atomic: true
+    };
+  }
 }
 
 export function buildFolderizationMoveSnapshot(focusPlan) {
@@ -330,6 +461,17 @@ export async function executeFolderizationPlan({ focusPlan, projectPath, context
       const moveTargets = sortMoveTargets(focusPlan.moveTargets, focusPlan.candidate?.barrelFile || null);
       const renameTargets = sortMoveTargets(buildAutoRenameTargets(moveTargets), null);
 
+      // NEW: Detect circular import risks BEFORE moving files
+      const circularRisks = await detectCircularImportRisks(
+        [...moveTargets, ...renameTargets], 
+        projectPath, 
+        context?.orchestrator?.cache?.getRepository?.()
+      );
+      
+      if (circularRisks.length > 0) {
+        logger.warn(`[FOLDERIZE] Circular import risks detected: ${circularRisks.map(r => r.message).join(', ')}`);
+      }
+
       const moveResult = await runFolderizeMoveBatch({
         server,
         focusPlan,
@@ -339,7 +481,11 @@ export async function executeFolderizationPlan({ focusPlan, projectPath, context
       });
 
       if (!moveResult?.success) {
-        return moveResult;
+        return {
+          ...moveResult,
+          circularRisks,
+          warnings: circularRisks.map(r => r.message)
+        };
       }
 
       const renameResult = await runFolderizeRenameBatch({
@@ -351,7 +497,23 @@ export async function executeFolderizationPlan({ focusPlan, projectPath, context
       });
 
       if (renameResult?.success === false) {
-        return renameResult;
+        return {
+          ...renameResult,
+          circularRisks,
+          warnings: circularRisks.map(r => r.message)
+        };
+      }
+
+      // NEW: Atomic barrel rewrite - rewrite ALL barrel imports at once
+      const barrelPath = focusPlan.candidate?.barrelFile;
+      let barrelRewriteResult = null;
+      if (barrelPath) {
+        barrelRewriteResult = await atomicBarrelRewrite(
+          barrelPath, 
+          projectPath, 
+          [...moveTargets, ...renameTargets]
+        );
+        logger.info(`[FOLDERIZE] Atomic barrel rewrite: ${barrelRewriteResult.success ? 'success' : 'failed'} (${barrelRewriteResult.rewrites?.length || 0} rewrites)`);
       }
 
       const rewriteResult = await runFolderizeRewritePhase({
@@ -376,11 +538,19 @@ export async function executeFolderizationPlan({ focusPlan, projectPath, context
         });
         return {
           ...rewriteResult,
+          circularRisks,
+          barrelRewrite: barrelRewriteResult,
+          warnings: circularRisks.map(r => r.message),
           deferredGuards: guardResult
         };
       }
 
-      return rewriteResult;
+      return {
+        ...rewriteResult,
+        circularRisks,
+        barrelRewrite: barrelRewriteResult,
+        warnings: circularRisks.map(r => r.message)
+      };
     } catch (error) {
       throw error;
     }
