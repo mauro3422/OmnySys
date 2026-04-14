@@ -102,6 +102,51 @@ export function generateCreateIndexesSQL(tableName) {
 }
 
 /**
+ * Generates a full schema report
+ */
+export function generateSchemaReport(db) {
+  if (!db?.prepare) return { tables: [], columns: 0, indexes: 0 };
+
+  const tables = getRegisteredTables().map(name => {
+    const def = getTableDefinition(name);
+    const columns = getTableColumns(name, db);
+    return {
+      name,
+      registeredColumns: def?.columns || [],
+      actualColumns: columns,
+      missingColumns: detectMissingColumns(name, columns)
+    };
+  });
+
+  return {
+    tables,
+    tablesCount: tables.length,
+    totalRegisteredColumns: tables.reduce((sum, t) => sum + t.registeredColumns.length, 0),
+    totalActualColumns: tables.reduce((sum, t) => sum + t.actualColumns.length, 0),
+    totalMissingColumns: tables.reduce((sum, t) => sum + t.missingColumns.length, 0)
+  };
+}
+
+/**
+ * Exports full schema as SQL
+ */
+export function exportSchemaSQL(db) {
+  if (!db?.prepare) return '';
+
+  const statements = [];
+
+  for (const tableName of getRegisteredTables()) {
+    const createTable = generateCreateTableSQL(tableName);
+    if (createTable) statements.push(createTable);
+
+    const indexes = generateCreateIndexesSQL(tableName);
+    statements.push(...indexes);
+  }
+
+  return statements.join(';\n\n') + (statements.length > 0 ? ';' : '');
+}
+
+/**
  * Generates column definition SQL (moved from helpers to avoid circular dep)
  */
 export function getColumnDefinitionSQL(col, options = {}) {
@@ -126,5 +171,7 @@ export default {
   generateCreateTableSQL,
   generateCreateIndexesSQL,
   getTableColumns,
-  getColumnDefinitionSQL
+  getColumnDefinitionSQL,
+  generateSchemaReport,
+  exportSchemaSQL
 };
