@@ -278,7 +278,7 @@ async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPa
       movedFiles.push(target.to);
     }
 
-    // BATCH settlement: reindex ALL moved files at once
+    // BATCH settlement: reindex ALL moved files at once AND update files table
     if (movedFiles.length > 0) {
       logger.info(`[Tool] folderize batch reindex: ${movedFiles.length} files`);
       try {
@@ -290,6 +290,31 @@ async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPa
         logger.info(`[Tool] folderize batch reindex complete: ${movedFiles.length} files`);
       } catch (error) {
         logger.warn(`[Tool] folderize batch reindex failed: ${error.message}, continuing`);
+      }
+
+      // CRITICAL FIX: Update files table to reflect moved files
+      // This prevents false positive "HAS_ISSUES" in validation caused by stale DB cache
+      try {
+        const { getRepository } = await import('#layer-c/storage/repository/index.js');
+        const repo = getRepository(projectPath);
+        if (repo?.db) {
+          // Mark old paths as removed
+          const oldPaths = moveTargets.map(t => t.from);
+          for (const oldPath of oldPaths) {
+            repo.db.prepare(`UPDATE files SET is_removed = 1 WHERE path = ? AND is_removed = 0`).run(oldPath);
+          }
+          // Insert new paths
+          const insertStmt = repo.db.prepare(`
+            INSERT OR IGNORE INTO files (path, is_removed, last_analysis_at)
+            VALUES (?, 0, datetime('now'))
+          `);
+          for (const newPath of movedFiles) {
+            insertStmt.run(newPath);
+          }
+          logger.info(`[Tool] folderize files table updated: ${oldPaths.length} old paths removed, ${movedFiles.length} new paths added`);
+        }
+      } catch (error) {
+        logger.warn(`[Tool] folderize files table update failed: ${error.message}, continuing`);
       }
     }
 
