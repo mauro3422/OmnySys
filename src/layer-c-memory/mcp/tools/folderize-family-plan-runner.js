@@ -111,13 +111,22 @@ async function runFolderizeMoveBatch({ server, focusPlan, moveTargets, projectPa
     // This avoids N sequential reindex operations (each ~5-10s).
     const movedFiles = [];
 
+    // CRITICAL: Set skipSelfRewrite=true for ALL moves in folderization.
+    // The MoveOrchestrator's self-rewrite only knows about the single file being moved,
+    // not about other files moving to the same folder. This causes it to generate
+    // incorrect imports like './schema-registry-helpers.js' → './helpers.js' when
+    // it should be './schema-registry-helpers.js' → './helpers.js' (via intra-family rewrite).
+    // We rely on rewriteIntraFamilyImports in the rewrite phase to handle this correctly.
+    const enhancedMoveContext = {
+      ...moveContext,
+      skipSelfRewrite: true,  // Always skip self-rewrite in folderization
+      skipSettlement: true,
+      deferGuards: true
+    };
+
     for (const target of moveTargets) {
       logger.info(`[Tool] folderize move: ${target.from} -> ${target.to}`);
-      const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, {
-        ...moveContext,
-        skipSettlement: true,  // Don't reindex after each move
-        deferGuards: true      // Defer guards to end of batch
-      });
+      const moveResult = await MoveOrchestrator.moveFile(target.from, target.to, projectPath, enhancedMoveContext);
       results.push({
         from: target.from,
         to: target.to,

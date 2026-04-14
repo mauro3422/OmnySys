@@ -417,6 +417,9 @@ async function rewriteRelativeImportsForNewLocation(filePath, projectPath, moveT
  * Rewrite imports between files that were moved together (intra-family).
  * E.g., if report-core.js imports './technical-debt-report-core-helpers.js'
  * but the file was renamed to 'report-core-helpers.js', fix the import.
+ * 
+ * CRITICAL FIX: Also handles the case where the barrel file (index.js)
+ * imports sibling files that were renamed during folderization.
  */
 async function rewriteIntraFamilyImports(filePath, projectPath, moveTargets, internalRenameMap, context = {}) {
   const absFilePath = path.resolve(projectPath, filePath);
@@ -445,7 +448,10 @@ async function rewriteIntraFamilyImports(filePath, projectPath, moveTargets, int
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     // Match relative imports: from './something.js', '../something.js' or with backslashes
-    const match = line.match(/from\s+['"](\.\.\/[^'"]+|\.\/[^'"]+|\.\\[^'"]+|\.\\.\\[^'"]+)['"]/);
+    // Also match re-exports: export * from './something.js' or export { foo } from './something.js'
+    const importMatch = line.match(/from\s+['"](\.\.\/[^'"]+|\.\/[^'"]+|\.\\[^'"]+|\.\\.\\[^'"]+)['"]/);
+    const exportMatch = !importMatch && line.match(/export\s+(?:\*|\{[^}]*\})\s+from\s+['"](\.\.\/[^'"]+|\.\/[^'"]+|\.\\[^'"]+|\.\\.\\[^'"]+)['"]/);
+    const match = importMatch || exportMatch;
     if (!match) continue;
 
     const importSource = match[1].replace(/\\/g, '/');
