@@ -1,6 +1,6 @@
 import { buildCanonicalPromotionReport, buildCanonicalPromotionSnapshot } from '../../../shared/compiler/index.js';
 import { buildCanonicalPromotionResponse } from './get-canonical-promotion-report-helpers.js';
-import { buildCompilerSnapshotContext } from './compiler-snapshot-service.js';
+import { buildCompilerSnapshotContext } from './compiler-snapshot-service/index.js';
 import { buildFolderizationSnapshotContext } from './folderization-snapshot-service.js';
 
 export async function runCanonicalPromotionReport(args, context) {

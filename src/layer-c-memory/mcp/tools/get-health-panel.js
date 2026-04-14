@@ -6,7 +6,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { buildCompilerSnapshotContext } from './compiler-snapshot-service.js';
+import { buildCompilerSnapshotContext } from './compiler-snapshot-service/index.js';
 
 const logger = createLogger('OmnySys:health-panel');
 

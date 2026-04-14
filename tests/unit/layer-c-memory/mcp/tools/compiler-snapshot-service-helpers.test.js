@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   attachCompilerSnapshotContracts,
   buildCompilerSnapshotResult
-} from '../../../../../src/layer-c-memory/mcp/tools/compiler-snapshot-service-helpers.js';
+} from '../../../../../src/layer-c-memory/mcp/tools/compiler-snapshot-service/helpers.js';
 
 describe('compiler-snapshot-service helpers', () => {
   it('attaches cross-contract references without changing the object shape', () => {

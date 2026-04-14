@@ -11,7 +11,7 @@ import {
   buildPropagationPlan,
   summarizePropagationPlan
 } from '../../../shared/compiler/index.js';
-import { buildCompilerSnapshotContext } from './compiler-snapshot-service.js';
+import { buildCompilerSnapshotContext } from './compiler-snapshot-service/index.js';
 
 const logger = createLogger('OmnySys:health-snapshot');
 

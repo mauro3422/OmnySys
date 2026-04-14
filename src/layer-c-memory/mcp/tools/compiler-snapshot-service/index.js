@@ -6,16 +6,16 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { compactRecentNotifications } from '../core/notifications.js';
-import { loadNotifications } from './status-notifications.js';
-import { loadCompilerExplainability } from '../../../shared/compiler/index.js';
+import { compactRecentNotifications } from '../../core/notifications.js';
+import { loadNotifications } from '../status-notifications.js';
+import { loadCompilerExplainability } from '../../../../shared/compiler/index.js';
 import {
   buildInventoryAndPromotion,
   buildNotificationsWithAlerts,
   buildEnrichedSnapshot,
   buildDashboardAndContracts,
   buildCompilerSnapshotResult
-} from './compiler-snapshot-assembly.js';
+} from '../compiler-snapshot-assembly.js';
 
 export async function buildCompilerSnapshotContext(args = {}, context = {}, overrides = {}) {
   const projectPath = context?.projectPath || null;

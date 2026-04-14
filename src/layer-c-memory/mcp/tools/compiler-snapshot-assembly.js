@@ -26,7 +26,7 @@ import { buildRecentErrorsResponse } from './status-notifications.js';
 import {
   attachCompilerSnapshotContracts,
   buildCompilerSnapshotResult
-} from './compiler-snapshot-service-helpers.js';
+} from './compiler-snapshot-service/helpers.js';
 
 /**
  * Builds inventory and promotion detail, enriching compilerExplainability.
