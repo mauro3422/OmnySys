@@ -8,21 +8,21 @@
  */
 
 import { createLogger } from '../../utils/logger.js';
-import { getRepository } from '#layer-c/storage/repository/index.js';
+import { getRepository } from '../../../layer-c-memory/storage/repository/index.js';
 import {
     checkAtomMetadataCompleteness,
     checkDatabaseHealth,
     checkCalledByResolution,
     checkRelationConsistency,
     checkScanToAtomCoverage
-} from './pipeline-integrity-detector/data-checks.js';
+} from './data-checks.js';
 import {
     checkGuardExecution,
     checkIssuePersistence,
     checkMcpDataAccess,
     checkOrphanedData,
     reconcileLiveRows
-} from './pipeline-integrity-detector/runtime-checks.js';
+} from './runtime-checks.js';
 
 const logger = createLogger('OmnySys:PipelineIntegrityDetector');
 

@@ -5,7 +5,7 @@ import {
     countOrphanedWatcherIssues,
     getWatcherLifecycleDistribution,
     loadRecentWatcherIssues
-} from '../pipeline-integrity-detector-helpers.js';
+} from './index.js';
 import { executeLiveRowCleanup } from '#shared/compiler/index.js';
 import { createLogger } from '../../../utils/logger.js';
 

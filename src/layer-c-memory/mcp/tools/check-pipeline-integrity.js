@@ -7,7 +7,7 @@
  * @module mcp/tools/check-pipeline-integrity
  */
 
-import { PipelineIntegrityDetector } from '../../../core/meta-detector/pipeline-integrity-detector.js';
+import { PipelineIntegrityDetector } from '../../../core/meta-detector/pipeline-integrity-detector/detector.js';
 import { IntegrityDashboard } from '../../../core/meta-detector/integrity-dashboard.js';
 import { createLogger } from '../../utils/logger.js';
 import {

@@ -11,7 +11,7 @@ import {
   countOrphanedWatcherIssues,
   getWatcherLifecycleDistribution,
   loadRecentWatcherIssues
-} from '../../../core/meta-detector/pipeline-integrity-detector-helpers.js';
+} from '../../../core/meta-detector/pipeline-integrity-detector/index.js';
 
 export function collectIssueMetrics(db, options = {}) {
   if (!db) {

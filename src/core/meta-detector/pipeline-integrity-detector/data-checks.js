@@ -3,7 +3,7 @@ import {
     checkRelationSample,
     loadRelationSample,
     sumMissingOptionalFields
-} from '../pipeline-integrity-detector-helpers.js';
+} from './index.js';
 import { getDatabaseHealthSummary, getFileUniverseGranularity, getLiveFileTotal } from '#shared/compiler/index.js';
 import { ensureLiveRowSync } from '#shared/compiler/live-row-reconciliation.js';
 import { createLogger } from '../../../utils/logger.js';

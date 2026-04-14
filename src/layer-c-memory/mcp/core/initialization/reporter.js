@@ -7,7 +7,7 @@
  * @module mcp/core/initialization/dashboard-reporter
  */
 
-import { PipelineIntegrityDetector } from '../../../../core/meta-detector/pipeline-integrity-detector.js';
+import { PipelineIntegrityDetector } from '../../../../core/meta-detector/pipeline-integrity-detector/detector.js';
 import { IntegrityDashboard } from '../../../../core/meta-detector/integrity-dashboard.js';
 import { createLogger } from '../../../../utils/logger.js';
 import { getRepository } from '../../../storage/repository/index.js';
