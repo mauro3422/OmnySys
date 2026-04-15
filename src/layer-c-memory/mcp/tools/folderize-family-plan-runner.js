@@ -1,12 +1,17 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { createLogger } from '../../../utils/logger.js';
-import { runAsyncBoundary } from '../../../shared/compiler/index.js';
-import { normalizeSnapshotPath } from '../../../shared/compiler/index.js';
+import {
+  runAsyncBoundary,
+  normalizeSnapshotPath,
+  buildFolderizedFamilyGroups,
+  buildFolderizedFamilySuggestion,
+  detectSemanticPurityConformanceFromSource,
+  summarizeCompilerExplainability
+} from '../../../shared/compiler/index.js';
 import { MoveOrchestrator } from '../core/shared/move-orchestrator/orchestrator.js';
 import { withMutationBatch } from '../core/shared/mutation-batch.js';
 import { settleMutationFiles } from '../core/shared/mutation-settlement.js';
-import { buildFolderizedFamilyGroups, buildFolderizedFamilySuggestion } from '../../../shared/compiler/index.js';
 import { rewriteFolderizedFamilyImports } from './folderize-family-import-rewriter.js';
 import { extractModuleDependencySourcesFromCode } from './atomic-edit/exports.js';
 import { runFileWatcherSemanticGuards } from '../../../core/file-watcher/analyze-flow.js';

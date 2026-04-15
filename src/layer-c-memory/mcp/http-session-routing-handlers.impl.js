@@ -13,7 +13,8 @@ import {
 } from './transport-provenance.js';
 import {
   buildMcpRequestDeliveryTelemetry,
-  persistMcpRequestDeliveryTelemetry
+  persistMcpRequestDeliveryTelemetry,
+  buildRestartLifecycleGuidance
 } from '../../shared/compiler/index.js';
 
 const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);

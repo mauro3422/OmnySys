@@ -16,7 +16,7 @@ import {
   normalizeTransportOrigin,
   buildTransportHandshakeSignature
 } from '../transport-provenance.js';
-import { persistMcpTopologyTelemetry } from '../../../shared/compiler/index.js';
+import { persistMcpTopologyTelemetry } from '#shared/compiler/index.js';
 
 const logger = createLogger('OmnySys:mcp:session-manager');
 
@@ -68,18 +68,6 @@ function canUseSessionDb(manager) {
 
 function normalizeSessionIdentityValue(value) {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function persistTopologyEvent(event = null) {
-  if (!connectionManager.db || !event) {
-    return null;
-  }
-
-  try {
-    return persistMcpTopologyTelemetry(connectionManager.db, event);
-  } catch {
-    return null;
-  }
 }
 
 export function getSessionPersistenceState() {
@@ -248,42 +236,50 @@ export function reconcileActiveSessions(options = {}) {
       logger.info(`[DEDUP] Reconciled ${repairedClients.length} client bucket(s) and removed ${removedSessions} duplicate session row(s)${reasonSuffix}`);
 
       for (const repairedClient of repairedClients) {
-        persistTopologyEvent({
-          projectPath: process.cwd(),
-          captureSource: 'session.manager',
-          snapshotKind: 'session',
-          eventType: 'session_reconciled',
-          component: 'session',
-          state: 'watchful',
-          severity: 'medium',
-          clientId: repairedClient.clientId,
-          sessionId: repairedClient.keepSessionId,
-          previousSessionId: null,
-          reason: `Reconciled ${repairedClient.totalSessions} session(s) for ${repairedClient.clientId}.`,
-          recommendation: 'Keep the active bucket on one session per client route to reduce churn.',
-          metadataJson: JSON.stringify(repairedClient)
-        });
+        try {
+          persistMcpTopologyTelemetry(connectionManager.db, {
+            projectPath: process.cwd(),
+            captureSource: 'session.manager',
+            snapshotKind: 'session',
+            eventType: 'session_reconciled',
+            component: 'session',
+            state: 'watchful',
+            severity: 'medium',
+            clientId: repairedClient.clientId,
+            sessionId: repairedClient.keepSessionId,
+            previousSessionId: null,
+            reason: `Reconciled ${repairedClient.totalSessions} session(s) for ${repairedClient.clientId}.`,
+            recommendation: 'Keep the active bucket on one session per client route to reduce churn.',
+            metadataJson: JSON.stringify(repairedClient)
+          });
+        } catch {
+          // Topology telemetry failure should not block session reconciliation
+        }
       }
 
       // Emit session churn event when multiple clients are affected
       if (repairedClients.length >= 2) {
-        persistTopologyEvent({
-          projectPath: process.cwd(),
-          captureSource: 'session.manager',
-          snapshotKind: 'session',
-          eventType: 'session_churn_excessive',
-          component: 'session',
-          state: 'blocked',
-          severity: 'high',
-          clientId: repairedClients.map(c => c.clientId).join(', '),
-          reason: `Session churn affected ${repairedClients.length} client(s) with ${removedSessions} duplicate(s) removed.`,
-          recommendation: 'Reduce reconnect churn and keep one active session per client route whenever possible.',
-          metadataJson: JSON.stringify({
-            repairedClients: repairedClients.length,
-            removedSessions,
-            reason: options.reason || 'auto-heal'
-          })
-        });
+        try {
+          persistMcpTopologyTelemetry(connectionManager.db, {
+            projectPath: process.cwd(),
+            captureSource: 'session.manager',
+            snapshotKind: 'session',
+            eventType: 'session_churn_excessive',
+            component: 'session',
+            state: 'blocked',
+            severity: 'high',
+            clientId: repairedClients.map(c => c.clientId).join(', '),
+            reason: `Session churn affected ${repairedClients.length} client(s) with ${removedSessions} duplicate(s) removed.`,
+            recommendation: 'Reduce reconnect churn and keep one active session per client route whenever possible.',
+            metadataJson: JSON.stringify({
+              repairedClients: repairedClients.length,
+              removedSessions,
+              reason: options.reason || 'auto-heal'
+            })
+          });
+        } catch {
+          // Topology telemetry failure should not block session reconciliation
+        }
       }
     }
 
@@ -455,31 +451,35 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
         this.deleteSession(sessionId);
         this.deduplicateSessions(clientId, existingSession.id);
 
-        persistTopologyEvent({
-          projectPath: process.cwd(),
-          captureSource: 'session.manager',
-          snapshotKind: 'session',
-          eventType: 'session_reused',
-          component: 'session',
-          state: 'fresh',
-          severity: 'low',
-          clientId,
-          clientRouteId: transportClientRouteId,
-          clientName: transportClientName,
-          sessionId: existingSession.id,
-          previousSessionId: sessionId,
-          transportOrigin: sessionMetadata.transport_origin,
-          transportOriginSource: sessionMetadata.transport_origin_source,
-          transportRequestPhase,
-          reason: `Reused existing session ${existingSession.id} instead of proposed ${sessionId}.`,
-          recommendation: 'Keep the client route identity stable so bridge reconnects do not look like new sessions.',
-          metadataJson: JSON.stringify({
-            forceFreshSession,
-            reusedSource: 'existing',
-            proposedSessionId: sessionId,
-            lineageUpdated: true
-          })
-        });
+        try {
+          persistMcpTopologyTelemetry(connectionManager.db, {
+            projectPath: process.cwd(),
+            captureSource: 'session.manager',
+            snapshotKind: 'session',
+            eventType: 'session_reused',
+            component: 'session',
+            state: 'fresh',
+            severity: 'low',
+            clientId,
+            clientRouteId: transportClientRouteId,
+            clientName: transportClientName,
+            sessionId: existingSession.id,
+            previousSessionId: sessionId,
+            transportOrigin: sessionMetadata.transport_origin,
+            transportOriginSource: sessionMetadata.transport_origin_source,
+            transportRequestPhase,
+            reason: `Reused existing session ${existingSession.id} instead of proposed ${sessionId}.`,
+            recommendation: 'Keep the client route identity stable so bridge reconnects do not look like new sessions.',
+            metadataJson: JSON.stringify({
+              forceFreshSession,
+              reusedSource: 'existing',
+              proposedSessionId: sessionId,
+              lineageUpdated: true
+            })
+          });
+        } catch {
+          // Topology telemetry failure should not block session reuse
+        }
 
         return existingSession.id;
       }
@@ -533,33 +533,37 @@ export function saveSession(sessionId, clientInfo = {}, metadata = {}) {
     }
 
     if (!existing || existing.id !== sessionId) {
-      persistTopologyEvent({
-        projectPath: process.cwd(),
-        captureSource: 'session.manager',
-        snapshotKind: 'session',
-        eventType: 'session_created',
-        component: 'session',
-        state: forceFreshSession ? 'fresh' : 'watchful',
-        severity: forceFreshSession ? 'low' : 'medium',
-        clientId,
-        clientRouteId: transportClientRouteId,
-        clientName: transportClientName,
-        sessionId,
-        previousSessionId: null,
-        transportOrigin: sessionMetadata.transport_origin,
-        transportOriginSource: sessionMetadata.transport_origin_source,
-        transportRequestPhase,
-        reason: `Saved session ${sessionId} for ${clientId}.`,
-        recommendation: forceFreshSession
-          ? 'Keep the recovery session fresh and avoid reusing stale handshake state.'
-          : 'Keep the active session warm and maintain a stable transport origin.',
-        metadataJson: JSON.stringify({
-          forceFreshSession,
-          transportSessionHeaderPresent,
-          transportHandshakeSignature: sessionMetadata.transport_handshake_signature,
-          transportRouteOriginHint
-        })
-      });
+      try {
+        persistMcpTopologyTelemetry(connectionManager.db, {
+          projectPath: process.cwd(),
+          captureSource: 'session.manager',
+          snapshotKind: 'session',
+          eventType: 'session_created',
+          component: 'session',
+          state: forceFreshSession ? 'fresh' : 'watchful',
+          severity: forceFreshSession ? 'low' : 'medium',
+          clientId,
+          clientRouteId: transportClientRouteId,
+          clientName: transportClientName,
+          sessionId,
+          previousSessionId: null,
+          transportOrigin: sessionMetadata.transport_origin,
+          transportOriginSource: sessionMetadata.transport_origin_source,
+          transportRequestPhase,
+          reason: `Saved session ${sessionId} for ${clientId}.`,
+          recommendation: forceFreshSession
+            ? 'Keep the recovery session fresh and avoid reusing stale handshake state.'
+            : 'Keep the active session warm and maintain a stable transport origin.',
+          metadataJson: JSON.stringify({
+            forceFreshSession,
+            transportSessionHeaderPresent,
+            transportHandshakeSignature: sessionMetadata.transport_handshake_signature,
+            transportRouteOriginHint
+          })
+        });
+      } catch {
+        // Topology telemetry failure should not block session save
+      }
     }
 
     logger.debug(`[DEDUP] Saved session ${sessionId} for ${clientId}`);

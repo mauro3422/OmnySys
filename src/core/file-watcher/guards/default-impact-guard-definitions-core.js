@@ -1,5 +1,16 @@
 import { defineGuard, defineVersionedLazyGuard, loadGuardMember } from './guard-definition-factory.js';
 
+function runAsyncBoundary(fn) {
+  return async (...args) => {
+    try {
+      return await fn(...args);
+    } catch (error) {
+      console.error(`[impact-guard] Error in guard execution:`, error?.message || error);
+      return [];
+    }
+  };
+}
+
 export const impactGuardDefinitionsCore = [
   defineGuard(
     'impact-wave',
@@ -8,10 +19,10 @@ export const impactGuardDefinitionsCore = [
         () => import('./impact-wave/index.js'),
         (mod) => mod.detectImpactWave
       );
-      return async (rootPath, filePath, context, options) => {
+      return runAsyncBoundary(async (rootPath, filePath, context, options) => {
         const previousAtoms = options.previousAtoms || [];
         return detectImpactWave(rootPath, filePath, previousAtoms, context, async (fp) => context.getAtomsForFile(fp), options);
-      };
+      });
     },
     { domain: 'arch', version: '2.0.0', description: 'Analyzes blast radius of changes (impact wave)' }
   ),
@@ -22,7 +33,7 @@ export const impactGuardDefinitionsCore = [
         () => import('./duplicate-risk/detection.js'),
         (m) => m.runStructuralDuplicateDetection
       );
-      return async (rootPath, filePath, context, options = {}) => {
+      return runAsyncBoundary(async (rootPath, filePath, context, options = {}) => {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
         const repo = getRepository(rootPath);
         if (!repo?.db) {
@@ -37,7 +48,7 @@ export const impactGuardDefinitionsCore = [
           duplicateMode: 'structural',
           duplicateKeySql: options.duplicateKeySql || null
         });
-      };
+      });
     },
     { domain: 'code', version: '2.0.0', description: 'Detects duplicate symbols by DNA hash' }
   ),
@@ -48,10 +59,10 @@ export const impactGuardDefinitionsCore = [
         () => import('./circular-guard/index.js'),
         (mod) => mod.detectCircularDependencies
       );
-      return async (rootPath, filePath) => {
+      return runAsyncBoundary(async (rootPath, filePath) => {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
         return detectCircularDependencies(rootPath, filePath, getRepository(rootPath));
-      };
+      });
     },
     { domain: 'arch', version: '2.0.0', description: 'Detects circular import and call dependencies' }
   )
