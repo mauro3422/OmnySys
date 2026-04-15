@@ -19,6 +19,17 @@ export {
 } from './analysis.js';
 
 export {
+  FOLDERIZATION_SUFFIXES,
+  normalizeFileName,
+  buildFamilyKey,
+  isAlreadyFolderized,
+  indexFolderizationRows,
+  getDependencyTargets,
+  toComparableStamp,
+  buildCandidateContext
+} from './utils.js';
+
+export {
   buildFolderizationMigrationPlanFromRows,
   buildFolderizationMigrationPlanFromRepo
 } from '../directory-structure-folderization-migration.js';

@@ -14,11 +14,11 @@ import {
   compactCanonicalPromotion,
   compactExplainabilityWatcherSummary,
   compactPolicyCoverage
-} from './compiler-explainability-summary-helpers.js';
-import { compactCompilerContractLayer } from './compiler-explainability-contract-layer.js';
-import { compactPolicySummary } from './compiler-explainability-policy.js';
-import { compactStandardization } from './compiler-explainability-standardization.js';
-import { summarizePropagationLedger } from './propagation-ledger.js';
+} from './index.js';
+import { compactCompilerContractLayer } from '../compiler-explainability-contract-layer.js';
+import { compactPolicySummary } from './policy.js';
+import { compactStandardization } from '../compiler-explainability-standardization.js';
+import { summarizePropagationLedger } from '../propagation-ledger.js';
 
 export function summarizeCompilerExplainability(explainability) {
   if (!explainability || typeof explainability !== 'object') return null;

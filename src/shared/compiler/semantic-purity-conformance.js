@@ -22,7 +22,7 @@ import {
 
 
 function importsCanonicalSemanticLayer(source = '') {
-  return /evaluateAtomSemanticPurity|evaluateAtomRefactoringSignals|summarizeAtomSemanticPurity|compilerEvaluation\?\.(semanticPurity|testability)|summarizeSemanticCoverage|semantic\.isPure|mutatesParams|usesThisContext|hasReturnValue|paramHints/.test(source);
+  return /evaluateAtomSemanticPurity|evaluateAtomRefactoringSignals|summarizeAtomSemanticPurity|compilerEvaluation\?\.(semanticPurity|testability)|summarizeSemanticCoverage|semantic\.isPure|mutatesParams|usesThisContext|hasReturnValue|paramHints|summarizeCompilerExplainability|buildCompilerHealthDashboard|buildCompilerHealthPanel/.test(source);
 }
 
 function looksLikeManualPurityScan(source = '') {

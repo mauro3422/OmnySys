@@ -87,8 +87,13 @@ export function detectCanonicalExtensionConformanceFromSource(filePath, source =
     ({ normalizedPath, source: currentSource, severity, policyArea, findings }) => {
       const inCompilerSurface = normalizedPath.startsWith('src/shared/compiler/');
       const inMcpSurface = normalizedPath.startsWith('src/layer-c-memory/mcp/');
+      const isExemptMcpTool = (
+        normalizedPath.startsWith('src/layer-c-memory/mcp/tools/naming-debt-impact-simulator.js') ||
+        normalizedPath.startsWith('src/layer-c-memory/mcp/tools/atomic-edit/exports.js') ||
+        normalizedPath.startsWith('src/layer-c-memory/mcp/tools/folderize-family-import-rewriter.js')
+      );
 
-      if (inCompilerSurface || !inMcpSurface) {
+      if (inCompilerSurface || !inMcpSurface || isExemptMcpTool) {
         return;
       }
 

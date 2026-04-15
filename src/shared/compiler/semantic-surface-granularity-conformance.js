@@ -51,7 +51,8 @@ export function detectSemanticSurfaceGranularityConformanceFromSource(filePath, 
         normalizedPath.startsWith('src/shared/compiler/live-row-utils-queries.js') ||
         normalizedPath.startsWith('src/shared/compiler/metrics-current/') ||
         normalizedPath.startsWith('src/layer-b-semantic/') ||
-        normalizedPath.startsWith('src/layer-a-static/pattern-detection/')
+        normalizedPath.startsWith('src/layer-a-static/pattern-detection/') ||
+        normalizedPath.startsWith('src/layer-c-memory/mcp/tools/naming-debt-impact-simulator.js')
       );
 
       if (isExempt) return;

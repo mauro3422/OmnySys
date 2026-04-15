@@ -14,7 +14,7 @@ import {
   takeSample
 } from './index.js';
 import { summarizeCompilerMetricsSnapshot as compactCompilerMetricsSnapshotSummary } from '../snapshot.js';
-import { summarizeCompilerExplainability as compactCompilerExplainabilitySummary } from '../compiler-explainability-summary.js';
+import { summarizeCompilerExplainability as compactCompilerExplainabilitySummary } from '../explainability/summary.js';
 import { buildSystemTableSummary } from '../status-system-table.js';
 import { buildUpdateSurfaceSummary } from '../update-surface-summary.js';
 import { buildCachePolicySummary } from '../cache-policy-summary.js';

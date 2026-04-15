@@ -1,77 +1,16 @@
 import { getRecommendation } from '../recommendations/RecommendationEngine.js';
 import { loadFolderizationRows, normalizeFolderizationPath } from '../directory-structure-folderization-data.js';
 import { buildFamilyStateReport, buildFolderizationCandidateReport, summarizeFamilyEvolution } from './helpers.js';
-
-const FOLDERIZATION_SUFFIXES = new Set([
-  'analysis',
-  'atom',
-  'atoms',
-  'builder',
-  'builders',
-  'churn',
-  'context',
-  'contract',
-  'contracts',
-  'count',
-  'counts',
-  'core',
-  'cycles',
-  'dataflow',
-  'detection',
-  'detect',
-  'event',
-  'events',
-  'evidence',
-  'execution',
-  'finding',
-  'findings',
-  'filters',
-  'graph',
-  'growth',
-  'helper',
-  'helpers',
-  'history',
-  'issue',
-  'issues',
-  'lifecycle',
-  'list',
-  'lists',
-  'models',
-  'orphan',
-  'orphanage',
-  'orphans',
-  'payload',
-  'persistence',
-  'policy',
-  'query',
-  'report',
-  'reporting',
-  'reports',
-  'result',
-  'results',
-  'reuse',
-  'scan',
-  'safety',
-  'score',
-  'scores',
-  'severity',
-  'shape',
-  'skip',
-  'slow',
-  'snapshot',
-  'state',
-  'stats',
-  'summary',
-  'summaries',
-  'validation',
-  'violations'
-]);
-
-function normalizeFileName(filePath = '') {
-  const normalized = normalizeFolderizationPath(filePath);
-  const baseName = normalized.split('/').pop() || '';
-  return baseName.replace(/\.js$/i, '');
-}
+import {
+  FOLDERIZATION_SUFFIXES,
+  normalizeFileName,
+  buildFamilyKey,
+  isAlreadyFolderized,
+  indexFolderizationRows,
+  getDependencyTargets,
+  toComparableStamp,
+  buildCandidateContext
+} from './utils.js';
 
 export function deriveFlatFamilyRoot(filePath = '') {
   const baseName = normalizeFileName(filePath);
@@ -89,52 +28,6 @@ export function deriveFlatFamilyRoot(filePath = '') {
   }
 
   return segments.join('-');
-}
-
-function buildFamilyKey(directory, familyRoot) {
-  return `${directory}::${familyRoot}`;
-}
-
-function isAlreadyFolderized(directory = '', familyRoot = '') {
-  const normalizedDirectory = normalizeFolderizationPath(directory);
-  const directoryBasename = normalizedDirectory.split('/').pop() || '';
-  return Boolean(normalizedDirectory) && directoryBasename === familyRoot;
-}
-
-function indexFolderizationRows(rows = []) {
-  const pathIndex = new Map();
-
-  for (const row of rows) {
-    pathIndex.set(row.path, row);
-  }
-
-  return pathIndex;
-}
-
-function getDependencyTargets(row = {}) {
-  if (Array.isArray(row?.dependencyTargets)) {
-    return row.dependencyTargets;
-  }
-
-  const combined = [
-    ...(Array.isArray(row?.importTargets) ? row.importTargets : []),
-    ...(Array.isArray(row?.exportTargets) ? row.exportTargets : [])
-  ];
-
-  return Array.from(new Set(combined.filter(Boolean)));
-}
-
-function toComparableStamp(value) {
-  if (value == null || value === '') {
-    return null;
-  }
-
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value;
-  }
-
-  const parsed = Date.parse(value);
-  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function buildFamilyStateIndex(rows = []) {
@@ -229,16 +122,6 @@ function buildBarrelCandidate(members, groupSet, importerIndex) {
 
   scored.sort((a, b) => b.score - a.score || b.exportCount - a.exportCount || a.path.localeCompare(b.path));
   return scored[0] || null;
-}
-
-function buildCandidateContext(candidate) {
-  return {
-    familyRoot: candidate.familyRoot,
-    directory: candidate.directory,
-    fileCount: candidate.fileCount,
-    barrelFile: candidate.barrelFile?.path || null,
-    confidence: candidate.confidence
-  };
 }
 
 export function findFolderizationCandidateForPaths(candidates = [], filePaths = []) {

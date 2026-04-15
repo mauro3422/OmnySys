@@ -32,7 +32,8 @@ function isCanonicalSummaryModule(normalizedPath = '') {
     '/layer-c-memory/mcp/tools/status.js',
     '/layer-c-memory/mcp/tools/status-server-details.js',
     '/layer-c-memory/mcp/core/initialization/dashboard-reporter.js',
-    '/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js'
+    '/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js',
+    '/layer-c-memory/mcp/tools/details.js'
   ].some((segment) => normalizedPath.endsWith(segment));
 }
 

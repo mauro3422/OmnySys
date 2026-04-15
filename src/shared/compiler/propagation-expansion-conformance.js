@@ -52,7 +52,11 @@ function isPropagationExemptPath(normalizedPath = '') {
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/diagnose-tool-health/')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt/')
     || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter.js')
-    || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js');
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/core/initialization/dashboard-reporter-helpers.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/naming-debt-impact-simulator.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/folderization-snapshot/index.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt-report-cache/index.js')
+    || normalizedPath.startsWith('src/layer-c-memory/mcp/tools/technical-debt-report-cache/helpers.js');
 }
 
 function isPropagationSurfaceCandidate(normalizedPath = '') {

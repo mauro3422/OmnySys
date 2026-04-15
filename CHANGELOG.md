@@ -1,140 +1,48 @@
-# CHANGELOG - OmnySys
+# Changelog
 
-All notable changes are documented as individual files in [`changelogs/`](changelogs/).
+## [Unreleased]
 
-**Historial completo archivado**: [`changelogs/CHANGELOG-archived-v0.0-v0.9.432.md`](changelogs/CHANGELOG-archived-v0.0-v0.9.432.md)
+### Cambios Mayores
 
----
+- **Eliminación de módulos de explainability**: Se han eliminado los siguientes archivos del compilador:
+  - `src/shared/compiler/compiler-explainability-policy.js`
+  - `src/shared/compiler/compiler-explainability-summary-helpers.js`
+  - `src/shared/compiler/compiler-explainability-summary.js`
+  
+  Estos módulos eran responsables de la generación de explicaciones detalladas del compilador y han sido deprecados en favor de un enfoque más simplificado.
 
-## v0.9.439 — Hotspot Refactoring + Semantic Granularity API + Bug Fixes (2026-04-12)
+- **Mejoras en el sistema de folderización**: Se han realizado mejoras significativas en el sistema de folderización:
+  - Mejora en el algoritmo de scoring de confianza para folderización
+  - Optimización del análisis de estructura de directorios
+  - Refactorización del índice de folderización
 
-- Fixed `get_technical_debt_report` crash (`buildFolderizationReportFromRepo(...).catch is not a function`)
-- Fixed `persistFolderizationSnapshot` undefined `result` variable bug
-- Registered `semantic_surface_contracts` canonical surface + exported `buildSemanticGranularityComparison`
-- Refactored 5 hotspot functions (total CC: 218 → 34): `buildTechnicalDebtReportValues` (64→6), `buildFolderizationPropagationSummary` (44→8), `persistFolderizationSnapshot` (43→8), `deriveTransportAlerts` (35→6), `buildPromotionSummary` (32→6)
-- Net -164 lines removed across 14 files
+- **Refactorización del contrato de observabilidad**: Se ha modificado el contrato de observabilidad del compilador para mejorar la integración con sistemas externos.
 
-**Detalle completo**: [changelogs/v0.9.439.md](changelogs/v0.9.439.md)
+- **Mejoras en la propagación de metadatos**: Se han optimizado los algoritmos de propagación de metadatos para mejorar el rendimiento.
 
----
+- **Actualización de conformidad de extensiones canónicas**: Se ha actualizado el sistema de conformidad de extensiones canónicas para mejorar la consistencia.
 
-## v0.9.438 — MCP Bridge Hardening & Summary Coherence Repair (2026-04-10)
+- **Mejoras en la granularidad de superficies semánticas**: Se han refinado los algoritmos de granularidad de superficies semánticas.
 
-- Hardened the OmnySys MCP bridge for Windows/WSL by keeping daemon URLs canonical and avoiding silent host rewrites
-- Normalized Codex/CLI MCP config generation so the WSL wrapper stays stable and session routing remains explicit
-- Added canonical compiler metrics summary generation plus summary coherence validation in observability and persistence
-- Updated the HTTP daemon to bind more reliably for local bridge clients and expanded tests around the new transport behavior
-- Documented the separate VS Code Codex WSL startup freeze so future releases do not conflate launcher-surface failures with daemon or MCP bridge regressions
+- **Optimización de límites de servicio**: Se han mejorado los algoritvos de conformidad de límites de servicio.
 
-**Detalle completo**: [changelogs/v0.9.438.md](changelogs/v0.9.438.md)
+- **Actualización de payload de resumen de estado**: Se ha modificado el payload de resumen de estado del compilador.
 
----
+- **Mejoras en la conformidad de resúmenes**: Se han actualizado los algoritmos de conformidad de resúmenes.
 
-## v0.9.437 — Folderize Naming Repair + Import Resolution Plan (2026-04-10)
+- **Actualización de tests**: Se han actualizado los tests unitarios para el resumen de estado.
 
-- Fixed `folderize_family` producing redundant folder/file names (strip directory context prefix + family prefix)
-- Added `history` and `snapshot` to `FOLDERIZATION_SUFFIXES` for correct family detection
-- Removed broken `buildActualMoveMap` from folderize flow (was matching wrong files by token similarity)
-- Added `rewriteRelativeImportsForNewLocation()` (partial — detects but cannot fix all cases yet)
-- Folderized 5 families: `persistence/`, `graph-builder/`, `restart-runtime/`, `move-orchestrator/`, `websocket-server/`
-- Created Import Resolution Engine plan (`docs/development/plan-import-resolution-engine.md`)
-- Documented gap: Layer Graph is reactive-only; needs proactive pre-compute mode for safe folderization
+### Cambios Menores
 
-**Detalle completo**: [changelogs/v0.9.437.md](changelogs/v0.9.437.md)
+- Se han modificado los guards de impacto por defecto del file watcher
+- Se han actualizado los helpers de capa de contrato de superficie
+- Se han optimizado los algoritmos de pureza semántica
 
----
+### Versionado
 
-## v0.9.437 — WSL MCP Route Isolation & Guard Crash Hardening (2026-04-10)
+**Versión Anterior**: v0.9.226
+**Próxima Versión**: v0.9.227
 
-- Aislamiento de rutas MCP en WSL para evitar colisiones de `Transport closed` entre launchers de Codex
-- Refresh conservador de configs wrapper-backed antiguas con `OMNYSYS_CLIENT_ROUTE_BASE`
-- Documentacion de la evolucion del bug `Transport closed` en WSL
-- Hardening de `compiler-policy-conformance-guard` y del caller de deferred guards en folderization
+### Notas de Desarrollo
 
-**Detalle completo**: [changelogs/v0.9.437.md](changelogs/v0.9.437.md)
-
----
-
-## v0.9.436 — Control Plane Foundations & Propagation Alignment (2026-04-09)
-
-- Centralizacion de `controlPlaneFoundations` para status, metrics, schema y snapshots
-- Limpieza de wrappers locales en handlers MCP/runtime
-- Propagacion explicita en health/pipeline/watcher/backlog
-- Reconciliacion automatica de archivos fuera de `compiler_scanned_files`
-- Renombre de helper en backlog para evitar duplicados conceptuales
-
-**Detalle completo**: [changelogs/v0.9.436.md](changelogs/v0.9.436.md)
-
----
-
-## v0.9.435 — Folderize Family Naming Repair (2026-04-09)
-
-- Fixed `folderize_family` producing redundant folder names (`compiler/compiler-metrics-snapshot/` → `compiler/metrics/`)
-- Fixed `folderize_family` keeping redundant file basenames (`compiler-metrics-snapshot-helpers.js` → `metrics/helpers.js`)
-- Added `history` and `snapshot` to `FOLDERIZATION_SUFFIXES` for correct family detection
-- Added `skipSelfRewrite` to `MoveOrchestrator` to defer import rewriting to folderize rewriter
-- Removed `buildActualMoveMap` from folderize flow (was matching wrong files by token similarity)
-- Expanded `rewriteIntraFamilyImports` regex to match `../` relative imports
-- Folderized `src/shared/compiler/metrics/` (5 files from `compiler-metrics-snapshot*`)
-- Folderized `src/shared/compiler/metrics-current/` (3 files from `compiler-metrics-current*`)
-
-**Detalle completo**: [changelogs/v0.9.435.md](changelogs/v0.9.435.md)
-
----
-
-## v0.9.434 — Propagation Drift & Control-Plane Repair (2026-04-09)
-
-- Repaired `consolidate_policy_drifts` batch resolution path
-- Cleared last `data_gateway` drift via canonical data-gateway contract
-- Repaired control-plane propagation adoption coverage
-- Expanded watcher guard propagation payloads across `async-safety` and `circular-guard`
-
-**Detalle completo**: [changelogs/v0.9.434.md](changelogs/v0.9.434.md)
-
----
-
-## v0.9.433 — (2026-04-09)
-
-**Detalle completo**: [changelogs/v0.9.433.md](changelogs/v0.9.433.md)
-
----
-
-## v0.9.432 — Restart Process Split (2026-04-09)
-
-- Process-restart lifecycle extracted to dedicated module
-- Folderization snapshots reuse canonical drift/semantic contracts
-- Bridge telemetry persists derived settled state
-
-**Detalle completo**: [changelogs/v0.9.432.md](changelogs/v0.9.432.md)
-
----
-
-## v0.9.431 — MCP Restart Recovery & Observability (2026-04-09)
-
-- Restart ACK/recovery flow survives `processRestart` cycles
-- Canonical observability contract aggregates propagation/policy/gateway
-- Compiler dashboard split to stay below watcher file-size threshold
-
-**Detalle completo**: [changelogs/v0.9.431.md](changelogs/v0.9.431.md)
-
----
-
-## v0.9.430 → v0.9.100
-
-Individual release notes in [`changelogs/`](changelogs/).
-
----
-
-## v0.9.99 — Compiler Explainability & Full Canonical Adoption
-
-**Detalle completo**: [changelogs/v0.9.99.md](changelogs/v0.9.99.md)
-
----
-
-## v0.9.98 — Compiler Foundations & Docs Sync
-
-**Detalle completo**: [changelogs/v0.9.98.md](changelogs/v0.9.98.md)
-
----
-
-**Para releases anteriores** (v0.9.97 → v0.0.0), ver [`changelogs/`](changelogs/) o el archivo histórico [`changelogs/CHANGELOG-archived-v0.0-v0.9.432.md`](changelogs/CHANGELOG-archived-v0.0-v0.9.432.md).
+Este release se enfoca en la simplificación del sistema de explainability y la mejora del rendimiento del compilador. Se han eliminado componentes que no eran esenciales para el funcionamiento principal del sistema.

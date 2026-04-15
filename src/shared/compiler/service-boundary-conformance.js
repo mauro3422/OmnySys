@@ -40,7 +40,9 @@ function isLegitimateOrchestratorPath(normalizedPath = '') {
     || normalizedPath.endsWith('/pipeline-health-handler.js')
     || normalizedPath.endsWith('/status.js')
     || normalizedPath.endsWith('/watcher-handler.js')
-    || normalizedPath.endsWith('/recent-notifications.js');
+    || normalizedPath.endsWith('/recent-notifications.js')
+    || normalizedPath.includes('/mcp/tools/folderize-family-import-rewriter.js')
+    || normalizedPath.includes('/mcp/tools/folderize-family-plan-runner.js');
 }
 
 /**

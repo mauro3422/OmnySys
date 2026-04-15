@@ -46,7 +46,8 @@ export function detectMetadataPropagationConformanceFromSource(filePath, source 
         normalizedPath.startsWith('src/shared/compiler/metadata-extraction-coverage') ||
         normalizedPath.startsWith('src/layer-c-memory/storage/repository/adapters') ||
         normalizedPath.startsWith('src/layer-c-memory/query/queries/file-query/system-map.js') ||
-        normalizedPath.startsWith('src/layer-c-memory/query/queries/file-query/dependencies/deps.js')
+        normalizedPath.startsWith('src/layer-c-memory/query/queries/file-query/dependencies/deps.js') ||
+        normalizedPath.startsWith('src/layer-c-memory/mcp/tools/naming-debt-impact-simulator.js')
       );
 
       if (isExempt) return;

@@ -19,6 +19,8 @@ import {
   isWatchingState,
   normalizeState
 } from './signal-state-helpers.js';
+import { summarizeReadinessState } from './readiness-state-helpers.js';
+import { buildInventoryState } from './inventory-state-helpers.js';
 
 function firstDefined(...values) {
   for (const value of values) {
@@ -373,72 +375,6 @@ function summarizeMetricsState(metricsSnapshot = null, healthDashboard = null) {
   };
 }
 
-function summarizeReadinessState(healthPanel = null, healthDashboard = null) {
-  const now = healthPanel?.now || healthDashboard?.health || {};
-  const trend = healthPanel?.trend || healthDashboard?.trend || {};
-  const summaryText = healthPanel?.summary || healthDashboard?.summary || null;
-  const readinessReason = firstDefined(now.readinessReason, now.summaryText, healthDashboard?.health?.readinessReason, null);
-  const behaviorState = normalizeState(now.behaviorState, 'missing');
-  const trendStatus = normalizeState(trend.status, 'missing');
-  const mvpReady = now.mvpReady === true;
-  const settlingReason = [summaryText, trend.summary, readinessReason].find((text) => typeof text === 'string' && /settling|baseline/i.test(text));
-
-  if (mvpReady && trendStatus !== 'settling' && behaviorState !== 'blocked') {
-    return {
-      state: 'ready',
-      healthy: true,
-      trustworthy: true,
-      reason: readinessReason || 'The control plane is ready.',
-      recommendation: 'Keep tracking the readiness baseline for regressions.',
-      sourceOfTruth: 'health dashboard'
-    };
-  }
-
-  if (trendStatus === 'settling' || settlingReason) {
-    return {
-      state: 'settling',
-      healthy: true,
-      trustworthy: true,
-      reason: readinessReason || settlingReason || trend.summary || 'Bootstrap trend is still settling.',
-      recommendation: 'Wait for the bootstrap baseline to mature before treating readiness as final.',
-      sourceOfTruth: 'health dashboard'
-    };
-  }
-
-  if (behaviorState === 'blocked') {
-    return {
-      state: 'blocked',
-      healthy: false,
-      trustworthy: false,
-      reason: readinessReason || summaryText || 'The control plane is blocked.',
-      recommendation: 'Inspect the blockers in the health dashboard before trusting readiness.',
-      sourceOfTruth: 'health dashboard'
-    };
-  }
-
-  if (behaviorState === 'watchful' || trendStatus === 'watchful') {
-    return {
-      state: 'watching',
-      healthy: true,
-      trustworthy: true,
-      reason: readinessReason || trend.summary || 'The control plane is watchful.',
-      recommendation: 'Keep observing the current baseline until the control plane is fully mature.',
-      sourceOfTruth: 'health dashboard'
-    };
-  }
-
-  return {
-    state: mvpReady ? 'watching' : 'missing',
-    healthy: mvpReady === true,
-    trustworthy: mvpReady === true,
-    reason: readinessReason || summaryText || 'Readiness information is incomplete.',
-    recommendation: mvpReady
-      ? 'Keep observing the current baseline.'
-      : 'Review the health dashboard before trusting readiness.',
-    sourceOfTruth: 'health dashboard'
-  };
-}
-
 function buildObservabilitySignals({
   policy,
   propagation,
@@ -591,33 +527,7 @@ export function buildCompilerObservabilityContract({
   const metrics = summarizeMetricsState(metricsSnapshot, healthDashboard);
   const readiness = summarizeReadinessState(healthPanel, healthDashboard);
   const telemetry = compactTelemetryState(startupTelemetry, proxyRuntimeTelemetry, bridgeRuntimeTelemetry);
-  const inventoryState = normalizeState(inventoryCompact.inventoryState, 'missing');
-  const inventoryIssueCount = normalizeCount(inventoryCompact.policyDriftCount)
-    + normalizeCount(inventoryCompact.missingCanonicalApiCount)
-    + normalizeCount(inventoryCompact.missingCanonicalSurfaceCount)
-    + normalizeCount(inventoryCompact.standardizationGapCount);
-
-  const inventory = {
-    state: inventoryIssueCount > 0
-      ? (inventoryIssueCount >= 5 ? 'blocked' : inventoryIssueCount >= 3 ? 'stale' : 'watching')
-      : 'fresh',
-    healthy: inventoryIssueCount < 3,
-    trustworthy: inventoryIssueCount < 3,
-    reason: inventoryIssueCount > 0
-      ? 'Inventory is missing canonical surfaces or still carries policy drift.'
-      : inventoryCompact.nextAction || 'Canonical inventory surfaces are aligned.',
-    recommendation: inventoryCompact.nextAction
-      || 'Keep adopting the existing canonical families consistently.',
-    sourceOfTruth: 'system inventory',
-    inventoryState,
-    inventoryIssueCount,
-    policyCoverageState: inventoryCompact.policyCoverageState || policy.state || null,
-    policyCoverageScore: inventoryCompact.policyCoverageScore || 0,
-    integrationCoveragePct: inventoryCompact.integrationCoveragePct || 0,
-    metadataCoveragePct: inventoryCompact.metadataCoveragePct || 0,
-    historyStoreState: inventoryCompact.historyStoreState || null,
-    historyStoreCount: inventoryCompact.historyStoreCount || 0
-  };
+  const inventory = buildInventoryState(inventoryCompact);
 
   const signals = buildObservabilitySignals({
     policy,

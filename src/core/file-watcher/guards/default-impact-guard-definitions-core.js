@@ -20,7 +20,7 @@ export const impactGuardDefinitionsCore = [
     async () => {
       const mod = await loadGuardMember(
         () => import('./duplicate-risk/detection.js'),
-        (m) => m
+        (m) => m.runStructuralDuplicateDetection
       );
       return async (rootPath, filePath, context, options = {}) => {
         const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -28,7 +28,7 @@ export const impactGuardDefinitionsCore = [
         if (!repo?.db) {
           return [];
         }
-        return mod.runStructuralDuplicateDetection({
+        return mod({
           repo,
           normalizedFilePath: filePath,
           providedAtoms: options.previousAtoms || null,
