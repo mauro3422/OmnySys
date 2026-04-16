@@ -185,7 +185,153 @@ Structure:
 ```js
 {
   logs: [],           // Logger logs
-  watcherAlerts: [],  // File watcher alerts
-  summary: { errors: N, warnings: N, total: N }
+  watcherAlerts: [],  // File watcher alerts - code quality issues detected by the system
+  summary: { errors: N, warnings: N, total: N },
+  watcherSummary: { totalAlerts, bySeverity, byType },
+  compilerDiagnostics: { total, bySignal },
+  provenance: { source, transportOrigin, freshness... }
 }
 ```
+
+### Watcher Alert Types
+
+| Type | Severity | Description |
+|------|----------|-------------|
+| `arch_impact_high` | HIGH | Impact wave detected - changing this may break callers |
+| `code_duplicate_unified_critical_high` | CRITICAL | Same symbols have both structural AND conceptual duplicates |
+| `code_duplicate_unified_high` | HIGH | Structural duplicates detected - use atomic_edit instead of copying |
+| `code_duplicate_unified_medium` | MEDIUM | Conceptual duplicates - consider consolidating to SSOT |
+| `code_conceptual_duplicate_medium` | MEDIUM | Semantic duplicates (same purpose, different implementation) |
+| `arch_policy_drift_medium` | MEDIUM | Violations of canonical contracts |
+| `code_file_size_medium` | MEDIUM | File is too large (>300 lines) |
+| `code_function_length_medium` | MEDIUM | Function exceeds complexity threshold |
+| `arch_impact_low` | LOW | Minor impact wave detected |
+
+### How to Respond to Alerts
+
+1. **Duplicates**: Use `consolidate_conceptual_cluster` to merge duplicates toward a Source of Truth
+2. **Impact**: Use `traverse_graph({ traverseType: "impact_map" })` before editing
+3. **Policy Drift**: Use `consolidate_policy_drifts({ execute: false })` to preview repairs
+4. **File Size**: Use `split_large_file({ execute: false })` to preview division
+
+> **IMPORTANT**: Check `_recentErrors` on EVERY tool response. Ignoring alerts leads to technical debt accumulation.
+
+---
+
+## ⚡ Método Principal: Shell Helper (Node.js)
+
+> **IMPORTANTE**: El protocolo MCP de opencode tiene problemas de timeout. SIEMPRE usar el shell helper Node.js como método principal.
+
+### Ubicación
+```
+src/shells/mcp-shell-helper.js
+```
+
+### Uso - SIEMPRE usar node
+
+```bash
+# ⚠️ NUNCA usar las tools MCP directamente de opencode - siempre usar:
+node src/shells/mcp-shell-helper.js <comando> [args...]
+
+# Con argumentos estilo --key value
+node src/shells/mcp-shell-helper.js query_graph --queryType instances --symbolName atomic_edit
+```
+src/shells/mcp-shell-helper.js
+```
+
+### Uso Básico
+
+```bash
+# Inicializar y ejecutar comando directo
+node src/shells/mcp-shell-helper.js <comando> [args...]
+
+# Con argumentos estilo --key value
+node src/shells/mcp-shell-helper.js query_graph --queryType instances --symbolName atomic_edit
+```
+
+### Shortcuts Disponibles
+
+| Comando | Descripción |
+|---------|-------------|
+| `list` | Listar las 47 tools disponibles |
+| `status` | Estado del servidor MCP |
+| `health` | Panel de salud del sistema |
+| `schema` | Schema de atoms (stats) |
+| `debt` | Reporte de deuda técnica |
+| `modules` | Inventario de módulos |
+| `atoms` | Ver schema de átomos |
+| `health` | Panel de salud |
+
+### Ejemplos Completos
+
+```bash
+# Ver estado del servidor
+node src/shells/mcp-shell-helper.js status
+
+# Buscar un símbolo en todo el proyecto
+node src/shells/mcp-shell-helper.js query_graph --queryType instances --symbolName atomic_edit
+
+# Ver impacto de un átomo antes de modificarlo
+node src/shells/mcp-shell-helper.js impact_atomic --symbolName atomic_edit
+
+# Métricas de salud del proyecto
+node src/shells/mcp-shell-helper.js aggregate_metrics --aggregationType health
+
+# Ver debt técnico
+node src/shells/mcp-shell-helper.js debt
+
+# Schema de la base de datos
+node src/shells/mcp-shell-helper.js schema --type database
+
+# Traversar el grafo de impacto
+node src/shells/mcp-shell-helper.js traverse_graph --filePath src/core/file.js --traverseType impact_map
+```
+
+### Para qué sirve este fallback?
+
+1. **Cuando opencode MCP timeoutea** — El shell helper hace requests directas
+2. **Cuando hay session errors** — Maneja sesiones automáticamente
+3. **Para debugging** — Ver requests/responses crudas
+4. **Automatización** — Scripts que usan las tools sin opencode
+
+### Solución de Problemas
+
+| Error | Solución |
+|-------|----------|
+| `ECONNREFUSED` | Verificar que el servidor MCP está corriendo en puerto 9999 |
+| `SESSION_EXPIRED` | El shell helper re-inicializa automáticamente |
+| `Parse error` | Usar `--file` para pasar argumentos desde archivo JSON |
+
+---
+
+## Instrucciones para el Asistente
+
+> **⚠️ REGLA CRÍTICA**: Cuando el usuario pide usar herramientas MCP:
+> 1. **NUNCA** llamar las tools directamente desde opencode
+> 2. **SIEMPRE** ejecutar via shell helper: `node src/shells/mcp-shell-helper.js ...`
+> 3. Incluir el output completo en la respuesta
+
+### Comandos más usados
+
+```bash
+# Health y estado
+node src/shells/mcp-shell-helper.js status
+node src/shells/mcp-shell-helper.js health
+node src/shells/mcp-shell-helper.js debt
+
+# Consultar código
+node src/shells/mcp-shell-helper.js query_graph --queryType instances --symbolName <nombre>
+node src/shells/mcp-shell-helper.js traverse_graph --filePath <archivo> --traverseType impact_map
+
+# Análisis
+node src/shells/mcp-shell-helper.js aggregate_metrics --aggregationType health
+node src/shells/mcp-shell-helper.js impact_atomic --symbolName <nombre>
+```
+
+Para documentación completa, ver: **OPENCODE.md** (en raíz del proyecto)
+
+---
+
+## Important Links
+
+- **OPENCODE.md** — Shell fallback guide & troubleshooting (REQUIRED READING when MCP fails)

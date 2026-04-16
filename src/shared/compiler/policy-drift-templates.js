@@ -9,6 +9,33 @@
 // ── Fix Templates (mapeo drift → repair) ──────────────────────────
 
 export const FIX_TEMPLATES = {
+  // Semantic Guard Propagation Drift
+  // Cuando átomos se actualizan pero guards no se re-ejecutan → alertas desincronizadas
+  semantic_guard_not_rerun_after_change: {
+    fixType: 'add_import',
+    autoFixable: true,
+    description: 'Ejecutar semantic guards después de cambios de archivo para mantener alertas sincronizadas',
+    generateFix: (finding, source) => ({
+      addImport: "import { runFileWatcherSemanticGuards } from '../../core/file-watcher/analyze-flow.js';",
+      importPath: '../../core/file-watcher/analyze-flow.js',
+      importedNames: ['runFileWatcherSemanticGuards'],
+      recommendedAction: 'Llamar runFileWatcherSemanticGuards(context, filePath, moleculeAtoms) después de collectAndIndexFile para mantener alertas actualizadas'
+    })
+  },
+  duplicate_alert_not_cleared_after_fix: {
+    fixType: 'add_import',
+    autoFixable: true,
+    description: 'Limpiar alertas de duplicates después de consolidar clusters',
+    generateFix: (finding, source) => ({
+      addImport: "import { clearWatcherIssue } from '../../core/file-watcher/watcher-issue-persistence.js';",
+      importPath: '../../core/file-watcher/watcher-issue-persistence.js',
+      importedNames: ['clearWatcherIssue'],
+      recommendedAction: 'Después de consolidar un cluster, ejecutar clearWatcherIssue para cada archivo afectado'
+    }),
+    postFixHook: 'runSemanticGuardsAfterConsolidation'
+  },
+
+  // Data Gateway Drift
   // Data Gateway Drift
   manual_data_gateway_bypass: {
     fixType: 'add_import',

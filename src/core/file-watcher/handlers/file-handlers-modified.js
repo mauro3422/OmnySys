@@ -30,13 +30,9 @@ async function validateExportsForModifiedFile(fileWatcher, filePath) {
   }
 }
 
-async function runImpactGuardsForModifiedFile(fileWatcher, filePath, fullPath, previousAtoms, analysis) {
-  await guardRegistry.runImpactGuards(fileWatcher.rootPath, filePath, fileWatcher, {
-    fullPath,
-    previousAtoms,
-    atoms: analysis.moleculeAtoms || analysis.atoms || [],
-    analysis
-  });
+async function runSemanticGuardsForModifiedFile(fileWatcher, filePath, analysis) {
+  const { runFileWatcherSemanticGuards } = await import('../analyze-flow.js');
+  await runFileWatcherSemanticGuards(fileWatcher, filePath, analysis.moleculeAtoms || analysis.atoms || []);
 }
 
 async function reconcileWatcherIssuesAfterModification(fileWatcher, filePath) {
@@ -77,7 +73,7 @@ export async function handleFileModifiedForWatcher(fileWatcher, filePath, fullPa
         previousAtoms,
         analysis,
         validateExportsForModifiedFile,
-        runImpactGuardsForModifiedFile,
+        runSemanticGuardsForModifiedFile,
         reconcileWatcherIssuesAfterModification
       );
 

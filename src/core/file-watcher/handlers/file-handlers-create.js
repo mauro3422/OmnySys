@@ -21,6 +21,10 @@ export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPat
     analysis
   });
 
+  // Run semantic guards (including duplicate detection) for new files
+  const { runFileWatcherSemanticGuards } = await import('../analyze-flow.js');
+  await runFileWatcherSemanticGuards(fileWatcher, filePath, atoms);
+
   const highSignalAtoms = atoms.filter(atom => !isLowSignalName(atom?.name));
   const watcherLogger = fileWatcher._logger;
   if (watcherLogger?.info) {

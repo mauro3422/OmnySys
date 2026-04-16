@@ -54,7 +54,7 @@ export async function processModifiedFilePostActions(
   previousAtoms,
   analysis,
   validateExportsForModifiedFile,
-  runImpactGuardsForModifiedFile,
+  runSemanticGuardsForModifiedFile,
   reconcileWatcherIssuesAfterModification
 ) {
   try {
@@ -63,7 +63,7 @@ export async function processModifiedFilePostActions(
     logger.warn(`[EXPORT VALIDATION SKIP] Failed to validate exports for ${filePath}: ${error.message}`);
   }
 
-  await runImpactGuardsForModifiedFile(fileWatcher, filePath, fullPath, previousAtoms, analysis);
+  await runSemanticGuardsForModifiedFile(fileWatcher, filePath, analysis);
 
   try {
     await reconcileWatcherIssuesAfterModification(fileWatcher, filePath);
