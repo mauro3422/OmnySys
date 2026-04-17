@@ -2,6 +2,7 @@ import path from 'path';
 
 import { BaseMCPTool } from '../core/shared/base-tools/base-tool.js';
 import { loadAtomVersionArchiveHistory } from '#shared/compiler/index.js';
+import { getFreshModuleSpecifier } from '../tool-module-cache.js';
 import {
   collectAtomHistory,
   summarizeAtomDNA,
@@ -137,7 +138,7 @@ export async function buildAtomEvolutionReport(args, deps = {}) {
   const getFileImpactSummaryImpl = deps.getFileImpactSummary ?? (await import('../../query/queries/dependency-query.js')).getFileImpactSummary;
   const collectAtomHistoryImpl = deps.collectAtomHistory ?? collectAtomHistory;
   const buildDatabaseSchemaResultImpl = deps.buildDatabaseSchemaResult
-    ?? (await import('./get-schema-helpers.js')).buildDatabaseSchemaResult;
+    ?? (await import(getFreshModuleSpecifier('./get-schema/helpers.js'))).buildDatabaseSchemaResult;
 
   return runAtomEvolutionReportBoundary({
     source: 'buildAtomEvolutionReport',

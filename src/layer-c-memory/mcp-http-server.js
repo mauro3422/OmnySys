@@ -135,6 +135,7 @@ import {
   readBridgeRuntimeTelemetry,
   summarizeBridgeRuntimeTelemetry
 } from '../shared/compiler/index.js';
+import { getFreshModuleSpecifier } from './mcp/tool-module-cache.js';
 
 const logger = createLogger('OmnySys:mcp:http');
 
@@ -152,7 +153,24 @@ async function getLiveToolDefinitions() {
   return getLiveDefinitions();
 }
 
+const LIVE_TOOL_DIRECT_IMPORTS = {
+  mcp_omnysystem_get_schema: { module: './mcp/tools/get-schema/schema.js', exportName: 'get_schema' },
+  mcp_omnysystem_get_server_status: { module: './mcp/tools/status.js', exportName: 'get_server_status' },
+  mcp_omnysystem_get_recent_errors: { module: './mcp/tools/status.js', exportName: 'get_recent_errors' },
+  mcp_omnysystem_get_system_inventory_report: { module: './mcp/tools/get-system-inventory.js', exportName: 'get_system_inventory_report' },
+  mcp_omnysystem_get_canonical_promotion_report: { module: './mcp/tools/get-canonical-promotion/index.js', exportName: 'get_canonical_promotion_report' }
+};
+
 async function getLiveToolHandler(name) {
+  const directImport = LIVE_TOOL_DIRECT_IMPORTS[name];
+  if (directImport) {
+    const mod = await import(getFreshModuleSpecifier(directImport.module));
+    const handler = mod[directImport.exportName];
+    if (typeof handler === 'function') {
+      return handler;
+    }
+  }
+
   const { getLiveHandlers } = await loadToolRegistryRuntime();
   return getLiveHandlers()[name];
 }
@@ -478,8 +496,8 @@ app.get('/health', async (req, res) => {
   // Memory leak detection: Use ABSOLUTE thresholds (MB), not percentages
   // OmnySystem legitimately uses 600-900MB after initialization
   // Percentages are misleading because V8 grows heap dynamically
-  const MEMORY_WARNING_MB = 2000;   // 2GB - start monitoring
-  const MEMORY_CRITICAL_MB = 3500;  // 3.5GB - immediate action needed
+  const MEMORY_WARNING_MB = 3500;   // 3.5GB - normal for 15k atoms
+  const MEMORY_CRITICAL_MB = 5000;  // 5GB - extreme/leak territory
 
   const isMemoryWarning = heapUsedMB > MEMORY_WARNING_MB;
   const isMemoryCritical = heapUsedMB > MEMORY_CRITICAL_MB;
@@ -581,6 +599,12 @@ const httpServer = await startHttpServer({
   logger,
   isProxyMode: process.env.OMNYSYS_PROXY_MODE === '1'
 });
+
+if (httpServer) {
+  httpServer.setTimeout(180000); // 180s timeout
+  httpServer.keepAliveTimeout = 180000;
+}
+
 logger.info(`Project: ${projectPath}`);
 
 // CRITICAL: Boot timeout diagnostic — must be set BEFORE core.initialize() starts

@@ -1,4 +1,5 @@
 import { loadCompilerExplainability } from '../../shared/compiler/loader.js';
+import { markInsightsDirty } from '../../layer-c-memory/mcp/core/server-class-helpers.js';
 
 const COMPILER_POLICY_PATHS = [
   'src/shared/compiler/',
@@ -13,6 +14,12 @@ export async function handleOrchestratorFileChange(orchestrator, filePath, chang
   const { skipDebounce = false, priority = 'normal' } = options;
 
   orchestrator.logger.info(`File change detected: ${filePath} (${changeType})`);
+  markInsightsDirty(orchestrator, {
+    filePath,
+    changeType,
+    reason: options.reason || null,
+    source: 'orchestrator'
+  });
 
   await orchestrator._invalidateFileCache(filePath);
 

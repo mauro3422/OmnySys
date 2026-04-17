@@ -105,25 +105,59 @@ export function generateCreateIndexesSQL(tableName) {
  * Generates a full schema report
  */
 export function generateSchemaReport(db) {
-  if (!db?.prepare) return { tables: [], columns: 0, indexes: 0 };
+  if (!db?.prepare && !Array.isArray(db)) {
+    return {
+      tables: [],
+      tablesCount: 0,
+      totalRegisteredColumns: 0,
+      totalActualColumns: 0,
+      totalMissingColumns: 0,
+      totalExtraColumns: 0,
+      missingColumns: [],
+      extraColumns: []
+    };
+  }
 
   const tables = getRegisteredTables().map(name => {
     const def = getTableDefinition(name);
-    const columns = getTableColumns(name, db);
+    const columns = Array.isArray(db)
+      ? (db.find((row) => row?.name === name)?.columns || [])
+      : getTableColumns(name, db);
+    const registeredNames = new Set((def?.columns || []).map((column) => column.name));
+    const actualNames = new Set((columns || []).map((column) => column.name));
+    const missingColumns = (def?.columns || []).filter((column) => !actualNames.has(column.name));
+    const extraColumns = (columns || []).filter((column) => !registeredNames.has(column.name));
     return {
       name,
       registeredColumns: def?.columns || [],
       actualColumns: columns,
-      missingColumns: detectMissingColumns(name, columns)
+      missingColumns,
+      extraColumns
     };
   });
+
+  const missingColumns = tables
+    .filter((table) => table.missingColumns.length > 0)
+    .map((table) => ({
+      table: table.name,
+      columns: table.missingColumns
+    }));
+  const extraColumns = tables
+    .filter((table) => table.extraColumns.length > 0)
+    .map((table) => ({
+      table: table.name,
+      columns: table.extraColumns
+    }));
 
   return {
     tables,
     tablesCount: tables.length,
     totalRegisteredColumns: tables.reduce((sum, t) => sum + t.registeredColumns.length, 0),
     totalActualColumns: tables.reduce((sum, t) => sum + t.actualColumns.length, 0),
-    totalMissingColumns: tables.reduce((sum, t) => sum + t.missingColumns.length, 0)
+    totalMissingColumns: missingColumns.reduce((sum, t) => sum + t.columns.length, 0),
+    totalExtraColumns: extraColumns.reduce((sum, t) => sum + t.columns.length, 0),
+    missingColumns,
+    extraColumns
   };
 }
 

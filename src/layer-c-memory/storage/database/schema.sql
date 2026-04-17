@@ -11,14 +11,14 @@ CREATE TABLE IF NOT EXISTS atoms (
     name TEXT NOT NULL,
     atom_type TEXT NOT NULL,              -- 'function', 'arrow', 'method', 'variable'
     file_path TEXT NOT NULL,
-    
+
     -- Vectores estructurales
     line_start INTEGER NOT NULL DEFAULT 0,
     line_end INTEGER NOT NULL DEFAULT 0,
     lines_of_code INTEGER NOT NULL DEFAULT 0,
     complexity INTEGER NOT NULL,
     parameter_count INTEGER DEFAULT 0,
-    
+
     -- Flags
     is_exported BOOLEAN DEFAULT 0,
     is_async BOOLEAN DEFAULT 0,
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS atoms (
     test_callback_type TEXT,               -- 'describe', 'it', 'test', etc.
     has_error_handling BOOLEAN DEFAULT 0,  -- Tiene manejo de errores (try/catch, .catch, etc.)
     has_network_calls BOOLEAN DEFAULT 0,   -- Tiene llamadas a red (fetch, http, etc.)
-    
+
     -- Clasificacion
     archetype_type TEXT,
     archetype_severity INTEGER,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS atoms (
     is_dead_code BOOLEAN DEFAULT 0,
     is_removed BOOLEAN DEFAULT 0,
     is_phase2_complete BOOLEAN DEFAULT 0,
-    
+
     -- Vectores matematicos (para Semantic Algebra)
     importance_score REAL DEFAULT 0,       -- PageRank-like (0-1)
     coupling_score REAL DEFAULT 0,         -- Acoplamiento externo (0-1)
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS atoms (
     propagation_score REAL DEFAULT 0,      -- Impacto de cambios (0-1)
     fragility_score REAL DEFAULT 0,        -- Probabilidad de romperse (0-1)
     testability_score REAL DEFAULT 0,      -- Facilidad de testing (0-1)
-    
+
     -- Grafos: vectores de Algebra de Grafos
     in_degree INTEGER DEFAULT 0,           -- Número de callers (entrada)
     out_degree INTEGER DEFAULT 0,           -- Número de callees (salida)
@@ -53,20 +53,20 @@ CREATE TABLE IF NOT EXISTS atoms (
     centrality_classification TEXT,         -- 'HUB', 'BRIDGE', 'LEAF'
     risk_level TEXT,                       -- 'HIGH', 'MEDIUM', 'LOW'
     risk_prediction TEXT,                  -- Descripción del riesgo
-    
+
     -- Contadores relacionales
     callers_count INTEGER DEFAULT 0,
     callees_count INTEGER DEFAULT 0,
     dependency_depth INTEGER DEFAULT 0,
     external_call_count INTEGER DEFAULT 0,
-    
+
     -- Temporales
     extracted_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     change_frequency REAL DEFAULT 0,       -- Cambios por dia
     age_days INTEGER DEFAULT 0,
     generation INTEGER DEFAULT 1,
-    
+
     -- JSON con estructuras complejas
     signature_json TEXT,                   -- Parametros, return type
     data_flow_json TEXT,                   -- Inputs, transformations, outputs
@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS atom_relations (
     line_number INTEGER,                   -- Linea donde ocurre
     context_json TEXT,                     -- Metadata adicional
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    
+
     -- FOREIGN KEYs removidos para permitir discovery cross-file incremental
     UNIQUE(source_id, target_id, relation_type, line_number)
 );
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS modules (
 
 -- Vista para analisis de salud
 CREATE VIEW IF NOT EXISTS atom_health AS
-SELECT 
+SELECT
     id,
     name,
     file_path,
@@ -191,7 +191,7 @@ SELECT
     archetype_type,
     importance_score,
     propagation_score,
-    CASE 
+    CASE
         WHEN complexity > 20 THEN 'high'
         WHEN complexity > 10 THEN 'medium'
         ELSE 'low'
@@ -205,7 +205,7 @@ FROM atoms;
 
 -- Vista para grafo de llamadas
 CREATE VIEW IF NOT EXISTS call_graph AS
-SELECT 
+SELECT
     a1.id as caller_id,
     a1.name as caller_name,
     a1.file_path as caller_file,
@@ -221,7 +221,7 @@ WHERE r.relation_type = 'calls'
   AND (r.is_removed IS NULL OR r.is_removed = 0);
 
 -- Trigger para actualizar timestamps
-CREATE TRIGGER IF NOT EXISTS update_atom_timestamp 
+CREATE TRIGGER IF NOT EXISTS update_atom_timestamp
 AFTER UPDATE ON atoms
 BEGIN
     UPDATE atoms SET updated_at = datetime('now') WHERE id = NEW.id;
@@ -232,13 +232,13 @@ CREATE TRIGGER IF NOT EXISTS update_file_counts_after_insert
 AFTER INSERT ON atoms
 BEGIN
     INSERT INTO files (path, last_analyzed, atom_count, total_complexity, total_lines)
-    SELECT 
+    SELECT
         NEW.file_path,
         datetime('now'),
         COUNT(*),
         SUM(COALESCE(complexity, 0)),
         SUM(COALESCE(lines_of_code, 0))
-    FROM atoms 
+    FROM atoms
     WHERE file_path = NEW.file_path
     ON CONFLICT(path) DO UPDATE SET
         last_analyzed = excluded.last_analyzed,
@@ -251,13 +251,13 @@ CREATE TRIGGER IF NOT EXISTS update_file_counts_after_delete
 AFTER DELETE ON atoms
 BEGIN
     INSERT INTO files (path, last_analyzed, atom_count, total_complexity, total_lines)
-    SELECT 
+    SELECT
         OLD.file_path,
         datetime('now'),
         COUNT(*),
         SUM(COALESCE(complexity, 0)),
         SUM(COALESCE(lines_of_code, 0))
-    FROM atoms 
+    FROM atoms
     WHERE file_path = OLD.file_path
     ON CONFLICT(path) DO UPDATE SET
         last_analyzed = excluded.last_analyzed,
@@ -289,7 +289,7 @@ CREATE TABLE IF NOT EXISTS system_files (
     transitive_depends_json TEXT,          -- Dependencias transitivas
     transitive_dependents_json TEXT,       -- Dependientes transitivos
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    
+
     FOREIGN KEY (path) REFERENCES files(path) ON DELETE CASCADE
 );
 
@@ -382,12 +382,91 @@ CREATE TABLE IF NOT EXISTS cache_entries (
 
 CREATE INDEX IF NOT EXISTS idx_cache_expiry ON cache_entries(expiry);
 
+-- =====================================================
+-- ALGEBRAIC RELATIONAL VIEWS (v3.0)
+-- =====================================================
+
+-- Vista de Cobertura de Metadatos
+CREATE VIEW IF NOT EXISTS v_metadata_coverage AS
+SELECT
+    COUNT(*) as total_atoms,
+    SUM(CASE WHEN signature_json NOT NULL AND signature_json != '{}' THEN 1 ELSE 0 END) as signature_coverage,
+    SUM(CASE WHEN dna_json NOT NULL AND dna_json != '{}' THEN 1 ELSE 0 END) as dna_coverage,
+    SUM(CASE WHEN data_flow_json NOT NULL AND data_flow_json != '{}' THEN 1 ELSE 0 END) as data_flow_coverage,
+    ROUND(AVG(CASE WHEN signature_json NOT NULL THEN 1.0 ELSE 0.0 END), 3) as avg_coverage
+FROM atoms;
+
+-- Vista de Métricas Relacionales (Importancia y Propagación Live)
+CREATE VIEW IF NOT EXISTS v_live_metrics AS
+WITH caller_counts AS (
+    SELECT target_id, COUNT(*) as callers_count
+    FROM atom_relations
+    WHERE relation_type = 'calls'
+    GROUP BY target_id
+),
+callee_counts AS (
+    SELECT source_id, COUNT(*) as callees_count
+    FROM atom_relations
+    WHERE relation_type = 'calls'
+    GROUP BY source_id
+)
+SELECT
+    a.id,
+    a.name,
+    a.file_path,
+    COALESCE(cc.callers_count, 0) as live_callers,
+    COALESCE(ce.callees_count, 0) as live_callees,
+    -- Importancia Relacional (Deuda Algébrica v1)
+    ROUND(MIN(1.0, (COALESCE(cc.callers_count, 0) * 0.4 / 10.0) + (a.is_exported * 0.3) + (MIN(a.complexity, 50) * 0.3 / 50.0)), 2) as live_importance,
+    -- Propagación Relacional (Deuda Algébrica v1)
+    ROUND(MIN(1.0, (MIN(a.complexity, 30) * 0.3 / 30.0) + (MIN(COALESCE(cc.callers_count, 0), 10) * 0.3 / 10.0) + (MIN(COALESCE(ce.callees_count, 0), 10) * 0.2 / 10.0)), 2) as live_propagation
+FROM atoms a
+LEFT JOIN caller_counts cc ON a.id = cc.target_id
+LEFT JOIN callee_counts ce ON a.id = ce.source_id;
+
+-- Propagación Recursiva (Ripple Effect) - Profundidad 3
+-- Calcula el impacto acumulado a través del grafo de llamadas
+CREATE VIEW IF NOT EXISTS v_propagation_recursive AS
+WITH RECURSIVE ripple(source_id, target_id, depth, raw_impact) AS (
+    -- Paso base: callers directos
+    SELECT source_id, target_id, 1, weight
+    FROM atom_relations
+    WHERE relation_type = 'calls'
+
+    UNION ALL
+
+    -- Paso recursivo: callers de callers con decaimiento de 0.7
+    SELECT r.source_id, ip.target_id, ip.depth + 1, ip.raw_impact * 0.7
+    FROM atom_relations r
+    JOIN ripple ip ON r.target_id = ip.source_id
+    WHERE r.relation_type = 'calls' AND ip.depth < 3
+)
+SELECT
+    target_id as id,
+    ROUND(SUM(raw_impact), 2) as ripple_effect_score
+FROM ripple
+GROUP BY target_id;
+
+-- Reconciliación de Deriva (Drift Detection)
+-- Detecta cuando los scores estáticos en 'atoms' divergen de la realidad relacional en las vistas
+CREATE VIEW IF NOT EXISTS v_algebraic_drift AS
+SELECT
+    a.id,
+    a.name,
+    a.importance_score as stored_importance,
+    v.live_importance as relational_importance,
+    ROUND(ABS(a.importance_score - v.live_importance), 3) as importance_drift,
+    a.propagation_score as stored_propagation,
+    v.live_propagation as relational_propagation,
+    ROUND(ABS(a.propagation_score - v.live_propagation), 3) as propagation_drift
+FROM atoms a
+JOIN v_live_metrics v ON a.id = v.id
+WHERE ABS(a.importance_score - v.live_importance) > 0.1
+   OR ABS(a.propagation_score - v.live_propagation) > 0.1;
+
 -- Insertar version del schema
-INSERT OR REPLACE INTO system_metadata (key, value, updated_at) 
-VALUES ('schema_version', '2.1', datetime('now'));
+INSERT OR REPLACE INTO system_metadata (key, value, updated_at)
+VALUES ('schema_version', '3.0', datetime('now'));
 
-INSERT OR REPLACE INTO system_metadata (key, value, updated_at) 
-VALUES ('cache_sqlite_enabled', 'true', datetime('now'));
-
-INSERT OR REPLACE INTO system_metadata (key, value, updated_at) 
-VALUES ('system_map_enabled', 'true', datetime('now'));
+INSERT OR REPLACE INTO system_metadata (key, value, updated_at)
+VALUES ('algebraic_engine_enabled', 'true', datetime('now'));

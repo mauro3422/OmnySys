@@ -14,6 +14,8 @@ import {
   shouldForceRescan,
   setLastPolicyCodeHash
 } from './compiler-explainability-cache.js';
+import { buildCanonicalPromotionReport, buildCanonicalPromotionSnapshot } from './canonical-promotion-summary.js';
+import { buildCompilerSystemInventoryReport } from './system-inventory/summary.js';
 
 function publishCompilerExplainabilityRefresh(sharedState = {}, compilerExplainability = null, projectPath = null) {
   if (!sharedState || typeof sharedState !== 'object' || !compilerExplainability) {
@@ -41,10 +43,19 @@ function publishCompilerExplainabilityRefresh(sharedState = {}, compilerExplaina
   sharedState.compilerExplainability = compilerExplainability;
   sharedState.compilerExplainabilityRefreshedAt = refreshedAt;
   sharedState.compilerExplainabilityRefreshSource = 'compiler_explainability_loader';
+  sharedState.compilerExplainabilityDirty = false;
   sharedState.policySummary = compilerExplainability.policySummary || null;
   sharedState.policyDriftCount = policyDriftCount;
   sharedState.policyCoverageState = policyCoverageState;
   sharedState.propagationExpansionState = propagationExpansionState;
+  sharedState.systemInventorySnapshot = compilerExplainability.systemInventory || null;
+  sharedState.systemInventoryReport = compilerExplainability.systemInventory
+    ? buildCompilerSystemInventoryReport(compilerExplainability.systemInventory)
+    : null;
+  sharedState.canonicalPromotionSnapshot = compilerExplainability.canonicalPromotion || null;
+  sharedState.canonicalPromotionReport = compilerExplainability.canonicalPromotion
+    ? buildCanonicalPromotionReport(compilerExplainability.canonicalPromotion)
+    : null;
 
   return {
     ...compilerExplainability,
@@ -118,6 +129,11 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
   try {
     const existingExplainability = sharedState?.compilerExplainability || null;
     const forceRescan = shouldForceRescan(projectPath, existingExplainability);
+    const forceFresh = folderizationOptions?.forceFresh === true;
+
+    if (existingExplainability && !forceRescan && !forceFresh) {
+      return publishCompilerExplainabilityRefresh(sharedState, existingExplainability, projectPath);
+    }
 
     let policySummary;
     if (forceRescan && existingExplainability?.policySummary) {
@@ -163,6 +179,10 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
         driftAssessment: snapshot.driftAssessment,
         inventorySignals: sharedState.inventorySignals || null
       }
+    });
+    const canonicalPromotion = buildCanonicalPromotionSnapshot({
+      projectPath,
+      systemInventory
     });
     const propagationAdoptionTargets = buildFolderizationPropagationAdoptionTargets({
       snapshot,
@@ -235,6 +255,10 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       surfaceAudit: snapshot.surfaceAudit,
       metricCoherence,
       inventorySignals: sharedState.inventorySignals || null,
+      systemInventory,
+      systemInventoryReport: buildCompilerSystemInventoryReport(systemInventory),
+      canonicalPromotion,
+      canonicalPromotionReport: buildCanonicalPromotionReport(canonicalPromotion),
       propagationLedger,
       folderization: {
         candidateReport: folderizationReport.candidateReport,

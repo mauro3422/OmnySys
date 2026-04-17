@@ -9,7 +9,7 @@ import { runUnifiedAnalysisPipeline } from './unified-analysis-helpers.js';
 export async function analyzeProjectFilesUnified(files, absoluteRootPath, verbose, extractionDepth = 'structural', logPrefix = 'Unified Analysis') {
     const gitStats = await getGitStats(absoluteRootPath);
     const repo = getRepository(absoluteRootPath);
-    const workerScriptPath = fileURLToPath(new URL('./worker-analysis.js', import.meta.url));
+    const workerScriptPath = fileURLToPath(new URL('./worker-analysis/analysis.js', import.meta.url));
 
     return runUnifiedAnalysisPipeline({
         files,

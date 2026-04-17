@@ -121,10 +121,10 @@ function buildFastPathResult() {
 }
 
 /**
- * Run the full analysis via analysis-checker.
+ * Run the full analysis via analysis.
  */
 async function runFullAnalysis(projectPath, server) {
-  const { checkAndRunAnalysisSmart } = await import('../../analysis-checker.js');
+  const { checkAndRunAnalysisSmart } = await import('../../analysis.js');
   return checkAndRunAnalysisSmart(projectPath, {
     orchestrator: server.orchestrator || null,
     reloadMetadataFn: () => server.reloadMetadata?.() || Promise.resolve()

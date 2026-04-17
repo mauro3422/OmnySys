@@ -81,6 +81,7 @@ function applyRepositoryIntegrityToDatabaseHealth(databaseHealth, repositoryInte
 export async function enrichServerStatus(status, args, context, phase2Status, phase2InProgress, cachedMetadata, cachedCounts) {
   const { orchestrator, cache, projectPath, server } = context;
   const repo = projectPath ? getRepository(projectPath) : null;
+  const sharedState = server?.sharedState || context?.sharedState || {};
 
   try {
     const repositoryDiagnostics = getRepositoryDiagnostics(projectPath);
@@ -136,13 +137,16 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   const compilerExplainability = await loadCompilerExplainability(
     projectPath,
     notifications.watcherAlerts || [],
-    status.sharedState || {},
+    sharedState,
     status.watcher,
     {
       scopePath: args?.scopePath || null,
       focusPath: args?.focusPath || null
     }
   );
+  if (compilerExplainability && server) {
+    server.liveInsights = compilerExplainability;
+  }
   const toolInventorySnapshot = buildCompilerToolInventorySnapshot({ includeSchemas: false });
   const systemInventoryDetail = buildCompilerSystemInventorySnapshot({
     projectPath,

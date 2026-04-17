@@ -24,10 +24,7 @@
  * @param {Object} semanticResults - Resultados del análisis semántico
  * @returns {Object} Issues y estadísticas
  */
-import { normalizePath as canonicalNormalizePath } from '../../../../shared/utils/path-utils.js';
-function normalizePath(filePath = '') {
-  return canonicalNormalizePath(filePath);
-}
+import { normalizePath } from '../../../../shared/utils/path-utils.js';
 
 function isTestOrFactoryFile(filePath = '') {
   const normalized = normalizePath(filePath);

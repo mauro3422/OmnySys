@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.95 (Compiler Canonicalization & Runtime Self-Healing)
+**Última versión:** v0.9.451 (MCP HTTP Summary, Cache-First Status, and Runtime Surface Consolidation)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.451.md](v0.9.451.md) | 2026-04-17 | MCP HTTP summary, cache-first status surfaces, and runtime/dashboard stabilization |
 | [v0.9.95.md](v0.9.95.md) | 2026-03-06 | Compiler canonicalization, remediation APIs, watcher diagnostics lifecycle, runtime ownership hardening |
 | [v0.9.85-filewatcher-alerts-guardrails.md](v0.9.85-filewatcher-alerts-guardrails.md) | 2026-03-04 | FileWatcher alerts persisted in SQLite + runtime error guardrails + MCP parse-error hardening |
 | [v0.9.49-bugfixes-refactoring.md](v0.9.49-bugfixes-refactoring.md) | 2026-02-21 | **Bugfixes + Refactoring God Functions + Test Generator Improvements** |

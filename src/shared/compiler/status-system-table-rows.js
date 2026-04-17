@@ -1,15 +1,6 @@
 import { normalizeCount } from './contract-helpers.js';
 import { extractStatusContext } from './status-system-table-context.js';
-
-function buildDaemonRow(status) {
-  return {
-    area: 'Daemon',
-    state: status.initialized ? 'ready' : 'starting',
-    detail: `telemetry=${status.telemetryMode || 'unknown'} | project=${status.project || 'n/a'}`,
-    source: 'mcp-http-server'
-  };
-}
-
+import { buildDaemonRow, buildHttpRow } from './status-system-table-transport-rows.js';
 function buildDatabaseRow(databaseHealth, healthScore, healthGrade) {
   return {
     area: 'Database',
@@ -18,7 +9,6 @@ function buildDatabaseRow(databaseHealth, healthScore, healthGrade) {
     source: 'get_schema(type:"database")'
   };
 }
-
 function buildSnapshotsRow(daily, lifetime) {
   return {
     area: 'Snapshots',
@@ -31,7 +21,6 @@ function buildSnapshotsRow(daily, lifetime) {
     source: '.omnysysdata/health-history.db'
   };
 }
-
 function buildHistoryRow(historyStores) {
   return {
     area: 'History',
@@ -42,7 +31,6 @@ function buildHistoryRow(historyStores) {
     source: '.omnysysdata/health-history.db + .omnysysdata/atom-history.db'
   };
 }
-
 function buildUpdateRow(updateSurface) {
   return {
     area: 'Update',
@@ -51,7 +39,6 @@ function buildUpdateRow(updateSurface) {
     source: updateSurface?.source || 'atom/function update pipeline'
   };
 }
-
 function buildStartupRow(current) {
   return {
     area: 'Startup',
@@ -62,7 +49,6 @@ function buildStartupRow(current) {
     source: 'bootstrap startup telemetry'
   };
 }
-
 function buildProxyRow(status) {
   return {
     area: 'Proxy',
@@ -73,7 +59,6 @@ function buildProxyRow(status) {
     source: '.omnysysdata/proxy-runtime-telemetry.json'
   };
 }
-
 function buildBridgeRow(status) {
   const warningReasons = Array.isArray(status.bridgeRuntimeTelemetry?.warningReasons)
     ? status.bridgeRuntimeTelemetry.warningReasons.slice(0, 2)
@@ -87,7 +72,6 @@ function buildBridgeRow(status) {
     source: '.omnysysdata/bridge-runtime-telemetry.json'
   };
 }
-
 function buildBehaviorRow(current) {
   return {
     area: 'Behavior',
@@ -96,7 +80,6 @@ function buildBehaviorRow(current) {
     source: 'behavior gate summary'
   };
 }
-
 function buildDriftRow(current) {
   return {
     area: 'Drift',
@@ -105,7 +88,6 @@ function buildDriftRow(current) {
     source: 'drift assessment'
   };
 }
-
 function buildPropagationRow(propagationExpansion) {
   return {
     area: 'Propagation',
@@ -114,7 +96,6 @@ function buildPropagationRow(propagationExpansion) {
     source: 'compiler drift assessment'
   };
 }
-
 function buildPropagationLedgerRow(propagationLedger) {
   return {
     area: 'Propagation Ledger',
@@ -125,7 +106,6 @@ function buildPropagationLedgerRow(propagationLedger) {
     source: 'propagation ledger'
   };
 }
-
 function buildDebtRow(current, totalDuplicates) {
   return {
     area: 'Debt',
@@ -134,7 +114,6 @@ function buildDebtRow(current, totalDuplicates) {
     source: 'technical_debt_report + compiler snapshot'
   };
 }
-
 function buildSessionsRow(current, mcpSessions) {
   const transportMix = Array.isArray(mcpSessions.transportOriginMix)
     ? mcpSessions.transportOriginMix.slice(0, 3).map((item) => `${item.origin}:${item.count}`).join(', ')
@@ -152,7 +131,6 @@ function buildSessionsRow(current, mcpSessions) {
     source: 'mcp_sessions'
   };
 }
-
 function buildTopologyRow(current, mcpSessions) {
   const topology = mcpSessions.topologySummary || current.topologySummary || {};
   const transportMix = Array.isArray(topology.transportOriginMix)
@@ -168,7 +146,6 @@ function buildTopologyRow(current, mcpSessions) {
     source: 'mcp_topology_events + mcp_sessions + request delivery telemetry'
   };
 }
-
 function buildToolsRow(toolInventory) {
   return {
     area: 'Tools',
@@ -177,7 +154,6 @@ function buildToolsRow(toolInventory) {
     source: 'tool inventory'
   };
 }
-
 function buildSystemsRow(controlPlaneContracts, metricAlignment) {
   return {
     area: 'Systems',
@@ -186,7 +162,6 @@ function buildSystemsRow(controlPlaneContracts, metricAlignment) {
     source: 'system inventory'
   };
 }
-
 function buildRegistryRow(controlPlane) {
   return {
     area: 'Registry',
@@ -197,7 +172,6 @@ function buildRegistryRow(controlPlane) {
     source: 'compiler control plane'
   };
 }
-
 function buildTelemetryGateRow(controlPlane) {
   return {
     area: 'Telemetry Gate',
@@ -208,7 +182,6 @@ function buildTelemetryGateRow(controlPlane) {
     source: 'compiler control plane telemetry'
   };
 }
-
 function buildAduanaRow(policyCoverage, controlPlaneContracts, metricAlignment) {
   return {
     area: 'Aduana',
@@ -219,7 +192,6 @@ function buildAduanaRow(policyCoverage, controlPlaneContracts, metricAlignment) 
     source: 'system inventory policy coverage'
   };
 }
-
 function buildPromotionRow(controlPlaneContracts) {
   return {
     area: 'Promotion',
@@ -228,7 +200,6 @@ function buildPromotionRow(controlPlaneContracts) {
     source: 'canonical promotion'
   };
 }
-
 function buildAutomationRow(folderizationAutomation) {
   return {
     area: 'Automation',
@@ -239,7 +210,6 @@ function buildAutomationRow(folderizationAutomation) {
     source: 'folderization automation plan'
   };
 }
-
 function buildAdoptionRow(folderizationAdoption) {
   return {
     area: 'Adoption',
@@ -250,7 +220,6 @@ function buildAdoptionRow(folderizationAdoption) {
     source: 'folderization propagation adoption'
   };
 }
-
 function buildNamingDriftRow(namingDrift) {
   return {
     area: 'Naming Drift',
@@ -261,7 +230,6 @@ function buildNamingDriftRow(namingDrift) {
     source: 'folderization report'
   };
 }
-
 function buildCacheRow(status) {
   if (!status.cachePolicy) return null;
   return {
@@ -271,7 +239,6 @@ function buildCacheRow(status) {
     source: 'cache policy advisor'
   };
 }
-
 function buildWatcherRow(watcher) {
   return {
     area: 'Watcher',
@@ -280,7 +247,6 @@ function buildWatcherRow(watcher) {
     source: 'file watcher'
   };
 }
-
 function buildErrorsRow(recentErrorSummary) {
   return {
     area: 'Errors',
@@ -299,6 +265,7 @@ export function buildStatusTableRows(status = {}) {
     buildHistoryRow(ctx.historyStores),
     buildUpdateRow(ctx.updateSurface),
     buildStartupRow(ctx.current),
+    buildHttpRow(status),
     buildProxyRow(status),
     buildBridgeRow(status),
     buildBehaviorRow(ctx.current),

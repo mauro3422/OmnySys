@@ -14,6 +14,7 @@ import {
   buildRestartLifecycleGuidance,
   evaluateAtomRefactoringSignals
 } from '../../../../shared/compiler/index.js';
+import { markInsightsDirty } from '../server-class-helpers.js';
 
 const logger = createLogger('OmnySys:hot-reload');
 
@@ -35,29 +36,57 @@ export function buildHotReloadConformanceContext({ filename, server }) {
   };
 }
 
+function createInventorySignalsState() {
+  return {
+    total: 0,
+    byType: {},
+    byRole: {},
+    recent: []
+  };
+}
+
+function resolveInventoryRole(filename) {
+  const normalized = String(filename || '');
+  if (normalized.includes('compiler')) return 'compiler';
+  if (normalized.includes('mcp')) return 'mcp';
+  return 'system';
+}
+
+function resolveInventoryType(moduleInfo, policy) {
+  return moduleInfo?.type || policy?.reason || 'unknown';
+}
+
+function appendInventorySignal(inventorySignals, signal) {
+  inventorySignals.total += 1;
+  inventorySignals.byType[signal.type] = (inventorySignals.byType[signal.type] || 0) + 1;
+  inventorySignals.byRole[signal.role] = (inventorySignals.byRole[signal.role] || 0) + 1;
+  inventorySignals.recent = [signal, ...(Array.isArray(inventorySignals.recent) ? inventorySignals.recent : [])].slice(0, 12);
+}
 
 function recordInventorySignal(server, filename, moduleInfo, policy) {
   if (!server) return;
 
   const sharedState = server.sharedState || (server.sharedState = {});
-  const inventorySignals = sharedState.inventorySignals || (sharedState.inventorySignals = {
-    total: 0,
-    byType: {},
-    byRole: {},
-    recent: []
+  const inventorySignals = sharedState.inventorySignals || (sharedState.inventorySignals = createInventorySignalsState());
+  const surfaceName = String(filename || '').replace(/\\/g, '/').split('/').pop() || filename || 'unknown';
+  const type = resolveInventoryType(moduleInfo, policy);
+  const role = resolveInventoryRole(filename);
+
+  appendInventorySignal(inventorySignals, {
+    surface: surfaceName,
+    filePath: filename,
+    type,
+    role,
+    kind: moduleInfo?.kind || null,
+    at: new Date().toISOString()
   });
 
-  const surfaceName = String(filename || '').replace(/\\/g, '/').split('/').pop() || filename || 'unknown';
-  const type = moduleInfo?.type || policy?.reason || 'unknown';
-  const role = String(filename || '').includes('compiler') ? 'compiler' : String(filename || '').includes('mcp') ? 'mcp' : 'system';
-
-  inventorySignals.total += 1;
-  inventorySignals.byType[type] = (inventorySignals.byType[type] || 0) + 1;
-  inventorySignals.byRole[role] = (inventorySignals.byRole[role] || 0) + 1;
-  inventorySignals.recent = [
-    { surface: surfaceName, filePath: filename, type, role, kind: moduleInfo?.kind || null, at: new Date().toISOString() },
-    ...(Array.isArray(inventorySignals.recent) ? inventorySignals.recent : [])
-  ].slice(0, 12);
+  markInsightsDirty(server, {
+    filePath: filename,
+    reason: policy?.reason || null,
+    changeType: policy?.action || null,
+    source: 'hot-reload'
+  });
 }
 
 export function dispatchReloadableChange({

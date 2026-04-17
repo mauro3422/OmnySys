@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'url';
+import { bumpToolModuleRevision } from './tool-module-cache.js';
 
 const TOOLS_INDEX_PATH = new URL('./tools/index.js', import.meta.url).pathname
   .replace(/^\/([A-Za-z]:)/, '$1');
@@ -19,6 +20,7 @@ export function getLiveDefinitions() {
 
 export async function refreshToolRegistry(logger = console) {
   try {
+    bumpToolModuleRevision();
     const url = `${toFileUrl(TOOLS_INDEX_PATH)}?bust=${Date.now()}`;
     const mod = await import(url);
     toolRegistry.definitions = mod.toolDefinitions || [];

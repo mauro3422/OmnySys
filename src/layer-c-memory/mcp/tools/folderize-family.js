@@ -1,7 +1,8 @@
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
 import { buildFolderizationMigrationPlanFromRepo } from '../../../shared/compiler/index.js';
-import { buildFolderizationMoveSnapshot, executeFolderizationPlan } from './folderize-family-plan-runner.js';
+import { buildFolderizationMoveSnapshot } from '../../../shared/compiler/index.js';
+import { executeFolderizationPlan } from './folderize-family-plan-runner.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family');
 

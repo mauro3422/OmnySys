@@ -16,12 +16,13 @@ import { shouldPreserveHistoryArtifact, nowIso } from '#shared/utils/normalize-h
 import { fileURLToPath } from 'url';
 import {
     ensureCompilerRuntimeDirSync,
-    readProxyRuntimeTelemetry,
-    readDaemonOwnerLock,
-    removeDaemonOwnerLockSync,
     writeDaemonOwnerLockSync,
+    removeDaemonOwnerLockSync
+} from '../shared/compiler/runtime-ownership.js';
+import {
+    readProxyRuntimeTelemetry,
     writeProxyRuntimeTelemetrySync
-} from '../shared/compiler/index.js';
+} from '../shared/compiler/proxy-runtime-telemetry.js';
 import {
     detectHealthyDaemon,
     waitForPortRelease
@@ -481,7 +482,7 @@ if (existingDaemon.alive) {
 function startDaemonWatchdogHealthCheck() {
     const HEALTH_CHECK_INTERVAL_MS = 10000; // 10 seconds
     const MAX_RESPONSE_TIME_MS = 3000; // 3 seconds timeout
-    const CONSECUTIVE_FAILURES_THRESHOLD = 3; // Require 3 consecutive failures before respawn
+    const CONSECUTIVE_FAILURES_THRESHOLD = 18; // Require 18 consecutive failures (180s) before respawn
     
     let respawnAttempted = false;
     let consecutiveFailures = 0;
