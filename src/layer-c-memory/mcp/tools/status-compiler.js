@@ -6,11 +6,8 @@ import {
   getMcpSessionSummary,
   getPhase2FileCounts,
   getSharedStateContentionSummary,
-  loadCompilerDiagnosticsSnapshot,
-  summarizePropagationPlan
+  loadCompilerDiagnosticsSnapshot
 } from '../../../shared/compiler/index.js';
-
-void summarizePropagationPlan;
 
 function buildSharedStateStatus(sharedStateSummary) {
   return {

@@ -135,6 +135,21 @@ export const RULE_GUIDANCE = {
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'buildDataGatewayContract'),
     recommendedReplacement: 'Route freshness, coverage and drift checks through the canonical data gateway contract before letting tools interpret DB projections or support tables independently.'
   },
+  manual_summary_recomposition: {
+    existingCanonicalEntryPoint: 'buildStatusSummaryPayload',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js', 'buildStatusSummaryPayload', 'loadCompilerDiagnosticsSnapshot'),
+    recommendedReplacement: 'Use buildStatusSummaryPayload / loadCompilerDiagnosticsSnapshot instead of rebuilding compilerExplainability, surfaceAudit, databaseHealth, telemetryProvenance, recentErrors, or nodeVitals inline.'
+  },
+  legacy_helper_contract: {
+    existingCanonicalEntryPoint: 'buildCompilerObservabilityContract',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js', 'buildCompilerObservabilityContract', 'buildCompilerSystemInventoryReport', 'buildPropagationLedger', 'buildStatusSummaryPayload'),
+    recommendedReplacement: 'Reuse the canonical observability contract so metadata, inventory, and propagation stay aligned instead of rebuilding helper contracts manually.'
+  },
+  stale_propagation_anchor: {
+    existingCanonicalEntryPoint: 'buildPropagationLedger',
+    recommendedImport: createImportHint('../../../shared/compiler/index.js', 'buildPropagationLedger', 'buildStatusSummaryPayload'),
+    recommendedReplacement: 'Remove the no-op summarizePropagationPlan anchor; if the helper needs propagation, pass the canonical propagation ledger into the payload contract instead of keeping a dead import for side effects.'
+  },
   runtime_boundary_surfaces: {
     existingCanonicalEntryPoint: 'runAsyncBoundary',
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'runAsyncBoundary'),

@@ -1,9 +1,9 @@
 import {
   deriveSharedStateConnections
-} from './semantic-surface-derivation-connections-shared/index.js';
+} from '../semantic-surface-derivation-connections-shared/index.js';
 import {
   deriveEventConnections
-} from './semantic-surface-derivation-connections-events.js';
+} from './events.js';
 
 export function deriveSemanticConnectionsFromAtomSurface(atomSurface = [], now = Date.now()) {
   const sharedState = deriveSharedStateConnections(atomSurface, now);
@@ -20,8 +20,8 @@ export function deriveSemanticConnectionsFromAtomSurface(atomSurface = [], now =
 
 export {
   deriveSharedStateConnections
-} from './semantic-surface-derivation-connections-shared/index.js';
+} from '../semantic-surface-derivation-connections-shared/index.js';
 
 export {
   deriveEventConnections
-} from './semantic-surface-derivation-connections-events.js';
+} from './events.js';

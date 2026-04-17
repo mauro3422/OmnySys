@@ -147,7 +147,13 @@ export class ValidateImportsTool extends GraphQueryTool {
     }
 
     async performAction(args) {
-        const { filePath, checkBroken = true, checkUnused = true, checkCircular = false } = args;
+        const {
+            filePath,
+            checkBroken = true,
+            checkUnused = true,
+            checkCircular = false,
+            checkFileExistence = false
+        } = args;
 
         if (!filePath) {
             return this.formatError('MISSING_PARAMS', 'filePath is required');
@@ -160,7 +166,14 @@ export class ValidateImportsTool extends GraphQueryTool {
                 return this.formatError('NOT_FOUND', `File ${filePath} not found in the canonical DB index. Run 'omny up' or analysis to index it first.`);
             }
 
-            const broken = await collectBrokenImports(fileData, this.projectPath, filePath, checkBroken, this.repo);
+            const broken = await collectBrokenImports(
+                fileData,
+                this.projectPath,
+                filePath,
+                checkBroken,
+                this.repo,
+                { checkFileExistence }
+            );
             const unused = checkUnused
                 ? (fileData?.imports || []).filter((entry) => entry?.unused === true)
                 : [];

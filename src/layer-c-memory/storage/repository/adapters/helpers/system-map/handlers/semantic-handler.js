@@ -5,7 +5,7 @@
 import { safeJson, safeParseJson } from '../../converters.js';
 import { BaseSqlRepository } from '../../../../core/BaseSqlRepository.js';
 import { normalizePath } from '#shared/utils/path-utils.js';
-import { deriveSemanticConnectionsFromAtomSurface } from '#shared/compiler/semantic-surface-derivation-connections.js';
+import { deriveSemanticConnectionsFromAtomSurface } from '../../../../../../../shared/compiler/semantic-surface-derivation-connections/index.js';
 import { loadAtomSemanticSurface } from '#shared/compiler/semantic-surface-derivation-surface.js';
 
 function isNonProductionSemanticSurface(filePath = '') {

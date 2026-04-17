@@ -15,14 +15,11 @@ import {
   compactDatabaseHealth,
   getDatabaseHealthSummary,
   summarizeDataGatewayContract,
-  summarizePropagationPlan,
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
 } from '../../../../shared/compiler/index.js';
 import { getDatabaseSchemaStatus } from './database-schema-status.js';
 import { deriveSchema, fieldEvolution, computeCorrelations } from './index.js';
-
-void summarizePropagationPlan;
 
 const TEST_CALLBACK_PATTERN = /^(describe|it|test|beforeEach|afterEach|beforeAll|afterAll)\s*\(/;
 const isTestAtom = (atom) => atom.isTestCallback === true || TEST_CALLBACK_PATTERN.test(atom.name);

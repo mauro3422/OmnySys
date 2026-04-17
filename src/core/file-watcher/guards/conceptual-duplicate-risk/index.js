@@ -10,11 +10,9 @@
  */
 
 import { createLogger } from '../../../../utils/logger.js';
-import { summarizePropagationPlan } from '../../../../shared/compiler/propagation-engine/plan-builder.js';
 import { executeConceptualDuplicateRisk } from './execution.js';
 
 const logger = createLogger('OmnySys:file-watcher:guards:conceptual-duplicate');
-void summarizePropagationPlan;
 
 /**
  * Detecta duplicados conceptuales por semanticFingerprint

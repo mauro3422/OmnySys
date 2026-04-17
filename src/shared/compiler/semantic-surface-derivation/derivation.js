@@ -15,4 +15,4 @@ export {
 
 export {
   deriveSemanticConnectionsFromAtomSurface
-} from '../semantic-surface-derivation-connections.js';
+} from '../semantic-surface-derivation-connections/index.js';

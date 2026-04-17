@@ -1,7 +1,3 @@
-import { summarizePropagationPlan } from '../../../../../shared/compiler/index.js';
-
-void summarizePropagationPlan;
-
 export function checkMetadataParity(metadataSurfaceParity, semanticSurfaceGranularity, semanticCanonicality, warnings, tableCounts) {
     if (metadataSurfaceParity.healthy === false) {
         warnings.push({

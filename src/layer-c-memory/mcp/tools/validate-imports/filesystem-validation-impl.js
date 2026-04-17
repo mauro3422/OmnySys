@@ -1,3 +1,4 @@
+import fs from 'fs/promises';
 import path from 'path';
 import { getFileAnalysis, getFileExports } from '#layer-c/query/apis/file-api.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
@@ -106,7 +107,7 @@ async function loadIndexedFileAnalysis(projectPath, filePath, repo = null) {
   return analysis || null;
 }
 
-async function inspectImportEntryAgainstDb(projectPath, importingFilePath, entry, exportsByModule) {
+async function inspectImportEntryAgainstDb(projectPath, importingFilePath, entry, exportsByModule, options = {}) {
   const rawModulePath = entry?.resolvedPath || entry?.resolved || entry?.source || entry?.fromModule;
   const specifiers = Array.isArray(entry?.specifiers) ? entry.specifiers : [];
   const names = specifiers.map((specifier) => specifier?.local || specifier?.name || specifier?.imported).filter(Boolean);
@@ -114,11 +115,25 @@ async function inspectImportEntryAgainstDb(projectPath, importingFilePath, entry
   if (!rawModulePath || namespaceImport || names.length === 0) return [];
 
   const resolvedModulePath = resolveImportModulePath(projectPath, importingFilePath, rawModulePath);
+  if (options?.checkFileExistence) {
+    try {
+      await fs.access(resolvedModulePath);
+    } catch {
+      return [{
+        source: rawModulePath,
+        type: 'fs',
+        resolved: false,
+        reason: 'missing_module',
+        missingModule: resolvedModulePath
+      }];
+    }
+  }
+
   const moduleExports = await loadModuleExportsFromDb(projectPath, resolvedModulePath, exportsByModule);
   return names.filter((name) => !moduleExports.has(name)).map((missingName) => ({ source: rawModulePath, type: 'db', resolved: true, reason: 'missing_named_export', missingExport: missingName }));
 }
 
-export async function collectDatabaseImportState(projectPath, filePath, repo = null) {
+export async function collectDatabaseImportState(projectPath, filePath, repo = null, options = {}) {
   const indexedFilePath = normalizePath(filePath, projectPath);
   const analysis = await loadIndexedFileAnalysis(projectPath, indexedFilePath, repo);
   if (!analysis) throw new Error(`DB_MISSING: ${filePath} is not indexed in the canonical compiler DB`);
@@ -135,7 +150,7 @@ export async function collectDatabaseImportState(projectPath, filePath, repo = n
   };
 
   for (const entry of imports) {
-    const brokenEntries = await inspectImportEntryAgainstDb(projectPath, indexedFilePath, entry, exportsByModule);
+    const brokenEntries = await inspectImportEntryAgainstDb(projectPath, indexedFilePath, entry, exportsByModule, options);
     for (const brokenEntry of brokenEntries) pushUnique(brokenEntry);
   }
 
@@ -153,9 +168,9 @@ export async function collectDatabaseImportState(projectPath, filePath, repo = n
   };
 }
 
-export async function buildDatabaseOnlyValidation(projectPath, filePath, repo = null) {
+export async function buildDatabaseOnlyValidation(projectPath, filePath, repo = null, options = {}) {
   try {
-    const state = await collectDatabaseImportState(projectPath, filePath, repo);
+    const state = await collectDatabaseImportState(projectPath, filePath, repo, options);
     return {
       file: filePath,
       totalImports: state.specifierCount,
@@ -190,9 +205,9 @@ export async function buildDatabaseOnlyValidation(projectPath, filePath, repo = 
   }
 }
 
-export async function collectBrokenImports(fileData, projectPath, filePath, checkBroken, repo = null) {
+export async function collectBrokenImports(fileData, projectPath, filePath, checkBroken, repo = null, options = {}) {
   if (!checkBroken) return [];
-  const state = await collectDatabaseImportState(projectPath, filePath, repo);
+  const state = await collectDatabaseImportState(projectPath, filePath, repo, options);
   return state?.broken || [];
 }
 

@@ -5,11 +5,8 @@ import {
 } from './scoring.js';
 import {
     classifyFileOperationalRole,
-    resolveArchitecturalRecommendation,
-    summarizePropagationPlan
+    resolveArchitecturalRecommendation
 } from '#shared/compiler/index.js';
-
-void summarizePropagationPlan;
 
 export function buildPrioritizedItems(notifications, riskData, severity, minScore) {
     const recurrenceData = buildRecurrenceData(notifications.watcherAlerts);

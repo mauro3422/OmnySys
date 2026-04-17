@@ -86,11 +86,30 @@ export const FIX_TEMPLATES = {
     autoFixable: true,
     description: 'Usar canonical summary APIs en vez de reconstruir payloads',
     generateFix: (finding, source) => ({
-      addImport: "import { loadCompilerDiagnosticsSnapshot } from '#shared/compiler/index.js';",
+      addImport: "import { buildStatusSummaryPayload, loadCompilerDiagnosticsSnapshot } from '#shared/compiler/index.js';",
       importPath: '#shared/compiler/index.js',
-      importedNames: ['loadCompilerDiagnosticsSnapshot'],
-      recommendedAction: 'Usar loadCompilerDiagnosticsSnapshot() en vez de reconstruir compilerExplainability/surfaceAudit manualmente'
+      importedNames: ['buildStatusSummaryPayload', 'loadCompilerDiagnosticsSnapshot'],
+      recommendedAction: 'Usar buildStatusSummaryPayload() o loadCompilerDiagnosticsSnapshot() en vez de reconstruir compilerExplainability/surfaceAudit manualmente'
     })
+  },
+  legacy_helper_contract: {
+    fixType: 'add_import',
+    autoFixable: true,
+    description: 'Usar canonical observability APIs en vez de recomponer metadata, inventory o propagation manualmente',
+    generateFix: (finding, source) => ({
+      addImport: "import { buildCompilerObservabilityContract, buildCompilerSystemInventoryReport, buildPropagationLedger, buildStatusSummaryPayload } from '#shared/compiler/index.js';",
+      importPath: '#shared/compiler/index.js',
+      importedNames: ['buildCompilerObservabilityContract', 'buildCompilerSystemInventoryReport', 'buildPropagationLedger', 'buildStatusSummaryPayload'],
+      recommendedAction: 'Reusar buildCompilerObservabilityContract() y buildStatusSummaryPayload() para metadata/inventory/propagation en lugar de recomponer helper contracts viejos'
+    })
+  },
+  stale_propagation_anchor: {
+    fixType: 'requires_refactor',
+    autoFixable: false,
+    requiresHumanAttention: true,
+    description: 'Eliminar anchors vacios de summarizePropagationPlan en helpers que ya no deberían recomponer propagation',
+    humanAttentionReason: 'El helper mantiene summarizePropagationPlan solo como no-op; hay que decidir si debe recibir canonical propagation o si debe delegar totalmente al payload canónico.',
+    recommendedAction: 'Remove the no-op summarizePropagationPlan anchor and thread propagation through the canonical payload contract, or drop propagation from this helper entirely if it is only a presentation surface.'
   },
 
   // Metadata Propagation Drift

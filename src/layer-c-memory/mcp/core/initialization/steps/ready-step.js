@@ -48,13 +48,15 @@ export class ReadyStep extends InitializationStep {
     // 📊 Print Diagnostics Dashboard (FINAL initialization output)
     try {
       server.currentInitializationDetail = 'diagnostics-dashboard';
-      const { printDiagnosticsDashboard } = await import('../dashboard-reporter.js');
-      await printDiagnosticsDashboard(server.projectPath, {
+      const dashboardModule = await import('../dashboard-reporter.js');
+      void dashboardModule.printDiagnosticsDashboard(server.projectPath, {
         isFinal: true,
         startupTelemetry: server.startupTelemetry || null
+      }).catch((err) => {
+        logger.warn('   ⚠️ Failed to display Diagnostics Dashboard:', err.message);
       });
     } catch (err) {
-      logger.warn('   ⚠️ Failed to display Diagnostics Dashboard:', err.message);
+      logger.warn('   ⚠️ Failed to load Diagnostics Dashboard:', err.message);
     }
 
     server.currentInitializationDetail = 'mark-initialized';

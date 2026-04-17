@@ -121,6 +121,102 @@ function collectRewriteTargets(moveTargets = [], impactedFiles = []) {
   return targets;
 }
 
+async function validatePlannedFolderizedImports({
+  projectPath,
+  moveTargets = [],
+  impactedFiles = [],
+  context = {}
+}) {
+  const moveMap = buildMoveMap(projectPath, moveTargets);
+  const validationTargets = collectRewriteTargets(moveTargets, impactedFiles);
+  const futurePathToMoveTarget = new Map(
+    moveTargets
+      .filter((target) => target?.to)
+      .map((target) => [normalizeComparablePath(path.resolve(projectPath, target.to)), target])
+  );
+  const errors = [];
+  const checkedFiles = [];
+
+  for (const filePath of validationTargets) {
+    const normalizedFilePath = normalizeComparablePath(path.resolve(projectPath, filePath));
+    const movedTarget = futurePathToMoveTarget.get(normalizedFilePath) || null;
+    const sourcePath = movedTarget?.from ? movedTarget.from : filePath;
+    const absSourcePath = path.resolve(projectPath, sourcePath);
+
+    let code;
+    try {
+      code = await fs.readFile(absSourcePath, 'utf8');
+    } catch (error) {
+      errors.push({
+        filePath,
+        sourcePath,
+        reason: 'source_missing',
+        message: error.message
+      });
+      continue;
+    }
+
+    checkedFiles.push(filePath);
+    const importSources = extractModuleDependencySourcesFromCode(code);
+
+    for (const importSource of importSources) {
+      if (!importSource) continue;
+
+      const resolvedImport = normalizeImportToAbsolute(importSource, sourcePath, projectPath);
+      if (!resolvedImport) {
+        continue;
+      }
+
+      const resolvedKey = normalizeComparablePath(resolvedImport);
+      const movedDependencyTarget = moveMap.get(resolvedKey);
+      const isRelativeImport = importSource.startsWith('.');
+      const shouldValidate = isRelativeImport || Boolean(movedDependencyTarget);
+
+      if (!shouldValidate) {
+        continue;
+      }
+
+      const nextImportSource = movedDependencyTarget
+        ? calculateRelativeImport(filePath, path.relative(projectPath, movedDependencyTarget), projectPath)
+        : calculateRelativeImport(filePath, path.relative(projectPath, resolvedImport), projectPath);
+
+      const rewrittenResolvedPath = normalizeImportToAbsolute(nextImportSource, filePath, projectPath);
+      if (!rewrittenResolvedPath) {
+        errors.push({
+          filePath,
+          sourcePath,
+          importSource,
+          nextImportSource,
+          reason: 'unresolvable_rewrite'
+        });
+        continue;
+      }
+
+      try {
+        await fs.access(rewrittenResolvedPath);
+      } catch {
+        errors.push({
+          filePath,
+          sourcePath,
+          importSource,
+          nextImportSource,
+          resolvedPath: rewrittenResolvedPath,
+          reason: 'missing_module_after_folderize'
+        });
+      }
+    }
+  }
+
+  return {
+    success: errors.length === 0,
+    checkedFiles: Array.from(new Set(checkedFiles)),
+    errors,
+    moveCount: moveTargets.length,
+    impactedCount: impactedFiles.length,
+    validationTargets
+  };
+}
+
 function findImportLine(lines, importSource) {
   return lines.findIndex((line) => line.includes(`'${importSource}'`) || line.includes(`"${importSource}"`));
 }
@@ -494,3 +590,5 @@ async function rewriteIntraFamilyImports(filePath, projectPath, moveTargets, int
 
   return rewrites;
 }
+
+export { validatePlannedFolderizedImports };
