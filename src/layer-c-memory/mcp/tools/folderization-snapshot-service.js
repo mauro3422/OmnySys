@@ -3,11 +3,9 @@
  */
 
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import {
-  buildFolderizationReportFromRepo,
-  buildEmptyFolderizationReport,
-  getDatabaseHealthSummary
-} from '../../../shared/compiler/index.js';
+import path from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 import {
   buildFolderizationSnapshotFingerprint,
   loadFolderizationSnapshotHistory,
@@ -19,10 +17,89 @@ import {
   summarizeSemanticSurfaceForSnapshot
 } from './folderization-snapshot/summary.js';
 
+async function loadFreshFolderizationReportBuilder() {
+  const reportBuilderUrl = pathToFileURL(
+    path.resolve(process.cwd(), 'src/shared/compiler/folderization-report/report-builder.js')
+  );
+  reportBuilderUrl.searchParams.set('rev', randomUUID());
+  reportBuilderUrl.searchParams.set('call', `${Date.now()}`);
+  return import(reportBuilderUrl.href);
+}
+
+async function loadFreshDatabaseHealthSummary() {
+  const databaseHealthUrl = pathToFileURL(
+    path.resolve(process.cwd(), 'src/shared/compiler/database-health-summary.js')
+  );
+  databaseHealthUrl.searchParams.set('rev', randomUUID());
+  databaseHealthUrl.searchParams.set('call', `${Date.now()}`);
+  return import(databaseHealthUrl.href);
+}
+
 function normalizeFilePaths(filePaths = []) {
   return Array.isArray(filePaths)
     ? filePaths.map((filePath) => String(filePath || '').trim()).filter(Boolean)
     : [];
+}
+
+function buildReconciledFolderizationReport(folderizationReport = {}) {
+  const candidateReport = folderizationReport?.candidateReport || null;
+  const topCandidate = Array.isArray(candidateReport?.topCandidates)
+    ? candidateReport.topCandidates[0] || null
+    : null;
+
+  if (!topCandidate?.recommendedFolder) {
+    return folderizationReport;
+  }
+
+  const creationGuidance = folderizationReport?.creationGuidance || {};
+  const preferredFolder = topCandidate.recommendedFolder;
+  const selectionReason = `Top folderization candidate from the DB is ${topCandidate.familyRoot} in ${topCandidate.directory}.`;
+  const reconciledCreationGuidance = {
+    ...creationGuidance,
+    mode: 'create_folderized_family',
+    matchedBy: 'candidateReport',
+    familyDomain: topCandidate.directory || creationGuidance.familyDomain || null,
+    selectionReason,
+    preferredFolder,
+    preferredFamilyRoot: topCandidate.familyRoot || creationGuidance.preferredFamilyRoot || null,
+    preferredDirectory: topCandidate.directory || creationGuidance.preferredDirectory || null,
+    guidance: `${selectionReason} Create the next file inside ${preferredFolder} using a short role basename such as ${(creationGuidance.preferredRoleStems || [])[0]?.stem || 'core.js'}.`
+  };
+
+  return {
+    ...folderizationReport,
+    creationGuidance: reconciledCreationGuidance
+  };
+}
+
+function reconcileFolderizationSnapshotSummary(summary = {}, folderizationReport = {}) {
+  const candidateReport = folderizationReport?.candidateReport || null;
+  const topCandidate = Array.isArray(candidateReport?.topCandidates)
+    ? candidateReport.topCandidates[0] || null
+    : null;
+
+  if (!topCandidate?.recommendedFolder) {
+    return summary;
+  }
+
+  const preferredFolder = topCandidate.recommendedFolder;
+  const selectionReason = `Top folderization candidate from the DB is ${topCandidate.familyRoot} in ${topCandidate.directory}.`;
+  const recommendedAction = `Folderize ${topCandidate.familyRoot} into ${preferredFolder} (confidence ${topCandidate.confidence}).`;
+
+  return {
+    ...summary,
+    recommendedTool: 'folderize_family',
+    recommendedAction,
+    nextBestFolder: preferredFolder,
+    creationNextBestFolder: preferredFolder,
+    whyThisFirst: selectionReason,
+    folderizationTargetFolder: preferredFolder,
+    folderizationTargetReason: selectionReason,
+    creationGuidanceFolder: preferredFolder,
+    creationGuidanceReason: selectionReason,
+    summaryText: String(summary.summaryText || '')
+      .replace(/target=[^|]+/, `target=${preferredFolder}`)
+  };
 }
 
 export async function buildFolderizationSnapshotContext(args = {}, context = {}, overrides = {}) {
@@ -34,6 +111,14 @@ export async function buildFolderizationSnapshotContext(args = {}, context = {},
       error: 'Project repository unavailable'
     };
   }
+
+  const [
+    { buildFolderizationReportFromRepo, buildEmptyFolderizationReport },
+    { getDatabaseHealthSummary }
+  ] = await Promise.all([
+    loadFreshFolderizationReportBuilder(),
+    loadFreshDatabaseHealthSummary()
+  ]);
 
   const scopePath = args?.scopePath || null;
   const focusPath = args?.focusPath || null;
@@ -53,6 +138,7 @@ export async function buildFolderizationSnapshotContext(args = {}, context = {},
   const folderizationReport = repo
     ? buildFolderizationReportFromRepo(repo, folderizationOptions)
     : buildEmptyFolderizationReport(folderizationOptions);
+  const reconciledFolderizationReport = buildReconciledFolderizationReport(folderizationReport);
 
   const prePersistHistory = loadFolderizationSnapshotHistory(repo.db, {
     projectPath,
@@ -61,13 +147,16 @@ export async function buildFolderizationSnapshotContext(args = {}, context = {},
     limit: args?.historyLimit || 5
   });
 
-  const summary = buildFolderizationSnapshotSummary({
-    folderizationReport,
-    databaseHealth,
-    scopePath,
-    focusPath,
-    history: prePersistHistory
-  });
+  const summary = reconcileFolderizationSnapshotSummary(
+    buildFolderizationSnapshotSummary({
+      folderizationReport: reconciledFolderizationReport,
+      databaseHealth,
+      scopePath,
+      focusPath,
+      history: prePersistHistory
+    }),
+    reconciledFolderizationReport
+  );
 
   const snapshot = {
     projectPath,
@@ -78,17 +167,17 @@ export async function buildFolderizationSnapshotContext(args = {}, context = {},
     snapshotKind: overrides.snapshotKind || args?.snapshotKind || 'folderization',
     captureSource: overrides.captureSource || args?.captureSource || 'mcp.tool.get_folderization_snapshot',
     folderization: {
-      candidateReport: folderizationReport.candidateReport,
-      familyState: folderizationReport.familyState,
-      migrationPlans: folderizationReport.migrationPlans,
-      naming: folderizationReport.naming,
-      namingPatterns: folderizationReport.namingPatterns,
-      creationGuidance: folderizationReport.creationGuidance,
-      propagation: folderizationReport.propagation,
-      recommendation: folderizationReport.recommendation,
-      drift: folderizationReport.drift || null,
-      decision: folderizationReport.decision,
-      summary: folderizationReport.summary
+      candidateReport: reconciledFolderizationReport.candidateReport,
+      familyState: reconciledFolderizationReport.familyState,
+      migrationPlans: reconciledFolderizationReport.migrationPlans,
+      naming: reconciledFolderizationReport.naming,
+      namingPatterns: reconciledFolderizationReport.namingPatterns,
+      creationGuidance: reconciledFolderizationReport.creationGuidance,
+      propagation: reconciledFolderizationReport.propagation,
+      recommendation: reconciledFolderizationReport.recommendation,
+      drift: reconciledFolderizationReport.drift || null,
+      decision: reconciledFolderizationReport.decision,
+      summary: reconciledFolderizationReport.summary
     },
     databaseHealth: databaseHealth ? {
       healthy: databaseHealth.healthy === true,

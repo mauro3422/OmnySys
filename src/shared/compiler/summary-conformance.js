@@ -69,6 +69,44 @@ function recomposesObservabilityPayload(source = '') {
   return /metadataCoveragePct\s*:|metadataFieldCoveragePct\s*:|systemInventory\s*:|canonicalPromotion\s*:|propagationLedger\s*:|propagationExpansionState\s*:|policyCoverage\s*:|inventoryState\s*:|controlPlane\s*:|summaryText\s*:|nextAction\s*:/.test(source);
 }
 
+function isCanonicalFolderizationWorkflowModule(normalizedPath = '') {
+  return [
+    '/shared/compiler/folderization-report.js',
+    '/shared/compiler/folderization-automation-summary.js',
+    '/shared/compiler/folderization-automation-utils.js',
+    '/shared/compiler/folderization-report/index.js',
+    '/shared/compiler/folderization-report/report-builder.js',
+    '/shared/compiler/folderization-report/summary-builder.js',
+    '/shared/compiler/folderization-report/drift-signal.js',
+    '/shared/compiler/folderization-report/naming-drift-signal.js',
+    '/shared/compiler/folderization-report/propagation-summary.js',
+    '/layer-c-memory/mcp/tools/folderize-family.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner-execution.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner-completion.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner-guards.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner-phases.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner-rollback.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner/helpers.js',
+    '/layer-c-memory/mcp/tools/folderize-family-plan-runner/move-orchestration.js',
+    '/layer-c-memory/mcp/tools/folderize-family-import-rewriter.js',
+    '/layer-c-memory/mcp/tools/rename-folderized-family.js',
+    '/layer-c-memory/mcp/tools/normalize-folderized-family.js',
+    '/layer-c-memory/mcp/core/shared/mutation-settlement.js',
+    '/layer-c-memory/mcp/core/shared/mutation-settlement-core.js',
+    '/layer-c-memory/mcp/core/shared/mutation-batch.js',
+    '/layer-c-memory/mcp/core/shared/move-orchestrator/orchestrator-impl.js'
+  ].some((segment) => normalizedPath.endsWith(segment));
+}
+
+function looksLikeFolderizationWorkflowContract(source = '') {
+  return /(buildFolderizationExecutionGate|executeFolderizationPlan|executeRenamePlan|runFolderizeCompletionPhase|rollbackFolderizationTransaction|captureFolderizationRollbackSnapshot|restoreFolderizationRollbackSnapshot|buildFolderizationTransactionContext|buildFolderizationMoveSnapshot|settleMutationFiles|withMutationBatch|validateAfterMove|rollbackSnapshot|folderizationSnapshot)/.test(source);
+}
+
+function looksLikeLegacyFolderizationWorkflowModule(normalizedPath = '') {
+  return /folderization|folderize-family|rename-folderized|normalize-folderized|mutation-settlement|move-orchestrator/.test(normalizedPath);
+}
+
 function hasStalePropagationAnchor(source = '') {
   return /\bvoid\s+summarizePropagationPlan\s*;/.test(source);
 }
@@ -104,6 +142,20 @@ export function detectSummaryConformanceFromSource(filePath, source = '', option
           policyArea,
           message: 'Module keeps a legacy helper contract by manually recomposing metadata, inventory, or propagation surfaces outside the canonical observability layer',
           recommendation: 'Reuse buildCompilerObservabilityContract / buildStatusSummaryPayload and keep metadata, inventory, and propagation aligned through the canonical compiler surfaces instead of reassembling them inline.'
+        }));
+      }
+
+      if (
+        !isCanonicalFolderizationWorkflowModule(normalizedPath) &&
+        looksLikeLegacyFolderizationWorkflowModule(normalizedPath) &&
+        looksLikeFolderizationWorkflowContract(currentSource)
+      ) {
+        findings.push(createGuidedFinding({
+          rule: 'folderization_contract_drift',
+          severity,
+          policyArea: 'folderization_workflow',
+          message: 'Module keeps a legacy folderization workflow contract outside the canonical transaction pipeline',
+          recommendation: 'Route plan, execute, settlement and rollback through the canonical folderization transaction pipeline instead of duplicating workflow helpers in legacy modules.'
         }));
       }
 

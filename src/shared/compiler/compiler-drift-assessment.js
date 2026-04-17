@@ -34,18 +34,25 @@ function policySignal(policySummary = {}) {
   const watcherDiagnostics = normalizeCount(byPolicyArea.watcher_diagnostics);
   const semanticSurface = normalizeCount(byPolicyArea.semantic_surface_granularity);
   const fileUniverse = normalizeCount(byPolicyArea.file_universe_granularity);
+  const folderizationWorkflow = normalizeCount(byPolicyArea.folderization_workflow);
   const base = { key: 'policy_drift', label: 'Policy drift', sourceOfTruth: 'policy conformance scan', evidence: policySummary, counts: { total, active, high, medium, byPolicyArea } };
 
   if (total === 0) return signal({ ...base, state: 'fresh', healthy: true, trustworthy: true, severity: 'low', reason: 'No compiler policy drift findings detected.', recommendation: 'Keep routing drift and watcher reconciliation through the canonical shared helpers.' });
   if (high > 0 || dataGateway > 0) return signal({ ...base, state: 'blocked', healthy: false, trustworthy: false, severity: 'high', reason: dataGateway > 0 ? `${dataGateway} data_gateway policy finding(s) detect raw DB access or freshness bypasses.` : `${high} high-severity policy finding(s) detected across the compiler surfaces.`, recommendation: dataGateway > 0 ? 'Route freshness, coverage and drift checks through the canonical data gateway contract before reading raw tables directly.' : 'Resolve high-severity policy drift before trusting downstream snapshot consumers.' });
   if (active > 0 || liveRowDrift > 0 || watcherDiagnostics > 0 || semanticSurface > 0 || fileUniverse > 0) {
+    const recommendation = folderizationWorkflow > 0
+      ? 'Route folderization plan, execution, settlement and rollback through the canonical transaction pipeline before adding more helpers.'
+      : propagationExpansion > 0
+        ? 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.'
+        : 'Reduce policy drift in existing canonical families before adding more heuristics.';
     const reason = liveRowDrift > 0 ? `${liveRowDrift} live_row_drift policy finding(s) still route drift checks through manual SQL or local heuristics.`
       : watcherDiagnostics > 0 ? `${watcherDiagnostics} watcher_diagnostics policy finding(s) still compose watcher reconciliation inline.`
       : propagationExpansion > 0 ? `${propagationExpansion} propagation_expansion policy finding(s) indicate watcher or tool surfaces are not surfacing propagation where expected.`
       : semanticSurface > 0 ? `${semanticSurface} semantic_surface_granularity policy finding(s) still mix file-level and atom-level semantic surfaces.`
       : fileUniverse > 0 ? `${fileUniverse} file_universe_granularity policy finding(s) still treat scanned, persisted and live file universes as interchangeable.`
+      : folderizationWorkflow > 0 ? `${folderizationWorkflow} folderization_workflow policy finding(s) indicate the folderization transaction contract is split or duplicated.`
       : `${active} active policy finding(s) remain active.`;
-    return signal({ ...base, state: 'stale', healthy: false, trustworthy: false, severity: 'medium', reason, recommendation: propagationExpansion > 0 ? 'Attach the canonical propagation plan or consume it from shared/compiler before emitting watcher, status or reporting payloads.' : 'Reduce policy drift in existing canonical families before adding more heuristics.' });
+    return signal({ ...base, state: 'stale', healthy: false, trustworthy: false, severity: 'medium', reason, recommendation });
   }
   return signal({ ...base, state: 'partial', healthy: false, trustworthy: false, severity: 'low', reason: `${total} low-signal policy finding(s) remain active.`, recommendation: 'Prefer the canonical shared helpers before adding more ad hoc heuristics.' });
 }

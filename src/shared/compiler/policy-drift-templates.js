@@ -112,6 +112,15 @@ export const FIX_TEMPLATES = {
     recommendedAction: 'Remove the no-op summarizePropagationPlan anchor and thread propagation through the canonical payload contract, or drop propagation from this helper entirely if it is only a presentation surface.'
   },
 
+  folderization_contract_drift: {
+    fixType: 'requires_refactor',
+    autoFixable: false,
+    requiresHumanAttention: true,
+    description: 'Centralizar el contrato operativo de folderization en el pipeline canónico en vez de duplicarlo en helpers legados',
+    humanAttentionReason: 'El módulo sigue expresando plan, execute, settlement o rollback como contrato local en vez de delegarlo al pipeline canónico de folderization.',
+    recommendedAction: 'Route folderization plan, execution, settlement and rollback through the canonical folderization transaction pipeline and remove any duplicated workflow helpers from legacy modules.'
+  },
+
   // Metadata Propagation Drift
   parallel_metadata_universes: {
     fixType: 'add_import',

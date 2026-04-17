@@ -88,7 +88,9 @@ export async function scheduleBackgroundInsightRefresh(server) {
       const result = await buildCompilerSnapshotContext({}, ctx, {
         captureSource: 'background.eager_sync',
         snapshotKind: 'inventory',
-        forceFresh: true
+        forceFresh: false,
+        forceProcedural: true,
+        allowAlgebraicBypass: false
       });
 
       if (result && result.success) {

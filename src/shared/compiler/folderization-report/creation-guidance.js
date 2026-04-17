@@ -7,6 +7,7 @@ import { selectGuidanceFamily } from './family-selection.js';
 function buildFolderizationCreationGuidance({
   rows,
   familyState,
+  candidateReport,
   namingPatterns,
   naming,
   scopePath = null,
@@ -15,6 +16,9 @@ function buildFolderizationCreationGuidance({
   const topFamilyPatterns = Array.isArray(namingPatterns?.topFamilyPatterns)
     ? namingPatterns.topFamilyPatterns.slice(0, 5)
     : [];
+  const topCandidate = Array.isArray(candidateReport?.topCandidates)
+    ? candidateReport.topCandidates[0] || null
+    : null;
   const folderizedScopeSuggestion = (scopePath || focusPath)
     ? findBestFolderizedFamilyForPaths(rows || [], [focusPath, scopePath], { minFileCount: 1 })
     : null;
@@ -26,8 +30,23 @@ function buildFolderizationCreationGuidance({
       folderizedScopeSuggestion.familyRoot === selectionAnchorTail
       || getPathTailSegment(folderizedScopeSuggestion.directory) === selectionAnchorTail
     );
-  const selection = folderizedScopeSuggestion
-    && folderizedScopeMatchesAnchor
+  const candidateSelection = topCandidate
+    ? {
+        family: {
+          familyRoot: topCandidate.familyRoot,
+          directory: topCandidate.directory,
+          migrationState: 'candidate',
+          recommendedFolder: topCandidate.recommendedFolder
+        },
+        matchedBy: 'candidateReport',
+        scopePath: normalizeGuidancePath(scopePath),
+        focusPath: normalizeGuidancePath(focusPath),
+        selectionReason: `Top folderization candidate from the DB is ${topCandidate.familyRoot} in ${topCandidate.directory}.`
+      }
+    : null;
+  const selection = candidateSelection
+    || (folderizedScopeSuggestion
+      && folderizedScopeMatchesAnchor
     ? {
         family: folderizedScopeSuggestion,
         matchedBy: focusPath ? 'focusPath' : 'scopePath',
@@ -35,10 +54,12 @@ function buildFolderizationCreationGuidance({
         focusPath: normalizeGuidancePath(focusPath),
         selectionReason: `DB-backed folderized family match: reuse ${folderizedScopeSuggestion.directory}`
       }
-    : selectGuidanceFamily(familyState, scopePath, focusPath);
+      : selectGuidanceFamily(familyState, scopePath, focusPath));
   const preferredFamily = selection.family || null;
   const preferredFolder = preferredFamily
-    ? (folderizedScopeSuggestion ? preferredFamily.directory : `${preferredFamily.directory}/${preferredFamily.familyRoot}`)
+    ? (candidateSelection
+      ? preferredFamily.recommendedFolder || preferredFamily.directory
+      : (folderizedScopeSuggestion ? preferredFamily.directory : `${preferredFamily.directory}/${preferredFamily.familyRoot}`))
     : null;
   const preferredRoleStems = Array.isArray(namingPatterns?.topRecommendedStems)
     ? namingPatterns.topRecommendedStems.slice(0, 5)

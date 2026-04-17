@@ -33,13 +33,16 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
   const propagationMode = propagation.mode || 'blocked';
   const propagationDecision = propagation.decision || folderizationReport.decision || 'reject';
   const recommendationStrategy = propagation.recommendationStrategy || folderizationReport.recommendation?.strategy || null;
+  const contractDrift = folderizationReport.contractDrift || {};
   const policyCoverageState = policyCoverage?.coverageState || policyCoverage?.state || null;
   const promotionState = canonicalPromotion?.promotionState || canonicalPromotion?.summary?.promotionState || null;
   const systemInventoryState = context.systemInventory?.inventoryState || context.systemInventory?.summary?.inventoryState || null;
   const automationState = folderizationReport.decision === 'already_folderized'
     ? 'already_folderized'
-    : propagationMode === 'blocked' || drift.state === 'blocked' || normalizationSafetyLevel === 'missing'
+    : propagationMode === 'blocked' || drift.state === 'blocked' || contractDrift.state === 'blocked' || normalizationSafetyLevel === 'missing'
       ? 'blocked'
+      : contractDrift.state === 'stale' || drift.state === 'stale' || normalizationSafetyLevel === 'risky'
+        ? 'review'
       : normalizationAction === 'execute' && propagationMode === 'move_and_rewrite' && normalizationSafetyLevel === 'safe' && propagationAdoption.adoptionState === 'ready'
         ? 'ready'
         : 'review';
@@ -65,7 +68,7 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
         sharedPrefixStrength: folderizationReport.prefixAnalysis?.strength || 0,
         externalDependencyCount: folderizationReport.dependencyAnalysis?.externalCount || 0
       });
-  const riskScore = Math.max(0, 100 - confidence + (normalizationSafetyLevel === 'risky' ? 10 : 0));
+  const riskScore = Math.max(0, 100 - confidence + (normalizationSafetyLevel === 'risky' ? 10 : 0) + Math.round((contractDrift.score || 0) * 0.2));
   const shouldExecute = automationState === 'ready';
   const executionTarget = buildExecutionTarget({
     decision: folderizationReport.decision,
@@ -77,6 +80,10 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     ? `Execute ${executionTarget} using the propagation plan and connected systems.`
     : automationState === 'already_folderized'
       ? 'Reuse the existing folderized family and only rename within the family if needed.'
+      : contractDrift.state === 'blocked'
+        ? contractDrift.recommendation || 'Repair the folderization transaction contract before execution.'
+      : contractDrift.state === 'stale'
+        ? contractDrift.recommendation || 'Normalize the folderization transaction contract before execution.'
       : executionTarget === 'split_large_file'
         ? 'Use split_large_file to decompose the monolith before retrying folderization.'
       : automationState === 'review'
@@ -93,7 +100,7 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     promotionState,
     connectedSystemNames,
     propagationAdoption,
-    driftReason: drift.reason || null,
+    driftReason: contractDrift.reason || drift.reason || null,
     recommendationStrategy: propagation.recommendationStrategy || folderizationReport.recommendation?.strategy || null
   });
 
@@ -127,6 +134,11 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
     propagationAdoptionRequiredSystems: propagationAdoption.requiredSystems,
     propagationAdoptionSurfacedSystems: propagationAdoption.surfacedSystems,
     propagationAdoptionMissingSystems: propagationAdoption.missingSystems,
+    contractDriftState: contractDrift.state || 'fresh',
+    contractDriftScore: Number(contractDrift.score || 0),
+    contractDriftReason: contractDrift.reason || null,
+    contractDriftRecommendation: contractDrift.recommendation || null,
+    contractDriftEvidence: contractDrift.evidence || null,
     driftState: drift.state || 'fresh',
     driftScore: Number(drift.score || 0),
     driftReason: drift.reason || null,

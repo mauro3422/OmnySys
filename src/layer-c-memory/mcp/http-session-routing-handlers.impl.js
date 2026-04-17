@@ -3,6 +3,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { applyPagination } from './core/pagination.js';
 import { executeToolCall } from './core/initialization/steps/mcp-tool-call-helpers.js';
+import { alignFolderizationSnapshotToolResult } from './core/initialization/steps/mcp-tool-call-telemetry.js';
 import { buildInitializationPendingToolResult } from './core/initialization/progress-state.js';
 import {
   buildJsonRpcErrorResponse
@@ -290,7 +291,10 @@ export async function executeMcpToolCall(request, dependencies) {
 
   core.refreshToolRegistry = refreshToolRegistry;
   const resultWithTelemetry = await executeToolCall(handler, name, core, args || {}, transportContext);
-  const paginatedResult = applyPagination(resultWithTelemetry, args || {});
+  const normalizedResult = name === 'mcp_omnysystem_get_folderization_snapshot'
+    ? alignFolderizationSnapshotToolResult(resultWithTelemetry)
+    : resultWithTelemetry;
+  const paginatedResult = applyPagination(normalizedResult, args || {});
 
   return {
     content: [{ type: 'text', text: JSON.stringify(paginatedResult, null, 2) }]

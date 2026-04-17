@@ -42,7 +42,8 @@ export {
 export {
   buildFolderizationReportFromRows,
   buildFolderizationReportFromRepo,
-  buildEmptyFolderizationReport
+  buildEmptyFolderizationReport,
+  buildFolderizationContractDriftSignal
 } from '../folderization-report.js';
 
 export {

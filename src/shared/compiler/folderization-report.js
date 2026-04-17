@@ -12,6 +12,7 @@ export {
   buildFolderizationPropagationSummary,
   buildFolderizationSummary,
   buildFolderizationDriftSignal,
+  buildFolderizationContractDriftSignal,
   buildFolderizationCreationGuidance,
   buildFolderizationReport,
   buildFolderizationReportFromRows,

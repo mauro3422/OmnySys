@@ -23,9 +23,36 @@ import { normalizeFocusPaths, normalizeGuidancePath } from './path-utils.js';
 import { buildFolderizationRecommendation, buildEmptyRecommendation } from './recommendations.js';
 import { buildFolderizationPropagationSummary } from './propagation-summary.js';
 import { buildFolderizationSummary } from './summary-builder.js';
-import { buildFolderizationDriftSignal } from './drift-signal.js';
+import { buildFolderizationDriftSignal, buildFolderizationContractDriftSignal } from './drift-signal.js';
 import { buildFolderizationNamingDriftSignal } from './naming-drift-signal.js';
 import { buildFolderizationCreationGuidance } from './creation-guidance.js';
+
+function alignCreationGuidanceToTopCandidate(creationGuidance = {}, candidateReport = null) {
+  const topCandidate = Array.isArray(candidateReport?.topCandidates)
+    ? candidateReport.topCandidates[0] || null
+    : null;
+
+  if (!topCandidate?.recommendedFolder) {
+    return creationGuidance;
+  }
+
+  const preferredFolder = topCandidate.recommendedFolder;
+  if (creationGuidance?.preferredFolder === preferredFolder) {
+    return creationGuidance;
+  }
+
+  return {
+    ...creationGuidance,
+    mode: 'create_folderized_family',
+    matchedBy: 'candidateReport',
+    familyDomain: topCandidate.directory || creationGuidance?.familyDomain || null,
+    selectionReason: `Top folderization candidate from the DB is ${topCandidate.familyRoot} in ${topCandidate.directory}.`,
+    preferredFolder,
+    preferredFamilyRoot: topCandidate.familyRoot || creationGuidance?.preferredFamilyRoot || null,
+    preferredDirectory: topCandidate.directory || creationGuidance?.preferredDirectory || null,
+    guidance: `Top folderization candidate from the DB is ${topCandidate.familyRoot} in ${topCandidate.directory}. Create the next file inside ${preferredFolder} using a short role basename such as ${(creationGuidance?.preferredRoleStems || [])[0]?.stem || 'core.js'}.`
+  };
+}
 
 function buildFolderizationReport({
   rows,
@@ -41,14 +68,19 @@ function buildFolderizationReport({
   databaseHealthy = true,
   liveRowSyncState = 'fresh'
 }) {
-  const creationGuidance = buildFolderizationCreationGuidance({
-    rows,
-    familyState,
-    namingPatterns,
-    naming,
-    scopePath,
-    focusPath
-  });
+  const candidateReport = buildFolderizationCandidateReport(candidateList);
+  const creationGuidance = alignCreationGuidanceToTopCandidate(
+    buildFolderizationCreationGuidance({
+      rows,
+      familyState,
+      candidateReport,
+      namingPatterns,
+      naming,
+      scopePath,
+      focusPath
+    }),
+    candidateReport
+  );
   const normalization = buildFolderizationNormalizationPlanFromRows(rows, [
     focusPath,
     scopePath,
@@ -59,12 +91,11 @@ function buildFolderizationReport({
     candidatePath: focusPath || scopePath || naming?.topFamilies?.[0]?.directory || null
   });
   const recommendation = buildFolderizationRecommendation({
-    decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || (candidateList.length > 0 ? 'review' : 'reject'),
-    candidate: focusCandidate,
-    migrationPlan: migrationPlans?.focusCandidate || null,
-    existingFolderizedFamily
-  });
-  const candidateReport = buildFolderizationCandidateReport(candidateList);
+      decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || (candidateList.length > 0 ? 'review' : 'reject'),
+      candidate: focusCandidate,
+      migrationPlan: migrationPlans?.focusCandidate || null,
+      existingFolderizedFamily
+    });
   const drift = buildFolderizationDriftSignal({
     databaseHealthy,
     liveRowSyncState,
@@ -90,6 +121,14 @@ function buildFolderizationReport({
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     drift
   });
+  const contractDrift = buildFolderizationContractDriftSignal({
+    drift,
+    namingDrift,
+    propagation,
+    normalization,
+    decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
+    recommendation
+  });
   const summary = buildFolderizationSummary({
     candidateReport,
     familyState,
@@ -102,7 +141,8 @@ function buildFolderizationReport({
     recommendation,
     drift,
     namingDrift,
-    propagation
+    propagation,
+    contractDrift
   });
 
   return {
@@ -122,6 +162,7 @@ function buildFolderizationReport({
     recommendation,
     drift,
     namingDrift,
+    contractDrift,
     decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || 'reject',
     summary
   };

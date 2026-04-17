@@ -22,6 +22,7 @@ import {
   executeToolCall,
   buildToolExecutionContext
 } from './mcp-tool-call-helpers.js';
+import { alignFolderizationSnapshotToolResult } from './mcp-tool-call-telemetry.js';
 
 const logger = createLogger('OmnySys:mcp:setup:step');
 
@@ -145,10 +146,13 @@ export class McpSetupStep extends InitializationStep {
     // Build stdio bridge transport context so tool runs capture correct transport_origin
     const transportContext = buildStdioTransportContext(server);
     const resultWithProvenance = await executeToolCall(handler, name, server, args, transportContext);
+    const normalizedResult = name === 'mcp_omnysystem_get_folderization_snapshot'
+      ? alignFolderizationSnapshotToolResult(resultWithProvenance)
+      : resultWithProvenance;
 
     // Middleware: paginación automática sobre todos los arrays top-level.
     // Se aplica SIEMPRE — si el caller no pasa offset/limit, usa defaults seguros.
-    const result = applyPagination(resultWithProvenance, args || {});
+    const result = applyPagination(normalizedResult, args || {});
 
     const elapsed = (performance.now() - startTime).toFixed(2);
     logger.info(`   ✅ Completed in ${elapsed}ms\n`);

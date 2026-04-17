@@ -113,7 +113,8 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
 
   let compilerExplainability;
   const kind = overrides?.snapshotKind || args?.snapshotKind || 'manual';
-  const isAlgebraicCandidate = (kind === 'inventory' || args?.algebraic === true) && !args?.forceProcedural;
+  const allowAlgebraicBypass = overrides?.allowAlgebraicBypass === true || args?.allowAlgebraicBypass === true;
+  const isAlgebraicCandidate = allowAlgebraicBypass && (kind === 'inventory' || args?.algebraic === true) && !args?.forceProcedural;
   const forceFresh = overrides?.forceFresh === true || args?.forceFresh === true;
 
   if (isAlgebraicCandidate && cachedExplainability && !forceFresh) {

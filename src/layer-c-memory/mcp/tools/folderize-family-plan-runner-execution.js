@@ -1,4 +1,5 @@
-import { runAsyncBoundary, sortMoveTargets, buildAutoRenameTargets } from '../../../shared/compiler/index.js';
+import { runAsyncBoundary } from '../../../shared/compiler/index.js';
+import { sortMoveTargets, buildAutoRenameTargets } from './folderize-family-plan-runner/helpers.js';
 import { detectCircularImportRisks } from './folderize-family-plan-runner/move-orchestration.js';
 import { collectFolderizationRollbackTargets, captureFolderizationRollbackSnapshot } from './folderize-family-plan-runner-rollback.js';
 import { runFolderizationStages } from './folderize-family-plan-runner-phases.js';

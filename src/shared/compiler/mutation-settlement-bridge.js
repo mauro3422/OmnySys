@@ -3,6 +3,11 @@ export async function validateCompilerImports(args, context) {
   return await validate_imports(args, context);
 }
 
+export async function validateCompilerExports(args, context) {
+  const { validate_exports } = await import('../../layer-c-memory/mcp/tools/validate-exports-tool.js');
+  return await validate_exports(args, context);
+}
+
 export async function reindexCompilerFile(filePath, projectPath) {
   const { reindexFile } = await import('../../layer-c-memory/mcp/tools/atomic-edit/reindex.js');
   return await reindexFile(filePath, projectPath);

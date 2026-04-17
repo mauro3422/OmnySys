@@ -18,7 +18,7 @@ export {
 
 export { buildFolderizationPropagationSummary } from './propagation-summary.js';
 export { buildFolderizationSummary } from './summary-builder.js';
-export { buildFolderizationDriftSignal } from './drift-signal.js';
+export { buildFolderizationDriftSignal, buildFolderizationContractDriftSignal } from './drift-signal.js';
 export { buildFolderizationCreationGuidance } from './creation-guidance.js';
 
 export {

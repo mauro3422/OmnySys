@@ -157,6 +157,7 @@ const LIVE_TOOL_DIRECT_IMPORTS = {
   mcp_omnysystem_get_schema: { module: './mcp/tools/get-schema/schema.js', exportName: 'get_schema' },
   mcp_omnysystem_get_server_status: { module: './mcp/tools/status.js', exportName: 'get_server_status' },
   mcp_omnysystem_get_recent_errors: { module: './mcp/tools/status.js', exportName: 'get_recent_errors' },
+  mcp_omnysystem_get_folderization_snapshot: { module: './mcp/tools/get-folderization-snapshot.js', exportName: 'get_folderization_snapshot' },
   mcp_omnysystem_get_system_inventory_report: { module: './mcp/tools/get-system-inventory.js', exportName: 'get_system_inventory_report' },
   mcp_omnysystem_get_canonical_promotion_report: { module: './mcp/tools/get-canonical-promotion/index.js', exportName: 'get_canonical_promotion_report' }
 };

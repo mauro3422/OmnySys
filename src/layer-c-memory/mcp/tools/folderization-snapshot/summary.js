@@ -5,6 +5,7 @@ import {
   summarizeDataGatewayContract,
   summarizeSemanticCanonicality
 } from '../../../../shared/compiler/index.js';
+import { buildFolderizationContractDriftSignal } from '../../../../shared/compiler/folderization-report.js';
 
 /**
  * Trunca semanticSurface para el snapshot, eliminando vistas legacy redundantes
@@ -123,37 +124,69 @@ function buildDriftInfo(folderizationReport, liveRowSync) {
   };
 }
 
-function determineRecommendedToolAndAction(liveRowSync, recommendation, creationGuidance) {
+function determineRecommendedToolAndAction(liveRowSync, recommendation, creationGuidance, folderizationReport = null) {
   const lrs = liveRowSync || {};
   const preferredFolder = creationGuidance.preferredFolder || creationGuidance.preferredDirectory || null;
   const preferredRoleStems = Array.isArray(creationGuidance.preferredRoleStems) ? creationGuidance.preferredRoleStems : [];
   const nextBestStem = preferredRoleStems[0]?.stem || 'core.js';
+  const topCandidate = Array.isArray(folderizationReport?.candidateReport?.topCandidates)
+    ? folderizationReport.candidateReport.topCandidates[0] || null
+    : null;
+  const migrationCandidate = folderizationReport?.migrationPlans?.focusCandidate?.candidate || null;
+  const folderizationCandidate = topCandidate || (migrationCandidate?.recommendedFolder
+    ? {
+        familyRoot: migrationCandidate.familyRoot || null,
+        directory: migrationCandidate.directory || null,
+        confidence: migrationCandidate.confidence || 0,
+        recommendedFolder: migrationCandidate.recommendedFolder || null
+      }
+    : null);
+  const folderizationTargetFolder = folderizationCandidate?.recommendedFolder || null;
+  const folderizationTargetReason = folderizationCandidate
+    ? `Top folderization candidate from the DB is ${folderizationCandidate.familyRoot} in ${folderizationCandidate.directory}.`
+    : null;
 
   if (lrs.state !== 'fresh') {
     return {
       recommendedTool: null,
       recommendedAction: lrs.recommendation,
-      nextBestFolder: preferredFolder,
+      nextBestFolder: folderizationTargetFolder || preferredFolder,
+      creationNextBestFolder: preferredFolder,
       nextBestStem,
-      whyThisFirst: lrs.reason
+      whyThisFirst: lrs.reason,
+      folderizationTargetFolder,
+      folderizationTargetReason
     };
   }
 
   const recommendedTool = recommendation.strategy === 'split_large_file'
     ? 'split_large_file'
-    : preferredFolder ? 'folderize_family' : null;
+    : (folderizationTargetFolder || preferredFolder ? 'folderize_family' : null);
 
-  const recommendedAction = preferredFolder
-    ? `${creationGuidance.selectionReason || 'Reuse the closest DB-backed family.'} Create the next file inside ${preferredFolder} using ${nextBestStem}.`
+  const recommendedAction = folderizationTargetFolder
+    ? `Folderize ${folderizationCandidate.familyRoot} into ${folderizationTargetFolder} (confidence ${folderizationCandidate.confidence}).`
+    : preferredFolder
+      ? `${creationGuidance.selectionReason || 'Reuse the closest DB-backed family.'} Create the next file inside ${preferredFolder} using ${nextBestStem}.`
     : recommendation.action || (recommendation.strategy === 'split_large_file'
       ? 'Use split_large_file to decompose the monolith before folderizing.'
       : 'Use role-only basenames and create the next helper under the closest folderized family, keeping the barrel at index.js.');
 
   const whyThisFirst = recommendation.strategy === 'split_large_file'
     ? recommendation.message || 'The current family is monolithic; split it before folderizing.'
-    : creationGuidance.selectionReason || 'The current scope has the strongest reusable folderization match in the DB.';
+    : folderizationTargetReason
+      || creationGuidance.selectionReason
+      || 'The current scope has the strongest reusable folderization match in the DB.';
 
-  return { recommendedTool, recommendedAction, nextBestFolder: preferredFolder, nextBestStem, whyThisFirst };
+  return {
+    recommendedTool,
+    recommendedAction,
+    nextBestFolder: folderizationTargetFolder || preferredFolder,
+    creationNextBestFolder: preferredFolder,
+    nextBestStem,
+    whyThisFirst,
+    folderizationTargetFolder,
+    folderizationTargetReason
+  };
 }
 
 export function buildFolderizationSnapshotSummary({
@@ -170,25 +203,42 @@ export function buildFolderizationSnapshotSummary({
   const { dataGatewaySummary, liveRowSync } = buildFoundationsAndContracts(databaseHealth);
   const trend = buildFolderizationSnapshotTrend({ summary: { ...summary, dbSyncState: (liveRowSync || {}).state } }, history);
   const folderizationDrift = buildDriftInfo(folderizationReport, liveRowSync);
+  const contractDrift = folderizationReport?.contractDrift || buildFolderizationContractDriftSignal({
+    drift: folderizationDrift,
+    namingDrift: folderizationReport?.namingDrift || null,
+    propagation: folderizationReport?.propagation || null,
+    normalization: folderizationReport?.normalization || null,
+    decision: folderizationReport?.decision || 'reject',
+    recommendation: folderizationReport?.recommendation || null
+  });
 
   const {
     recommendedTool,
     recommendedAction,
     nextBestFolder,
+    creationNextBestFolder,
     nextBestStem,
-    whyThisFirst
-  } = determineRecommendedToolAndAction(liveRowSync, recommendation, creationGuidance);
+    whyThisFirst,
+    folderizationTargetFolder,
+    folderizationTargetReason
+  } = determineRecommendedToolAndAction(liveRowSync, recommendation, creationGuidance, folderizationReport);
 
   return {
     scopePath,
     focusPath,
     decision: folderizationReport?.decision || 'reject',
     folderizationDrift,
+    contractDrift,
     driftState: folderizationDrift.state || 'fresh',
     driftScore: Number(folderizationDrift.score || 0),
     driftReason: folderizationDrift.reason || null,
     driftRecommendation: folderizationDrift.recommendation || null,
     driftEvidence: folderizationDrift.evidence || null,
+    contractDriftState: contractDrift.state || 'fresh',
+    contractDriftScore: Number(contractDrift.score || 0),
+    contractDriftReason: contractDrift.reason || null,
+    contractDriftRecommendation: contractDrift.recommendation || null,
+    contractDriftEvidence: contractDrift.evidence || null,
     dbSyncState: liveRowSync?.state || 'unknown',
     databaseHealthy: databaseHealth?.healthy === true,
     healthScore: Number(databaseHealth?.healthScore || 0),
@@ -206,8 +256,13 @@ export function buildFolderizationSnapshotSummary({
     recommendedTool,
     recommendedAction,
     nextBestFolder,
+    creationNextBestFolder,
     nextBestStem,
     whyThisFirst,
+    folderizationTargetFolder,
+    folderizationTargetReason,
+    creationGuidanceFolder: creationGuidance.preferredFolder || creationGuidance.preferredDirectory || null,
+    creationGuidanceReason: creationGuidance.selectionReason || null,
     trend,
     summaryText: [
       `folder=${summary.alreadyFolderizedFamilies || 0}/${(summary.flatFamilies || 0) + (summary.mixedFamilies || 0) + (summary.alreadyFolderizedFamilies || 0)}`,
@@ -215,6 +270,8 @@ export function buildFolderizationSnapshotSummary({
       `naming=${summary.namingTargets || 0}`,
       `propagation=${summary.propagationImpactedFiles || 0}/${summary.propagationRewriteCount || 0}`,
       `drift=${folderizationDrift.state || 'fresh'}`,
+      `contract=${contractDrift.state || 'fresh'}`,
+      `target=${folderizationTargetFolder || creationGuidance.preferredFolder || 'n/a'}`,
       `dbsync=${(liveRowSync || {}).state}`,
       `health=${databaseHealth?.healthScore || 0}/${databaseHealth?.grade || 'F'}`
     ].join(' | '),
@@ -237,13 +294,16 @@ export function buildHistoryWithCurrent(snapshot = null, history = []) {
       flatFamilies: Number(snapshot.summary?.flatFamilies || 0),
       mixedFamilies: Number(snapshot.summary?.mixedFamilies || 0),
       alreadyFolderizedFamilies: Number(snapshot.summary?.alreadyFolderizedFamilies || 0),
-      namingFamilies: Number(snapshot.summary?.namingFamilies || 0),
-      namingTargets: Number(snapshot.summary?.namingTargets || 0),
-      namingDebt: Number(snapshot.summary?.namingTargets || 0),
-      dbSyncState: snapshot.summary?.dbSyncState || 'missing',
-      summary: snapshot.summary,
-      snapshot
-    },
+    namingFamilies: Number(snapshot.summary?.namingFamilies || 0),
+    namingTargets: Number(snapshot.summary?.namingTargets || 0),
+    namingDebt: Number(snapshot.summary?.namingTargets || 0),
+    contractDriftState: snapshot.summary?.contractDriftState || 'missing',
+    contractDriftScore: Number(snapshot.summary?.contractDriftScore || 0),
+    contractDriftReason: snapshot.summary?.contractDriftReason || null,
+    dbSyncState: snapshot.summary?.dbSyncState || 'missing',
+    summary: snapshot.summary,
+    snapshot
+  },
     ...history
   ];
 }

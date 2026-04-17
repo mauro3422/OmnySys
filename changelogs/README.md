@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.452 (Transactional Folderization Runner Hardening and Legacy Contract Cleanup)
+**Última versión:** v0.9.453 (Live Folderization Snapshot Bridge Freshness and Canonical Alignment)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.453.md](v0.9.453.md) | 2026-04-17 | Live folderization snapshot bridge freshness and canonical alignment |
 | [v0.9.452.md](v0.9.452.md) | 2026-04-17 | Transactional folderization runner hardening, rollback cleanup, and legacy contract consolidation |
 | [v0.9.451.md](v0.9.451.md) | 2026-04-17 | MCP HTTP summary, cache-first status surfaces, and runtime/dashboard stabilization |
 | [v0.9.95.md](v0.9.95.md) | 2026-03-06 | Compiler canonicalization, remediation APIs, watcher diagnostics lifecycle, runtime ownership hardening |

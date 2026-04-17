@@ -10,7 +10,8 @@ function buildFolderizationSummary({
   recommendation,
   drift,
   namingDrift,
-  propagation
+  propagation,
+  contractDrift
 }) {
   return {
     candidateCount: candidateReport?.totalCandidates || candidateReport?.candidateCount || 0,
@@ -46,7 +47,12 @@ function buildFolderizationSummary({
     namingDriftScore: namingDrift?.score || 0,
     namingDriftReason: namingDrift?.reason || null,
     namingDriftRecommendation: namingDrift?.recommendation || null,
-    namingDriftEvidence: namingDrift?.evidence || null
+    namingDriftEvidence: namingDrift?.evidence || null,
+    contractDriftState: contractDrift?.state || 'fresh',
+    contractDriftScore: contractDrift?.score || 0,
+    contractDriftReason: contractDrift?.reason || null,
+    contractDriftRecommendation: contractDrift?.recommendation || null,
+    contractDriftEvidence: contractDrift?.evidence || null
   };
 }
 

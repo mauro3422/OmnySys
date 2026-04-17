@@ -1,5 +1,5 @@
 import { normalizeCount } from './contract-helpers.js';
-import { extractStatusContext } from './status-system-table-context.js';
+import { extractStatusContext } from './status-system-table/context.js';
 import { buildDaemonRow, buildHttpRow } from './status-system-table-transport-rows.js';
 function buildDatabaseRow(databaseHealth, healthScore, healthGrade) {
   return {
@@ -205,7 +205,7 @@ function buildAutomationRow(folderizationAutomation) {
     area: 'Automation',
     state: folderizationAutomation?.automationState || 'watching',
     detail: folderizationAutomation
-      ? `mode=${folderizationAutomation.executionMode || 'n/a'} | exec=${folderizationAutomation.shouldExecute ? 'yes' : 'no'} | target=${folderizationAutomation.executionTarget || 'n/a'} | confidence=${normalizeCount(folderizationAutomation.confidence || 0)} | risk=${normalizeCount(folderizationAutomation.riskScore || 0)} | systems=${normalizeCount(folderizationAutomation.connectedSystemCount || 0)} | next=${folderizationAutomation.nextAction || 'n/a'}`
+      ? `mode=${folderizationAutomation.executionMode || 'n/a'} | exec=${folderizationAutomation.shouldExecute ? 'yes' : 'no'} | target=${folderizationAutomation.executionTarget || 'n/a'} | confidence=${normalizeCount(folderizationAutomation.confidence || 0)} | risk=${normalizeCount(folderizationAutomation.riskScore || 0)} | contract=${folderizationAutomation.contractDriftState || 'n/a'}:${normalizeCount(folderizationAutomation.contractDriftScore || 0)} | systems=${normalizeCount(folderizationAutomation.connectedSystemCount || 0)} | next=${folderizationAutomation.nextAction || 'n/a'}`
       : 'folderization automation not available',
     source: 'folderization automation plan'
   };

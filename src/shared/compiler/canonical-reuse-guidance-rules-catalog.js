@@ -150,6 +150,11 @@ export const RULE_GUIDANCE = {
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'buildPropagationLedger', 'buildStatusSummaryPayload'),
     recommendedReplacement: 'Remove the no-op summarizePropagationPlan anchor; if the helper needs propagation, pass the canonical propagation ledger into the payload contract instead of keeping a dead import for side effects.'
   },
+  folderization_contract_drift: {
+    existingCanonicalEntryPoint: 'folderize_family / rename_folderized_family / settleMutationFiles',
+    recommendedImport: createImportHint('../../../layer-c-memory/mcp/tools/folderize-family.js', 'folderize_family'),
+    recommendedReplacement: 'Route folderization plan, execution, settlement and rollback through the canonical folderization transaction pipeline instead of duplicating workflow helpers in legacy modules.'
+  },
   runtime_boundary_surfaces: {
     existingCanonicalEntryPoint: 'runAsyncBoundary',
     recommendedImport: createImportHint('../../../shared/compiler/index.js', 'runAsyncBoundary'),

@@ -21,6 +21,77 @@ import {
 
 const logger = createLogger('OmnySys:mcp:tool-telemetry');
 
+function alignFolderizationSnapshotToolResult(rawResult = null) {
+  const topCandidate =
+    rawResult?.snapshot?.folderization?.candidateReport?.topCandidates?.[0]
+    || rawResult?.folderization?.candidateReport?.topCandidates?.[0]
+    || rawResult?.folderizationReport?.candidateReport?.topCandidates?.[0]
+    || null;
+
+  if (!topCandidate?.recommendedFolder) {
+    return rawResult;
+  }
+
+  const preferredFolder = topCandidate.recommendedFolder;
+  const selectionReason = `Top folderization candidate from the DB is ${topCandidate.familyRoot} in ${topCandidate.directory}.`;
+  const creationGuidance = {
+    ...(rawResult?.folderization?.creationGuidance || rawResult?.snapshot?.folderization?.creationGuidance || {}),
+    mode: 'create_folderized_family',
+    matchedBy: 'candidateReport',
+    familyDomain: topCandidate.directory || null,
+    selectionReason,
+    preferredFolder,
+    preferredFamilyRoot: topCandidate.familyRoot || null,
+    preferredDirectory: topCandidate.directory || null,
+    guidance: `${selectionReason} Create the next file inside ${preferredFolder} using a short role basename such as ${(rawResult?.folderization?.creationGuidance?.preferredRoleStems || rawResult?.snapshot?.folderization?.creationGuidance?.preferredRoleStems || [])[0]?.stem || 'core.js'}.`
+  };
+
+  const summary = {
+    ...(rawResult?.summary || rawResult?.snapshot?.summary || {}),
+    recommendedTool: 'folderize_family',
+    recommendedAction: `Folderize ${topCandidate.familyRoot} into ${preferredFolder} (confidence ${topCandidate.confidence}).`,
+    nextBestFolder: preferredFolder,
+    creationNextBestFolder: preferredFolder,
+    whyThisFirst: selectionReason,
+    folderizationTargetFolder: preferredFolder,
+    folderizationTargetReason: selectionReason,
+    creationGuidanceFolder: preferredFolder,
+    creationGuidanceReason: selectionReason,
+    summaryText: String(rawResult?.summary?.summaryText || rawResult?.snapshot?.summary?.summaryText || '')
+      .replace(/target=[^|]+/, `target=${preferredFolder}`)
+  };
+
+  const folderizationReport = {
+    ...(rawResult?.folderization || rawResult?.folderizationReport || {}),
+    creationGuidance
+  };
+
+  const snapshot = rawResult?.snapshot
+    ? {
+        ...rawResult.snapshot,
+        folderization: {
+          ...(rawResult.snapshot.folderization || {}),
+          creationGuidance
+        },
+        summary
+      }
+    : rawResult?.snapshot;
+
+  return {
+    ...rawResult,
+    folderizationReport,
+    folderization: folderizationReport,
+    snapshot,
+    summary,
+    recommendedAction: summary.recommendedAction,
+    nextBestFolder: summary.nextBestFolder,
+    nextBestStem: summary.nextBestStem || rawResult?.nextBestStem || null,
+    whyThisFirst: summary.whyThisFirst,
+    guidance: creationGuidance,
+    oneLine: summary.summaryText || rawResult?.oneLine || null
+  };
+}
+
 export {
   buildToolExecutionContext,
   collectToolRecentErrors
@@ -96,7 +167,10 @@ export async function executeToolCall(handler, name, server, args = {}, transpor
     transportOrigin: transportContext?.origin || 'unknown',
     transportOriginSource: transportContext?.source || null
   });
-  const resultWithTelemetry = buildToolCallResult(rawResult, recentErrors, provenance);
+  const normalizedRawResult = name === 'mcp_omnysystem_get_folderization_snapshot'
+    ? alignFolderizationSnapshotToolResult(rawResult)
+    : rawResult;
+  const resultWithTelemetry = buildToolCallResult(normalizedRawResult, recentErrors, provenance);
   return {
     ...resultWithTelemetry,
     _toolTelemetry: {

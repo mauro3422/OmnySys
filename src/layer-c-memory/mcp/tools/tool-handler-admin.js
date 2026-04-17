@@ -1,7 +1,8 @@
 import { getFreshModuleSpecifier } from '../tool-module-cache.js';
 
 async function freshCall(specifier, exportName, args, ctx) {
-  const mod = await import(getFreshModuleSpecifier(specifier));
+  const cacheBustedSpecifier = `${getFreshModuleSpecifier(specifier)}&call=${Date.now()}`;
+  const mod = await import(cacheBustedSpecifier);
   const handler = mod[exportName];
   if (typeof handler !== 'function') {
     throw new Error(`Missing export "${exportName}" in ${specifier}`);

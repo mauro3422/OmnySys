@@ -2,7 +2,6 @@ import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
 import { buildFolderizationMigrationPlanFromRepo, buildFolderizationMoveSnapshot, loadCompilerExplainability } from '../../../shared/compiler/index.js';
 import { executeFolderizationPlan } from './folderize-family-plan-runner.js';
-import { validatePlannedFolderizedImports } from './folderize-family-import-rewriter.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family');
 
@@ -156,25 +155,6 @@ async function runFolderizationRequest({
       plan: focusPlan,
       gate: executionGate,
       error: executionGate.reason || `Folderization execution gate rejected for ${candidatePath}`
-    };
-  }
-
-  const preflight = await validatePlannedFolderizedImports({
-    projectPath,
-    moveTargets: focusPlan.moveTargets || [],
-    impactedFiles: focusPlan.importImpact?.impactedFiles?.map((item) => item.filePath) || [],
-    context: moveContext
-  });
-
-  if (!preflight.success) {
-    logger.error(`[Tool] folderize_family preflight failed for ${candidatePath}: ${preflight.errors?.length || 0} import resolution issue(s)`);
-    return {
-      success: false,
-      mode: 'preflight_failed',
-      plan: focusPlan,
-      gate: executionGate,
-      preflight,
-      error: `Folderization preflight failed for ${candidatePath}`
     };
   }
 

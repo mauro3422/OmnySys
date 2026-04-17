@@ -3,7 +3,7 @@
  */
 
 import { buildStatusTableRows } from './status-system-table-rows.js';
-import { renderSystemTableAscii } from './status-system-table-context.js';
+import { renderSystemTableAscii } from './status-system-table/context.js';
 
 export function buildSystemTableSummary(status = {}) {
   if (!status || typeof status !== 'object') {
