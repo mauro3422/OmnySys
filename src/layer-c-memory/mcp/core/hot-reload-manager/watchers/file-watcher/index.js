@@ -96,7 +96,13 @@ export async function processFileWatcherChange({
 
   const fullPath = path.normalize(path.join('src', normalizedFilename)).replace(/\\/g, '/');
   const timeout = setTimeout(() => {
-    onChange(eventType, fullPath);
+    void (async () => {
+      try {
+        await onChange(eventType, fullPath);
+      } catch (error) {
+        logger.error(`File watcher change handler failed for ${normalizedFilename}: ${error.message}`);
+      }
+    })();
   }, debounceMs);
 
   if (timeout.unref) {

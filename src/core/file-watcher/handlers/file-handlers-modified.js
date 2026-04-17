@@ -2,8 +2,8 @@ import { createLogger } from '../../../utils/logger.js';
 import { runAsyncBoundary } from '../../../shared/compiler/index.js';
 import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
-import { validateAllExports } from '#layer-c/mcp/tools/validate-exports-chain.js';
-import { isTestFactorySurface } from '#layer-c/mcp/tools/validate-exports-chain-helpers.js';
+import { validateAllExports } from '../../../layer-c-memory/mcp/tools/validate-exports-chain/validate-exports-chain.js';
+import { isTestFactorySurface } from '../../../layer-c-memory/mcp/tools/validate-exports-chain/index.js';
 import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handler-events.js';
 import {
   readModifiedFileSnapshot,

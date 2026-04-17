@@ -1,6 +1,6 @@
-import { asNumber } from './core-utils.js';
-import { takeSample } from './sample-helpers.js';
-import { buildToolCachePolicySummary } from './tool-run-telemetry/index.js';
+import { asNumber } from '../core-utils.js';
+import { takeSample } from '../sample-helpers.js';
+import { buildToolCachePolicySummary } from '../tool-run-telemetry/index.js';
 
 export function summarizeRecentErrors(recentErrors = null) {
   if (!recentErrors || typeof recentErrors !== 'object') {

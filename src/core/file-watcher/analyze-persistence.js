@@ -9,14 +9,49 @@ import { syncIncrementalSemanticSurface } from './analyze-post-processing.js';
 
 const logger = createLogger('OmnySys:analyze:persistence');
 
+function buildSkippedPersistenceResult(reason) {
+  return {
+    success: true,
+    skipped: true,
+    reason
+  };
+}
+
+function isDatabaseUnavailable(repo) {
+  return !repo?.initialized || !repo?.db || repo.db.open === false;
+}
+
+async function invalidateVersionedAtoms(rootPath, filePath, moleculeAtoms) {
+  const { AtomVersionManager } = await import('../../layer-c-memory/storage/atoms/atom-version-manager/atom-version-manager.js');
+  const versionManager = new AtomVersionManager(rootPath);
+
+  for (const atom of moleculeAtoms) {
+    const atomId = `${filePath}::${atom.name}`;
+    const changes = await versionManager.detectChanges(atomId, atom);
+    if (changes.hasChanges && !changes.isNew) {
+      await invalidateAtomCaches(atomId, changes.fields, rootPath);
+    }
+  }
+}
+
+async function persistFollowUpArtifacts(rootPath, filePath, moleculeAtoms, newAtomNames) {
+  await cleanupOrphanedAtomFiles(rootPath, filePath, newAtomNames);
+  await invalidateVersionedAtoms(rootPath, filePath, moleculeAtoms);
+
+  await saveMolecule(rootPath, filePath, {
+    filePath,
+    type: 'molecule',
+    atoms: moleculeAtoms.map((atom) => atom.id),
+    extractedAt: new Date().toISOString()
+  });
+
+  await syncIncrementalSemanticSurface(rootPath, filePath, moleculeAtoms);
+}
+
 export async function persistAnalysisArtifacts(rootPath, filePath, moleculeAtoms) {
   const repo = getRepository(rootPath);
-  if (!repo?.initialized || !repo?.db || repo.db.open === false) {
-    return {
-      success: true,
-      skipped: true,
-      reason: 'database connection is not open'
-    };
+  if (isDatabaseUnavailable(repo)) {
+    return buildSkippedPersistenceResult('database connection is not open');
   }
 
   try {
@@ -42,34 +77,10 @@ export async function persistAnalysisArtifacts(rootPath, filePath, moleculeAtoms
       return saveResults;
     }
 
-    await cleanupOrphanedAtomFiles(rootPath, filePath, newAtomNames);
-
-    const { AtomVersionManager } = await import('#layer-c/storage/atoms/atom-version-manager.js');
-    const versionManager = new AtomVersionManager(rootPath);
-
-    for (const atom of moleculeAtoms) {
-      const atomId = `${filePath}::${atom.name}`;
-      const changes = await versionManager.detectChanges(atomId, atom);
-      if (changes.hasChanges && !changes.isNew) {
-        await invalidateAtomCaches(atomId, changes.fields, rootPath);
-      }
-    }
-
-    await saveMolecule(rootPath, filePath, {
-      filePath,
-      type: 'molecule',
-      atoms: moleculeAtoms.map((atom) => atom.id),
-      extractedAt: new Date().toISOString()
-    });
-
-    await syncIncrementalSemanticSurface(rootPath, filePath, moleculeAtoms);
+    await persistFollowUpArtifacts(rootPath, filePath, moleculeAtoms, newAtomNames);
   } catch (error) {
     if (String(error?.message || '').includes('database connection is not open')) {
-      return {
-        success: true,
-        skipped: true,
-        reason: error.message
-      };
+      return buildSkippedPersistenceResult(error.message);
     }
 
     logger.error(`Error persisting analysis artifacts for ${filePath}: ${error.message}`);

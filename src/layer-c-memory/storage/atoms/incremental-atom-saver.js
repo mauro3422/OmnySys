@@ -11,7 +11,7 @@
 import {
   buildAtomChangeDetection,
   buildVersionPayload,
-} from './atom-version-manager-helpers.js';
+} from './atom-version-manager/index.js';
 import { persistAtomVersionArchiveBatch } from '../../../shared/compiler/atom-history-archive.js';
 import { createLogger } from '#utils/logger.js';
 import {

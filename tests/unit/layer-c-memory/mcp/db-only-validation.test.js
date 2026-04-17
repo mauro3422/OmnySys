@@ -24,7 +24,7 @@ vi.mock('#shared/compiler/index.js', () => ({
 }));
 
 import { ValidateImportsTool } from '#layer-c/mcp/tools/validate-imports.js';
-import { validateAllExports, traceExportChain } from '#layer-c/mcp/tools/validate-exports-chain.js';
+import { validateAllExports, traceExportChain } from '../../../../src/layer-c-memory/mcp/tools/validate-exports-chain/validate-exports-chain.js';
 import {
   collectDatabaseImportState,
   loadIndexedFileAnalysis

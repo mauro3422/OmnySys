@@ -3,7 +3,7 @@ import {
   isFrameworkCoordinatorActionHook,
   isFrameworkTrackerHook,
   shouldIgnoreConceptualDuplicateFinding
-} from '../../../../src/shared/compiler/duplicate-signal-policy/detectors/core-policy.js';
+} from '../../../../src/shared/compiler/duplicate-signal-policy/detectors/core-policy/index.js';
 
 describe('duplicate-signal policy - framework coordinator hooks', () => {
   it('treats MCP tool performAction hooks as intentional framework contracts', () => {

@@ -1,8 +1,8 @@
 import { watch } from 'fs';
 import path from 'path';
 
-import { createLogger } from '../../../../utils/logger.js';
-import { buildFileWatcherStats, processFileWatcherChange } from './file-watcher-helpers.js';
+import { createLogger } from '../../../../../utils/logger.js';
+import { buildFileWatcherStats, processFileWatcherChange } from './index.js';
 
 const logger = createLogger('OmnySys:hot-reload:watcher');
 

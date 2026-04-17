@@ -17,7 +17,7 @@
  */
 
 import { createLogger } from '../../../utils/logger.js';
-import { FileWatcher } from './watchers/file-watcher.js';
+import { FileWatcher } from './watchers/file-watcher/file-watcher.js';
 import { ModuleClassifier } from './watchers/module-classifier.js';
 import { ReloadHandler } from './handlers/reload-handler.js';
 import {

@@ -5,8 +5,8 @@
  * Valida que los exports de un archivo existen y la cadena está completa.
  */
 
-import { validateAllExports, traceExportChain, getFileExports } from './validate-exports-chain.js';
-import { createLogger } from '#utils/logger.js';
+import { validateAllExports, traceExportChain, getFileExports } from './validate-exports-chain/validate-exports-chain.js';
+import { createLogger } from '../../../../utils/logger.js';
 import { formatError } from '../core/shared/utils/error-formatter.js';
 
 const logger = createLogger('OmnySys:MCP:ValidateExports');
@@ -74,5 +74,4 @@ export async function validate_exports(args, context) {
     return formatError('VALIDATION_FAILED', `Failed to validate exports: ${error.message}`);
   }
 }
-
 

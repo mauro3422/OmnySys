@@ -4,3 +4,5 @@ export * from './index-part-3.js';
 export * from './index-part-4.js';
 export * from './index-part-5.js';
 export * from './object-compaction.js';
+export { evaluateAtomRefactoringSignals } from './atom-evaluation.js';
+export { buildRestartLifecycleGuidance } from './session-restart-lifecycle.js';

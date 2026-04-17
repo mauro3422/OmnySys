@@ -10,10 +10,7 @@
 import { createLogger } from '../../../utils/logger.js';
 import { classifyRuntimeChange, RuntimeChangeAction } from './policy/runtime-change-policy.js';
 import { queueRuntimeRestart } from './restart-coordinator.js';
-import {
-  buildRestartLifecycleGuidance,
-  evaluateAtomRefactoringSignals
-} from '../../../../shared/compiler/index.js';
+import { evaluateAtomRefactoringSignals, buildRestartLifecycleGuidance } from '../../../../shared/compiler/index.js';
 import { markInsightsDirty } from '../server-class-helpers.js';
 
 const logger = createLogger('OmnySys:hot-reload');

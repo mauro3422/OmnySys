@@ -5,7 +5,7 @@
  */
 
 // Core policy detectors (low-signal, generated code, wrappers)
-export * from './core-policy.js';
+export * from './core-policy/index.js';
 
 // Subsystem detectors (repository, storage, compiler, pipeline, etc.)
 export * from './subsystems.js';
@@ -15,4 +15,4 @@ export {
     shouldIgnoreConceptualDuplicateFinding,
     shouldIgnoreStructuralDuplicateFinding,
     classifyUtilityHelperDuplicate
-} from './core-policy.js';
+} from './core-policy/index.js';

@@ -1,4 +1,4 @@
-import { normalizeFilePath } from '../../path-normalization.js';
+import { normalizeFilePath } from '../../../path-normalization.js';
 import {
   LOW_SIGNAL_GENERATED_ATOM_NAME_REGEX,
   LOW_SIGNAL_GENERATED_FINGERPRINT_ENTITY_REGEX,
@@ -11,9 +11,9 @@ import {
   UTILITY_HELPER_PATTERNS,
   STRUCTURAL_GUARD_PATH_MARKERS,
   DUPLICATE_SIGNAL_POLICY_FILE_MARKER
-} from '../constants/index.js';
-import { normalizeDuplicateSignalInputs } from '../transformers.js';
-import { isCanonicalMcpToolRouter } from './subsystems.js';
+} from '../../constants/index.js';
+import { normalizeDuplicateSignalInputs } from '../../transformers.js';
+import { isCanonicalMcpToolRouter } from '../subsystems.js';
 
 export function isCanonicalDuplicateSignalPolicyFile(filePath) {
   const normalizedPath = normalizeFilePath(filePath).replace(/\\/g, '/').toLowerCase();

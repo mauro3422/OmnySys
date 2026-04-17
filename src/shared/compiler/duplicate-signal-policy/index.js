@@ -26,7 +26,7 @@ export {
     shouldIgnoreStructuralDuplicateFinding,
     classifyUtilityHelperDuplicate,
     isCanonicalDuplicateSignalPolicyFile
-} from './detectors/core-policy.js';
+} from './detectors/core-policy/index.js';
 
 // Utility functions (re-exported from canonical helpers for backward compatibility)
 export {

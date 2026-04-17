@@ -7,8 +7,8 @@
 
 import { builtinModules } from 'node:module';
 import path from 'node:path';
-import { getFileAnalysis, getFileExports as getCanonicalFileExports } from '#layer-c/query/apis/file-api.js';
-import { createLogger } from '#utils/logger.js';
+import { getFileAnalysis, getFileExports } from '../../../query/apis/file-api.js';
+import { createLogger } from '../../../../utils/logger.js';
 import {
   buildMissingDatabaseResult,
   buildSkippedImportResult,
@@ -18,7 +18,7 @@ import {
   isExternalNonCanonicalModule,
   isTestFactorySurface,
   normalizeCompilerPath
-} from './validate-exports-chain-helpers.js';
+} from './index.js';
 
 const logger = createLogger('OmnySys:ValidateExportsChain');
 
@@ -91,10 +91,10 @@ async function buildValidationResultsForImport(projectPath, filePath, imp) {
  * @param {string} filePath - Ruta del archivo
  * @returns {Promise<Array>} Lista de nombres exportados
  */
-export async function getFileExports(projectPath, filePath) {
+export async function loadFileExportsFromDatabase(projectPath, filePath) {
   try {
     const normalizedFilePath = normalizeCompilerPath(filePath);
-    const exports = await getCanonicalFileExports(projectPath, normalizedFilePath);
+    const exports = await getFileExports(projectPath, normalizedFilePath);
     return Array.from(exports || []);
   } catch (error) {
     logger.warn(`[validate-exports] getFileExports failed for ${filePath}: ${error.message}`);
@@ -119,7 +119,7 @@ export async function traceExportChain(projectPath, targetFile, importName, from
     visited.add(currentFile);
     chain.push({
       file: currentFile,
-      exports: await getFileExports(projectPath, currentFile)
+      exports: await loadFileExportsFromDatabase(projectPath, currentFile)
     });
 
     const exports = chain[chain.length - 1].exports;

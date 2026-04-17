@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCachePolicySummary } from '../../../../src/shared/compiler/cache-policy-summary.js';
+import { buildCachePolicySummary } from '../../../../src/shared/compiler/cache-policy/summary.js';
 
 describe('cache policy summary', () => {
   it('surfaces explicit cache and no-cache guidance with tool telemetry signals', () => {

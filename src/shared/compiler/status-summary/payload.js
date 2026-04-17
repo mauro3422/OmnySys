@@ -17,7 +17,7 @@ import { summarizeCompilerMetricsSnapshot as compactCompilerMetricsSnapshotSumma
 import { summarizeCompilerExplainability as compactCompilerExplainabilitySummary } from '../explainability/summary.js';
 import { buildSystemTableSummary } from '../status-system-table.js';
 import { buildUpdateSurfaceSummary } from '../update-surface-summary.js';
-import { buildCachePolicySummary } from '../cache-policy-summary.js';
+import { buildCachePolicySummary } from '../cache-policy/summary.js';
 import { summarizeSurfaceAuditForStatus } from '../surface-audit/audit.js';
 import { buildCompilerStatusSummaryEnvelope } from './summary.js';
 

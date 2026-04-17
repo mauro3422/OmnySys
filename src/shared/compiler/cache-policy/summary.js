@@ -5,15 +5,15 @@
  * where freshness matters, and which snapshots should be keyed by fingerprint.
  */
 
-import { asNumber } from './core-utils.js';
-import { takeSample } from './sample-helpers.js';
+import { asNumber } from '../core-utils.js';
+import { takeSample } from '../sample-helpers.js';
 import {
   buildRecurringHotspots,
   buildWhereNotToCache,
   buildWhereToCache,
   summarizeRecentErrors,
   summarizeToolTelemetry
-} from './cache-policy-summary-helpers.js';
+} from './index.js';
 
 export function buildCachePolicySummary({
   recentErrors = null,

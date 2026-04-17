@@ -1,4 +1,4 @@
-import { statsPool } from '../../../shared/utils/stats-pool.js';
+import { statsPool } from '../../../../shared/utils/stats-pool.js';
 /**
  * @fileoverview atom-version-manager.js
  *
@@ -8,21 +8,21 @@ import { statsPool } from '../../../shared/utils/stats-pool.js';
  * @module layer-c-memory/storage/atoms/atom-version-manager
  */
 
-import { createLogger } from '../../../utils/logger.js';
-import { persistAtomVersionArchiveSnapshot } from '../../../shared/compiler/atom-history-archive.js';
+import { createLogger } from '../../../../utils/logger.js';
+import { persistAtomVersionArchiveSnapshot } from '../../../../shared/compiler/atom-history-archive.js';
 import {
   buildAtomChangeDetection,
   loadFieldHashes,
   trackAtomVersionWithDb
-} from './atom-version-manager-helpers.js';
+} from './index.js';
 
 const logger = createLogger('OmnySys:AtomVersionManager');
 
-export { calculateFieldHashes } from './atom-version-manager-helpers.js';
+export { calculateFieldHashes } from './index.js';
 
 async function ensureDbForManager(manager) {
   if (manager.db) return;
-  const { connectionManager } = await import('../database/connection.js');
+  const { connectionManager } = await import('../../database/connection.js');
   manager.db = connectionManager.getDatabase();
 }
 

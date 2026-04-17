@@ -21,7 +21,7 @@ import {
   isFrameworkOrchestrationEntryPoint,
   isLowSignalOrCompatibilityConceptualDuplicate,
   isCanonicalDuplicateSignalPolicyHelper
-} from './core-policy-helpers.js';
+} from './helpers.js';
 import { classifyUtilityHelperDuplicate } from './utility-helper-classification.js';
 
 // Export for backward compatibility

@@ -18,7 +18,7 @@ export {
   AtomVersionManager, 
   createVersionManager,
   calculateFieldHashes 
-} from './atom-version-manager.js';
+} from './atom-version-manager/atom-version-manager.js';
 
 export {
   getAtomHistoryArchiveDb,
