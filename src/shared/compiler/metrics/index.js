@@ -143,7 +143,7 @@ function buildSnapshotPersistenceArgs(snapshot = null) {
     readiness_reason: current.readinessReason || null,
     snapshot_fingerprint: current.snapshotFingerprint || buildSnapshotFingerprint(snapshot),
     summary_text: snapshot?.summary || buildCompilerMetricsSnapshotSummary(current, snapshot?.trend || {}) || current.summaryText || null,
-    payload_json: safeJsonStringify(buildSnapshotPersistencePayload(snapshot)),
+    payload_json: null, // OMNYSYS_PERFORMANCE_FIX: Removed to prevent 60MB payload bloat per snapshot
     trend_json: safeJsonStringify(snapshot?.trend || {})
   };
 }

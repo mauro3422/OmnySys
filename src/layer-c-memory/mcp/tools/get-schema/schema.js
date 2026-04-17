@@ -13,11 +13,72 @@
  * @module mcp/tools/get-schema
  */
 
-import {
-  buildAtomsSchemaResult,
-  buildDatabaseSchemaResult,
-  buildRegistrySchemaResult
-} from './helpers.js';
+import { getFreshModuleSpecifier } from '../../tool-module-cache.js';
+
+function buildDatabaseSchemaFallback(result, projectPath) {
+  const summary = result?.summary || {};
+  const historicalStores = result?.historicalStores || {
+    projectPath,
+    archiveDir: null,
+    totalStores: 0,
+    readyStoreCount: 0,
+    missingStoreCount: 0,
+    state: 'missing',
+    latestSnapshotAt: null,
+    freshestSnapshotState: 'missing',
+    lineageReconciliation: null,
+    summaryText: 'historical storage unavailable'
+  };
+
+  return {
+    success: true,
+    schemaType: 'database',
+    schemaDebugMarker: 'mcp/get-schema/database-v2',
+    timestamp: result?.timestamp || new Date().toISOString(),
+    warning: result?.error || 'Database schema scan returned a degraded result.',
+    summary: {
+      totalRegisteredTables: summary.totalRegisteredTables || (Array.isArray(result?.tables) ? result.tables.length : 0),
+      existingTables: summary.existingTables || (Array.isArray(result?.tables) ? result.tables.length : 0),
+      untrackedTables: summary.untrackedTables || (Array.isArray(result?.untrackedTables) ? result.untrackedTables.length : 0),
+      missingTables: summary.missingTables || 0,
+      tablesWithDrift: summary.tablesWithDrift || 0,
+      totalMissingColumns: summary.totalMissingColumns || 0,
+      totalExtraColumns: summary.totalExtraColumns || 0,
+      historicalStoreCount: summary.historicalStoreCount || historicalStores.totalStores || 0,
+      historicalStoreReadyCount: summary.historicalStoreReadyCount || historicalStores.readyStoreCount || 0,
+      historicalStoreMissingCount: summary.historicalStoreMissingCount || historicalStores.missingStoreCount || 0,
+      historicalStoreState: summary.historicalStoreState || historicalStores.state || 'missing'
+    },
+    tables: Array.isArray(result?.tables) ? result.tables : [],
+    untrackedTables: Array.isArray(result?.untrackedTables) ? result.untrackedTables : [],
+    recommendations: Array.isArray(result?.recommendations)
+      ? result.recommendations
+      : [{
+        severity: 'medium',
+        message: result?.error || 'Database schema scan returned a degraded result.',
+        action: 'refresh_cache'
+      }],
+    databaseHealth: result?.databaseHealth || null,
+    controlPlaneFoundations: result?.controlPlaneFoundations || null,
+    liveRowSync: result?.liveRowSync || null,
+    historicalStores,
+    stageErrors: Array.isArray(result?.stageErrors)
+      ? result.stageErrors
+      : [{ stage: 'databaseSchema', message: result?.error || 'Database schema scan returned a degraded result.' }]
+  };
+}
+
+function coerceDatabaseSchemaResult(result, projectPath) {
+  if (!result || typeof result !== 'object') {
+    return null;
+  }
+
+  if (result.success !== false) {
+    return result;
+  }
+
+  return buildDatabaseSchemaFallback(result, projectPath);
+}
 
 /**
  * MCP Tool: get_schema
@@ -36,15 +97,19 @@ export async function get_schema(args, context) {
   const { projectPath } = context;
 
   try {
+    const helpers = await import(getFreshModuleSpecifier('./helpers.js'));
     switch (type) {
       case 'atoms':
-        return buildAtomsSchemaResult(projectPath, { atomType, sampleSize, focusField });
+        return helpers.buildAtomsSchemaResult(projectPath, { atomType, sampleSize, focusField });
 
       case 'database':
-        return buildDatabaseSchemaResult({ includeSQL, projectPath });
+        {
+          const result = helpers.buildDatabaseSchemaResult({ includeSQL, projectPath });
+          return coerceDatabaseSchemaResult(result, projectPath) || result;
+        }
 
       case 'registry':
-        return buildRegistrySchemaResult();
+        return helpers.buildRegistrySchemaResult();
 
       default:
         return {
@@ -56,6 +121,7 @@ export async function get_schema(args, context) {
     return {
       success: false,
       error: error.message,
+      debugStack: error.stack || null,
       schemaType: type,
       timestamp: new Date().toISOString()
     };

@@ -9,10 +9,7 @@
  * @param {string} filePath - File path filter
  * @returns {Array} - Array of suggestions
  */
-import { normalizePath as canonicalNormalizePath } from '../../../../shared/utils/path-utils.js';
-function normalizePath(filePath) {
-  return canonicalNormalizePath(filePath);
-}
+import { normalizePath } from '../../../../shared/utils/path-utils.js';
 
 function getFileBucket(byFile, path) {
   if (!byFile.has(path)) {

@@ -38,8 +38,16 @@ export class OmnySysMCPServer extends EventEmitter {
     this.orchestrator = null;
     this.cache = null;
     this.server = null;
+    this.sharedState = {};
 
     initializeRuntimeRestartState(this);
+
+    // Live Insight Registry for Zero-Latency querying
+    this.liveInsights = null;
+    this.insightsDirty = true;
+    this._backgroundInsightTask = null;
+    this._insightRefreshCooldownMs = 10000; // 10s cooldown after changes
+
 
     this.initialized = false;
     this.startTime = Date.now();

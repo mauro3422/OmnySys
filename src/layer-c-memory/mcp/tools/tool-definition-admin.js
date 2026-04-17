@@ -30,7 +30,8 @@ export const adminToolDefinitions = [
         snapshotKind: { type: 'string', enum: ['manual', 'status', 'dashboard', 'debt'], default: 'manual', description: 'Tipo de snapshot a capturar' },
         compareDays: { type: 'number', default: 3, description: 'Ventana en días para comparar tendencia' },
         historyLimit: { type: 'number', default: 12, description: 'Cantidad máxima de snapshots devueltos en el history' },
-        persist: { type: 'boolean', default: true, description: 'Si es true, guarda la snapshot en SQLite' }
+        persist: { type: 'boolean', default: true, description: 'Si es true, guarda la snapshot en SQLite' },
+        includeDetails: { type: 'boolean', default: false, description: 'If true, include the full raw inventory detail payload' }
       },
       required: []
     }

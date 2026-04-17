@@ -1,5 +1,5 @@
 const CODE_FILE_PATTERN = /\.(js|ts|jsx|tsx|mjs|cjs)$/i;
-import { normalizePath as canonicalNormalizePath } from '../../shared/utils/path-utils.js';
+import { normalizePath } from '../../shared/utils/path-utils.js';
 const METADATA_FILE_NAMES = new Set([
   'package.json',
   'package-lock.json',
@@ -17,10 +17,6 @@ const BUILD_CONFIG_PATTERNS = [
   /^turbo\.json$/i,
   /^nx\.json$/i
 ];
-
-function normalizePath(filePath) {
-  return canonicalNormalizePath(filePath);
-}
 
 export const WATCHER_SURFACE_KIND = {
   CODE: 'code',

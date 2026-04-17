@@ -17,7 +17,7 @@ import {
   buildRestartLifecycleGuidance
 } from '../../shared/compiler/index.js';
 
-const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 20);
+const SESSION_RECOVERY_ATTEMPTS = Number(process.env.OMNYSYS_SESSION_RECOVERY_ATTEMPTS || 720); // 720 * 250ms = 180s
 const SESSION_RECOVERY_DELAY_MS = Number(process.env.OMNYSYS_SESSION_RECOVERY_DELAY_MS || 250);
 const sharedEventStore = new (await import('@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js')).InMemoryEventStore();
 const staleInitRecoveryInFlight = new Set();

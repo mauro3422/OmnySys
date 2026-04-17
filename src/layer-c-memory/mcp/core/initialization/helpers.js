@@ -1,5 +1,11 @@
 import { getRepositoryDiagnostics } from '../../../storage/repository/index.js';
-import { getDatabaseHealthSummary, getSystemMapPersistenceCoverage, buildUpdateSurfaceSummary } from '../../../../shared/compiler/index.js';
+import { buildMcpUrl } from '../../../../shared/mcp-endpoints.js';
+import {
+  getDatabaseHealthSummary,
+  getSystemMapPersistenceCoverage,
+  buildStatusSummaryPayload,
+  buildUpdateSurfaceSummary
+} from '../../../../shared/compiler/index.js';
 
 function getGraphDependencyTotal(db) {
   if (!db?.prepare) return 0;
@@ -59,6 +65,118 @@ export function buildBootstrapUpdateSurface({
   return buildUpdateSurfaceSummary(bootstrapStatus);
 }
 
+export function buildBootstrapStatusPayload({
+  projectPath,
+  db,
+  liveRowSyncSummary,
+  fileUniverseSummary,
+  phase2PendingFiles,
+  metrics,
+  startupTelemetry,
+  compilerDiagnostics,
+  sessionSummary
+}) {
+  return buildStatusSummaryPayload({
+    initialized: true,
+    initializing: false,
+    project: projectPath,
+    telemetryMode: 'fast_phase2',
+    timestamp: new Date().toISOString(),
+    databaseHealth: compilerDiagnostics?.databaseHealth || null,
+    repository: {
+      status: {
+        dbOpen: !!db?.open,
+        ready: true,
+        initialized: true,
+        projectPath
+      },
+      integrity: liveRowSyncSummary || null
+    },
+    watcher: {
+      isRunning: true,
+      pendingChanges: 0,
+      failedChanges: 0,
+      lastChangeOrigin: 'bootstrap'
+    },
+    metadata: {
+      totalFiles: compilerDiagnostics?.totalFiles || 0,
+      totalFunctions: compilerDiagnostics?.totalFunctions || 0,
+      lastAnalyzed: compilerDiagnostics?.lastAnalyzed || null,
+      liveAtomCount: metrics?.totalAtoms || 0,
+      liveFileCount: compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+      phase2PendingFiles,
+      phase2CompletedFiles: compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+      societiesCount: compilerDiagnostics?.societiesCount || 0
+    },
+    cache: {
+      atoms: metrics?.totalAtoms || 0,
+      files: compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+      relations: metrics?.callLinks || 0,
+      status: liveRowSyncSummary || 'bootstrap'
+    },
+    background: {
+      phase2PendingFiles,
+      phase2CompletedFiles: compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+      societiesCount: compilerDiagnostics?.societiesCount || 0,
+      graphCoverage: {
+        filesTotal: compilerDiagnostics?.fileUniverseGranularity?.liveFileCount || 0,
+        dependenciesTotal: metrics?.callLinks || 0,
+        coverageRatio: metrics?.liveCoverageRatio || 0,
+        callGraphLinks: metrics?.callLinks || 0
+      },
+      fileUniverseSummary: fileUniverseSummary || null,
+      conceptualDuplicates: {
+        actionableGroups: metrics?.conceptualGroups || 0,
+        rawGroups: metrics?.conceptualRawGroups || 0,
+        actionableRatio: metrics?.conceptualActionableRatio || 0
+      },
+      issueSummary: metrics?.issueSummary || '0 items',
+      mcpSessionSummary: sessionSummary || null
+    },
+    mcpSessions: sessionSummary || null,
+    compilerExplainability: compilerDiagnostics || null,
+    metricsSnapshot: metrics?.metricsSnapshot || null,
+    healthSnapshot: metrics?.healthSnapshot || null,
+    healthPanel: metrics?.healthPanel || null,
+    systemInventory: metrics?.systemInventory || null,
+    canonicalPromotion: metrics?.metricsSnapshot?.current?.canonicalPromotion || null,
+    cachePolicy: metrics?.metricsSnapshot?.current?.cachePolicy || null,
+    toolInventory: metrics?.toolInventory || null,
+    updateSurface: metrics?.updateSurface || null,
+    surfaceAudit: compilerDiagnostics?.surfaceAudit || null,
+    signalConfidence: compilerDiagnostics?.signalConfidence || null
+  }, []);
+}
+
+export function buildBootstrapDiagnosticsFallbackSummary(extendedMetrics, { isFinal, snapshotKind }) {
+  const startupSummary = extendedMetrics?.startupTelemetry?.summary
+    || extendedMetrics?.statusPayload?.summary
+    || 'startup telemetry unavailable';
+  const inventorySummary = extendedMetrics?.systemInventory?.summaryText
+    || extendedMetrics?.statusPayload?.systemInventory?.summaryText
+    || 'system inventory unavailable';
+  const toolSummary = extendedMetrics?.toolInventory?.summaryText
+    || extendedMetrics?.statusPayload?.toolInventory?.summaryText
+    || 'tool inventory unavailable';
+  const updateSummary = extendedMetrics?.updateSurface?.detail
+    || extendedMetrics?.statusPayload?.updateSurface?.detail
+    || 'update surface unavailable';
+  const healthSummary = extendedMetrics?.healthPanel?.oneLine
+    || extendedMetrics?.statusPayload?.healthPanel?.oneLine
+    || extendedMetrics?.statusPayload?.summary
+    || 'health summary unavailable';
+
+  return [
+    'OMNYSYS PIPELINE INTEGRITY REPORT',
+    `Summary: ${snapshotKind}${isFinal ? ' final' : ''} snapshot fallback`,
+    `Startup: ${startupSummary}`,
+    `Health: ${healthSummary}`,
+    `System Inventory: ${inventorySummary}`,
+    `Tool Inventory: ${toolSummary}`,
+    `Update: ${updateSummary}`
+  ].join('\n');
+}
+
 export function resolveDashboardHeader(isFinal, isSettling, snapshotKind = 'bootstrap') {
   if (isFinal) {
     return snapshotKind === 'phase2-completion'
@@ -71,6 +189,7 @@ export function resolveDashboardHeader(isFinal, isSettling, snapshotKind = 'boot
 export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPreliminary, isSettling, fileUniverseSettling, snapshotKind = 'bootstrap' }) {
   const detailLines = [];
   const systemTableRows = extendedMetrics.statusPayload?.systemTable?.rows || [];
+  const mcpHttpUrl = buildMcpUrl({ port: 9999 });
 
   if (isPreliminary && isSettling) {
     detailLines.push('  Preliminary snapshot: Phase 2 telemetry is still settling; final debt counts may change.', '');
@@ -86,6 +205,7 @@ export function buildDashboardDetailLines(extendedMetrics, { isFinal, isPrelimin
     extendedMetrics.startupTelemetry
       ? `  Startup: ${extendedMetrics.startupTelemetry.state} | ${extendedMetrics.startupTelemetry.summary} | layerA=${extendedMetrics.startupTelemetry.layerAStrategy || 'n/a'}`
       : null,
+    `  MCP HTTP: listening at ${mcpHttpUrl} | port=9999 | transport=${extendedMetrics.startupTelemetry?.proxyManaged ? 'proxy-managed' : 'standalone'}`,
     `  Graph Coverage: call graph=${extendedMetrics.callLinks} links, semantic layer=${extendedMetrics.semanticLinks} high-level links`,
     `  Duplicates: ${extendedMetrics.structuralGroups} structural groups, ${extendedMetrics.conceptualGroups} conceptual actionable groups (${extendedMetrics.conceptualRawGroups} raw groups)` +
       (extendedMetrics.conceptualImplementations > 0

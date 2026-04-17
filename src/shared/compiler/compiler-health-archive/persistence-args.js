@@ -37,13 +37,7 @@ function buildArchivePersistenceArgs(snapshot = null) {
     client_sync_severity: current.clientSyncSeverity || null,
     summary_text: snapshot?.summary || buildCompilerMetricsSnapshotSummary(current, snapshot?.trend || {}) || current.summaryText || null,
     snapshot_fingerprint: current.snapshotFingerprint || '',
-    payload_json: safeJsonStringify({
-      current,
-      trend: snapshot?.trend || {},
-      history: snapshot?.history || {},
-      metricDictionary: snapshot?.metricDictionary || null,
-      summary: snapshot?.summary || null
-    }),
+    payload_json: null, // OMNYSYS_PERFORMANCE_FIX: Bloat prevention
     trend_json: safeJsonStringify(snapshot?.trend || {})
   };
 }
@@ -86,13 +80,7 @@ function buildMetricsArchivePersistenceArgs(snapshot = null) {
     client_sync_severity: current.clientSyncSeverity || null,
     summary_text: snapshot?.summary || buildCompilerMetricsSnapshotSummary(current, snapshot?.trend || {}) || current.summaryText || null,
     snapshot_fingerprint: current.snapshotFingerprint || '',
-    payload_json: safeJsonStringify({
-      current,
-      trend: snapshot?.trend || {},
-      history: snapshot?.history || {},
-      metricDictionary: snapshot?.metricDictionary || null,
-      summary: snapshot?.summary || null
-    }),
+    payload_json: null, // OMNYSYS_PERFORMANCE_FIX: Bloat prevention
     trend_json: safeJsonStringify(snapshot?.trend || {})
   };
 }

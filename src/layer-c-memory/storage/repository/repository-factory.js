@@ -31,6 +31,16 @@ export class RepositoryFactory {
       return this.instance;
     }
 
+    if (this.instance.projectPath && this.instance.projectPath !== projectPath) {
+      try {
+        this.instance.close();
+      } catch {
+        // Best effort: replace stale singleton with a fresh repository.
+      }
+      this.instance = this.create('sqlite', projectPath);
+      return this.instance;
+    }
+
     if (!this.instance.initialized || !this.instance.db || this.instance.db.open === false) {
       this.instance.initialize(projectPath);
     }

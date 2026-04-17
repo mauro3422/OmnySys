@@ -3,7 +3,7 @@
  * Pure functions for sorting, building targets, and snapshot creation.
  */
 
-import { normalizeSnapshotPath, buildFolderizedFamilyGroups, buildFolderizedFamilySuggestion } from '../../../shared/compiler/index.js';
+import { normalizeSnapshotPath, buildFolderizedFamilyGroups, buildFolderizedFamilySuggestion } from '../../../../shared/compiler/index.js';
 
 export function sortMoveTargets(moveTargets = [], barrelPath = null) {
   return moveTargets.slice().sort((a, b) => {

@@ -9,7 +9,7 @@ import {
   getCachedMetadata,
   getPhase2Status,
   loadCompilerExplainability,
-  buildCompilerStatusSummaryEnvelope,
+  buildStatusSummaryPayload,
   clearStatusResponseCache,
   getStatusResponseCacheEntry,
   setStatusResponseCacheEntry
@@ -63,7 +63,7 @@ export async function get_server_status(args, context) {
       cachedMetadata,
       cachedCounts
     );
-    const response = buildCompilerStatusSummaryEnvelope(status, recentErrors, {});
+    const response = buildStatusSummaryPayload(status, recentErrors);
     setStatusResponseCacheEntry(cacheKey, response);
     return response;
   } catch (error) {
@@ -83,12 +83,13 @@ export async function get_server_status(args, context) {
 export async function get_recent_errors(args, context) {
   logger.info('[Tool] get_recent_errors()');
   try {
+    const sharedState = context.server?.sharedState || context.sharedState || {};
     const notifications = await loadNotifications(context.projectPath, context.server, true);
     const compilerExplainability = context.projectPath
       ? await loadCompilerExplainability(
         context.projectPath,
         notifications.watcherAlerts || [],
-        context.server?.sharedState || {},
+        sharedState,
         context.server?.fileWatcher?.getFileWatcherStats?.() || null,
         {
           scopePath: args?.scopePath || null,
@@ -96,6 +97,9 @@ export async function get_recent_errors(args, context) {
         }
       )
       : null;
+    if (compilerExplainability && context.server) {
+      context.server.liveInsights = compilerExplainability;
+    }
     const governanceAlerts = buildGovernanceAlerts({
       compilerExplainability,
       source: 'recent_errors'

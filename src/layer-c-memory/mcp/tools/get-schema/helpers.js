@@ -1,6 +1,7 @@
 import { getAllAtoms } from '../../../storage/index.js';
 import { getFieldToolCoverage, getAvailableFields } from '#layer-a/extractors/metadata/registry.js';
 import { getDatabase } from '../../../storage/database/connection.js';
+import { getRepository, RepositoryFactory } from '../../../storage/repository/repository-factory.js';
 import {
   getRegisteredTables,
   getTableDefinition,
@@ -11,11 +12,14 @@ import {
 import {
   buildCompilerHistoricalStorageSummary,
   buildCompilerControlPlaneFoundations,
+  compactDatabaseHealth,
   getDatabaseHealthSummary,
+  summarizeDataGatewayContract,
   summarizePropagationPlan,
   summarizeAtomSemanticPurity,
   summarizeAtomTestability
 } from '../../../../shared/compiler/index.js';
+import { getDatabaseSchemaStatus } from './database-schema-status.js';
 import { deriveSchema, fieldEvolution, computeCorrelations } from './index.js';
 
 void summarizePropagationPlan;
@@ -103,72 +107,6 @@ function buildFieldCoverage() {
   };
 }
 
-function buildSchemaRecommendations(report, missingTables, historicalStores = null) {
-  const recommendations = [];
-  if (missingTables > 0) {
-    recommendations.push({ severity: 'high', message: `Missing ${missingTables} table(s). Run restart_server({ clearCache: true }) to recreate.`, action: 'restart_server' });
-  }
-  if (report.missingColumns.length > 0) {
-    recommendations.push({ severity: 'medium', message: `${report.missingColumns.reduce((sum, item) => sum + item.columns.length, 0)} column(s) missing.`, action: 'auto_migrate' });
-  }
-  if (report.extraColumns.length > 0) {
-    recommendations.push({ severity: 'low', message: `${report.extraColumns.reduce((sum, item) => sum + item.columns.length, 0)} extra column(s) detected.`, action: 'update_registry' });
-  }
-  if (historicalStores?.missingStoreCount > 0) {
-    recommendations.push({
-      severity: historicalStores.readyStoreCount > 0 ? 'medium' : 'high',
-      message: `${historicalStores.missingStoreCount} historical store(s) missing.`,
-      action: 'preserve_history_stores'
-    });
-  }
-  if (recommendations.length === 0) {
-    recommendations.push({ severity: 'info', message: 'Schema is healthy and synchronized with registry.', action: 'none' });
-  }
-  return recommendations;
-}
-
-function getDatabaseSchemaStatus() {
-  try {
-    const db = getDatabase();
-    if (!db) return { success: false, error: 'Database not initialized', timestamp: new Date().toISOString() };
-
-    const existingTables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
-    const tablesInfo = existingTables.map((table) => ({
-      name: table.name,
-      columns: db.prepare(`PRAGMA table_info(${table.name})`).all().map((column) => ({
-        name: column.name, type: column.type, nullable: !column.notnull,
-        hasDefault: column.dflt_value !== null, isPk: column.pk > 0
-      }))
-    }));
-
-    const report = generateSchemaReport(tablesInfo);
-    const totalTables = getRegisteredTables().length;
-    const missingTables = totalTables - existingTables.length;
-    const tablesWithDrift = Object.values(report.tables).filter((t) => t.status === 'mismatch' || t.status === 'missing').length;
-
-    let health = 'healthy';
-    let healthScore = 100;
-    if (missingTables > 0) { health = 'critical'; healthScore -= 40; }
-    if (report.missingColumns.length > 0) { health = health === 'critical' ? 'critical' : 'warning'; healthScore -= Math.min(30, report.missingColumns.length * 5); }
-    if (report.extraColumns.length > 0) { health = health === 'critical' ? 'critical' : 'warning'; healthScore -= Math.min(20, report.extraColumns.length * 3); }
-    healthScore = Math.max(0, healthScore);
-
-    return {
-      success: true, timestamp: new Date().toISOString(),
-      health: { status: health, score: healthScore, grade: healthScore >= 90 ? 'A' : healthScore >= 70 ? 'B' : healthScore >= 50 ? 'C' : 'D' },
-      summary: {
-        totalRegisteredTables: totalTables, existingTables: existingTables.length, missingTables, tablesWithDrift,
-        totalMissingColumns: report.missingColumns.reduce((s, i) => s + i.columns.length, 0),
-        totalExtraColumns: report.extraColumns.reduce((s, i) => s + i.columns.length, 0)
-      },
-      tables: report.tables, missingColumns: report.missingColumns, extraColumns: report.extraColumns,
-      recommendations: buildSchemaRecommendations(report, missingTables)
-    };
-  } catch (error) {
-    return { success: false, error: error.message, timestamp: new Date().toISOString() };
-  }
-}
-
 export async function buildAtomsSchemaResult(projectPath, { atomType, sampleSize, focusField }) {
   const allAtoms = await getAllAtoms(projectPath);
   const inventory = buildInventory(allAtoms);
@@ -187,23 +125,166 @@ export async function buildAtomsSchemaResult(projectPath, { atomType, sampleSize
   };
 }
 
-export function buildDatabaseSchemaResult({ includeSQL, projectPath = process.cwd() } = {}) {
-  const db = getDatabase();
-  const databaseHealth = db ? getDatabaseHealthSummary(db, { liveRowSyncSampleLimit: 5 }) : null;
-  const controlPlaneFoundations = db
-    ? buildCompilerControlPlaneFoundations({ dbSurfaces: { databaseHealth } })
+export function buildDatabaseSchemaResult({ includeSQL, includeDetails = false, projectPath = process.cwd() } = {}) {
+  const stageErrors = [];
+  const safeStage = (stage, producer, fallback = null) => {
+    try {
+      return producer();
+    } catch (error) {
+      stageErrors.push({ stage, message: error?.message || String(error) });
+      return fallback;
+    }
+  };
+
+  try {
+    RepositoryFactory.close();
+  } catch {
+    // Best effort: refresh stale singleton before running schema diagnostics.
+  }
+
+  const repo = safeStage('repository', () => {
+    try {
+      return { db: getDatabase() };
+    } catch {
+      try {
+        RepositoryFactory.close();
+      } catch {
+        // Best effort only.
+      }
+      return getRepository(projectPath);
+    }
+  }, null);
+  const db = repo?.db || null;
+  const databaseHealth = includeDetails && db
+    ? safeStage('databaseHealth', () => getDatabaseHealthSummary(db, { liveRowSyncSampleLimit: 5 }), null)
     : null;
-  const liveRowSync = controlPlaneFoundations?.liveRowSync || null;
-  const historicalStores = buildCompilerHistoricalStorageSummary(projectPath);
-  const status = getDatabaseSchemaStatus();
-  if (!status.success) return { ...status, schemaType: 'database', historicalStores };
+  const controlPlaneFoundations = includeDetails && db
+    ? safeStage('controlPlaneFoundations', () => buildCompilerControlPlaneFoundations({ dbSurfaces: { databaseHealth } }), null)
+    : null;
+  const liveRowSync = includeDetails
+    ? (controlPlaneFoundations?.liveRowSync || databaseHealth?.metrics?.liveRowSync || null)
+    : null;
+  const databaseHealthSummary = includeDetails && databaseHealth ? compactDatabaseHealth(databaseHealth) : null;
+  const controlPlaneSummary = includeDetails && controlPlaneFoundations ? {
+    analysisGeneration: controlPlaneFoundations.analysisGeneration || null,
+    databaseHealth: databaseHealthSummary,
+    fileUniverseGranularity: controlPlaneFoundations.fileUniverseGranularity || null,
+    dataGatewayContract: summarizeDataGatewayContract(controlPlaneFoundations.dataGatewayContract || null),
+    liveRowSync: liveRowSync ? {
+      state: liveRowSync.state || null,
+      summary: liveRowSync.summary || null,
+      reason: liveRowSync.reason || null,
+      recommendation: liveRowSync.recommendation || null
+    } : null
+  } : null;
+  const historicalStores = safeStage('historicalStores', () => buildCompilerHistoricalStorageSummary(projectPath), {
+    projectPath,
+    archiveDir: null,
+    totalStores: 0,
+    readyStoreCount: 0,
+    missingStoreCount: 0,
+    state: 'missing',
+    latestSnapshotAt: null,
+    freshestSnapshotState: 'missing',
+    lineageReconciliation: null,
+    summaryText: 'historical storage unavailable',
+    stores: []
+  });
+  const registryTables = getRegisteredTables().map((name) => {
+    const def = getTableDefinition(name);
+    return {
+      name,
+      status: 'unknown',
+      registeredColumns: Array.isArray(def?.columns) ? def.columns : [],
+      actualColumns: [],
+      missingColumns: [],
+      extraColumns: []
+    };
+  });
+  const status = safeStage('schemaStatus', () => getDatabaseSchemaStatus(db), {
+    success: false,
+    error: 'Schema status unavailable',
+    timestamp: new Date().toISOString()
+  });
+  if (!status.success) {
+    const fallbackHealth = databaseHealthSummary?.healthy
+      ? {
+          status: 'warning',
+          score: Math.max(60, databaseHealthSummary.healthScore || 0),
+          grade: 'B'
+        }
+      : {
+          status: 'critical',
+          score: 35,
+          grade: 'D'
+        };
+
+    return {
+      success: true,
+      schemaType: 'database',
+      timestamp: new Date().toISOString(),
+      warning: status.error || 'Schema status unavailable',
+      health: fallbackHealth,
+      summary: {
+        totalRegisteredTables: registryTables.length,
+        existingTables: db ? registryTables.length : 0,
+        untrackedTables: 0,
+        missingTables: db ? 0 : registryTables.length,
+        tablesWithDrift: 0,
+        totalMissingColumns: 0,
+        totalExtraColumns: 0,
+        historicalStoreCount: historicalStores.totalStores,
+        historicalStoreReadyCount: historicalStores.readyStoreCount,
+        historicalStoreMissingCount: historicalStores.missingStoreCount,
+        historicalStoreState: historicalStores.state
+      },
+      tables: registryTables,
+      untrackedTables: [],
+      databaseHealth: databaseHealthSummary,
+      controlPlaneFoundations: controlPlaneSummary,
+      liveRowSync: controlPlaneSummary?.liveRowSync || null,
+      historicalStores: {
+        projectPath: historicalStores.projectPath,
+        archiveDir: historicalStores.archiveDir,
+        totalStores: historicalStores.totalStores,
+        readyStoreCount: historicalStores.readyStoreCount,
+        missingStoreCount: historicalStores.missingStoreCount,
+        state: historicalStores.state,
+        latestSnapshotAt: historicalStores.latestSnapshotAt,
+        freshestSnapshotState: historicalStores.freshestSnapshotState,
+        lineageReconciliation: historicalStores.lineageReconciliation,
+        summaryText: historicalStores.summaryText
+      },
+      stageErrors: [...stageErrors, { stage: 'schemaStatus', message: status.error || 'Schema status unavailable' }],
+      recommendations: [
+        {
+          severity: 'medium',
+          message: `Database schema scan degraded: ${status.error || 'unavailable'}.`,
+          action: 'refresh_cache'
+        }
+      ]
+    };
+  }
 
   const result = {
     schemaType: 'database',
     ...status,
-    liveRowSync,
-    controlPlaneFoundations,
-    historicalStores
+    liveRowSync: controlPlaneSummary?.liveRowSync || null,
+    databaseHealth: databaseHealthSummary,
+    controlPlaneFoundations: controlPlaneSummary,
+    historicalStores: {
+      projectPath: historicalStores.projectPath,
+      archiveDir: historicalStores.archiveDir,
+      totalStores: historicalStores.totalStores,
+      readyStoreCount: historicalStores.readyStoreCount,
+      missingStoreCount: historicalStores.missingStoreCount,
+      state: historicalStores.state,
+      latestSnapshotAt: historicalStores.latestSnapshotAt,
+      freshestSnapshotState: historicalStores.freshestSnapshotState,
+      lineageReconciliation: historicalStores.lineageReconciliation,
+      summaryText: historicalStores.summaryText
+    },
+    stageErrors
   };
   result.summary = {
     ...result.summary, historicalStoreCount: historicalStores.totalStores,
@@ -228,8 +309,9 @@ export function buildRegistrySchemaResult() {
   for (const tableName of tables) {
     const tableDef = getTableDefinition(tableName);
     registry[tableName] = {
-      description: tableDef.description, columnCount: tableDef.columns.length,
-      columns: tableDef.columns.map((col) => ({
+      description: tableDef?.description || '',
+      columnCount: Array.isArray(tableDef?.columns) ? tableDef.columns.length : 0,
+      columns: (Array.isArray(tableDef?.columns) ? tableDef.columns : []).map((col) => ({
         name: col.name, type: col.type, nullable: col.nullable !== false,
         default: col.default, pk: col.pk || false, description: col.description
       })),

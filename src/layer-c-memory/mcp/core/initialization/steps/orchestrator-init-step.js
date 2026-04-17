@@ -37,6 +37,7 @@ export class OrchestratorInitStep extends InitializationStep {
       autoStartLLM: false, // LLM is started after orchestrator (on-demand)
       cache: server.cache  // Share cache with server to avoid duplication
     });
+    server.orchestrator.sharedState = server.sharedState || (server.sharedState = {});
 
     server.currentInitializationDetail = 'initialize-orchestrator';
     await server.orchestrator.initialize();

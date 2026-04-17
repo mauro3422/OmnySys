@@ -852,3 +852,16 @@ export {
 export {
   CANONICAL_SURFACE_REGISTRY
 } from './canonical-surface-registry.js';
+
+export function buildFolderizationMoveSnapshot(focusPlan) {
+  return {
+    createdAt: new Date().toISOString(),
+    candidate: {
+      familyRoot: focusPlan?.candidate?.familyRoot || null,
+      recommendedFolder: focusPlan?.candidate?.recommendedFolder || null,
+      barrelFile: focusPlan?.candidate?.barrelFile || null
+    },
+    impactedFiles: focusPlan?.moveTargets?.map(t => t.to) || [],
+    dependentsBySourcePath: new Map()
+  };
+}
