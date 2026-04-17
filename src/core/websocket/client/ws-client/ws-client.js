@@ -6,7 +6,7 @@
  * @module websocket/client/ws-client
  */
 
-import { SubscriptionManager } from './subscription-manager.js';
+import { SubscriptionManager } from '../subscription-manager.js';
 import {
   initializeWebSocketClientState,
   attachWebSocketClientHandlers,
@@ -20,7 +20,7 @@ import {
   isWebSocketClientAlive,
   updateWebSocketClientPing,
   getWebSocketClientStats
-} from './ws-client-helpers.js';
+} from './index.js';
 
 
 

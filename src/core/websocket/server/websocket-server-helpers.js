@@ -2,7 +2,7 @@ import { createLogger } from '../../utils/logger.js';
 import crypto from 'crypto';
 import { HeartbeatManager } from './heartbeat-manager.js';
 import { handleConnection, handleDisconnection, handleServerError } from './connection-handler.js';
-import { WSClient } from '../client/ws-client.js';
+import { WSClient } from '../client/ws-client/ws-client.js';
 import { Events } from '../constants.js';
 import {
   sendToClient,

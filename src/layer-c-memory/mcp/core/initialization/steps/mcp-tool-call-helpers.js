@@ -21,77 +21,6 @@ import {
 
 const logger = createLogger('OmnySys:mcp:tool-telemetry');
 
-function alignFolderizationSnapshotToolResult(rawResult = null) {
-  const topCandidate =
-    rawResult?.snapshot?.folderization?.candidateReport?.topCandidates?.[0]
-    || rawResult?.folderization?.candidateReport?.topCandidates?.[0]
-    || rawResult?.folderizationReport?.candidateReport?.topCandidates?.[0]
-    || null;
-
-  if (!topCandidate?.recommendedFolder) {
-    return rawResult;
-  }
-
-  const preferredFolder = topCandidate.recommendedFolder;
-  const selectionReason = `Top folderization candidate from the DB is ${topCandidate.familyRoot} in ${topCandidate.directory}.`;
-  const creationGuidance = {
-    ...(rawResult?.folderization?.creationGuidance || rawResult?.snapshot?.folderization?.creationGuidance || {}),
-    mode: 'create_folderized_family',
-    matchedBy: 'candidateReport',
-    familyDomain: topCandidate.directory || null,
-    selectionReason,
-    preferredFolder,
-    preferredFamilyRoot: topCandidate.familyRoot || null,
-    preferredDirectory: topCandidate.directory || null,
-    guidance: `${selectionReason} Create the next file inside ${preferredFolder} using a short role basename such as ${(rawResult?.folderization?.creationGuidance?.preferredRoleStems || rawResult?.snapshot?.folderization?.creationGuidance?.preferredRoleStems || [])[0]?.stem || 'core.js'}.`
-  };
-
-  const summary = {
-    ...(rawResult?.summary || rawResult?.snapshot?.summary || {}),
-    recommendedTool: 'folderize_family',
-    recommendedAction: `Folderize ${topCandidate.familyRoot} into ${preferredFolder} (confidence ${topCandidate.confidence}).`,
-    nextBestFolder: preferredFolder,
-    creationNextBestFolder: preferredFolder,
-    whyThisFirst: selectionReason,
-    folderizationTargetFolder: preferredFolder,
-    folderizationTargetReason: selectionReason,
-    creationGuidanceFolder: preferredFolder,
-    creationGuidanceReason: selectionReason,
-    summaryText: String(rawResult?.summary?.summaryText || rawResult?.snapshot?.summary?.summaryText || '')
-      .replace(/target=[^|]+/, `target=${preferredFolder}`)
-  };
-
-  const folderizationReport = {
-    ...(rawResult?.folderization || rawResult?.folderizationReport || {}),
-    creationGuidance
-  };
-
-  const snapshot = rawResult?.snapshot
-    ? {
-        ...rawResult.snapshot,
-        folderization: {
-          ...(rawResult.snapshot.folderization || {}),
-          creationGuidance
-        },
-        summary
-      }
-    : rawResult?.snapshot;
-
-  return {
-    ...rawResult,
-    folderizationReport,
-    folderization: folderizationReport,
-    snapshot,
-    summary,
-    recommendedAction: summary.recommendedAction,
-    nextBestFolder: summary.nextBestFolder,
-    nextBestStem: summary.nextBestStem || rawResult?.nextBestStem || null,
-    whyThisFirst: summary.whyThisFirst,
-    guidance: creationGuidance,
-    oneLine: summary.summaryText || rawResult?.oneLine || null
-  };
-}
-
 export {
   buildToolExecutionContext,
   collectToolRecentErrors
@@ -99,56 +28,16 @@ export {
 
 export async function executeToolCall(handler, name, server, args = {}, transportContext = null) {
   const startedAt = new Date().toISOString();
-  const telemetryScope = {
-    scopePath: typeof args.scopePath === 'string' && args.scopePath.trim()
-      ? args.scopePath.trim()
-      : typeof args.filePath === 'string' && args.filePath.trim()
-        ? args.filePath.trim()
-        : null,
-    focusPath: typeof args.focusPath === 'string' && args.focusPath.trim()
-      ? args.focusPath.trim()
-      : typeof args.filePath === 'string' && args.filePath.trim()
-        ? args.filePath.trim()
-        : null
-  };
-  const beforeNotifications = await collectToolRecentErrors(server, { clearLoggerBuffer: true }).catch(() => createEmptyToolNotifications());
+  const telemetryScope = buildTelemetryScope(args);
+  const beforeNotifications = await collectNotifications(server, true);
   const beforeSnapshot = await captureToolMetricsSnapshot(server, beforeNotifications, args, 'mcp.tool.before').catch(() => null);
 
-  let rawResult;
-  let toolError = null;
-  const bypassHandler = await loadBypassToolHandler(name).catch(() => null);
-  const effectiveHandler = bypassHandler || handler;
+  const { rawResult, toolError } = await runToolHandler(handler, name, server, args, transportContext);
 
-  try {
-    rawResult = await effectiveHandler(args, buildToolExecutionContext(server, transportContext));
-  } catch (error) {
-    toolError = error;
-    rawResult = {
-      error: error.message,
-      code: error.code || 'TOOL_EXECUTION_FAILED'
-    };
-  }
-
-  const afterNotifications = await collectToolRecentErrors(server, { clearLoggerBuffer: true }).catch(() => createEmptyToolNotifications());
+  const afterNotifications = await collectNotifications(server, true);
   const afterSnapshot = await captureToolMetricsSnapshot(server, afterNotifications, args, 'mcp.tool.after').catch(() => null);
   const endedAt = new Date().toISOString();
-  const telemetry = evaluateToolRunTelemetry({
-    projectPath: server.projectPath || null,
-    toolName: name,
-    scopePath: telemetryScope.scopePath,
-    focusPath: telemetryScope.focusPath,
-    captureSource: 'mcp.tool',
-    transportOrigin: transportContext?.origin || 'unknown',
-    startedAt,
-    endedAt,
-    success: toolError === null,
-    errorMessage: toolError?.message || null,
-    args,
-    beforeSnapshot,
-    afterSnapshot,
-    beforeNotifications,
-    afterNotifications
-  });
+  const telemetry = buildToolRunTelemetry(server, name, args, transportContext, telemetryScope, startedAt, endedAt, toolError, beforeSnapshot, afterSnapshot, beforeNotifications, afterNotifications);
   const telemetryPersistence = await persistToolRunTelemetryForServer(server, telemetry);
 
   markToolOutcomeReady(transportContext, {
@@ -167,10 +56,7 @@ export async function executeToolCall(handler, name, server, args = {}, transpor
     transportOrigin: transportContext?.origin || 'unknown',
     transportOriginSource: transportContext?.source || null
   });
-  const normalizedRawResult = name === 'mcp_omnysystem_get_folderization_snapshot'
-    ? alignFolderizationSnapshotToolResult(rawResult)
-    : rawResult;
-  const resultWithTelemetry = buildToolCallResult(normalizedRawResult, recentErrors, provenance);
+  const resultWithTelemetry = buildToolCallResult(rawResult, recentErrors, provenance);
   return {
     ...resultWithTelemetry,
     _toolTelemetry: {
@@ -182,4 +68,76 @@ export async function executeToolCall(handler, name, server, args = {}, transpor
       successThresholdMet: telemetry.successThresholdMet
     }
   };
+}
+
+function buildTelemetryScope(args) {
+  const scopePath = typeof args.scopePath === 'string' && args.scopePath.trim()
+    ? args.scopePath.trim()
+    : typeof args.filePath === 'string' && args.filePath.trim()
+      ? args.filePath.trim()
+      : null;
+  const focusPath = typeof args.focusPath === 'string' && args.focusPath.trim()
+    ? args.focusPath.trim()
+    : typeof args.filePath === 'string' && args.filePath.trim()
+      ? args.filePath.trim()
+      : null;
+
+  return { scopePath, focusPath };
+}
+
+async function collectNotifications(server, clearLoggerBuffer) {
+  return collectToolRecentErrors(server, { clearLoggerBuffer }).catch(() => createEmptyToolNotifications());
+}
+
+async function runToolHandler(handler, name, server, args, transportContext) {
+  const bypassHandler = await loadBypassToolHandler(name).catch(() => null);
+  const effectiveHandler = bypassHandler || handler;
+
+  try {
+    return {
+      rawResult: await effectiveHandler(args, buildToolExecutionContext(server, transportContext)),
+      toolError: null
+    };
+  } catch (error) {
+    return {
+      rawResult: {
+        error: error.message,
+        code: error.code || 'TOOL_EXECUTION_FAILED'
+      },
+      toolError: error
+    };
+  }
+}
+
+function buildToolRunTelemetry(
+  server,
+  name,
+  args,
+  transportContext,
+  telemetryScope,
+  startedAt,
+  endedAt,
+  toolError,
+  beforeSnapshot,
+  afterSnapshot,
+  beforeNotifications,
+  afterNotifications
+) {
+  return evaluateToolRunTelemetry({
+    projectPath: server.projectPath || null,
+    toolName: name,
+    scopePath: telemetryScope.scopePath,
+    focusPath: telemetryScope.focusPath,
+    captureSource: 'mcp.tool',
+    transportOrigin: transportContext?.origin || 'unknown',
+    startedAt,
+    endedAt,
+    success: toolError === null,
+    errorMessage: toolError?.message || null,
+    args,
+    beforeSnapshot,
+    afterSnapshot,
+    beforeNotifications,
+    afterNotifications
+  });
 }

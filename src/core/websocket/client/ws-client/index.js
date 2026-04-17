@@ -2,10 +2,10 @@
  * @fileoverview WebSocket client helpers
  */
 
-import { ConnectionState } from '../constants.js';
-import { parseMessage, createErrorMessage } from '../messaging/message-types.js';
-import { handleClientCommand } from './message-handler.js';
-import { createLogger } from '../../utils/logger.js';
+import { ConnectionState } from '../../constants.js';
+import { parseMessage, createErrorMessage } from '../../messaging/message-types.js';
+import { handleClientCommand } from '../message-handler.js';
+import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:ws:client');
 

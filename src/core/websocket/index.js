@@ -17,7 +17,7 @@ export {
 
 // Re-exportar clases principales
 export { WebSocketManager } from './server/websocket-server/websocket-server.js';
-export { WSClient } from './client/ws-client.js';
+export { WSClient } from './client/ws-client/ws-client.js';
 export { SubscriptionManager } from './client/subscription-manager.js';
 export { HeartbeatManager } from './server/heartbeat-manager.js';
 
