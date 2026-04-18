@@ -27,7 +27,7 @@ import {
 } from './atomic-editor-helpers.js';
 import { normalizeAtomicPath } from './write-orchestrator.js';
 import { summarizeAtomSemanticPurity } from '../../../../shared/compiler/index.js';
-import { buildMutationSettlementSnapshot, settleMutationSnapshot } from '../../core/shared/mutation-settlement.js';
+import { buildMutationSettlementSnapshot, settleMutationSnapshot } from '../../core/shared/mutation-settlement/index.js';
 
 export class AtomicEditorTool extends AtomicMutationTool {
     constructor() {

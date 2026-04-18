@@ -22,7 +22,7 @@ import {
     enforceCrossFileDuplicateGuard,
     buildAtomicWriteWarnings
 } from './atomic-write-helpers.js';
-import { buildMutationSettlementSnapshot, settleMutationSnapshot } from '../../core/shared/mutation-settlement.js';
+import { buildMutationSettlementSnapshot, settleMutationSnapshot } from '../../core/shared/mutation-settlement/index.js';
 
 export class AtomicWriterTool extends AtomicMutationTool {
     constructor() {

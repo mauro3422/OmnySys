@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.459 (Compiler Observability Split, Archive Drift Detection, and Live Inventory Freshness)
+**Última versión:** v0.9.460 (Manifest Reconciliation, Mutation Settlement Repair, and Graph Drift Cleanup)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.460.md](v0.9.460.md) | 2026-04-18 | Manifest reconciliation, mutation settlement repair, and graph drift cleanup |
 | [v0.9.459.md](v0.9.459.md) | 2026-04-18 | Compiler observability split, archive drift detection, and live inventory freshness |
 | [v0.9.458.md](v0.9.458.md) | 2026-04-18 | Canonical session flow reconciliation and deep status alignment |
 | [v0.9.457.md](v0.9.457.md) | 2026-04-18 | Session sync reconciliation and status display normalization |

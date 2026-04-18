@@ -93,7 +93,8 @@ function isCanonicalFolderizationWorkflowModule(normalizedPath = '') {
     '/layer-c-memory/mcp/tools/rename-folderized-family.js',
     '/layer-c-memory/mcp/tools/normalize-folderized-family.js',
     '/layer-c-memory/mcp/core/shared/mutation-settlement.js',
-    '/layer-c-memory/mcp/core/shared/mutation-settlement-core.js',
+    '/layer-c-memory/mcp/core/shared/mutation-settlement/index.js',
+    '/layer-c-memory/mcp/core/shared/mutation-settlement/core.js',
     '/layer-c-memory/mcp/core/shared/mutation-batch.js',
     '/layer-c-memory/mcp/core/shared/move-orchestrator/orchestrator-impl.js'
   ].some((segment) => normalizedPath.endsWith(segment));

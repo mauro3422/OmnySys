@@ -8,6 +8,6 @@ export {
   settleMutationFiles,
   settleMutationSnapshot,
   settleMutationTarget
-} from './mutation-settlement-core.js';
+} from './mutation-settlement/index.js';
 
-export { default } from './mutation-settlement-core.js';
+export { default } from './mutation-settlement/index.js';

@@ -71,8 +71,12 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
     const forceFreshRepository = folderizationOptions?.forceFreshRepository === true;
     const existingExplainability = forceFresh ? null : sharedState?.compilerExplainability || null;
     const forceRescan = shouldForceRescan(projectPath, existingExplainability);
+    const cachedExplainabilityHealthy = existingExplainability
+      ? existingExplainability?.fileUniverseGranularity?.healthy !== false
+        && existingExplainability?.databaseHealth?.healthy !== false
+      : false;
 
-    if (existingExplainability && !forceRescan && !forceFresh) {
+    if (existingExplainability && !forceRescan && !forceFresh && cachedExplainabilityHealthy) {
       return publishCompilerExplainabilityRefresh(sharedState, existingExplainability, projectPath);
     }
 
@@ -95,7 +99,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
       RepositoryFactory.close();
     }
     const repo = getRepository(projectPath);
-    const databaseHealth = repo?.db ? getDatabaseHealthSummary(repo.db) : null;
+    let databaseHealth = repo?.db ? getDatabaseHealthSummary(repo.db) : null;
     const tableCounts = databaseHealth?.metrics ? {
       atoms: databaseHealth.metrics.activeAtoms || 0,
       files: databaseHealth.metrics.activeFiles || 0,
@@ -112,6 +116,7 @@ export async function loadCompilerExplainability(projectPath, watcherAlerts = []
     });
 
     const folderizationReport = buildFolderizationReportFromRepo(repo, folderizationOptions);
+    databaseHealth = repo?.db ? getDatabaseHealthSummary(repo.db) : databaseHealth;
     const systemInventory = buildCompilerSystemInventorySnapshot({
       projectPath,
       compilerExplainability: {
