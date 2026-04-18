@@ -1,73 +1,79 @@
 import { buildMcpSessionSummaryText } from '../compiler-runtime-metrics-sessions-format.js';
 
-export function normalizeMcpSessionMetricsResult({
-  hasRuntimeSessionCount,
-  runtimeSessionCount,
-  totalPersistent,
-  totalPersistentActive,
-  persistenceState,
-  clientSync,
-  transportProvenance,
-  sessionSummary,
-  sessionCountDrift,
-  multiClientChurn,
-  transportOriginCounts,
-  sessionSnapshot
-} = {}) {
-  const persistenceAvailable = persistenceState?.available === true;
+export function normalizeMcpSessionMetricsResult(sessionMetrics = null) {
+  if (!sessionMetrics || typeof sessionMetrics !== 'object') {
+    return sessionMetrics;
+  }
+
+  const persistenceAvailable = sessionMetrics.persistenceState?.available === true;
+  const runtimeSessionCount = Number(sessionMetrics.runtimeSessions || 0);
+  const totalPersistentActive = Number(sessionMetrics.totalPersistentActive || 0);
   const shouldPreferReconciliation = persistenceAvailable
-    && Number(runtimeSessionCount || 0) > 0
-    && Number(totalPersistentActive || 0) === 0;
-  const normalizedClientSyncState = shouldPreferReconciliation && clientSync?.state === 'blocked'
-    ? 'reconciling'
-    : (clientSync?.state || 'missing');
-  const normalizedTransportProvenanceState = shouldPreferReconciliation && transportProvenance.state === 'blocked'
-    ? 'watchful'
-    : transportProvenance.state;
-  const normalizedTransportAlertState = shouldPreferReconciliation && transportProvenance.transportAlertState === 'blocked'
-    ? 'watchful'
-    : transportProvenance.transportAlertState;
+    && runtimeSessionCount > 0
+    && totalPersistentActive === 0;
+
+  if (!shouldPreferReconciliation) {
+    return sessionMetrics;
+  }
+
+  const normalizedClientSyncState = sessionMetrics.clientSyncState === 'fresh'
+    ? 'fresh'
+    : 'reconciling';
+  const normalizedTransportProvenanceState = sessionMetrics.transportProvenanceState === 'fresh'
+    ? 'fresh'
+    : 'watchful';
+  const normalizedTransportAlertState = sessionMetrics.transportAlertState === 'fresh'
+    ? 'fresh'
+    : 'watchful';
   const summaryParts = [buildMcpSessionSummaryText({
-    hasRuntimeSessionCount,
+    hasRuntimeSessionCount: Number.isFinite(runtimeSessionCount),
     runtimeSessionCount,
     totalPersistentActive,
-    uniqueClients: clientSync?.evidence?.uniqueClients || 0,
-    clientsWithDuplicates: clientSync?.evidence?.clientsWithDuplicates || 0,
-    toleratedDuplicateClients: clientSync?.evidence?.toleratedDuplicateClients || 0
+    uniqueClients: Number(sessionMetrics.uniqueClients || 0),
+    clientsWithDuplicates: Number(sessionMetrics.clientsWithDuplicates || 0),
+    toleratedDuplicateClients: Number(sessionMetrics.toleratedDuplicateClients || 0)
   })];
   if (normalizedClientSyncState !== 'fresh') summaryParts.push(`client sync=${normalizedClientSyncState}`);
   if (normalizedTransportProvenanceState !== 'fresh') summaryParts.push(`transport=${normalizedTransportProvenanceState}`);
-  if (normalizedTransportAlertState && normalizedTransportAlertState !== 'fresh') summaryParts.push(`alerts=${normalizedTransportAlertState}`);
+  if (normalizedTransportAlertState !== 'fresh') summaryParts.push(`alerts=${normalizedTransportAlertState}`);
 
   return {
-    sessionCountDrift: shouldPreferReconciliation ? false : sessionCountDrift,
-    multiClientChurn,
+    ...sessionMetrics,
+    sessionCountDrift: false,
     clientSyncState: normalizedClientSyncState,
-    clientSyncSeverity: shouldPreferReconciliation && clientSync?.state === 'blocked' ? 'low' : (clientSync?.severity || 'low'),
-    clientSyncHealthy: shouldPreferReconciliation && clientSync?.state === 'blocked' ? true : (clientSync?.healthy !== false),
-    clientSyncTrustworthy: shouldPreferReconciliation && clientSync?.state === 'blocked' ? false : (clientSync?.trustworthy !== false),
-    clientSyncReason: shouldPreferReconciliation && clientSync?.state === 'blocked'
+    clientSyncSeverity: sessionMetrics.clientSyncState === 'blocked' ? 'low' : (sessionMetrics.clientSyncSeverity || 'low'),
+    clientSyncHealthy: sessionMetrics.clientSyncState === 'blocked' ? true : (sessionMetrics.clientSyncHealthy !== false),
+    clientSyncTrustworthy: sessionMetrics.clientSyncState === 'blocked' ? false : (sessionMetrics.clientSyncTrustworthy !== false),
+    clientSyncReason: sessionMetrics.clientSyncState === 'blocked'
       ? 'Runtime sessions are live while persistent active rows are still zero; waiting for bridge synchronization.'
-      : (clientSync?.reason || 'Session summary unavailable.'),
-    clientSyncRecommendation: shouldPreferReconciliation && clientSync?.state === 'blocked'
+      : (sessionMetrics.clientSyncReason || 'Session summary unavailable.'),
+    clientSyncRecommendation: sessionMetrics.clientSyncState === 'blocked'
       ? 'Wait for the IDE bridge to reconnect or refresh the client MCP catalog.'
-      : (clientSync?.recommendation || 'No client session drift data is available yet.'),
-    clientSyncSummary: normalizedClientSyncState === 'fresh' ? null : `client sync ${normalizedClientSyncState}: ${clientSync?.reason || 'Session summary unavailable.'}`,
+      : (sessionMetrics.clientSyncRecommendation || 'No client session drift data is available yet.'),
+    clientSyncSummary: normalizedClientSyncState === 'fresh'
+      ? null
+      : `client sync ${normalizedClientSyncState}: ${sessionMetrics.clientSyncReason || 'Session summary unavailable.'}`,
     transportProvenanceState: normalizedTransportProvenanceState,
-    transportProvenanceHealthy: shouldPreferReconciliation && transportProvenance.state === 'blocked' ? false : transportProvenance.healthy,
-    transportProvenanceTrustworthy: transportProvenance.trustworthy,
-    transportProvenanceReason: transportProvenance.reason,
-    transportProvenanceRecommendation: transportProvenance.recommendation,
-    transportProvenanceEvidence: transportProvenance.evidence,
+    transportProvenanceHealthy: sessionMetrics.transportProvenanceState === 'blocked'
+      ? false
+      : (sessionMetrics.transportProvenanceHealthy !== false),
+    transportProvenanceTrustworthy: sessionMetrics.transportProvenanceTrustworthy !== false,
+    transportProvenanceReason: sessionMetrics.transportProvenanceReason || null,
+    transportProvenanceRecommendation: sessionMetrics.transportProvenanceRecommendation || null,
+    transportProvenanceEvidence: sessionMetrics.transportProvenanceEvidence || null,
     transportAlertState: normalizedTransportAlertState,
-    transportAlertCount: transportProvenance.transportAlertCount,
-    transportAlertHealthy: shouldPreferReconciliation && transportProvenance.transportAlertState === 'blocked' ? false : transportProvenance.transportAlertHealthy,
-    transportAlertTrustworthy: transportProvenance.transportAlertTrustworthy,
-    transportAlertReason: transportProvenance.transportAlertReason,
-    transportAlertRecommendation: transportProvenance.transportAlertRecommendation,
-    transportAlertEvidence: transportProvenance.transportAlertEvidence,
-    transportAlerts: transportProvenance.transportAlerts,
-    transportAlertSummary: transportProvenance.transportAlertSummary,
+    transportAlertCount: Number(sessionMetrics.transportAlertCount || 0),
+    transportAlertHealthy: sessionMetrics.transportAlertState === 'blocked'
+      ? false
+      : (sessionMetrics.transportAlertHealthy !== false),
+    transportAlertTrustworthy: sessionMetrics.transportAlertTrustworthy !== false,
+    transportAlertReason: sessionMetrics.transportAlertReason || null,
+    transportAlertRecommendation: sessionMetrics.transportAlertRecommendation || null,
+    transportAlertEvidence: sessionMetrics.transportAlertEvidence || null,
+    transportAlerts: sessionMetrics.transportAlerts || [],
+    transportAlertSummary: normalizedTransportAlertState === 'fresh'
+      ? 'transport alerts fresh'
+      : (sessionMetrics.transportAlertSummary || null),
     summary: summaryParts.join(' | ')
   };
 }

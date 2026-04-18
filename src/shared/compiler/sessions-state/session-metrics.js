@@ -5,7 +5,6 @@
  * @module shared/compiler/sessions-state/session-metrics
  */
 
-import { buildMcpSessionSummaryText } from '../compiler-runtime-metrics-sessions-format.js';
 import { buildMcpSessionTransportProvenance } from './transport-provenance.js';
 import { normalizeMcpSessionMetricsResult } from './session-metrics-normalization.js';
 
@@ -29,18 +28,6 @@ export function buildMcpSessionMetricsResult({
   transportOriginCounts = {},
   sessionSnapshot = null
 } = {}) {
-  const persistenceAvailable = persistenceState?.available === true;
-  const shouldPreferReconciliation = persistenceAvailable
-    && Number(runtimeSessionCount || 0) > 0
-    && Number(totalPersistentActive || 0) === 0;
-  const sessionSummary = buildMcpSessionSummaryText({
-    hasRuntimeSessionCount,
-    runtimeSessionCount,
-    totalPersistentActive,
-    uniqueClients,
-    clientsWithDuplicates,
-    toleratedDuplicateClients
-  });
   const transportSnapshotHasActiveRows = Number(sessionSnapshot?.totalPersistentActive || 0) > 0
     || Number(sessionSnapshot?.recentActiveCount || 0) > 0;
   const transportOriginActiveCounts = sessionSnapshot?.transportOriginRecentActiveCounts
@@ -87,22 +74,7 @@ export function buildMcpSessionMetricsResult({
     uniqueClients,
     clientsWithDuplicates
   });
-  const normalizedSessionMetrics = normalizeMcpSessionMetricsResult({
-    hasRuntimeSessionCount,
-    runtimeSessionCount,
-    totalPersistent,
-    totalPersistentActive,
-    persistenceState,
-    clientSync,
-    transportProvenance,
-    sessionSummary,
-    sessionCountDrift,
-    multiClientChurn,
-    transportOriginCounts,
-    sessionSnapshot
-  });
-
-  return {
+  const rawSessionMetrics = {
     runtimeSessions: runtimeSessionCount,
     totalPersistent,
     totalPersistentActive,
@@ -148,8 +120,18 @@ export function buildMcpSessionMetricsResult({
     transportAlertEvidence: transportProvenance.transportAlertEvidence,
     transportAlerts: transportProvenance.transportAlerts,
     transportAlertSummary: transportProvenance.transportAlertSummary,
-    ...normalizedSessionMetrics
+    clientSyncState: clientSync?.state || 'missing',
+    clientSyncSeverity: clientSync?.severity || 'low',
+    clientSyncHealthy: clientSync?.healthy !== false,
+    clientSyncTrustworthy: clientSync?.trustworthy !== false,
+    clientSyncReason: clientSync?.reason || 'Session summary unavailable.',
+    clientSyncRecommendation: clientSync?.recommendation || 'No client session drift data is available yet.',
+    clientSyncSummary: clientSync?.summary || null,
+    sessionCountDrift,
+    multiClientChurn
   };
+
+  return normalizeMcpSessionMetricsResult(rawSessionMetrics);
 }
 
 export function resolveMcpSessionMetricsBaseline({
