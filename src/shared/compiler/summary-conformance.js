@@ -32,7 +32,7 @@ function isCanonicalSummaryModule(normalizedPath = '') {
     '/shared/compiler/metrics/snapshot-summary.js',
     '/shared/compiler/metrics/history.js',
     '/shared/compiler/dashboard.js',
-    '/shared/compiler/cache-policy-summary.js',
+    '/shared/compiler/cache-policy/summary.js',
     '/shared/compiler/system-inventory-summary.js',
     '/shared/compiler/system-inventory/index.js',
     '/shared/compiler/system-inventory/summary.js',

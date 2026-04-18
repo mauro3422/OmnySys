@@ -3,13 +3,13 @@ import {
   detectImpactWaveForFile
 } from './file-handlers-actions.js';
 import { handleFileCreatedForWatcher } from './file-handlers-create.js';
-import { handleDeletedFileLifecycle, createShadowsForDeletedFile } from './file-handlers-delete.js';
+import { handleDeletedFileLifecycle, createShadowsForDeletedFile } from './file-handlers-delete/delete.js';
 import { handleFileModifiedForWatcher } from './file-handlers-modified.js';
 import {
-  enrichAtomsWithAncestryCore as enrichAtomsWithAncestryHelper,
-  saveAtomToStorage as saveAtomHelper,
-  loadAtomsForFile as getAtomsForFileHelper,
-  detectCircularDependencyForFileCore as detectCircularDependencyForFileHelper
+  enrichAtomsWithAncestryCore,
+  saveAtomToStorage,
+  loadAtomsForFile,
+  detectCircularDependencyForFileCore
 } from './file-handlers-core-helpers.js';
 import { runFileHandlerWithBoundary } from './file-handler-boundary.js';
 
@@ -29,14 +29,14 @@ export async function handleFileCreated(filePath, fullPath, changeContext = {}) 
  * Enriquece atomos de un archivo con ancestry
  */
 export async function enrichAtomsWithAncestry(filePath) {
-  return await runFileHandlerWithBoundary('enrichAtomsWithAncestry', () => enrichAtomsWithAncestryHelper(this, filePath));
+  return await runFileHandlerWithBoundary('enrichAtomsWithAncestry', () => enrichAtomsWithAncestryCore(this, filePath));
 }
 
 /**
  * Guarda un atomo enriquecido
  */
 export async function saveAtom(atom, filePath) {
-  return await runFileHandlerWithBoundary('saveAtom', () => saveAtomHelper(this, atom, filePath));
+  return await runFileHandlerWithBoundary('saveAtom', () => saveAtomToStorage(this, atom, filePath));
 }
 
 /**
@@ -64,7 +64,7 @@ export async function createShadowsForFile(filePath) {
  * Obtiene atomos de un archivo
  */
 export async function getAtomsForFile(filePath) {
-  return await runFileHandlerWithBoundary('getAtomsForFile', () => getAtomsForFileHelper(this, filePath));
+  return await runFileHandlerWithBoundary('getAtomsForFile', () => loadAtomsForFile(this, filePath));
 }
 
 /**
@@ -72,7 +72,7 @@ export async function getAtomsForFile(filePath) {
  * sobre el archivo modificado para alertar en tiempo real.
  */
 export async function detectCircularDependencyForFile(filePath) {
-  return await runFileHandlerWithBoundary('detectCircularDependencyForFile', () => detectCircularDependencyForFileHelper(this, filePath));
+  return await runFileHandlerWithBoundary('detectCircularDependencyForFile', () => detectCircularDependencyForFileCore(this, filePath));
 }
 
 export default {

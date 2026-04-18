@@ -15,7 +15,7 @@ export {
   summarizePhysicsCoverageRow,
   summarizeCentralityCoverageRow,
   collectPipelineFieldCoverageFindings
-} from './signal-coverage-aggregations.js';
+} from './signal-coverage-aggregations/index.js';
 
 export {
   detectSignalCoverageDrift

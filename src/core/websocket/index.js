@@ -22,7 +22,7 @@ export { SubscriptionManager } from './client/subscription-manager.js';
 export { HeartbeatManager } from './server/heartbeat-manager.js';
 
 // Re-exportar handlers
-export { handleClientCommand } from './client/message-handler.js';
+export { handleClientCommand } from './client/handler.js';
 export { 
   handleConnection, 
   handleDisconnection, 

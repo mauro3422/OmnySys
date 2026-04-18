@@ -37,15 +37,24 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
   const policyCoverageState = policyCoverage?.coverageState || policyCoverage?.state || null;
   const promotionState = canonicalPromotion?.promotionState || canonicalPromotion?.summary?.promotionState || null;
   const systemInventoryState = context.systemInventory?.inventoryState || context.systemInventory?.summary?.inventoryState || null;
+  const contractAligned = contractDrift.state !== 'blocked';
+  const normalizationExecutable = normalizationSafetyLevel === 'safe' || normalizationSafetyLevel === 'guarded';
+  const propagationExecutable = propagationMode !== 'blocked' && propagationAdoption.adoptionState !== 'blocked';
+  const automationExecutable =
+    folderizationReport.decision !== 'reject' &&
+    contractAligned &&
+    normalizationExecutable &&
+    propagationExecutable &&
+    (propagationAdoption.adoptionState === 'ready' || propagationAdoption.coverageRatio >= 0.75);
   const automationState = folderizationReport.decision === 'already_folderized'
     ? 'already_folderized'
     : propagationMode === 'blocked' || drift.state === 'blocked' || contractDrift.state === 'blocked' || normalizationSafetyLevel === 'missing'
       ? 'blocked'
       : contractDrift.state === 'stale' || drift.state === 'stale' || normalizationSafetyLevel === 'risky'
         ? 'review'
-      : normalizationAction === 'execute' && propagationMode === 'move_and_rewrite' && normalizationSafetyLevel === 'safe' && propagationAdoption.adoptionState === 'ready'
+      : automationExecutable
         ? 'ready'
-        : 'review';
+      : 'review';
   const confidence = automationState === 'blocked'
     ? calculateConfidenceForBlocked({
         normalizationSafetyLevel,
@@ -86,9 +95,9 @@ export function buildFolderizationAutomationSummaryFromReport(folderizationRepor
         ? contractDrift.recommendation || 'Normalize the folderization transaction contract before execution.'
       : executionTarget === 'split_large_file'
         ? 'Use split_large_file to decompose the monolith before retrying folderization.'
-      : automationState === 'review'
-        ? (propagationAdoption.missingSystemCount > 0
-          ? `Update ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} to surface the propagation pattern before execution.`
+    : automationState === 'review'
+      ? (propagationAdoption.missingSystemCount > 0
+        ? `Update ${propagationAdoption.missingSystemNames.slice(0, 3).join(', ')} to surface the propagation pattern before execution.`
           : 'Review the propagation and normalization plan before execution.')
         : 'Repair support surfaces before attempting folderization automation.';
   const reason = buildAutomationReason({

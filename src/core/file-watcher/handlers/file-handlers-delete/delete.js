@@ -20,7 +20,7 @@ import {
   clearDeletedFileState,
   fileExistsOnDisk,
   createDeletedFileShadows
-} from './file-handlers-delete-helpers.js';
+} from './index.js';
 
 const logger = createLogger('OmnySys:file-watcher:handlers:delete');
 

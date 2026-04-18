@@ -24,7 +24,7 @@ export {
 
 export {
   buildCachePolicySummary
-} from './cache-policy-summary.js';
+} from './cache-policy/summary.js';
 
 export {
   buildCompilerHealthDashboard,

@@ -33,7 +33,7 @@ export {
   removeFileMetadata,
   removeAtomMetadata,
   cleanupRelationships
-} from './handlers/metadata-cleanup.js';
+} from './handlers/file-handlers-delete/metadata-cleanup.js';
 
 export {
   notifyDependents,

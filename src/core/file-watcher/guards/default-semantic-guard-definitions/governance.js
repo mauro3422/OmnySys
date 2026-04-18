@@ -1,9 +1,9 @@
-import { defineVersionedLazyGuard } from './guard-definition-factory.js';
+import { defineVersionedLazyGuard } from '../guard-definition-factory.js';
 
 export const semanticGuardDefinitionsGovernance = [
   defineVersionedLazyGuard(
     'compiler-policy-conformance',
-    () => import('./compiler-policy-conformance-guard.js'),
+    () => import('../compiler-policy-conformance-guard.js'),
     (mod) => mod.detectCompilerPolicyConformance,
     'arch',
     '1.0.0',
@@ -11,7 +11,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'complexity-monitor',
-    () => import('./complexity-guard.js'),
+    () => import('../complexity-guard.js'),
     (mod) => mod.detectHighComplexity,
     'code',
     '1.0.0',
@@ -19,7 +19,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'event-leak',
-    () => import('./event-leak/index.js'),
+    () => import('../event-leak/index.js'),
     (mod) => mod.detectEventLeaks,
     'runtime',
     '1.0.0',
@@ -27,7 +27,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'dead-code',
-    () => import('./dead-code/guard.js'),
+    () => import('../dead-code/guard.js'),
     (mod) => mod.detectDeadCode,
     'code',
     '1.0.0',
@@ -35,7 +35,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'file-size-monitor',
-    () => import('./governance/file-size-guard.js'),
+    () => import('../governance/file-size-guard.js'),
     (mod) => mod.detectFileSizeLimits,
     'code',
     '1.0.0',
@@ -43,7 +43,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'canonical-dependency-monitor',
-    () => import('./governance/canonical-dependency-guard.js'),
+    () => import('../governance/canonical-dependency-guard.js'),
     (mod) => mod.detectCanonicalDependencies,
     'arch',
     '1.0.0',
@@ -51,7 +51,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'advisory-inference-monitor',
-    () => import('./governance/advisory-inference-guard.js'),
+    () => import('../governance/advisory-inference-guard.js'),
     (mod) => mod.detectAdvisoryInferences,
     'arch',
     '1.0.0',
@@ -59,7 +59,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'semantic-surface-collapse',
-    () => import('./semantic-surface-collapse-guard.js'),
+    () => import('../semantic-surface-collapse-guard.js'),
     (mod) => mod.detectSemanticSurfaceCollapse,
     'runtime',
     '1.0.0',
@@ -67,7 +67,7 @@ export const semanticGuardDefinitionsGovernance = [
   ),
   defineVersionedLazyGuard(
     'missing-surface-audit',
-    () => import('./missing-surface-audit-guard.js'),
+    () => import('../missing-surface-audit-guard.js'),
     (mod) => mod.detectMissingSurfaceAudit,
     'arch',
     '1.0.0',

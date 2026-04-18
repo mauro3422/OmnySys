@@ -1,11 +1,11 @@
-import fs from 'fs/promises';
 import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { isLowSignalName } from '../guards/guard-standards.js';
-import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handler-events.js';
+import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handlers-delete/file-handler-events.js';
 
 export async function handleFileCreatedForWatcher(fileWatcher, filePath, fullPath, changeContext = {}) {
-  const stats = await fs.stat(fullPath).catch(() => null);
+  const { stat } = await import('fs/promises');
+  const stats = await stat(fullPath).catch(() => null);
   if (!stats || stats.isDirectory()) {
     return;
   }

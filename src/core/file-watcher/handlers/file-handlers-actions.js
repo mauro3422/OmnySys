@@ -1,6 +1,6 @@
-import { runAsyncBoundary } from '../../../shared/compiler/index.js';
-import { detectImpactWave as detectImpactWaveGuard } from '../guards/impact-wave/index.js';
-import { detectDuplicateRisk as detectDuplicateRiskGuard } from '../guards/duplicate-risk/risk.js';
+import { runAsyncBoundary } from '../../../shared/compiler/async-boundary.js';
+import { detectImpactWave } from '../guards/impact-wave/index.js';
+import { detectDuplicateRisk } from '../guards/duplicate-risk/risk.js';
 import { countRequiredSignatureParams, extractRelatedFilePath } from '../shared/atom-relation-utils.js';
 
 async function runGuardAction(guardFn, fileWatcher, filePath, options = {}, previousAtoms = []) {
@@ -17,7 +17,7 @@ async function runGuardAction(guardFn, fileWatcher, filePath, options = {}, prev
 export async function detectDuplicateRiskForFile(fileWatcher, filePath, options = {}) {
   return await runAsyncBoundary('detectDuplicateRiskForFile', async () => {
     try {
-      return await runGuardAction(detectDuplicateRiskGuard, fileWatcher, filePath, options);
+      return await runGuardAction(detectDuplicateRisk, fileWatcher, filePath, options);
     } catch (error) {
       throw error;
     }
@@ -35,7 +35,7 @@ export async function detectImpactWaveForFile(fileWatcher, filePath, previousAto
         }
       };
 
-      return await runGuardAction(detectImpactWaveGuard, fileWatcher, filePath, guardOptions, previousAtoms);
+      return await runGuardAction(detectImpactWave, fileWatcher, filePath, guardOptions, previousAtoms);
     } catch (error) {
       throw error;
     }

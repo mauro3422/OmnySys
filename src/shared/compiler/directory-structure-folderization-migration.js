@@ -96,6 +96,7 @@ function decideMigration(candidate, importImpact) {
   // Familias pequeñas (2-3 archivos) son válidas si tienen alta cohesión.
   const strongFolderSignal = candidate.confidence >= 45 && candidate.fileCount >= 2;
   const mediumFolderSignal = candidate.confidence >= 55 && candidate.fileCount >= 3;
+  const compactFolderSignal = candidate.fileCount === 2 && candidate.confidence >= 65;
   const lowCrossFamilyPressure = importImpact.impactedFileCount <= Math.max(12, candidate.fileCount * 3);
   const lowRewriteLoad = importImpact.rewriteCount <= Math.max(20, candidate.fileCount * 5);
 
@@ -107,12 +108,15 @@ function decideMigration(candidate, importImpact) {
     return 'review';
   }
 
-  // Families of 2 need higher confidence to auto-approve
-  if (candidate.fileCount < 3 && candidate.confidence < 55) {
+  if (candidate.fileCount < 3 && candidate.confidence < 65) {
     return 'review';
   }
 
-  return mediumFolderSignal ? 'approve' : 'review';
+  if (compactFolderSignal || mediumFolderSignal) {
+    return 'approve';
+  }
+
+  return 'review';
 }
 
 function buildRewriteMap(moveTargets = []) {

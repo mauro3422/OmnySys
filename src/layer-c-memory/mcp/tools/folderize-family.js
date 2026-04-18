@@ -39,7 +39,7 @@ async function buildFolderizationExecutionGate({ projectPath, candidatePath, foc
   const explainability = await loadCompilerExplainability(projectPath, [], sharedState, null, {
     focusPath: candidatePath,
     filePaths: collectFolderizationExecutionTargets(focusPlan),
-    forceFresh: false
+    forceFresh: true
   });
 
   const databaseHealth = explainability?.databaseHealth || null;
@@ -47,10 +47,22 @@ async function buildFolderizationExecutionGate({ projectPath, candidatePath, foc
   const systemInventory = explainability?.systemInventory || null;
   const canonicalPromotion = explainability?.canonicalPromotion || null;
   const propagationLedger = explainability?.propagationLedger || null;
+  const compactSafeFamily = (
+    focusPlan?.candidate?.fileCount <= 2
+    && Number(focusPlan?.candidate?.confidence || 0) >= 70
+    && Number(focusPlan?.importImpact?.rewriteCount || 0) <= 6
+    && databaseHealth?.healthy === true
+    && folderizationAutomation?.propagationMode !== 'blocked'
+    && folderizationAutomation?.normalizationSafetyLevel !== 'risky'
+    && folderizationAutomation?.normalizationSafetyLevel !== 'missing'
+    && folderizationAutomation?.propagationAdoptionState === 'ready'
+  );
   const executionReady = Boolean(
     databaseHealth?.healthy === true
-    && folderizationAutomation?.shouldExecute === true
-    && folderizationAutomation?.executionTarget === 'folderize_family'
+    && (
+      (folderizationAutomation?.shouldExecute === true && folderizationAutomation?.executionTarget === 'folderize_family')
+      || compactSafeFamily
+    )
   );
 
   const gate = {
@@ -69,10 +81,14 @@ async function buildFolderizationExecutionGate({ projectPath, candidatePath, foc
       `inventory=${folderizationAutomation?.systemInventoryState || systemInventory?.inventoryState || 'unknown'}`
     ].join(' | '),
     reason: executionReady
-      ? 'Folderization execution gate approved.'
+      ? (compactSafeFamily
+        ? 'Folderization execution gate approved via compact-family override.'
+        : 'Folderization execution gate approved.')
       : folderizationAutomation?.reason || databaseHealth?.summary?.reason || 'Folderization execution gate rejected.',
     nextAction: executionReady
-      ? folderizationAutomation?.nextAction || 'Execute the folderization transaction.'
+      ? (compactSafeFamily
+        ? 'Execute the compact family transaction using the canonical validation and rollback pipeline.'
+        : folderizationAutomation?.nextAction || 'Execute the folderization transaction.')
       : folderizationAutomation?.nextAction || 'Repair metadata, inventory, naming, or propagation drift before execution.'
   };
 
@@ -86,7 +102,8 @@ async function buildFolderizationExecutionGate({ projectPath, candidatePath, foc
       propagationAdoptionState: folderizationAutomation?.propagationAdoptionState || null,
       systemInventoryState: folderizationAutomation?.systemInventoryState || systemInventory?.inventoryState || null,
       policyCoverageState: folderizationAutomation?.policyCoverageState || systemInventory?.policyCoverage?.coverageState || null,
-      canonicalPromotionState: canonicalPromotion?.promotionState || null
+      canonicalPromotionState: canonicalPromotion?.promotionState || null,
+      compactSafeFamily
     };
   }
 

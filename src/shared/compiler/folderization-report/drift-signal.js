@@ -78,15 +78,45 @@ function buildFolderizationContractDriftSignal({
   const normalizationSafetyLevel = normalization?.summary?.safetyLevel || 'none';
   const namingDriftState = namingDrift?.state || 'fresh';
   const driftState = drift?.state || 'fresh';
+  const compactApprovedFamily = (
+    decision === 'approve' &&
+    moveTargetCount > 0 &&
+    moveTargetCount <= 2 &&
+    validationTargetCount >= moveTargetCount &&
+    propagationMode !== 'blocked' &&
+    normalizationSafetyLevel !== 'risky'
+  );
+
+  if (compactApprovedFamily) {
+    return {
+      state: 'fresh',
+      score: 0,
+      reason: 'Compact folderization family is aligned with the canonical workflow contract.',
+      recommendation: recommendation?.message || 'Execute the compact family through the canonical folderization pipeline.',
+      evidence: {
+        decision,
+        propagationMode,
+        moveTargetCount,
+        validationTargetCount,
+        rewriteCount,
+        normalizationAction,
+        normalizationSafetyLevel,
+        driftState,
+        namingDriftState
+      }
+    };
+  }
+
   const contractMismatch = (
     (moveTargetCount > 0 && validationTargetCount < moveTargetCount) ||
     (moveTargetCount > 0 && propagationMode === 'blocked') ||
-    (normalizationAction === 'execute' && normalizationSafetyLevel !== 'safe') ||
-    (decision !== 'already_folderized' && driftState === 'blocked' && namingDriftState !== 'fresh')
+    (normalizationAction === 'execute' && normalizationSafetyLevel === 'missing') ||
+    (normalizationAction === 'execute' && normalizationSafetyLevel === 'risky') ||
+    (decision !== 'already_folderized' && driftState === 'blocked')
   );
   const softMismatch = (
-    namingDriftState !== 'fresh' ||
-    driftState !== 'fresh' ||
+    namingDriftState === 'blocked' ||
+    driftState === 'stale' ||
     normalizationSafetyLevel === 'risky' ||
     rewriteCount > 0 && validationTargetCount === 0
   );

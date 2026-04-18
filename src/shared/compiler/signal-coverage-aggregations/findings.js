@@ -1,9 +1,9 @@
-import { getPipelineFieldCoverageContext } from './pipeline-health-context.js';
+import { getPipelineFieldCoverageContext } from '../pipeline-health-context.js';
 import {
   PIPELINE_FIELD_COVERAGE_SIGNALS,
   classifyFieldCoverage
-} from './helpers.js';
-import { summarizeCentralityCoverageRow } from './signal-coverage-aggregations-rows.js';
+} from '../helpers.js';
+import { summarizeCentralityCoverageRow } from '../signal-coverage-aggregations-rows.js';
 
 export function collectPipelineFieldCoverageFindings({ db, phase2PendingFiles = 0 } = {}) {
   const graphMetricFields = new Set(['coupling_score', 'cohesion_score', 'centrality_score']);

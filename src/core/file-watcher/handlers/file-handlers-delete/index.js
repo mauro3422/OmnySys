@@ -15,7 +15,7 @@ export async function fileExistsOnDisk(fullPath) {
 }
 
 export async function createDeletedFileShadows(context, filePath, options = {}) {
-  const { getShadowRegistry } = await import('../../../layer-c-memory/shadow-registry/index.js');
+  const { getShadowRegistry } = await import('../../../../layer-c-memory/shadow-registry/index.js');
   const registry = getShadowRegistry(context.dataPath);
   await registry.initialize();
 

@@ -1,4 +1,6 @@
 import {
+  buildFolderizedFamilyGroups,
+  buildFolderizedFamilySuggestion,
   buildFolderizationNamingPlanFromRows,
   buildFolderizationNamingReportFromRows,
   loadFolderizationRowsForNaming
@@ -68,10 +70,12 @@ function buildNormalizationRecommendation({ safety, renameTargetCount, mode }) {
     };
   }
 
-  if (safety.level === 'safe') {
+  if (safety.level === 'safe' || (safety.level === 'guarded' && renameTargetCount <= 2)) {
     return {
       action: 'execute',
-      reason: 'Rename targets are bounded and the family is safe to normalize.'
+      reason: safety.level === 'safe'
+        ? 'Rename targets are bounded and the family is safe to normalize.'
+        : 'Rename targets are bounded and the guarded surface is still small enough to normalize safely.'
     };
   }
 
@@ -114,14 +118,35 @@ function buildNormalizationSummary({
   };
 }
 
+function findPreferredFolderizedFamilyPlan(rows = [], preferredDirectory = null, preferredFamilyRoot = null) {
+  if (!preferredDirectory || !preferredFamilyRoot) {
+    return null;
+  }
+
+  const preferredGroup = buildFolderizedFamilyGroups(rows).find((group) => {
+    return group.directory === preferredDirectory && group.familyRoot === preferredFamilyRoot;
+  }) || null;
+
+  if (!preferredGroup) {
+    return null;
+  }
+
+  return buildFolderizedFamilySuggestion(preferredGroup);
+}
+
 export function buildFolderizationNormalizationPlanFromRows(rows = [], candidatePaths = [], options = {}) {
   const normalizedCandidatePaths = normalizeCandidatePaths(candidatePaths);
   const candidatePath = normalizedCandidatePaths[0] || normalizeSnapshotPath(options.candidatePath || null);
   const mode = options.mode || (options.execute ? 'execute' : 'plan');
   const namingReport = buildFolderizationNamingReportFromRows(rows);
-  const namingPlan = candidatePath
+  const preferredNamingPlan = findPreferredFolderizedFamilyPlan(
+    rows,
+    normalizeSnapshotPath(options.preferredDirectory || null),
+    options.preferredFamilyRoot || null
+  );
+  const namingPlan = preferredNamingPlan || (candidatePath
     ? buildFolderizationNamingPlanFromRows(rows, [candidatePath], options)
-    : null;
+    : null);
   const renameTargets = Array.isArray(namingPlan?.renameTargets)
     ? namingPlan.renameTargets.map((target) => ({ ...target }))
     : [];

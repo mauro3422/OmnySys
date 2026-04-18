@@ -6,12 +6,12 @@
  * @module file-watcher/handlers/metadata-cleanup
  */
 
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../../../utils/logger.js';
 import {
   emitOrphanedImportsFromPersistedMetadata,
   removePersistedAtomMetadata,
   removePersistedFileMetadata
-} from '../../../shared/compiler/index.js';
+} from '../../../../shared/compiler/compiler-persistence-cleanup.js';
 
 const logger = createLogger('OmnySys:file-watcher:cleanup');
 

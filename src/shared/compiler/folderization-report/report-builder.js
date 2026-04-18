@@ -81,14 +81,23 @@ function buildFolderizationReport({
     }),
     candidateReport
   );
+  const focusMigrationPlan = migrationPlans?.focusCandidate || null;
+  const focusCandidatePaths = Array.isArray(focusMigrationPlan?.moveTargets)
+    ? focusMigrationPlan.moveTargets.map((target) => target?.from).filter(Boolean)
+    : [];
+  const focusCandidateBarrelPath = focusMigrationPlan?.candidate?.barrelFile || null;
   const normalization = buildFolderizationNormalizationPlanFromRows(rows, [
+    ...focusCandidatePaths,
+    focusCandidateBarrelPath,
     focusPath,
     scopePath,
     naming?.topFamilies?.[0]?.renameTargets?.[0]?.from || null,
     naming?.topFamilies?.[0]?.directory || null
   ].filter(Boolean), {
     mode: 'plan',
-    candidatePath: focusPath || scopePath || naming?.topFamilies?.[0]?.directory || null
+    candidatePath: focusCandidatePaths[0] || focusCandidateBarrelPath || focusPath || scopePath || naming?.topFamilies?.[0]?.directory || null,
+    preferredDirectory: focusMigrationPlan?.candidate?.directory || null,
+    preferredFamilyRoot: focusMigrationPlan?.candidate?.familyRoot || null
   });
   const recommendation = buildFolderizationRecommendation({
       decision: existingFolderizedFamily ? 'already_folderized' : migrationPlans?.focusCandidate?.decision || (candidateList.length > 0 ? 'review' : 'reject'),

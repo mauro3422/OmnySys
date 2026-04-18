@@ -1,10 +1,10 @@
 import { createLogger } from '../../../utils/logger.js';
-import { runAsyncBoundary } from '../../../shared/compiler/index.js';
+import { runAsyncBoundary } from '../../../shared/compiler/async-boundary.js';
 import { collectAndIndexFile } from '../analyze.js';
 import { guardRegistry } from '../guards/registry.js';
 import { validateAllExports } from '../../../layer-c-memory/mcp/tools/validate-exports-chain/validate-exports-chain.js';
 import { isTestFactorySurface } from '../../../layer-c-memory/mcp/tools/validate-exports-chain/index.js';
-import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handler-events.js';
+import { emitFileLifecycleEvent, formatOriginSuffix, logFileLifecycle } from './file-handlers-delete/file-handler-events.js';
 import {
   readModifiedFileSnapshot,
   shouldSkipModifiedFile,

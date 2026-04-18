@@ -22,7 +22,7 @@ import {
   isLowSignalOrCompatibilityConceptualDuplicate,
   isCanonicalDuplicateSignalPolicyHelper
 } from './helpers.js';
-import { classifyUtilityHelperDuplicate } from './utility-helper-classification.js';
+import { classifyUtilityHelperDuplicate } from '../utility-helper-classification.js';
 
 // Export for backward compatibility
 export {

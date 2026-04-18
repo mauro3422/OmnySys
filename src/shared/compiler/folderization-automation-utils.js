@@ -247,7 +247,7 @@ export function buildAutomationReason({
 
   if (automationState === 'ready') {
     const connectedLabel = connectedSystemNames.length > 0 ? connectedSystemNames.join(', ') : 'the connected systems';
-    return `Folderization can execute because propagation is attached to ${connectedLabel} and the normalization plan is safe; adoption is aligned across ${propagationAdoption?.surfacedSystemCount || 0} surfaced system(s).`;
+    return `Folderization can execute because propagation is attached to ${connectedLabel} and the normalization plan is ${normalizationSafetyLevel || 'unknown'}; adoption is aligned across ${propagationAdoption?.surfacedSystemCount || 0} surfaced system(s).`;
   }
 
   if (recommendationStrategy === 'split_large_file') {

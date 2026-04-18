@@ -1,9 +1,9 @@
-import { defineVersionedLazyGuard } from './guard-definition-factory.js';
+import { defineVersionedLazyGuard } from '../guard-definition-factory.js';
 
 export const semanticGuardDefinitionsCore = [
   defineVersionedLazyGuard(
     'shared-state',
-    () => import('./shared-state/guard.js'),
+    () => import('../shared-state/guard.js'),
     (mod) => mod.detectSharedStateContention,
     'sem',
     '2.0.0',
@@ -11,7 +11,7 @@ export const semanticGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'atomic-integrity',
-    () => import('./integrity-guard/guard.js'),
+    () => import('../integrity-guard/guard.js'),
     (mod) => mod.detectIntegrityViolations,
     'sem',
     '2.0.0',
@@ -19,7 +19,7 @@ export const semanticGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'async-safety',
-    () => import('./async-safety/guard.js'),
+    () => import('../async-safety/guard.js'),
     (mod) => mod.detectAsyncSafetyIssues,
     'runtime',
     '1.0.0',
@@ -27,7 +27,7 @@ export const semanticGuardDefinitionsCore = [
   ),
   defineVersionedLazyGuard(
     'metadata-completeness',
-    () => import('./metadata-completeness/index.js'),
+    () => import('../metadata-completeness/index.js'),
     (mod) => mod.detectMetadataCompleteness,
     'code',
     '1.0.0',

@@ -1,13 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { getFileAnalysis, getFileExports } from '#layer-c/query/apis/file-api.js';
+import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { buildPropagationPlan, summarizePropagationPlan } from '#shared/compiler/index.js';
-import { normalizeComparablePath, normalizePath } from '#shared/utils/path-utils.js';
-
-function createCacheKey(projectPath, filePath) {
-  return `${normalizeComparablePath(projectPath)}::${normalizeComparablePath(filePath)}`;
-}
+import { buildPolicyDriftPropagationPlan, normalizeComparablePath, normalizePath } from '#shared/compiler/index.js';
+import { loadModuleExportsFromDb } from './module-export-loader.js';
 
 function resolveImportModulePath(projectPath, importingFilePath, modulePath) {
   if (!modulePath) return '';
@@ -19,30 +15,12 @@ function resolveImportModulePath(projectPath, importingFilePath, modulePath) {
   return normalizePath(withExtension, projectPath);
 }
 
-async function loadModuleExportsFromDb(projectPath, modulePath, exportsByModule) {
-  if (!modulePath) return new Set();
-  const normalizedModulePath = normalizePath(modulePath, projectPath);
-  const cacheKey = createCacheKey(projectPath, normalizedModulePath);
-  if (exportsByModule.has(cacheKey)) return exportsByModule.get(cacheKey);
-
-  const moduleExports = await getFileExports(projectPath, normalizedModulePath).catch(() => new Set());
-  const repo = getRepository(projectPath);
-  if (repo?.initialized && repo?.db && repo.db.open !== false) {
-    const row = repo.db.prepare('SELECT exports_json FROM files WHERE path = ? AND is_removed = 0').get(normalizedModulePath);
-    if (row?.exports_json) {
-      try {
-        const exports = JSON.parse(row.exports_json);
-        for (const exp of exports) {
-          if (typeof exp === 'string') moduleExports.add(exp);
-          else if (exp?.name) moduleExports.add(exp.name);
-          else if (exp?.exportedAs) moduleExports.add(exp.exportedAs);
-          else if (exp?.localName) moduleExports.add(exp.localName);
-        }
-      } catch {}
-    }
-  }
-  exportsByModule.set(cacheKey, moduleExports);
-  return moduleExports;
+function resolveImportModuleFsPath(projectPath, importingFilePath, modulePath) {
+  const normalizedModulePath = resolveImportModulePath(projectPath, importingFilePath, modulePath);
+  if (!normalizedModulePath) return '';
+  return path.isAbsolute(normalizedModulePath)
+    ? normalizedModulePath
+    : path.resolve(projectPath, normalizedModulePath);
 }
 
 function parseJsonArray(value, fallback = []) {
@@ -50,35 +28,6 @@ function parseJsonArray(value, fallback = []) {
     try { return JSON.parse(value); } catch { return fallback; }
   }
   return Array.isArray(value) ? value : fallback;
-}
-
-function buildValidationPropagationPlan({ filePath, importCount = 0, brokenCount = 0, circularCount = 0 } = {}) {
-  return summarizePropagationPlan(buildPropagationPlan({
-    changeType: 'policy_drift',
-    decision: brokenCount > 0 || circularCount > 0 ? 'review' : 'approve',
-    mode: brokenCount > 0 || circularCount > 0 ? 'alert_and_review' : 'alert_and_recommend',
-    impactedFileCount: 1,
-    validationTargetCount: importCount,
-    candidateCount: brokenCount + circularCount,
-    findingCount: brokenCount + circularCount,
-    ruleCount: brokenCount + circularCount,
-    policyAreaCount: 1,
-    guidance: brokenCount > 0 || circularCount > 0
-      ? 'Attach the canonical propagation plan before surfacing import validation drift.'
-      : 'Keep import validation attached to the canonical propagation contract.',
-    recommendationStrategy: 'validate_imports',
-    focusPath: filePath || null,
-    scopePath: filePath || null,
-    connectedSystems: [
-      { name: 'validate_imports', role: 'verification' },
-      { name: 'watcher', role: 'persistence' },
-      { name: 'technical_debt_report', role: 'consumer' },
-      { name: 'status_panel', role: 'visibility' },
-      { name: 'health_snapshot', role: 'history' },
-      { name: 'compiler_explainability', role: 'explainability' },
-      { name: 'drift_assessment', role: 'governance' }
-    ]
-  }));
 }
 
 async function loadIndexedFileAnalysis(projectPath, filePath, repo = null) {
@@ -95,7 +44,7 @@ async function loadIndexedFileAnalysis(projectPath, filePath, repo = null) {
         exports: parseJsonArray(row.exports_json, []),
         atoms,
         atomCount: atoms.length,
-        propagation: buildValidationPropagationPlan({
+        propagation: buildPolicyDriftPropagationPlan({
           filePath: indexedFilePath,
           importCount: parseJsonArray(row.imports_json, []).length,
           brokenCount: 0
@@ -117,7 +66,7 @@ async function inspectImportEntryAgainstDb(projectPath, importingFilePath, entry
   const resolvedModulePath = resolveImportModulePath(projectPath, importingFilePath, rawModulePath);
   if (options?.checkFileExistence) {
     try {
-      await fs.access(resolvedModulePath);
+      await fs.access(resolveImportModuleFsPath(projectPath, importingFilePath, rawModulePath));
     } catch {
       return [{
         source: rawModulePath,
@@ -160,7 +109,7 @@ export async function collectDatabaseImportState(projectPath, filePath, repo = n
     specifierCount: imports.length,
     compilerIndexed: true,
     sourceOfTruth: 'database',
-    propagation: buildValidationPropagationPlan({
+    propagation: buildPolicyDriftPropagationPlan({
       filePath: indexedFilePath,
       importCount: imports.length,
       brokenCount: broken.length
@@ -200,7 +149,7 @@ export async function buildDatabaseOnlyValidation(projectPath, filePath, repo = 
       status: 'HAS_ISSUES',
       validationMode: 'database_only',
       compilerIndexed: false,
-      propagation: buildValidationPropagationPlan({ filePath, importCount: 0, brokenCount: 1 })
+      propagation: buildPolicyDriftPropagationPlan({ filePath, importCount: 0, brokenCount: 1 })
     };
   }
 }
@@ -213,7 +162,7 @@ export async function collectBrokenImports(fileData, projectPath, filePath, chec
 
 export async function buildIndexedValidationResult(repo, filePath, fileData, broken, unused, circularPaths, projectPath) {
   const indexedImportCount = Array.isArray(fileData?.imports) ? fileData.imports.length : 0;
-  const propagation = buildValidationPropagationPlan({
+  const propagation = buildPolicyDriftPropagationPlan({
     filePath,
     importCount: indexedImportCount,
     brokenCount: broken.length,
