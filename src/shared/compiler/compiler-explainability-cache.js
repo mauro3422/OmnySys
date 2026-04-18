@@ -16,6 +16,22 @@ const COMPILER_POLICY_FILES = [
   'src/shared/compiler/standardization-report/recommendations.js',
   'src/shared/compiler/compiler-observability-contract.js',
   'src/shared/compiler/compiler-explainability-loader.js',
+  'src/shared/compiler/policy-conformance-rules.js',
+  'src/shared/compiler/policy-conformance/summary.js',
+  'src/shared/compiler/policy-coverage-summary.js',
+  'src/shared/compiler/propagation-expansion-conformance.js',
+  'src/shared/compiler/compiler-drift-assessment.js',
+  'src/shared/compiler/compiler-control-plane-structure.js',
+  'src/shared/compiler/compiler-control-plane-gaps.js',
+  'src/shared/compiler/propagation-ledger.js',
+  'src/shared/compiler/status-control-plane-contracts.js',
+  'src/shared/compiler/status-system-table/context.js',
+  'src/shared/compiler/status-system-table-rows.js',
+  'src/shared/compiler/system-inventory/summary.js',
+  'src/shared/compiler/system-inventory/index.js',
+  'src/shared/compiler/system-inventory/report.js',
+  'src/shared/compiler/snapshot.js',
+  'src/shared/compiler/loader.js',
 ];
 
 let _lastCompilerPolicyCodeHash = null;

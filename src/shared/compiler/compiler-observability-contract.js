@@ -8,488 +8,28 @@
  */
 
 import { asNumber } from './core-utils.js';
-import { normalizeCount } from './contract-helpers.js';
 import {
   resolveControlPlaneContracts,
   resolveDashboardControlPlaneContracts
 } from './status-control-plane-contracts.js';
-import {
-  isBlockedState,
-  isDriftingState,
-  isWatchingState,
-  normalizeState
-} from './signal-state-helpers.js';
+import { buildArchiveWindowDrift } from './archive-window-drift.js';
 import { summarizeReadinessState } from './readiness-state-helpers.js';
 import { buildInventoryState } from './inventory-state-helpers.js';
-
-function firstDefined(...values) {
-  for (const value of values) {
-    if (value !== undefined && value !== null && value !== '') {
-      return value;
-    }
-  }
-
-  return null;
-}
-
-function isWatchfulState(state) {
-  return isWatchingState(state) || normalizeState(state) === 'deferred';
-}
-
-function compactHealthPanelHealth(healthPanel = null) {
-  const now = healthPanel?.now || {};
-  const trend = healthPanel?.trend || {};
-
-  return {
-    status: healthPanel?.status || null,
-    headline: healthPanel?.headline || null,
-    healthScore: asNumber(now.healthScore, 0),
-    healthGrade: now.healthGrade || null,
-    globalHealthScore: asNumber(now.globalHealthScore, 0),
-    globalHealthGrade: now.globalHealthGrade || null,
-    reliabilityScore: asNumber(now.reliabilityScore, 0),
-    reliabilityGrade: now.reliabilityGrade || null,
-    successScore: asNumber(now.successScore, 0),
-    successThreshold: asNumber(now.successThreshold, 0),
-    mvpReady: now.mvpReady === true,
-    behaviorState: now.behaviorState || null,
-    readinessReason: now.readinessReason || null,
-    driftState: now.driftState || null,
-    trendStatus: trend.status || null,
-    trendSummary: trend.summary || null
-  };
-}
-
-function compactMetricsHealth(metricsSnapshot = null) {
-  const current = metricsSnapshot?.current || {};
-  const summaryCoherence = metricsSnapshot?.summaryCoherence || current.summaryCoherence || null;
-
-  return {
-    healthScore: asNumber(current.healthScore, 0),
-    healthGrade: current.healthGrade || null,
-    globalHealthScore: asNumber(current.globalHealthScore, 0),
-    globalHealthGrade: current.globalHealthGrade || null,
-    reliabilityScore: asNumber(current.reliabilityScore, 0),
-    reliabilityGrade: current.reliabilityGrade || null,
-    successScore: asNumber(current.successScore, 0),
-    successThreshold: asNumber(current.successThreshold, 0),
-    mvpReady: current.mvpReady === true,
-    behaviorState: current.behaviorState || null,
-    readinessReason: current.readinessReason || null,
-    driftState: current.driftState || null,
-    activeAtomsDriftState: current.activeAtomsDriftState || null,
-    summaryCoherenceState: summaryCoherence?.coherent === false ? 'stale' : summaryCoherence?.coherent === true ? 'fresh' : null,
-    summaryCoherenceReason: summaryCoherence?.reason || null,
-    summary: current.summaryText || metricsSnapshot?.summary || null
-  };
-}
-
-function compactInventorySignals(systemInventory = null) {
-  const summary = systemInventory?.summary || {};
-  return {
-    inventoryState: summary.inventoryState || systemInventory?.inventoryState || 'missing',
-    policyCoverageState: summary.policyCoverageState || systemInventory?.policyCoverageState || null,
-    policyCoverageScore: asNumber(summary.policyCoverageScore || systemInventory?.policyCoverageScore, 0),
-    policyCoverageRatio: Number(firstDefined(summary.policyCoverageRatio, systemInventory?.policyCoverageRatio, 0)) || 0,
-    policyDriftCount: asNumber(summary.policyDriftCount || systemInventory?.policyDriftCount, 0),
-    missingCanonicalApiCount: asNumber(summary.missingCanonicalApiCount || systemInventory?.missingCanonicalApiCount, 0),
-    missingCanonicalSurfaceCount: asNumber(summary.missingCanonicalSurfaceCount || systemInventory?.missingCanonicalSurfaceCount, 0),
-    standardizationGapCount: asNumber(summary.standardizationGapCount || systemInventory?.standardizationGapCount, 0),
-    integrationCoveragePct: asNumber(summary.integrationCoveragePct || systemInventory?.integrationCoveragePct, 0),
-    metadataCoveragePct: asNumber(
-      summary.metadataFieldCoveragePct
-        || summary.metadataCoveragePct
-        || systemInventory?.metadataFieldCoveragePct
-        || systemInventory?.metadataCoveragePct,
-      0
-    ),
-    historyStoreState: summary.historyStoreState || systemInventory?.historyStoreState || null,
-    historyStoreCount: asNumber(summary.historyStoreCount || systemInventory?.historyStoreCount, 0),
-    nextAction: summary.nextAction || systemInventory?.nextAction || null
-  };
-}
-
-function compactTelemetryState(startupTelemetry, proxyRuntimeTelemetry, bridgeRuntimeTelemetry) {
-  const telemetry = [startupTelemetry, proxyRuntimeTelemetry, bridgeRuntimeTelemetry].filter(Boolean);
-  const states = telemetry.map((item) => normalizeState(item?.state, 'missing'));
-  const hasProxy = Boolean(proxyRuntimeTelemetry);
-  const hasBridge = Boolean(bridgeRuntimeTelemetry);
-
-  if (telemetry.length === 0) {
-    return {
-      state: 'deferred',
-      healthy: true,
-      trustworthy: true,
-      reason: 'Runtime telemetry was not provided to this snapshot.',
-      recommendation: 'Use the status surface to attach startup, proxy and bridge telemetry when you need runtime readiness.',
-      sourceCount: 0,
-      states: []
-    };
-  }
-
-  if (states.some(isBlockedState)) {
-    return {
-      state: 'blocked',
-      healthy: false,
-      trustworthy: false,
-      reason: 'One or more runtime telemetry surfaces report a blocked or thrashing state.',
-      recommendation: 'Inspect proxy/bridge runtime telemetry before trusting restart or reconnect readiness.',
-      sourceCount: telemetry.length,
-      states
-    };
-  }
-
-  const missingCount = states.filter((state) => state === 'missing').length;
-  if ((hasProxy || hasBridge) && missingCount > 0) {
-    return {
-      state: 'partial',
-      healthy: false,
-      trustworthy: true,
-      reason: 'Runtime telemetry is partially available but not all runtime surfaces are reporting.',
-      recommendation: 'Attach startup, proxy and bridge telemetry together so transport health can be interpreted in one place.',
-      sourceCount: telemetry.length,
-      states
-    };
-  }
-
-  if (states.some((state) => ['watchful', 'recovering', 'recovery', 'watching'].includes(state))) {
-    return {
-      state: 'watchful',
-      healthy: true,
-      trustworthy: true,
-      reason: 'Runtime telemetry shows recovery or watchful transport activity.',
-      recommendation: 'Keep bridge and proxy recovery telemetry persisted so transport regressions remain visible.',
-      sourceCount: telemetry.length,
-      states
-    };
-  }
-
-  if (states.some(isDriftingState)) {
-    return {
-      state: 'partial',
-      healthy: false,
-      trustworthy: true,
-      reason: 'Runtime telemetry is present but not all surfaces are reporting fresh values.',
-      recommendation: 'Keep startup, proxy and bridge telemetry aligned so readiness can be assessed consistently.',
-      sourceCount: telemetry.length,
-      states
-    };
-  }
-
-  return {
-    state: 'ready',
-    healthy: true,
-    trustworthy: true,
-    reason: 'Runtime telemetry surfaces are aligned and stable.',
-    recommendation: 'Keep runtime telemetry persisted so transport regressions remain visible.',
-    sourceCount: telemetry.length,
-    states
-  };
-}
-
-function summarizePropagationState({
-  propagationExpansion = null,
-  folderizationPropagation = null,
-  policyCoverage = null
-} = {}) {
-  const expansionState = normalizeState(propagationExpansion?.state, 'missing');
-  const folderDecision = normalizeState(folderizationPropagation?.decision, 'missing');
-
-  if (isBlockedState(expansionState)) {
-    return {
-      state: 'blocked',
-      healthy: false,
-      trustworthy: false,
-      reason: propagationExpansion?.reason || 'Propagation expansion is blocked.',
-      recommendation: propagationExpansion?.recommendation || 'Attach the canonical propagation plan before trusting reporting payloads.',
-      sourceOfTruth: 'compiler drift assessment'
-    };
-  }
-
-  if (expansionState === 'fresh' || expansionState === 'stable') {
-    return {
-      state: 'fresh',
-      healthy: true,
-      trustworthy: true,
-      reason: propagationExpansion?.reason || 'Propagation expansion is fresh.',
-      recommendation: propagationExpansion?.recommendation || 'Keep watcher and tool surfaces attached to the canonical propagation engine.',
-      sourceOfTruth: 'compiler drift assessment'
-    };
-  }
-
-  if (expansionState === 'stale' || expansionState === 'partial') {
-    return {
-      state: expansionState,
-      healthy: false,
-      trustworthy: false,
-      reason: propagationExpansion?.reason || 'Propagation expansion is not fresh.',
-      recommendation: propagationExpansion?.recommendation || 'Attach the canonical propagation plan before trusting reporting payloads.',
-      sourceOfTruth: 'compiler drift assessment'
-    };
-  }
-
-  if (folderDecision !== 'missing') {
-    if (['approve', 'accepted', 'allow', 'keep'].includes(folderDecision)) {
-      return {
-        state: 'fresh',
-        healthy: true,
-        trustworthy: true,
-        reason: folderizationPropagation?.summary || 'Folderization propagation is approved.',
-        recommendation: folderizationPropagation?.recommendationStrategy
-          || 'Keep the canonical propagation plan attached to downstream consumers.',
-        sourceOfTruth: 'folderization propagation'
-      };
-    }
-
-    if (['review', 'pending', 'watch', 'watchful'].includes(folderDecision)) {
-      return {
-        state: 'watching',
-        healthy: true,
-        trustworthy: true,
-        reason: folderizationPropagation?.summary || 'Folderization propagation is under review.',
-        recommendation: folderizationPropagation?.recommendationStrategy
-          || 'Review the canonical propagation plan before promoting more surfaces.',
-        sourceOfTruth: 'folderization propagation'
-      };
-    }
-
-    if (['reject', 'blocked', 'deny', 'decline'].includes(folderDecision)) {
-      return {
-        state: 'blocked',
-        healthy: false,
-        trustworthy: false,
-        reason: folderizationPropagation?.summary || 'Folderization propagation was rejected.',
-        recommendation: folderizationPropagation?.recommendationStrategy
-          || 'Repair the canonical propagation plan before trusting downstream consumers.',
-        sourceOfTruth: 'folderization propagation'
-      };
-    }
-  }
-
-  const coverageState = normalizeState(policyCoverage?.state || policyCoverage?.coverageState, 'missing');
-  if (coverageState === 'fresh') {
-    return {
-      state: 'fresh',
-      healthy: true,
-      trustworthy: true,
-      reason: policyCoverage?.nextAction || 'No propagation drift detected.',
-      recommendation: policyCoverage?.nextAction || 'Keep routing propagation through the canonical shared helpers.',
-      sourceOfTruth: 'policy coverage'
-    };
-  }
-
-  if (coverageState === 'blocked' || coverageState === 'stale') {
-    return {
-      state: coverageState,
-      healthy: false,
-      trustworthy: false,
-      reason: policyCoverage?.nextAction || 'Propagation coverage is not fresh.',
-      recommendation: policyCoverage?.nextAction || 'Reconcile propagation coverage before trusting watcher or status payloads.',
-      sourceOfTruth: 'policy coverage'
-    };
-  }
-
-  return {
-    state: 'missing',
-    healthy: false,
-    trustworthy: false,
-    reason: 'No canonical propagation signal is available.',
-    recommendation: 'Attach the canonical propagation plan before emitting watcher or reporting payloads.',
-    sourceOfTruth: 'compiler propagation'
-  };
-}
-
-function summarizeGatewayState(compilerExplainability = null, controlPlaneContracts = null) {
-  const dataGatewayContract = compilerExplainability?.dataGatewayContract || null;
-  const trustworthy = dataGatewayContract?.summary?.trustworthy === true;
-  const primaryIssue = dataGatewayContract?.summary?.primaryIssue || null;
-  const state = trustworthy
-    ? 'fresh'
-    : normalizeState(primaryIssue?.state, dataGatewayContract ? 'stale' : 'missing');
-
-  return {
-    state,
-    healthy: trustworthy,
-    trustworthy,
-    reason: primaryIssue?.reason || dataGatewayContract?.summary?.nextAction || 'Data gateway contract needs attention.',
-    recommendation: dataGatewayContract?.summary?.nextAction || 'Route freshness, coverage and drift checks through the canonical data gateway contract.',
-    sourceOfTruth: 'data gateway contract',
-    integrationCoveragePct: asNumber(controlPlaneContracts?.integrationCoveragePct, 0)
-  };
-}
-
-function summarizePolicyState(controlPlaneContracts = null, compilerExplainability = null) {
-  const policyCoverage = controlPlaneContracts?.policyCoverage || compilerExplainability?.policyCoverage || null;
-  const driftAssessment = compilerExplainability?.driftAssessment || null;
-  const state = normalizeState(policyCoverage?.state || policyCoverage?.coverageState, 'missing');
-  const propagationExpansion = driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
-    || (driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? driftAssessment.primaryIssue : null);
-
-  return {
-    state,
-    healthy: state === 'fresh',
-    trustworthy: state === 'fresh',
-    reason: policyCoverage?.nextAction || propagationExpansion?.reason || 'Policy coverage is not fresh.',
-    recommendation: policyCoverage?.nextAction || propagationExpansion?.recommendation || 'Resolve policy drift before trusting downstream snapshot consumers.',
-    sourceOfTruth: 'policy coverage',
-    policyCoverage
-  };
-}
-
-function summarizeMetricsState(metricsSnapshot = null, healthDashboard = null) {
-  const current = metricsSnapshot?.current || {};
-  const health = healthDashboard?.health || {};
-  const summaryCoherence = metricsSnapshot?.summaryCoherence || current.summaryCoherence || null;
-  const score = asNumber(firstDefined(current.globalHealthScore, current.healthScore, health.globalHealthScore, health.healthScore, 0), 0);
-  const reliability = asNumber(firstDefined(current.reliabilityScore, health.reliabilityScore, 0), 0);
-  const success = asNumber(firstDefined(current.successScore, health.successScore, 0), 0);
-  const behaviorState = normalizeState(firstDefined(current.behaviorState, health.behaviorState, 'missing'));
-  const readinessReason = firstDefined(current.readinessReason, health.readinessReason, null);
-
-  let state = 'fresh';
-  if (behaviorState === 'blocked') {
-    state = 'blocked';
-  } else if (score < 80 || reliability < 70 || success < 70) {
-    state = 'stale';
-  } else if (score < 95 || reliability < 90 || success < 90) {
-    state = 'watching';
-  }
-
-  if (summaryCoherence?.coherent === false && state !== 'blocked') {
-    state = 'watching';
-  }
-
-  return {
-    state,
-    healthy: state === 'fresh' || state === 'watching',
-    trustworthy: state !== 'blocked',
-    reason: readinessReason || summaryCoherence?.reason || health?.summary || current.summaryText || 'Metrics are not fully fresh.',
-    recommendation: summaryCoherence?.recommendation || readinessReason || 'Keep using the canonical metrics snapshot so derived reports stay coherent.',
-    sourceOfTruth: 'compiler metrics snapshot',
-    score,
-    reliability,
-    success,
-    behaviorState,
-    summaryCoherenceState: summaryCoherence?.coherent === false ? 'stale' : summaryCoherence?.coherent === true ? 'fresh' : null,
-    summaryCoherenceReason: summaryCoherence?.reason || null
-  };
-}
-
-function buildObservabilitySignals({
-  policy,
-  propagation,
-  gateway,
-  inventory,
-  metrics,
-  readiness,
-  telemetry
-} = {}) {
-  return [
-    {
-      key: 'policy',
-      state: policy.state,
-      healthy: policy.healthy,
-      trustworthy: policy.trustworthy,
-      reason: policy.reason,
-      recommendation: policy.recommendation,
-      sourceOfTruth: policy.sourceOfTruth
-    },
-    {
-      key: 'propagation',
-      state: propagation.state,
-      healthy: propagation.healthy,
-      trustworthy: propagation.trustworthy,
-      reason: propagation.reason,
-      recommendation: propagation.recommendation,
-      sourceOfTruth: propagation.sourceOfTruth
-    },
-    {
-      key: 'gateway',
-      state: gateway.state,
-      healthy: gateway.healthy,
-      trustworthy: gateway.trustworthy,
-      reason: gateway.reason,
-      recommendation: gateway.recommendation,
-      sourceOfTruth: gateway.sourceOfTruth
-    },
-    {
-      key: 'inventory',
-      state: inventory.state,
-      healthy: inventory.healthy,
-      trustworthy: inventory.trustworthy,
-      reason: inventory.reason,
-      recommendation: inventory.recommendation,
-      sourceOfTruth: inventory.sourceOfTruth
-    },
-    {
-      key: 'metrics',
-      state: metrics.state,
-      healthy: metrics.healthy,
-      trustworthy: metrics.trustworthy,
-      reason: metrics.reason,
-      recommendation: metrics.recommendation,
-      sourceOfTruth: metrics.sourceOfTruth
-    },
-    {
-      key: 'readiness',
-      state: readiness.state,
-      healthy: readiness.healthy,
-      trustworthy: readiness.trustworthy,
-      reason: readiness.reason,
-      recommendation: readiness.recommendation,
-      sourceOfTruth: readiness.sourceOfTruth
-    },
-    {
-      key: 'telemetry',
-      state: telemetry.state,
-      healthy: telemetry.healthy,
-      trustworthy: telemetry.trustworthy,
-      reason: telemetry.reason,
-      recommendation: telemetry.recommendation,
-      sourceOfTruth: telemetry.sourceOfTruth
-    }
-  ];
-}
-
-function countSignalStates(signals = []) {
-  const counts = {
-    total: signals.length,
-    blocked: 0,
-    drifting: 0,
-    watching: 0,
-    ready: 0,
-    deferred: 0
-  };
-
-  for (const signal of signals) {
-    const state = normalizeState(signal?.state, 'missing');
-    if (state === 'ready' || state === 'fresh' || state === 'stable') {
-      counts.ready += 1;
-    } else if (state === 'blocked') {
-      counts.blocked += 1;
-    } else if (state === 'deferred') {
-      counts.deferred += 1;
-    } else if (isDriftingState(state)) {
-      counts.drifting += 1;
-    } else if (isWatchfulState(state)) {
-      counts.watching += 1;
-    } else {
-      counts.drifting += 1;
-    }
-  }
-
-  return counts;
-}
-
-function pickPrimarySignal(signals = []) {
-  return signals.find((signal) => normalizeState(signal?.state, 'missing') === 'blocked')
-    || signals.find((signal) => normalizeState(signal?.state, 'missing') === 'stale')
-    || signals.find((signal) => normalizeState(signal?.state, 'missing') === 'missing')
-    || signals.find((signal) => normalizeState(signal?.state, 'missing') === 'partial')
-    || signals.find((signal) => normalizeState(signal?.state, 'missing') === 'settling')
-    || signals.find((signal) => normalizeState(signal?.state, 'missing') === 'watching')
-    || null;
-}
+import {
+  compactHealthPanelHealth,
+  compactInventorySignals,
+  compactMetricsHealth,
+  compactTelemetryState
+} from './compiler-observability-contract-helpers.js';
+import {
+  buildObservabilitySignals,
+  countSignalStates,
+  pickPrimarySignal,
+  summarizeGatewayState,
+  summarizeMetricsState,
+  summarizePolicyState,
+  summarizePropagationState
+} from './compiler-observability-contract-signals.js';
 
 export function buildCompilerObservabilityContract({
   projectPath = null,
@@ -517,6 +57,13 @@ export function buildCompilerObservabilityContract({
   const resolvedDashboardControlPlaneContracts = dashboardControlPlaneContracts || resolveDashboardControlPlaneContracts(metricsSnapshot, compilerExplainability);
   const inventoryCompact = compactInventorySignals(systemInventory || resolvedControlPlaneContracts.systemInventory || compilerExplainability?.systemInventory || null);
   const policy = summarizePolicyState(resolvedControlPlaneContracts, compilerExplainability);
+  const archiveWindowDrift = healthDashboard?.archiveWindowDrift
+    || metricsSnapshot?.current?.archiveWindowDrift
+    || buildArchiveWindowDrift(
+      healthDashboard?.archive || healthDashboard?.lifetime || metricsSnapshot?.current?.healthArchive || metricsSnapshot?.healthArchive || null,
+      healthDashboard?.metricsArchive || metricsSnapshot?.current?.metricsArchive || metricsSnapshot?.metricsArchive || null,
+      metricsSnapshot?.history || healthDashboard?.history || null
+    );
   const propagation = summarizePropagationState({
     propagationExpansion: resolvedDashboardControlPlaneContracts.propagationExpansion || compilerExplainability?.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion')
       || (compilerExplainability?.driftAssessment?.primaryIssue?.key === 'propagation_expansion' ? compilerExplainability.driftAssessment.primaryIssue : null),
@@ -532,6 +79,7 @@ export function buildCompilerObservabilityContract({
   const signals = buildObservabilitySignals({
     policy,
     propagation,
+    archiveWindowDrift,
     gateway,
     inventory,
     metrics,
@@ -565,6 +113,7 @@ export function buildCompilerObservabilityContract({
     || primarySignal?.reason
     || policy.recommendation
     || propagation.recommendation
+    || archiveWindowDrift.recommendation
     || gateway.recommendation
     || inventory.recommendation
     || readiness.recommendation
@@ -574,6 +123,7 @@ export function buildCompilerObservabilityContract({
   const reason = primarySignal?.reason
     || readiness.reason
     || propagation.reason
+    || archiveWindowDrift.reason
     || policy.reason
     || gateway.reason
     || inventory.reason
@@ -584,6 +134,7 @@ export function buildCompilerObservabilityContract({
   const trustworthy = !hardBlockedSignal
     && policy.trustworthy !== false
     && propagation.trustworthy !== false
+    && archiveWindowDrift.trustworthy !== false
     && gateway.trustworthy !== false
     && inventory.trustworthy !== false
     && readiness.trustworthy !== false
@@ -610,12 +161,13 @@ export function buildCompilerObservabilityContract({
     reason,
     nextAction,
     summary: `state=${overallState} | readiness=${readiness.state} | policy=${policy.state} | propagation=${propagation.state} | gateway=${gateway.state} | telemetry=${telemetry.state} | inventory=${inventory.inventoryState} | metrics=${metrics.state}`,
-    oneLine: `observability=${overallState} | policy=${policy.state} | propagation=${propagation.state} | readiness=${readiness.state} | telemetry=${telemetry.state}`,
+    oneLine: `observability=${overallState} | policy=${policy.state} | propagation=${propagation.state} | readiness=${readiness.state} | telemetry=${telemetry.state}${archiveWindowDrift.state && archiveWindowDrift.state !== 'fresh' ? ` | archive=${archiveWindowDrift.state}:${archiveWindowDrift.archiveDays}d/${archiveWindowDrift.historyDays}d` : ''}`,
     counts,
     signals,
     evidence: {
       healthPanel: compactHealthPanelHealth(healthPanel),
       metrics: compactMetricsHealth(metricsSnapshot),
+      archiveWindowDrift,
       inventory: inventoryCompact,
       policy: {
         state: policy.state,
@@ -641,6 +193,7 @@ export function buildCompilerObservabilityContract({
     inventory,
     policy,
     propagation,
+    archiveWindowDrift,
     gateway,
     readiness,
     telemetry,

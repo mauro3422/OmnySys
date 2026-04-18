@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.458 (Canonical Session Flow Reconciliation and Deep Status Alignment)
+**Última versión:** v0.9.459 (Compiler Observability Split, Archive Drift Detection, and Live Inventory Freshness)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.459.md](v0.9.459.md) | 2026-04-18 | Compiler observability split, archive drift detection, and live inventory freshness |
 | [v0.9.458.md](v0.9.458.md) | 2026-04-18 | Canonical session flow reconciliation and deep status alignment |
 | [v0.9.457.md](v0.9.457.md) | 2026-04-18 | Session sync reconciliation and status display normalization |
 | [v0.9.456.md](v0.9.456.md) | 2026-04-18 | Status propagation surfacing and session sync reconciliation |

@@ -195,7 +195,7 @@ export function buildCompilerHealthPanel(dashboard = null) {
     lifetime: context.snapshots.lifetime,
     status: compact.status,
     headline: buildHealthPanelHeadline(now, compact),
-    now: buildHealthPanelNowSummary(now),
+    now: buildHealthPanelNowSummary(now, compact),
     trend: compact.trend || null,
     performance: perf || null,
     metrics: compact.metrics || null,

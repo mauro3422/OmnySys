@@ -193,6 +193,10 @@ export {
 } from './system-inventory/summary.js';
 
 export {
+  buildCompilerSystemInventoryToolResponse
+} from './system-inventory/tool-response.js';
+
+export {
   buildCompilerPolicyCoverageSummary
 } from './policy-coverage-summary.js';
 

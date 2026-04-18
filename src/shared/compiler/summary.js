@@ -4,6 +4,7 @@
 
 import { asNumber } from './core-utils.js';
 import { mapArchiveSummary } from './compiler-health-dashboard-archive.js';
+import { buildArchiveWindowDrift } from './archive-window-drift.js';
 import { buildPanelHighlights, buildPanelIdentity, buildPanelSections } from './compiler-health-dashboard-panel-helpers.js';
 import { takeSample } from './sample-helpers.js';
 
@@ -193,8 +194,9 @@ export function mapHistorySummary(history = {}) {
   };
 }
 
-export function buildHealthPanelNowSummary(now = {}) {
+export function buildHealthPanelNowSummary(now = {}, compact = {}) {
   const historyStores = now.historyStores || now.systemInventory?.historyStores || null;
+  const archiveWindowDrift = compact.archiveWindowDrift || null;
   return {
     globalHealthScore: now.globalHealthScore || now.healthScore || 0,
     globalHealthGrade: now.globalHealthGrade || now.healthGrade || 'F',
@@ -230,6 +232,15 @@ export function buildHealthPanelNowSummary(now = {}) {
     propagationExpansionState: now.propagationExpansionState || null,
     propagationExpansionReason: now.propagationExpansionReason || null,
     propagationExpansionRecommendation: now.propagationExpansionRecommendation || null,
+    archiveWindowDriftState: archiveWindowDrift?.state || null,
+    archiveWindowDriftHealthy: archiveWindowDrift?.healthy === true,
+    archiveWindowDriftTrustworthy: archiveWindowDrift?.trustworthy !== false,
+    archiveWindowDriftReason: archiveWindowDrift?.reason || null,
+    archiveWindowDriftRecommendation: archiveWindowDrift?.recommendation || null,
+    archiveWindowDriftArchiveDays: asNumber(archiveWindowDrift?.archiveDays, 0),
+    archiveWindowDriftMetricsDays: asNumber(archiveWindowDrift?.metricsDays, 0),
+    archiveWindowDriftHistoryDays: asNumber(archiveWindowDrift?.historyDays, 0),
+    archiveWindowDriftGapDays: asNumber(archiveWindowDrift?.gapDays, 0),
     historyStoreState: historyStores?.state || null,
     historyStoreCount: asNumber(historyStores?.totalStores, 0),
     historyStoreReadyCount: asNumber(historyStores?.readyStoreCount, 0),
@@ -241,6 +252,7 @@ export function buildHealthPanelNowSummary(now = {}) {
 }
 
 export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, tools = {}, lifetime = null) {
+  const archiveWindowDrift = compact.archiveWindowDrift || buildArchiveWindowDrift(lifetime, compact.metricsArchive || compact.history || null, compact.history || null);
   return [
     `now=${now.globalHealthScore || now.healthScore || 0}/${now.globalHealthGrade || now.healthGrade || 'F'}`,
     `db=${now.healthScore || 0}/${now.healthGrade || 'F'}`,
@@ -255,6 +267,9 @@ export function buildHealthPanelOneLine(now = {}, compact = {}, perf = null, too
     now.integrationCoveragePct ? `integration=${Math.round(now.integrationCoveragePct)}%` : null,
     now.historyStoreState ? `history=${now.historyStoreState}:${now.historyStoreReadyCount || 0}/${now.historyStoreCount || 0}` : null,
     now.propagationExpansionState ? `propagation=${now.propagationExpansionState}` : null,
+    archiveWindowDrift.state && archiveWindowDrift.state !== 'fresh'
+      ? `archive=${archiveWindowDrift.state}:${archiveWindowDrift.archiveDays}d/${archiveWindowDrift.historyDays}d`
+      : null,
     compact.systemInventory ? `systems=${compact.systemInventory.inventoryState || 'watching'}:${compact.systemInventory.totalSystemCount || 0}` : null,
     now.clientSyncState && now.clientSyncState !== 'fresh' ? `clientsync=${now.clientSyncState}` : null,
     now.transportProvenanceState && now.transportProvenanceState !== 'fresh' ? `transport=${now.transportProvenanceState}` : null,
@@ -282,7 +297,9 @@ function buildDashboardArchiveSummary(dashboard = {}) {
   return {
     daily: dashboard.daily || null,
     lifetime: dashboard.lifetime || dashboard.archive || dashboard.healthArchive || null,
-    archive: mapArchiveSummary(dashboard.archive || null)
+    archive: mapArchiveSummary(dashboard.archive || null),
+    metricsArchive: dashboard.metricsArchive || null,
+    archiveWindowDrift: dashboard.archiveWindowDrift || null
   };
 }
 

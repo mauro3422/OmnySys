@@ -8,8 +8,22 @@
 
 import { SQLiteAdapter } from './adapters/adapter.js';
 import { createLogger } from '#utils/logger.js';
+import { resolve } from 'path';
 
 const logger = createLogger('OmnySys:Storage:RepositoryFactory');
+const REPOSITORY_FACTORY_INSTANCE_KEY = Symbol.for('omnysys.repository.factory.instance');
+
+function normalizeProjectPath(projectPath = process.cwd()) {
+  return resolve(String(projectPath || process.cwd()));
+}
+
+function getSharedInstance() {
+  return globalThis[REPOSITORY_FACTORY_INSTANCE_KEY] || null;
+}
+
+function setSharedInstance(instance) {
+  globalThis[REPOSITORY_FACTORY_INSTANCE_KEY] = instance || null;
+}
 
 /**
  * Factory para crear instancias de repositorios
@@ -18,34 +32,37 @@ const logger = createLogger('OmnySys:Storage:RepositoryFactory');
  * CENTRALIZACIÓN: Fuerza el uso de SQLite para estandarización.
  */
 export class RepositoryFactory {
-  static instance = null;
-
   /**
    * Obtiene la instancia singleton del repositorio
    * @param {string} projectPath - Ruta del proyecto para inicializar el DB
    * @returns {AtomRepository}
    */
   static getInstance(projectPath = process.cwd()) {
-    if (!this.instance) {
-      this.instance = this.create('sqlite', projectPath);
-      return this.instance;
+    const normalizedProjectPath = normalizeProjectPath(projectPath);
+    let instance = getSharedInstance();
+
+    if (!instance) {
+      instance = this.create('sqlite', normalizedProjectPath);
+      setSharedInstance(instance);
+      return instance;
     }
 
-    if (this.instance.projectPath && this.instance.projectPath !== projectPath) {
+    if (instance.projectPath && normalizeProjectPath(instance.projectPath) !== normalizedProjectPath) {
       try {
-        this.instance.close();
+        instance.close();
       } catch {
         // Best effort: replace stale singleton with a fresh repository.
       }
-      this.instance = this.create('sqlite', projectPath);
-      return this.instance;
+      instance = this.create('sqlite', normalizedProjectPath);
+      setSharedInstance(instance);
+      return instance;
     }
 
-    if (!this.instance.initialized || !this.instance.db || this.instance.db.open === false) {
-      this.instance.initialize(projectPath);
+    if (!instance.initialized || !instance.db || instance.db.open === false) {
+      instance.initialize(normalizedProjectPath);
     }
 
-    return this.instance;
+    return instance;
   }
 
   /**
@@ -61,7 +78,7 @@ export class RepositoryFactory {
     }
 
     const adapter = new SQLiteAdapter();
-    adapter.initialize(projectPath);
+    adapter.initialize(normalizeProjectPath(projectPath));
 
     logger.debug(`[RepositoryFactory] Created SQLite repository at: ${projectPath}`);
     return adapter;
@@ -72,23 +89,24 @@ export class RepositoryFactory {
    * @returns {AtomRepository|null}
    */
   static getCurrent() {
-    return RepositoryFactory.instance;
+    return getSharedInstance();
   }
 
   /**
    * Resetea la instancia singleton
    */
   static reset() {
-    RepositoryFactory.instance = null;
+    setSharedInstance(null);
   }
 
   /**
    * Cierra el repositorio actual
    */
   static close() {
-    if (RepositoryFactory.instance) {
-      RepositoryFactory.instance.close();
-      RepositoryFactory.instance = null;
+    const instance = getSharedInstance();
+    if (instance) {
+      instance.close();
+      setSharedInstance(null);
     }
   }
 }

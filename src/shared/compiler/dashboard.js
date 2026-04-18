@@ -28,6 +28,8 @@ import {
   buildSessionsSection,
   buildTrendSection
 } from './dashboard-sections.js';
+import { loadCompilerMetricsArchiveHistory } from './compiler-health-archive.js';
+import { buildArchiveWindowDrift } from './archive-window-drift.js';
 import { resolveDashboardControlPlaneContracts } from './status-summary/index.js';
 
 // Keep the coordinator thin so the watcher stays below the dangerous size threshold.
@@ -44,6 +46,14 @@ function buildCompilerHealthDashboardContext(snapshot = null, compilerExplainabi
   const policyCoverage = controlPlaneContracts.policyCoverage;
   const propagationExpansion = controlPlaneContracts.propagationExpansion;
   const signalRows = buildSignalRows(trend.deltaSinceBaseline || {});
+  const metricsArchive = normalized.projectPath
+    ? loadCompilerMetricsArchiveHistory(normalized.projectPath, {
+        snapshotKind: normalized.snapshotKind,
+        scopePath: normalized.scopePath,
+        focusPath: normalized.focusPath,
+        limit: 12
+      })
+    : null;
   const toolTelemetry = {
     ...mapToolTelemetry(current.toolTelemetry),
     folderizationPropagation: folderizationPropagation ? { ...folderizationPropagation } : null
@@ -54,6 +64,7 @@ function buildCompilerHealthDashboardContext(snapshot = null, compilerExplainabi
     ? buildArchiveDaily(current, folderizationPropagation, policyCoverage, trend, normalized.capturedAt || current.capturedAt || null)
     : null;
   const archiveLifetime = healthArchive ? buildArchiveLifetime(healthArchive) : null;
+  const archiveWindowDrift = buildArchiveWindowDrift(healthArchive, metricsArchive, history);
   const regressors = signalRows.filter((row) => row.impact < 0).slice(0, 5);
   const improvements = signalRows.filter((row) => row.impact > 0).slice(0, 5);
 
@@ -71,6 +82,8 @@ function buildCompilerHealthDashboardContext(snapshot = null, compilerExplainabi
     toolTelemetry,
     pipelineTimingTelemetry,
     healthArchive,
+    metricsArchive,
+    archiveWindowDrift,
     archiveDaily,
     archiveLifetime,
     regressors,
@@ -93,6 +106,8 @@ function buildCompilerHealthDashboardPayload(context, compilerExplainability) {
     toolTelemetry,
     pipelineTimingTelemetry,
     healthArchive,
+    metricsArchive,
+    archiveWindowDrift,
     archiveDaily,
     archiveLifetime,
     regressors,
@@ -147,6 +162,19 @@ function buildCompilerHealthDashboardPayload(context, compilerExplainability) {
       daily: archiveDaily,
       lifetime: archiveLifetime
     } : null,
+    metricsArchive: metricsArchive ? {
+      daysObserved: Array.isArray(metricsArchive.daily) ? metricsArchive.daily.length : 0,
+      snapshotsRecorded: Array.isArray(metricsArchive.entries) ? metricsArchive.entries.length : 0,
+      firstCapturedAt: metricsArchive.baseline?.capturedAt || metricsArchive.entries?.[metricsArchive.entries.length - 1]?.capturedAt || null,
+      lastCapturedAt: metricsArchive.latest?.capturedAt || null,
+      latestCapturedAt: metricsArchive.latest?.capturedAt || null,
+      previousCapturedAt: metricsArchive.previous?.capturedAt || null,
+      baselineCapturedAt: metricsArchive.baseline?.capturedAt || null,
+      summary: metricsArchive.daily && metricsArchive.daily.length > 0
+        ? `days=${metricsArchive.daily.length} | latest=${metricsArchive.latest?.captured_at || metricsArchive.latest?.capturedAt || 'n/a'}`
+        : null
+    } : null,
+    archiveWindowDrift: archiveWindowDrift ? { ...archiveWindowDrift } : null,
     status: current.mvpReady ? 'ready' : current.behaviorState || trend.status || 'unknown',
     health: buildHealthSection(current, controlPlaneContracts, folderizationPropagation, policyCoverage, propagationExpansion),
     trend: buildTrendSection(trend),
