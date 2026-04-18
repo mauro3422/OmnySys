@@ -36,15 +36,44 @@ export function buildMcpSessionMetricsResult({
     clientsWithDuplicates,
     toleratedDuplicateClients
   });
+  const transportSnapshotHasActiveRows = Number(sessionSnapshot?.totalPersistentActive || 0) > 0
+    || Number(sessionSnapshot?.recentActiveCount || 0) > 0;
+  const transportOriginActiveCounts = sessionSnapshot?.transportOriginRecentActiveCounts
+    || sessionSnapshot?.transportOriginActiveCounts
+    || (transportSnapshotHasActiveRows ? transportOriginCounts : {});
+  const transportSessionStateCounts = sessionSnapshot?.transportSessionStateRecentActiveCounts
+    || sessionSnapshot?.transportSessionStateActiveCounts
+    || (transportSnapshotHasActiveRows ? sessionSnapshot?.transportSessionStateCounts : {})
+    || {};
+  const transportRequestPhaseCounts = sessionSnapshot?.transportRequestPhaseRecentActiveCounts
+    || sessionSnapshot?.transportRequestPhaseActiveCounts
+    || (transportSnapshotHasActiveRows ? sessionSnapshot?.transportRequestPhaseCounts : {})
+    || {};
+  const transportClientRouteIdCounts = sessionSnapshot?.transportClientRouteIdRecentActiveCounts
+    || sessionSnapshot?.transportClientRouteIdActiveCounts
+    || (transportSnapshotHasActiveRows ? sessionSnapshot?.transportClientRouteIdCounts : {})
+    || {};
+  const transportHandshakeSignatureCounts = sessionSnapshot?.transportHandshakeSignatureRecentActiveCounts
+    || sessionSnapshot?.transportHandshakeSignatureActiveCounts
+    || (transportSnapshotHasActiveRows ? sessionSnapshot?.transportHandshakeSignatureCounts : {})
+    || {};
+  const transportSessionHeaderPresentCount = sessionSnapshot?.transportSessionHeaderPresentRecentActiveCount
+    ?? sessionSnapshot?.transportSessionHeaderPresentActiveCount
+    ?? (transportSnapshotHasActiveRows ? sessionSnapshot?.transportSessionHeaderPresentCount : 0)
+    ?? 0;
+  const transportSessionHeaderMissingCount = sessionSnapshot?.transportSessionHeaderMissingRecentActiveCount
+    ?? sessionSnapshot?.transportSessionHeaderMissingActiveCount
+    ?? (transportSnapshotHasActiveRows ? sessionSnapshot?.transportSessionHeaderMissingCount : 0)
+    ?? 0;
   const transportProvenance = buildMcpSessionTransportProvenance({
-    transportOriginCounts,
+    transportOriginCounts: transportOriginActiveCounts,
     sessionSnapshot,
-    transportSessionStateCounts: sessionSnapshot?.transportSessionStateCounts || {},
-    transportRequestPhaseCounts: sessionSnapshot?.transportRequestPhaseCounts || {},
-    transportClientRouteIdCounts: sessionSnapshot?.transportClientRouteIdCounts || {},
-    transportSessionHeaderPresentCount: sessionSnapshot?.transportSessionHeaderPresentCount || 0,
-    transportSessionHeaderMissingCount: sessionSnapshot?.transportSessionHeaderMissingCount || 0,
-    transportHandshakeSignatureCounts: sessionSnapshot?.transportHandshakeSignatureCounts || {},
+    transportSessionStateCounts,
+    transportRequestPhaseCounts,
+    transportClientRouteIdCounts,
+    transportSessionHeaderPresentCount,
+    transportSessionHeaderMissingCount,
+    transportHandshakeSignatureCounts,
     runtimeSessionCount,
     totalPersistentActive,
     sessionCountDrift,

@@ -2,7 +2,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { getFileAnalysis } from '#layer-c/query/apis/file-api.js';
 import { getRepository } from '#layer-c/storage/repository/index.js';
-import { buildPolicyDriftPropagationPlan, normalizeComparablePath, normalizePath } from '#shared/compiler/index.js';
+import { normalizeComparablePath, normalizePath } from '#shared/utils/path-utils.js';
+import { buildPolicyDriftPropagationPlan } from '#shared/compiler/index.js';
 import { loadModuleExportsFromDb } from './module-export-loader.js';
 
 function resolveImportModulePath(projectPath, importingFilePath, modulePath) {

@@ -40,19 +40,12 @@ export function buildMcpSessionTransportProvenance({
   const distinctOriginCount = originMix.length;
   const knownOriginCount = originMix.filter((item) => item.origin !== 'unknown').length;
   const hasUnknownOrigin = asNumber(originCounts.unknown, 0) > 0;
-  const hasHttpDirect = asNumber(originCounts.http_direct, 0) > 0;
-  const hasStdioBridge = asNumber(originCounts.stdio_bridge, 0) > 0;
   const hasShellFallback = asNumber(originCounts.shell_http_fallback, 0) > 0;
-  const hasMixedOrigins = distinctOriginCount > 1;
   const hasKnownProvenance = totalOriginCount > 0;
   const provenanceMix = originMix.map((item) => `${item.origin}:${item.count}`).join(', ');
   const freshnessSignals = [
-    hasMixedOrigins,
     hasUnknownOrigin,
-    hasShellFallback,
-    hasHttpDirect && hasStdioBridge,
-    sessionCountDrift,
-    multiClientChurn
+    hasShellFallback
   ].some(Boolean);
 
   let state = 'missing';
@@ -65,19 +58,19 @@ export function buildMcpSessionTransportProvenance({
   const reason = !hasKnownProvenance
     ? 'Transport provenance is not available yet.'
     : freshnessSignals
-      ? hasHttpDirect && hasStdioBridge
-        ? `HTTP-direct and stdio-bridge sessions are active together (${provenanceMix}).`
-        : hasUnknownOrigin
-          ? `Some sessions are missing transport provenance (${provenanceMix}).`
-          : hasShellFallback
-            ? `Shell HTTP fallback is active alongside canonical transports (${provenanceMix}).`
-            : `Multiple transport origins are active (${provenanceMix}).`
-      : `Transport provenance is anchored to ${dominantOrigin.origin}.`;
+      ? hasUnknownOrigin
+        ? `Some sessions are missing transport provenance (${provenanceMix}).`
+        : hasShellFallback
+          ? `Shell HTTP fallback is active alongside canonical transports (${provenanceMix}).`
+          : `Transport provenance is drifting (${provenanceMix}).`
+      : originMix.length > 1
+        ? `Transport provenance is anchored across explicit lanes (${provenanceMix}).`
+        : `Transport provenance is anchored to ${dominantOrigin.origin}.`;
 
   const recommendation = !hasKnownProvenance
     ? 'Attach explicit transport provenance headers so the daemon can distinguish direct HTTP, stdio bridge and fallback clients.'
     : freshnessSignals
-      ? 'Standardize explicit client headers and route identity for HTTP-direct clients, and keep stdio-bridge clients on their own bridge lane.'
+      ? 'Standardize explicit client headers and route identity for any fallback transports still drifting.'
       : 'Keep transport provenance attached to every session so mixed-client drift remains visible.';
 
   const transportAlerts = deriveTransportAlerts({

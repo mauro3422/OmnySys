@@ -23,6 +23,7 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
   const runtimeSessionCount = hasRuntimeSessionCount ? options.runtimeSessionCount : null;
   const toleratedDuplicateClientIds = buildToleratedDuplicateClientSet(options.toleratedDuplicateClientIds);
   const recentErrors = options.recentErrors || null;
+  sessionManager?.ensureInitialized?.();
   const sessionDbSnapshot = collectSessionDbSnapshot(options.sessionDb);
   const persistenceState = sessionDbSnapshot ? {
     available: true,
@@ -90,7 +91,9 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     sessionSyncGraceMs,
     recentErrors
   });
-  const transportOriginCounts = sessionDbSnapshot?.transportOriginCounts || {};
+  const transportOriginCounts = sessionDbSnapshot?.transportOriginRecentActiveCounts
+    || sessionDbSnapshot?.transportOriginActiveCounts
+    || {};
   return {
     ...buildMcpSessionMetricsResult({
       hasRuntimeSessionCount,

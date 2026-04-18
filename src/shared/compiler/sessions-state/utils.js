@@ -32,9 +32,10 @@ export function resolveSessionCountDrift({
   sessionSnapshot = null,
   sessionSyncGraceMs = resolveSessionSyncGraceMs()
 } = {}) {
-  return hasRuntimeSessionCount
-    ? totalPersistentActive === 0 && runtimeSessionCount > 0 && !isRecentSessionActivityObserved(sessionSnapshot, sessionSyncGraceMs)
-    : false;
+  if (!hasRuntimeSessionCount) return false;
+  if (Number(totalPersistentActive || 0) > 0) return false;
+  if (sessionSnapshot?.available === true) return false;
+  return runtimeSessionCount > 0 && !isRecentSessionActivityObserved(sessionSnapshot, sessionSyncGraceMs);
 }
 
 export function normalizeTransportOriginCounts(transportOriginCounts = {}) {

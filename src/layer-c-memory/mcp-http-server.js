@@ -186,21 +186,6 @@ async function getRuntimeResourceSnapshot() {
 
   const toolInventory = buildInventorySnapshot({ includeSchemas: true });
   const toolInventoryReport = buildInventoryReport(toolInventory);
-  const runtimeSessions = sessionManager?.getAllSessions?.(true) || [];
-  const allSessions = sessionManager?.getAllSessions?.(false) || [];
-  const dedupStats = sessionManager?.getDedupStats?.() || null;
-  const transportOriginCounts = runtimeSessions.reduce((acc, session) => {
-    const origin = String(
-      session?.transport_origin
-      || session?.session_metadata?.transport_origin
-      || session?.session_metadata?.transportOrigin
-      || session?.client_info?.transport_origin
-      || 'unknown'
-    ).trim() || 'unknown';
-    acc[origin] = (acc[origin] || 0) + 1;
-    return acc;
-  }, {});
-
   let background = null;
   let requestDeliverySummary = null;
   let db = null;
@@ -233,26 +218,11 @@ async function getRuntimeResourceSnapshot() {
     background
   });
 
-  const sessionSummary = {
-    runtimeSessions: sessions.size,
-    persistedActiveSessions: runtimeSessions.length,
-    persistedTotalSessions: allSessions.length,
-    dedupStats,
-    transportOriginCounts,
-    transportProvenanceState: runtimeSessions.length > 0 || allSessions.length > 0
-      ? (Object.keys(transportOriginCounts).length > 1 || transportOriginCounts.unknown > 0
-        ? 'watchful'
-        : 'fresh')
-      : 'missing',
-    transportProvenanceReason: runtimeSessions.length > 0 || allSessions.length > 0
-      ? (Object.keys(transportOriginCounts).length > 1 || transportOriginCounts.unknown > 0
-        ? 'Multiple transport origins are active in the MCP session pool.'
-        : 'Transport provenance is anchored to one origin.')
-      : 'Transport provenance is not available yet.',
-    transportProvenanceRecommendation: runtimeSessions.length > 0 || allSessions.length > 0
-      ? 'Keep explicit transport provenance attached to each client so direct HTTP and stdio bridge sessions remain distinguishable.'
-      : 'Attach explicit transport provenance headers so the daemon can distinguish direct HTTP, stdio bridge and fallback clients.'
-  };
+  const sessionSummary = getMcpSessionSummary(sessionManager, {
+    sessionDb: db,
+    runtimeSessionCount: sessions.size,
+    recentErrors: null
+  });
   const proxyRuntimeTelemetry = summarizeProxyRuntimeTelemetry(readProxyRuntimeTelemetry(projectPath));
   const bridgeRuntimeTelemetry = summarizeBridgeRuntimeTelemetry(readBridgeRuntimeTelemetry(projectPath));
   const topologySummary = buildMcpTopologySummary(db, {
@@ -276,11 +246,11 @@ async function getRuntimeResourceSnapshot() {
     reason: sessionSummary.transportProvenanceReason,
     recommendation: sessionSummary.transportProvenanceRecommendation,
     transportOriginCounts: sessionSummary.transportOriginCounts,
-    transportOriginTotal: runtimeSessions.length,
-    transportOriginDistinctCount: Object.keys(transportOriginCounts).length,
-    transportOriginMix: Object.entries(transportOriginCounts).map(([origin, count]) => ({ origin, count })),
-    dominantTransportOrigin: Object.entries(transportOriginCounts).sort((left, right) => right[1] - left[1])[0]?.[0] || 'unknown',
-    dominantTransportOriginCount: Object.entries(transportOriginCounts).sort((left, right) => right[1] - left[1])[0]?.[1] || 0,
+    transportOriginTotal: sessionSummary.transportOriginTotal,
+    transportOriginDistinctCount: sessionSummary.transportOriginDistinctCount,
+    transportOriginMix: sessionSummary.transportOriginMix,
+    dominantTransportOrigin: sessionSummary.dominantTransportOrigin,
+    dominantTransportOriginCount: sessionSummary.dominantTransportOriginCount,
     requestDeliverySummary,
     requestDeliveryState: requestDeliverySummary?.state || 'missing',
     requestDeliveryHealthy: requestDeliverySummary?.healthy === true,

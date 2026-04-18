@@ -141,7 +141,8 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
     status.watcher,
     {
       scopePath: args?.scopePath || null,
-      focusPath: args?.focusPath || null
+      focusPath: args?.focusPath || null,
+      forceFresh: true
     }
   );
   if (compilerExplainability && server) {

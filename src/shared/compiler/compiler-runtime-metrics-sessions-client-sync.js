@@ -194,6 +194,13 @@ const CLIENT_SYNC_RULES = [
     build: buildBlockedPersistenceClientSync
   },
   {
+    when: (context) => context.runtimeSessionCount > 0 && context.totalPersistentActive === 0 && context.persistenceAvailable,
+    build: (context) => buildReconcilingClientSync(
+      context,
+      'Runtime sessions are live while persistent active rows are still zero; waiting for bridge synchronization.'
+    )
+  },
+  {
     when: (context) => context.sessionCountDrift,
     build: buildBlockedDriftClientSync
   },

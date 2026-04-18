@@ -85,40 +85,130 @@ export function collectSessionDbSnapshot(sessionDb) {
       GROUP BY COALESCE(transport_origin, 'unknown')
       ORDER BY count DESC, transport_origin ASC
     `).all(), 'transport_origin');
+    const transportOriginActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(transport_origin, 'unknown') AS transport_origin, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1
+      GROUP BY COALESCE(transport_origin, 'unknown')
+      ORDER BY count DESC, transport_origin ASC
+    `).all(), 'transport_origin');
+    const transportOriginRecentActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(transport_origin, 'unknown') AS transport_origin, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND updated_at >= ?
+      GROUP BY COALESCE(transport_origin, 'unknown')
+      ORDER BY count DESC, transport_origin ASC
+    `).all(freshnessCutoff), 'transport_origin');
     const transportSessionStateCounts = collectGroupedCountMap(db.prepare(`
       SELECT COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown') AS transport_session_state, COUNT(*) AS count
       FROM mcp_sessions
       GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown')
       ORDER BY count DESC, transport_session_state ASC
     `).all(), 'transport_session_state');
+    const transportSessionStateActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown') AS transport_session_state, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown')
+      ORDER BY count DESC, transport_session_state ASC
+    `).all(), 'transport_session_state');
+    const transportSessionStateRecentActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown') AS transport_session_state, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND updated_at >= ?
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_session_state'), 'unknown')
+      ORDER BY count DESC, transport_session_state ASC
+    `).all(freshnessCutoff), 'transport_session_state');
     const transportRequestPhaseCounts = collectGroupedCountMap(db.prepare(`
       SELECT COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown') AS transport_request_phase, COUNT(*) AS count
       FROM mcp_sessions
       GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown')
       ORDER BY count DESC, transport_request_phase ASC
     `).all(), 'transport_request_phase');
+    const transportRequestPhaseActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown') AS transport_request_phase, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown')
+      ORDER BY count DESC, transport_request_phase ASC
+    `).all(), 'transport_request_phase');
+    const transportRequestPhaseRecentActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown') AS transport_request_phase, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND updated_at >= ?
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_request_phase'), 'unknown')
+      ORDER BY count DESC, transport_request_phase ASC
+    `).all(freshnessCutoff), 'transport_request_phase');
     const transportClientRouteIdCounts = collectGroupedCountMap(db.prepare(`
       SELECT COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown') AS transport_client_route_id, COUNT(*) AS count
       FROM mcp_sessions
       GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown')
       ORDER BY count DESC, transport_client_route_id ASC
     `).all(), 'transport_client_route_id');
+    const transportClientRouteIdActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown') AS transport_client_route_id, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown')
+      ORDER BY count DESC, transport_client_route_id ASC
+    `).all(), 'transport_client_route_id');
+    const transportClientRouteIdRecentActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown') AS transport_client_route_id, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND updated_at >= ?
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_client_route_id'), 'unknown')
+      ORDER BY count DESC, transport_client_route_id ASC
+    `).all(freshnessCutoff), 'transport_client_route_id');
     const transportHandshakeSignatureCounts = collectGroupedCountMap(db.prepare(`
       SELECT COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown') AS transport_handshake_signature, COUNT(*) AS count
       FROM mcp_sessions
       GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown')
       ORDER BY count DESC, transport_handshake_signature ASC
     `).all(), 'transport_handshake_signature');
+    const transportHandshakeSignatureActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown') AS transport_handshake_signature, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown')
+      ORDER BY count DESC, transport_handshake_signature ASC
+    `).all(), 'transport_handshake_signature');
+    const transportHandshakeSignatureRecentActiveCounts = collectGroupedCountMap(db.prepare(`
+      SELECT COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown') AS transport_handshake_signature, COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND updated_at >= ?
+      GROUP BY COALESCE(json_extract(session_metadata_json, '$.transport_handshake_signature'), 'unknown')
+      ORDER BY count DESC, transport_handshake_signature ASC
+    `).all(freshnessCutoff), 'transport_handshake_signature');
     const transportSessionHeaderPresentCount = asNumber(db.prepare(`
       SELECT COUNT(*) AS count
       FROM mcp_sessions
       WHERE COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 1
     `).get()?.count);
+    const transportSessionHeaderPresentActiveCount = asNumber(db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 1
+    `).get()?.count);
+    const transportSessionHeaderPresentRecentActiveCount = asNumber(db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND updated_at >= ? AND COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 1
+    `).get(freshnessCutoff)?.count);
     const transportSessionHeaderMissingCount = asNumber(db.prepare(`
       SELECT COUNT(*) AS count
       FROM mcp_sessions
       WHERE COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 0
     `).get()?.count);
+    const transportSessionHeaderMissingActiveCount = asNumber(db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 0
+    `).get()?.count);
+    const transportSessionHeaderMissingRecentActiveCount = asNumber(db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM mcp_sessions
+      WHERE is_active = 1 AND updated_at >= ? AND COALESCE(json_extract(session_metadata_json, '$.transport_session_header_present'), 0) = 0
+    `).get(freshnessCutoff)?.count);
 
     return {
       available: true,
@@ -135,12 +225,26 @@ export function collectSessionDbSnapshot(sessionDb) {
       latestActiveUpdatedAt: latestActiveSessionRow?.updated_at || null,
       latestActiveUpdatedAtAgeMs: getAgeMs(latestActiveSessionRow?.updated_at),
       transportOriginCounts,
+      transportOriginActiveCounts,
+      transportOriginRecentActiveCounts,
       transportSessionStateCounts,
+      transportSessionStateActiveCounts,
+      transportSessionStateRecentActiveCounts,
       transportRequestPhaseCounts,
+      transportRequestPhaseActiveCounts,
+      transportRequestPhaseRecentActiveCounts,
       transportClientRouteIdCounts,
+      transportClientRouteIdActiveCounts,
+      transportClientRouteIdRecentActiveCounts,
       transportHandshakeSignatureCounts,
+      transportHandshakeSignatureActiveCounts,
+      transportHandshakeSignatureRecentActiveCounts,
       transportSessionHeaderPresentCount,
-      transportSessionHeaderMissingCount
+      transportSessionHeaderPresentActiveCount,
+      transportSessionHeaderPresentRecentActiveCount,
+      transportSessionHeaderMissingCount,
+      transportSessionHeaderMissingActiveCount,
+      transportSessionHeaderMissingRecentActiveCount
     };
   } catch {
     return null;

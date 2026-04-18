@@ -24,26 +24,25 @@ function detectTransportOriginSignals(originCounts, originMix) {
   };
 }
 
-function detectReplaySignals(handshakeSignatureCounts, transportSessionHeaderMissingCount, requestPhaseCounts, activeClientChurn, recentChurn) {
+function detectReplaySignals(handshakeSignatureCounts, transportSessionHeaderMissingCount, activeClientChurn, recentChurn) {
   const handshakeReplaySignals = Object.entries(handshakeSignatureCounts)
-    .filter(([signature]) => signature !== 'unknown');
+    .filter(([signature, count]) => signature !== 'unknown' && asNumber(count, 0) > 1);
   const handshakeHeaderMissing = asNumber(transportSessionHeaderMissingCount, 0) > 0;
   const replayLikely = handshakeReplaySignals.length > 0
-    || (handshakeHeaderMissing && (activeClientChurn || recentChurn || asNumber(requestPhaseCounts['http-initialize'], 0) > 1));
+    || (handshakeHeaderMissing && (activeClientChurn || recentChurn));
   return { handshakeReplaySignals, handshakeHeaderMissing, replayLikely };
 }
 
 function buildOriginMixAlert(originCounts, originMix) {
   const hasHttpDirect = asNumber(originCounts.http_direct, 0) > 0;
   const hasStdioBridge = asNumber(originCounts.stdio_bridge, 0) > 0;
-  const bothActive = hasHttpDirect && hasStdioBridge;
   const mixDetail = originMix.map((item) => `${item.origin}:${item.count}`).join(', ');
 
   return buildTransportAlert({
     code: 'mixed_transport_provenance',
-    severity: bothActive ? 'high' : 'medium',
-    state: bothActive ? 'blocked' : 'watchful',
-    reason: bothActive
+    severity: 'medium',
+    state: 'watchful',
+    reason: hasHttpDirect && hasStdioBridge
       ? `HTTP-direct and stdio-bridge sessions are active together (${mixDetail}).`
       : `Multiple transport origins are active (${mixDetail}).`,
     recommendation: 'Keep client provenance explicit so direct HTTP clients and stdio-bridge clients are never conflated.',
@@ -70,12 +69,10 @@ function buildUnknownOriginAlert(originCounts, originMix) {
 }
 
 function buildChurnAlert(recentSessionCount, uniqueClients, recentChurn, sessionCountDrift, clientsWithDuplicates, totalPersistentActive, clientRouteIdCounts) {
-  const isHighSeverity = recentChurn && (sessionCountDrift || clientsWithDuplicates > 0);
-
   return buildTransportAlert({
     code: 'session_churn_excessive',
-    severity: isHighSeverity ? 'high' : 'medium',
-    state: isHighSeverity ? 'blocked' : 'watchful',
+    severity: recentChurn ? 'high' : 'medium',
+    state: 'watchful',
     reason: `Recent session churn is elevated (${asNumber(recentSessionCount, 0)} recent sessions across ${asNumber(uniqueClients, 0)} client(s)).`,
     recommendation: 'Reduce reconnect churn and keep one active session per client route whenever possible.',
     evidence: {
@@ -86,8 +83,7 @@ function buildChurnAlert(recentSessionCount, uniqueClients, recentChurn, session
 }
 
 function buildReplayAlert(handshakeReplaySignals, handshakeHeaderMissing, activeClientChurn, recentChurn, sessionStateCounts, requestPhaseCounts, clientRouteIdCounts, transportSessionHeaderPresentCount, transportSessionHeaderMissingCount, handshakeSignatureCounts) {
-  const replayBlocking = handshakeReplaySignals.length > 0
-    || (handshakeHeaderMissing && (activeClientChurn || recentChurn));
+  const replayBlocking = handshakeHeaderMissing && (activeClientChurn || recentChurn);
   const replayDetail = handshakeReplaySignals.map(([sig, count]) => `${sig}:${count}`).join(', ');
 
   return buildTransportAlert({
@@ -95,7 +91,9 @@ function buildReplayAlert(handshakeReplaySignals, handshakeHeaderMissing, active
     severity: replayBlocking ? 'high' : 'medium',
     state: replayBlocking ? 'blocked' : 'watchful',
     reason: handshakeReplaySignals.length > 0
-      ? `Repeated handshake signatures are being observed (${replayDetail}).`
+      ? `Recent session initializations are missing transport headers, so stale handshake replay cannot be ruled out.`
+      : handshakeReplaySignals.length > 0
+        ? `Repeated handshake signatures are being observed (${replayDetail}).`
       : 'Recent session initializations are missing transport headers, so stale handshake replay cannot be ruled out.',
     recommendation: 'Persist a handshake signature and route identity for every session so replayed or stale initialize flows are measurable.',
     evidence: {
@@ -127,10 +125,12 @@ export function deriveTransportAlerts({
   const signals = detectTransportOriginSignals(originCounts, originMix);
   const activeClientChurn = sessionCountDrift || multiClientChurn || clientsWithDuplicates > 0;
   const recentChurn = asNumber(recentSessionCount, 0) >= Math.max(4, asNumber(totalPersistentActive, 0) + 1);
-  const replay = detectReplaySignals(transportHandshakeSignatureCounts, transportSessionHeaderMissingCount, transportRequestPhaseCounts, activeClientChurn, recentChurn);
+  const replay = detectReplaySignals(transportHandshakeSignatureCounts, transportSessionHeaderMissingCount, activeClientChurn, recentChurn);
 
   const alerts = [];
-  if (signals.hasMixedOrigins) alerts.push(buildOriginMixAlert(originCounts, originMix));
+  if (signals.hasMixedOrigins && (signals.hasUnknownOrigin || signals.hasShellFallback || activeClientChurn || recentChurn)) {
+    alerts.push(buildOriginMixAlert(originCounts, originMix));
+  }
   if (signals.hasUnknownOrigin) alerts.push(buildUnknownOriginAlert(originCounts, originMix));
   if (recentChurn || activeClientChurn) {
     alerts.push(buildChurnAlert(recentSessionCount, uniqueClients, recentChurn, sessionCountDrift, clientsWithDuplicates, totalPersistentActive, transportClientRouteIdCounts));

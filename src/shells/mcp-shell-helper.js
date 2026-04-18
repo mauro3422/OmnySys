@@ -13,12 +13,38 @@
  */
 
 import { readFileSync } from 'fs';
+import { randomUUID } from 'crypto';
 import http from 'http';
 
 const MCP_URL = 'http://localhost:9999/mcp';
 let sessionId = null;
 
 const DEFAULT_TIMEOUT = 300000; // 5 minutes
+const SHELL_CLIENT_ID = 'shell-helper';
+const SHELL_CLIENT_ROUTE_ID = 'shell-helper';
+const SHELL_TRANSPORT_ORIGIN = 'http_direct';
+const SHELL_TRANSPORT_ORIGIN_SOURCE = 'shell-helper';
+const SHELL_ROUTE_ORIGIN_HINT = 'http_direct';
+
+function buildOmnySysTransportHeaders({ includeSessionId = false } = {}) {
+    const handshakeSignature = `${SHELL_CLIENT_ID}|${SHELL_TRANSPORT_ORIGIN}|${randomUUID()}`;
+    const headers = {
+        'x-omnysys-client-id': SHELL_CLIENT_ID,
+        'x-omnysys-client-route-id': SHELL_CLIENT_ROUTE_ID,
+        'x-omnysys-client-name': SHELL_CLIENT_ID,
+        'x-omnysys-transport-origin': SHELL_TRANSPORT_ORIGIN,
+        'x-omnysys-transport-origin-source': SHELL_TRANSPORT_ORIGIN_SOURCE,
+        'x-omnysys-route-origin-hint': SHELL_ROUTE_ORIGIN_HINT,
+        'x-omnysys-handshake-signature': handshakeSignature,
+        'x-mcp-handshake-signature': handshakeSignature
+    };
+
+    if (includeSessionId && sessionId) {
+        headers['mcp-session-id'] = sessionId;
+    }
+
+    return headers;
+}
 
 const TOOL_SHORTCUTS = {
     list: { tool: 'mcp_omnysystem_list_tools', args: { includeSchemas: false } },
@@ -51,7 +77,8 @@ async function initialize(timeout = DEFAULT_TIMEOUT) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(data)
+                'Content-Length': Buffer.byteLength(data),
+                ...buildOmnySysTransportHeaders()
             },
             timeout: timeout
         }, (res) => {
@@ -147,7 +174,8 @@ async function callTool(toolName, args = {}, timeout = DEFAULT_TIMEOUT) {
             headers: {
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(data),
-                'mcp-session-id': sessionId
+                'mcp-session-id': sessionId,
+                ...buildOmnySysTransportHeaders({ includeSessionId: true })
             },
             timeout: timeout
         }, (res) => {

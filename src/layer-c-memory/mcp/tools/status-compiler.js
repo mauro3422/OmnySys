@@ -28,7 +28,8 @@ function buildBackgroundStatus({
   fileUniverseSummary,
   liveRowSync,
   conceptualSummary,
-  sessionSummary
+  sessionSummary,
+  propagationExpansion
 }) {
   return {
     phase2PendingFiles: phase2Counts.pendingFiles,
@@ -55,7 +56,8 @@ function buildBackgroundStatus({
       orphanCount: issueSummary.orphanCount,
       suspiciousDeadCandidates: issueSummary.suspiciousDeadCandidates
     },
-    mcpSessionSummary: sessionSummary
+    mcpSessionSummary: sessionSummary,
+    propagationExpansion
   };
 }
 
@@ -121,6 +123,7 @@ export async function attachDeepVitals(status, projectPath, server) {
       || compilerDiagnostics.fileUniverseGranularity
       || {};
     const conceptualSummary = getConceptualDuplicateSummary(repo, { limit: 50 });
+    const propagationExpansion = compilerDiagnostics.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion') || null;
     const sessionSummary = getMcpSessionSummary(sessionManager, {
       runtimeSessionCount: server.sessions?.size || 0,
       sessionDb: repo?.db || null
@@ -134,7 +137,8 @@ export async function attachDeepVitals(status, projectPath, server) {
       fileUniverseSummary,
       liveRowSync,
       conceptualSummary,
-      sessionSummary
+      sessionSummary,
+      propagationExpansion
     });
 
     status.mcpSessions = buildMcpSessionsStatus(sessionSummary);
