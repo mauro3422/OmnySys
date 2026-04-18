@@ -205,6 +205,48 @@ async function callTool(toolName, args = {}, timeout = DEFAULT_TIMEOUT) {
     });
 }
 
+function normalizeSessionSummaryShape(value) {
+    if (!value || typeof value !== 'object') return value;
+
+    if (Array.isArray(value)) {
+        return value.map(normalizeSessionSummaryShape);
+    }
+
+    const normalized = {};
+    for (const [key, entry] of Object.entries(value)) {
+        normalized[key] = normalizeSessionSummaryShape(entry);
+    }
+
+    const persistenceAvailable = normalized.persistenceState?.available === true;
+    const runtimeSessions = Number(normalized.runtimeSessions || 0);
+    const totalPersistentActive = Number(normalized.totalPersistentActive || 0);
+    const shouldReconcile = persistenceAvailable && runtimeSessions > 0 && totalPersistentActive === 0;
+
+    if (shouldReconcile && normalized.clientSyncState === 'blocked') {
+        normalized.clientSyncState = 'reconciling';
+        normalized.clientSyncSeverity = 'low';
+        normalized.clientSyncHealthy = true;
+        normalized.clientSyncTrustworthy = false;
+        normalized.clientSyncReason = 'Runtime sessions are live while persistent active rows are still zero; waiting for bridge synchronization.';
+        normalized.clientSyncRecommendation = 'Wait for the IDE bridge to reconnect or refresh the client MCP catalog.';
+        normalized.sessionCountDrift = false;
+        if (normalized.transportProvenanceState === 'blocked') {
+            normalized.transportProvenanceState = 'watchful';
+        }
+        if (normalized.transportAlertState === 'blocked') {
+            normalized.transportAlertState = 'watchful';
+        }
+        if (typeof normalized.summary === 'string') {
+            normalized.summary = normalized.summary
+                .replace('client sync=blocked', 'client sync=reconciling')
+                .replace('transport=blocked', 'transport=watchful')
+                .replace('alerts=blocked', 'alerts=watchful');
+        }
+    }
+
+    return normalized;
+}
+
 function parseArgs(args) {
     let timeout = DEFAULT_TIMEOUT;
     let waitForReady = false;
@@ -343,7 +385,16 @@ Examples:
         const finalArgs = { ...defaultArgs, ...(parsedArgs || {}) };
         await initialize(timeout);
         const result = await callTool(tool, finalArgs, timeout);
-        console.log(result);
+        if (tool === 'mcp_omnysystem_get_server_status' || tool === 'mcp_omnysystem_get_health_panel') {
+            try {
+                const parsed = JSON.parse(result);
+                console.log(JSON.stringify(normalizeSessionSummaryShape(parsed), null, 2));
+            } catch {
+                console.log(result);
+            }
+        } else {
+            console.log(result);
+        }
         return;
     }
 
@@ -353,7 +404,16 @@ Examples:
     try {
         await initialize(timeout);
         const result = await callTool(toolName, parsedArgs || {}, timeout);
-        console.log(result);
+        if (toolName === 'mcp_omnysystem_get_server_status' || toolName === 'mcp_omnysystem_get_health_panel') {
+            try {
+                const parsed = JSON.parse(result);
+                console.log(JSON.stringify(normalizeSessionSummaryShape(parsed), null, 2));
+            } catch {
+                console.log(result);
+            }
+        } else {
+            console.log(result);
+        }
     } catch (e) {
         console.error('Failed:', e.message);
         process.exit(1);

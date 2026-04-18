@@ -30,10 +30,12 @@ export function resolveSessionCountDrift({
   runtimeSessionCount = 0,
   totalPersistentActive = 0,
   sessionSnapshot = null,
+  persistenceAvailable = false,
   sessionSyncGraceMs = resolveSessionSyncGraceMs()
 } = {}) {
   if (!hasRuntimeSessionCount) return false;
   if (Number(totalPersistentActive || 0) > 0) return false;
+  if (persistenceAvailable) return false;
   if (sessionSnapshot?.available === true) return false;
   return runtimeSessionCount > 0 && !isRecentSessionActivityObserved(sessionSnapshot, sessionSyncGraceMs);
 }

@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.456 (Status Propagation Surfacing and Session Sync Reconciliation)
+**Última versión:** v0.9.457 (Session Sync Reconciliation and Status Display Normalization)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.457.md](v0.9.457.md) | 2026-04-18 | Session sync reconciliation and status display normalization |
 | [v0.9.456.md](v0.9.456.md) | 2026-04-18 | Status propagation surfacing and session sync reconciliation |
 | [v0.9.455.md](v0.9.455.md) | 2026-04-18 | Validate-imports validation split and canonical export repair |
 | [v0.9.454.md](v0.9.454.md) | 2026-04-17 | Folderization consolidation, validation hardening, and runtime cleanup |

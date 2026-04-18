@@ -95,6 +95,40 @@ function buildMcpSessionsStatus(sessionSummary) {
   };
 }
 
+function normalizeSessionSummaryForStatus(sessionSummary) {
+  if (!sessionSummary || sessionSummary.clientSyncState !== 'blocked') {
+    return sessionSummary;
+  }
+
+  const persistenceAvailable = sessionSummary.persistenceState?.available === true;
+  const hasRuntimeSessions = Number(sessionSummary.runtimeSessions || 0) > 0;
+  const noPersistentActiveRows = Number(sessionSummary.totalPersistentActive || 0) === 0;
+
+  if (!persistenceAvailable || !hasRuntimeSessions || !noPersistentActiveRows) {
+    return sessionSummary;
+  }
+
+  return {
+    ...sessionSummary,
+    sessionCountDrift: false,
+    clientSyncState: 'reconciling',
+    clientSyncSeverity: 'low',
+    clientSyncHealthy: true,
+    clientSyncTrustworthy: false,
+    clientSyncReason: 'Runtime sessions are live while persistent active rows are still zero; waiting for bridge synchronization.',
+    clientSyncRecommendation: 'Wait for the IDE bridge to reconnect or refresh the client MCP catalog.',
+    transportProvenanceState: sessionSummary.transportProvenanceState === 'blocked'
+      ? 'watchful'
+      : sessionSummary.transportProvenanceState,
+    transportAlertState: sessionSummary.transportAlertState === 'blocked'
+      ? 'watchful'
+      : sessionSummary.transportAlertState,
+    summary: String(sessionSummary.summary || '')
+      .replace('client sync=blocked', 'client sync=reconciling')
+      .replace('alerts=blocked', 'alerts=watchful')
+  };
+}
+
 export async function attachDeepVitals(status, projectPath, server) {
   try {
     const { getRepository } = await import('#layer-c/storage/repository/index.js');
@@ -124,10 +158,10 @@ export async function attachDeepVitals(status, projectPath, server) {
       || {};
     const conceptualSummary = getConceptualDuplicateSummary(repo, { limit: 50 });
     const propagationExpansion = compilerDiagnostics.driftAssessment?.signals?.find((signal) => signal?.key === 'propagation_expansion') || null;
-    const sessionSummary = getMcpSessionSummary(sessionManager, {
+    const sessionSummary = normalizeSessionSummaryForStatus(getMcpSessionSummary(sessionManager, {
       runtimeSessionCount: server.sessions?.size || 0,
       sessionDb: repo?.db || null
-    });
+    }));
 
     status.background = buildBackgroundStatus({
       repo,

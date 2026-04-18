@@ -74,6 +74,7 @@ export function collectMcpSessionMetrics(sessionManager, options = {}) {
     runtimeSessionCount,
     totalPersistentActive,
     sessionSnapshot: sessionDbSnapshot,
+    persistenceAvailable: persistenceState?.available === true,
     sessionSyncGraceMs
   });
   const multiClientChurn = actionableDuplicateClients > 0 || sessionCountDrift;

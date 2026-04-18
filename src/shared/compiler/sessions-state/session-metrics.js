@@ -7,6 +7,7 @@
 
 import { buildMcpSessionSummaryText } from '../compiler-runtime-metrics-sessions-format.js';
 import { buildMcpSessionTransportProvenance } from './transport-provenance.js';
+import { normalizeMcpSessionMetricsResult } from './session-metrics-normalization.js';
 
 export function buildMcpSessionMetricsResult({
   hasRuntimeSessionCount = false,
@@ -28,6 +29,10 @@ export function buildMcpSessionMetricsResult({
   transportOriginCounts = {},
   sessionSnapshot = null
 } = {}) {
+  const persistenceAvailable = persistenceState?.available === true;
+  const shouldPreferReconciliation = persistenceAvailable
+    && Number(runtimeSessionCount || 0) > 0
+    && Number(totalPersistentActive || 0) === 0;
   const sessionSummary = buildMcpSessionSummaryText({
     hasRuntimeSessionCount,
     runtimeSessionCount,
@@ -82,17 +87,20 @@ export function buildMcpSessionMetricsResult({
     uniqueClients,
     clientsWithDuplicates
   });
-  const summaryParts = [sessionSummary];
-  if (clientSync?.state !== 'fresh') {
-    summaryParts.push(`client sync=${clientSync?.state || 'missing'}`);
-  }
-  if (transportProvenance.state !== 'fresh') {
-    summaryParts.push(`transport=${transportProvenance.state}`);
-  }
-  if (transportProvenance.transportAlertState && transportProvenance.transportAlertState !== 'fresh') {
-    summaryParts.push(`alerts=${transportProvenance.transportAlertState}`);
-  }
-  const annotatedSummary = summaryParts.join(' | ');
+  const normalizedSessionMetrics = normalizeMcpSessionMetricsResult({
+    hasRuntimeSessionCount,
+    runtimeSessionCount,
+    totalPersistent,
+    totalPersistentActive,
+    persistenceState,
+    clientSync,
+    transportProvenance,
+    sessionSummary,
+    sessionCountDrift,
+    multiClientChurn,
+    transportOriginCounts,
+    sessionSnapshot
+  });
 
   return {
     runtimeSessions: runtimeSessionCount,
@@ -106,22 +114,11 @@ export function buildMcpSessionMetricsResult({
     toleratedDuplicateClients,
     toleratedDuplicateDetails,
     multiClientActive,
-    sessionCountDrift,
-    multiClientChurn,
     persistenceState,
-    clientSyncState: clientSync?.state || 'missing',
-    clientSyncSeverity: clientSync?.severity || 'low',
-    clientSyncHealthy: clientSync?.healthy !== false,
-    clientSyncTrustworthy: clientSync?.trustworthy !== false,
-    clientSyncReason: clientSync?.reason || 'Session summary unavailable.',
-    clientSyncRecommendation: clientSync?.recommendation || 'No client session drift data is available yet.',
     clientSyncEvidence: clientSync?.evidence || {
       persistenceState,
       runtimeSessionCount
     },
-    clientSyncSummary: clientSync?.state === 'fresh'
-      ? null
-      : `client sync ${clientSync?.state || 'missing'}: ${clientSync?.reason || 'Session summary unavailable.'}`,
     transportOriginCounts: transportProvenance.transportOriginCounts,
     transportOriginTotal: transportProvenance.transportOriginTotal,
     transportOriginDistinctCount: transportProvenance.transportOriginDistinctCount,
@@ -151,7 +148,7 @@ export function buildMcpSessionMetricsResult({
     transportAlertEvidence: transportProvenance.transportAlertEvidence,
     transportAlerts: transportProvenance.transportAlerts,
     transportAlertSummary: transportProvenance.transportAlertSummary,
-    summary: annotatedSummary
+    ...normalizedSessionMetrics
   };
 }
 
