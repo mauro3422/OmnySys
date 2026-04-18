@@ -79,42 +79,64 @@ async function updateMoveDependents(dependents, oldPath, newPath, projectPath, c
   return { updatedFiles, failedUpdates };
 }
 
-async function detectAndUpdateBarrelFiles(oldPath, newPath, projectPath, context = {}) {
-  const barrelUpdates = [];
-  const { server } = context || {};
-  const orchestrator = context?.orchestrator || server;
-  const repo = orchestrator?.cache?.getRepository?.() || null;
-  if (!repo?.db) return barrelUpdates;
+function buildBarrelMatchPattern(oldPath) {
+  const leafName = oldPath.replace(/\\/g, '/').split('/').pop().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`export\\s+(\\{[^}]*\\}|\\*)\\s+from\\s+['"]([^'"]*(?:${leafName}))['"]`);
+}
 
-  const importers = repo.db.prepare(`
+function collectBarrelImporters(repo, oldPath) {
+  if (!repo?.db) return [];
+
+  return repo.db.prepare(`
       SELECT DISTINCT f.path
       FROM files f, json_each(f.imports_json) as imp
       WHERE f.is_removed = 0
       AND imp.value LIKE ?
   `).all(`%${oldPath.replace(/\\/g, '/').split('/').pop()}%`);
+}
 
+async function rewriteBarrelFile(absPath, filePath, oldPath, newPath, projectPath, pattern) {
+  const code = await fs.readFile(absPath, 'utf-8');
+  const lines = code.split('\n');
+  let fileModified = false;
+  const barrelUpdates = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = pattern.exec(lines[i]);
+    if (!match) continue;
+
+    const oldImportPath = match[2];
+    const newImportPath = calculateRelativeImport(filePath, newPath, projectPath);
+    if (!newImportPath || newImportPath === oldImportPath) continue;
+
+    lines[i] = lines[i].replace(oldImportPath, newImportPath);
+    fileModified = true;
+    barrelUpdates.push({ filePath, from: oldImportPath, to: newImportPath });
+  }
+
+  if (fileModified) {
+    await fs.writeFile(absPath, lines.join('\n'), 'utf-8');
+  }
+
+  return barrelUpdates;
+}
+
+async function detectAndUpdateBarrelFiles(oldPath, newPath, projectPath, context = {}) {
+  const barrelUpdates = [];
+  const { server } = context || {};
+  const orchestrator = context?.orchestrator || server;
+  const repo = orchestrator?.cache?.getRepository?.() || null;
+  const importers = collectBarrelImporters(repo, oldPath);
+  if (importers.length === 0) return barrelUpdates;
+
+  const pattern = buildBarrelMatchPattern(oldPath);
   for (const row of importers) {
     const filePath = row.path;
     if (filePath === oldPath || filePath === newPath) continue;
     const absPath = path.resolve(projectPath, filePath);
     try {
-      const code = await fs.readFile(absPath, 'utf-8');
-      const lines = code.split('\n');
-      const reExportPattern = new RegExp(`export\\s+(\\{[^}]*\\}|\\*)\\s+from\\s+['"]([^'"]*(?:${oldPath.replace(/\\/g, '/').split('/').pop().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}))['"]`, 'g');
-      let fileModified = false;
-      for (let i = 0; i < lines.length; i++) {
-        const match = reExportPattern.exec(lines[i]);
-        if (match) {
-          const oldImportPath = match[2];
-          const newImportPath = calculateRelativeImport(filePath, newPath, projectPath);
-          if (newImportPath && newImportPath !== oldImportPath) {
-            lines[i] = lines[i].replace(oldImportPath, newImportPath);
-            fileModified = true;
-            barrelUpdates.push({ filePath, from: oldImportPath, to: newImportPath });
-          }
-        }
-      }
-      if (fileModified) await fs.writeFile(absPath, lines.join('\n'), 'utf-8');
+      const rewritten = await rewriteBarrelFile(absPath, filePath, oldPath, newPath, projectPath, pattern);
+      barrelUpdates.push(...rewritten);
     } catch (err) {
       logger.warn(`[MoveOrchestrator] Failed to check barrel file ${filePath}: ${err.message}`);
     }
