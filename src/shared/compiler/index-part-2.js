@@ -36,7 +36,7 @@ export {
 export {
   buildCompilerObservabilityContract,
   summarizeCompilerObservabilityContract
-} from './compiler-observability-contract.js';
+} from './compiler-observability-contract-runtime.js';
 
 export {
   summarizeReadinessState

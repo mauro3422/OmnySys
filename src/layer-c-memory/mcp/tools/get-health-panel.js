@@ -50,7 +50,8 @@ export async function get_health_panel(args, context) {
     logger.error(`[Tool] get_health_panel failed: ${error.message}`);
     return {
       success: false,
-      error: error.message
+      error: error.message,
+      stack: error.stack || null
     };
   }
 }

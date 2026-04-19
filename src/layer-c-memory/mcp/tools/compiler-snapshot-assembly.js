@@ -16,7 +16,6 @@ import {
   summarizeCompilerMetricsSnapshot,
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
-  buildCompilerObservabilityContract,
   summarizeCompilerObservabilityContract,
   buildCompilerControlPlane,
   summarizeCompilerControlPlane
@@ -27,6 +26,10 @@ import {
   attachCompilerSnapshotContracts,
   buildCompilerSnapshotResult
 } from './compiler-snapshot-service/helpers.js';
+
+async function loadObservabilityContractModule() {
+  return import(`../../../shared/compiler/compiler-observability-contract-runtime.js?rev=${Date.now()}`);
+}
 
 /**
  * Builds inventory and promotion detail, enriching compilerExplainability.
@@ -120,7 +123,7 @@ export function buildEnrichedSnapshot({
 /**
  * Builds dashboard, health panel, observability contract, and control plane.
  */
-export function buildDashboardAndContracts({
+export async function buildDashboardAndContracts({
   snapshot,
   compilerExplainability,
   mergedNotifications,
@@ -145,6 +148,7 @@ export function buildDashboardAndContracts({
 
   const healthPanel = buildCompilerHealthPanel(healthDashboard);
   const startupTelemetry = context.server?.startupTelemetry || null;
+  const { buildCompilerObservabilityContract, summarizeCompilerObservabilityContract } = await loadObservabilityContractModule();
 
   const observability = buildCompilerObservabilityContract({
     projectPath: context.projectPath,

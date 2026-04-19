@@ -9,7 +9,6 @@ import {
   buildCompilerMetricsSnapshot,
   buildCompilerHealthDashboard,
   buildCompilerHealthPanel,
-  buildCompilerObservabilityContract,
   summarizeCompilerObservabilityContract,
   buildCanonicalPromotionReport,
   buildCanonicalPromotionSnapshot,
@@ -46,6 +45,10 @@ import {
   buildRecentErrorsResponse,
   loadNotifications
 } from './status-notifications.js';
+
+async function loadObservabilityContractModule() {
+  return import(`../../../shared/compiler/compiler-observability-contract-runtime.js?rev=${Date.now()}`);
+}
 function applyRepositoryIntegrityToDatabaseHealth(databaseHealth, repositoryIntegrity) {
   if (!databaseHealth || repositoryIntegrity?.healthy !== false) {
     return databaseHealth;
@@ -289,6 +292,7 @@ export async function enrichServerStatus(status, args, context, phase2Status, ph
   status.healthSnapshot.canonicalPromotion = canonicalPromotion;
   status.healthSnapshot.canonicalPromotionDetail = canonicalPromotionDetail;
   status.healthPanel = buildCompilerHealthPanel(status.healthSnapshot);
+  const { buildCompilerObservabilityContract, summarizeCompilerObservabilityContract } = await loadObservabilityContractModule();
   const observability = buildCompilerObservabilityContract({
     projectPath,
     scopePath: args?.scopePath || null,

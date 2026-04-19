@@ -71,7 +71,8 @@ export async function get_server_status(args, context) {
     return {
       initialized: false,
       error: 'STATUS_TOOL_FAILED',
-      message: error.message
+      message: error.message,
+      stack: error.stack || null
     };
   }
 }

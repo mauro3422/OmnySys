@@ -261,7 +261,7 @@ export async function buildCompilerSnapshotContext(args = {}, context = {}, over
   });
 
   // Step 5: Build dashboard, contracts and control plane
-  const { contracts } = buildDashboardAndContracts({
+  const { contracts } = await buildDashboardAndContracts({
     snapshot,
     compilerExplainability,
     mergedNotifications,

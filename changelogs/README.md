@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.461 (Folderization Transaction Canonicalization and Watcher Cleanup)
+**Última versión:** v0.9.462 (Compiler Observability Runtime Split and Live Status Freshening)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.462.md](v0.9.462.md) | 2026-04-19 | Compiler observability runtime split and live status freshening |
 | [v0.9.461.md](v0.9.461.md) | 2026-04-19 | Folderization transaction canonicalization and watcher cleanup |
 | [v0.9.460.md](v0.9.460.md) | 2026-04-18 | Manifest reconciliation, mutation settlement repair, and graph drift cleanup |
 | [v0.9.459.md](v0.9.459.md) | 2026-04-18 | Compiler observability split, archive drift detection, and live inventory freshness |
