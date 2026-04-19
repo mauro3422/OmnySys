@@ -30,6 +30,7 @@ import {
   summarizePolicyState,
   summarizePropagationState
 } from './compiler-observability-contract-signals.js';
+import { normalizeState } from './signal-state-helpers.js';
 
 export function buildCompilerObservabilityContract({
   projectPath = null,

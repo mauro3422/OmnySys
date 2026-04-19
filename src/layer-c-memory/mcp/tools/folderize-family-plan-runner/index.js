@@ -1,4 +1,4 @@
-import { executeFolderizationPlan } from './folderize-family-plan-runner/index.js';
+import { executeFolderizationPlan } from './runner.js';
 
 export { executeFolderizationPlan };
 

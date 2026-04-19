@@ -105,6 +105,18 @@ export {
 } from './folderization-normalizer.js';
 
 export {
+  applyFolderizationBarrelRewrite
+} from './folderization-barrel-rewrite.js';
+
+export {
+  buildFolderizationCircularRiskReport
+} from './folderization-circular-risk.js';
+
+export {
+  executeFolderizationTransaction
+} from './folderization-transaction.js';
+
+export {
   normalizeDerivedRiskLevel
 } from './risk-level.js';
 

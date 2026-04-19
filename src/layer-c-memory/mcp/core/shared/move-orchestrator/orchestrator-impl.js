@@ -150,6 +150,10 @@ async function executeMoveMutation(oldPath, newPath, projectPath, context, depen
   const absNew = path.resolve(projectPath, newPath);
   const mutationServer = context.server || context.orchestrator?.server || null;
   const skipSelfRewrite = context?.skipSelfRewrite === true;
+  const filteredDependents = dependents.filter((depPath) => {
+    const absDep = path.resolve(projectPath, depPath);
+    return absDep !== absOld && absDep !== absNew;
+  });
 
   return await withMutationBatch(mutationServer, { reason: 'move_file', files: [oldPath, newPath] }, async () => {
     await fs.mkdir(path.dirname(absNew), { recursive: true });
@@ -159,7 +163,7 @@ async function executeMoveMutation(oldPath, newPath, projectPath, context, depen
       removePersistedFileMetadata(projectPath, oldPath),
       removePersistedAtomMetadata(projectPath, oldPath)
     ]);
-    const dependencyUpdates = await updateMoveDependents(dependents, oldPath, newPath, projectPath, context);
+    const dependencyUpdates = await updateMoveDependents(filteredDependents, oldPath, newPath, projectPath, context);
     const barrelUpdates = await detectAndUpdateBarrelFiles(oldPath, newPath, projectPath, context);
     return {
       success: true,
@@ -208,7 +212,7 @@ export class MoveOrchestrator {
       if (context?.skipSettlement) {
         return { ...moveResult, settlement: null, skippedSettlement: true };
       }
-      const settlement = await settleMoveMutation(projectPath, context, oldPath, newPath, dependents, moveResult);
+      const settlement = await settleMoveMutation(projectPath, context, oldPath, newPath, filteredDependents, moveResult);
       return { ...moveResult, settlement };
     } catch (err) {
       logger.error(`[MoveOrchestrator] Fatal move error: ${err.message}`);

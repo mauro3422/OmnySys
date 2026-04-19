@@ -1,7 +1,12 @@
 import { createLogger } from '../../../utils/logger.js';
 import { getRepository } from '../../storage/repository/repository-factory.js';
-import { buildFolderizationMigrationPlanFromRepo, buildFolderizationMoveSnapshot, loadCompilerExplainability } from '../../../shared/compiler/index.js';
-import { executeFolderizationPlan } from './folderize-family-plan-runner.js';
+import {
+  buildCompilerStandardizationReport,
+  buildFolderizationMigrationPlanFromRepo,
+  buildFolderizationMoveSnapshot,
+  loadCompilerExplainability
+} from '../../../shared/compiler/index.js';
+import { executeFolderizationPlan } from './folderize-family-plan-runner/index.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family');
 
@@ -41,6 +46,11 @@ async function buildFolderizationExecutionGate({ projectPath, candidatePath, foc
     filePaths: collectFolderizationExecutionTargets(focusPlan),
     forceFresh: true
   });
+  const standardizationReport = buildCompilerStandardizationReport({
+    policySummary: explainability?.policySummary || {},
+    sharedState
+  });
+  const standardizationSummary = standardizationReport?.summary || {};
 
   const databaseHealth = explainability?.databaseHealth || null;
   const folderizationAutomation = explainability?.folderization?.automation || null;
@@ -72,24 +82,31 @@ async function buildFolderizationExecutionGate({ projectPath, candidatePath, foc
     systemInventory,
     canonicalPromotion,
     propagationLedger,
+    standardizationReport,
     summaryText: [
       `db=${databaseHealth?.healthy === true ? 'healthy' : 'blocked'}`,
       `automation=${folderizationAutomation?.automationState || 'missing'}`,
       `target=${folderizationAutomation?.executionTarget || 'missing'}`,
       `naming=${folderizationAutomation?.normalizationSafetyLevel || 'unknown'}`,
       `propagation=${folderizationAutomation?.propagationMode || 'unknown'}`,
-      `inventory=${folderizationAutomation?.systemInventoryState || systemInventory?.inventoryState || 'unknown'}`
+      `inventory=${folderizationAutomation?.systemInventoryState || systemInventory?.inventoryState || 'unknown'}`,
+      `standardization=${standardizationSummary.adoptionGapCount || 0}/${standardizationSummary.missingCanonicalApiCount || 0}`
     ].join(' | '),
     reason: executionReady
       ? (compactSafeFamily
         ? 'Folderization execution gate approved via compact-family override.'
         : 'Folderization execution gate approved.')
-      : folderizationAutomation?.reason || databaseHealth?.summary?.reason || 'Folderization execution gate rejected.',
+      : standardizationSummary.nextAction
+        || folderizationAutomation?.reason
+        || databaseHealth?.summary?.reason
+        || 'Folderization execution gate rejected.',
     nextAction: executionReady
       ? (compactSafeFamily
         ? 'Execute the compact family transaction using the canonical validation and rollback pipeline.'
-        : folderizationAutomation?.nextAction || 'Execute the folderization transaction.')
-      : folderizationAutomation?.nextAction || 'Repair metadata, inventory, naming, or propagation drift before execution.'
+        : folderizationAutomation?.nextAction || standardizationSummary.nextAction || 'Execute the folderization transaction.')
+      : standardizationSummary.nextAction
+        || folderizationAutomation?.nextAction
+        || 'Repair metadata, inventory, naming, or propagation drift before execution.'
   };
 
   if (executionReady === false) {

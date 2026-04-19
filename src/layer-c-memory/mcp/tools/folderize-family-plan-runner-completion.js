@@ -13,14 +13,18 @@ export async function runFolderizeCompletionPhase({
   renameTargets,
   projectPath,
   moveContext,
-  validateAfterMove
+  validateAfterMove,
+  appliedBarrelPath = null
 }) {
   const finalMoveTargets = buildFinalMoveTargets(moveTargets, renameTargets);
   const rewriteResult = await rewriteFolderizedFamilyImports({
     projectPath,
     moveTargets: finalMoveTargets,
     impactedFiles: focusPlan.importImpact?.impactedFiles?.map((item) => item.filePath) || [],
-    context: moveContext
+    context: {
+      ...moveContext,
+      appliedBarrelPath
+    }
   });
 
   if (!rewriteResult.success) {
@@ -48,7 +52,7 @@ export async function runFolderizeCompletionPhase({
     ? moveContext.folderizationSnapshot.impactedFiles
     : [];
   const validationTargets = Array.from(new Set([
-    focusPlan.candidate.barrelFile || null,
+    appliedBarrelPath || focusPlan.candidate.barrelFile || null,
     ...finalMoveTargets.map((target) => target.to),
     ...impactedFiles
   ].filter(Boolean)));

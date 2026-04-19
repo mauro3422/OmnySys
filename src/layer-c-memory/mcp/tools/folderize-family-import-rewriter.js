@@ -359,7 +359,16 @@ export async function rewriteFolderizedFamilyImports({
     internalRenameMap.set(oldBasename.replace(/\.js$/, ''), newPath);
   }
 
-  const rewriteTargets = collectRewriteTargets(moveTargets, impactedFiles);
+  const appliedBarrelPath = context?.appliedBarrelPath
+    ? normalizeComparablePath(path.resolve(projectPath, context.appliedBarrelPath))
+    : null;
+  const rewriteTargets = collectRewriteTargets(moveTargets, impactedFiles).filter((filePath) => {
+    if (!appliedBarrelPath) {
+      return true;
+    }
+
+    return normalizeComparablePath(path.resolve(projectPath, filePath)) !== appliedBarrelPath;
+  });
   const updatedFiles = [];
   const skippedFiles = [];
   const failedFiles = [];

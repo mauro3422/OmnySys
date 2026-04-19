@@ -1,7 +1,8 @@
-import { atomicBarrelRewrite, runFolderizeMoveBatch, runFolderizeRenameBatch } from './folderize-family-plan-runner/move-orchestration.js';
+import { runFolderizeMoveBatch, runFolderizeRenameBatch } from './folderize-family-plan-runner/move-orchestration.js';
 import { buildFolderizeWarnings, buildFolderizeFailureResult, rollbackFolderizationTransaction } from './folderize-family-plan-runner-rollback.js';
 import { runFolderizeCompletionPhase } from './folderize-family-plan-runner-completion.js';
 import { runDeferredGuards } from './folderize-family-plan-runner-guards.js';
+import { normalizeSnapshotPath, runAsyncBoundary } from '../../../shared/compiler/index.js';
 import { createLogger } from '../../../utils/logger.js';
 
 const logger = createLogger('OmnySys:mcp:folderize_family:runner');
@@ -12,6 +13,33 @@ function buildFolderizationTransactionContext(moveContext, executionGate, rollba
     executionGate,
     folderizationRollbackSnapshot: rollbackSnapshot
   };
+}
+
+function resolveFinalTargetPath(sourcePath, moveTargets = [], renameTargets = []) {
+  const allTargets = [...moveTargets, ...renameTargets];
+  const normalizedSourcePath = normalizeSnapshotPath(sourcePath);
+  const directTarget = allTargets.find((target) => normalizeSnapshotPath(target?.from) === normalizedSourcePath);
+  return directTarget?.to || normalizedSourcePath || sourcePath;
+}
+
+function resolveAppliedBarrelPath(focusPlan, moveResult, moveTargets = [], renameTargets = []) {
+  const normalizedBarrelPath = normalizeSnapshotPath(focusPlan?.candidate?.barrelFile || null);
+  const movedBarrel = Array.isArray(moveResult?.results)
+    ? moveResult.results.find((entry) => normalizeSnapshotPath(entry?.from) === normalizedBarrelPath && entry?.result?.success === true)
+    : null;
+
+  const movedBarrelPath = normalizeSnapshotPath(
+    movedBarrel?.result?.moved?.to
+    || movedBarrel?.to
+    || movedBarrel?.result?.target
+    || null
+  );
+
+  if (movedBarrelPath) {
+    return movedBarrelPath;
+  }
+
+  return resolveFinalTargetPath(normalizedBarrelPath, moveTargets, renameTargets);
 }
 
 async function createFolderizationRollbackResponse({
@@ -43,86 +71,54 @@ async function createFolderizationRollbackResponse({
   });
 }
 
-export async function runFolderizationStages({
+async function runFolderizationPostMovePhases({
   focusPlan,
   projectPath,
-  moveContext,
-  server,
-  validateAfterMove,
-  executionGate,
+  transactionalMoveContext,
+  moveResult,
+  renameResult,
   moveTargets,
   renameTargets,
+  validateAfterMove,
+  executionGate,
   rollbackSnapshot,
   circularRisks
 }) {
-  const transactionalMoveContext = buildFolderizationTransactionContext(moveContext, executionGate, rollbackSnapshot);
+  const barrelRewriteResult = moveResult?.barrelRewrite || null;
+  const appliedBarrelPath = resolveAppliedBarrelPath(focusPlan, moveResult, moveTargets, renameTargets);
 
-  const moveResult = await runFolderizeMoveBatch({
-    server,
+  return await runFolderizationCompletionAndGuardPhase({
     focusPlan,
-    moveTargets,
     projectPath,
-    moveContext: transactionalMoveContext
+    transactionalMoveContext,
+    moveResult,
+    renameResult,
+    moveTargets,
+    renameTargets,
+    validateAfterMove,
+    executionGate,
+    rollbackSnapshot,
+    circularRisks,
+    barrelRewriteResult,
+    appliedBarrelPath
   });
-  if (moveResult?.success === false) {
-    return await createFolderizationRollbackResponse({
-      projectPath,
-      transactionalMoveContext,
-      rollbackSnapshot,
-      failureResult: moveResult,
-      stage: 'move_batch',
-      executionGate,
-      circularRisks
-    });
-  }
+}
 
-  const renameResult = renameTargets.length > 0
-    ? await runFolderizeRenameBatch({
-        server,
-        focusPlan,
-        renameTargets,
-        projectPath,
-        moveContext: transactionalMoveContext
-      })
-    : null;
-  if (renameResult?.success === false) {
-    return await createFolderizationRollbackResponse({
-      projectPath,
-      transactionalMoveContext,
-      rollbackSnapshot,
-      failureResult: {
-        ...renameResult,
-        moveResult
-      },
-      stage: 'rename_batch',
-      executionGate,
-      circularRisks
-    });
-  }
-
-  const barrelPath = focusPlan.candidate?.barrelFile;
-  const barrelRewriteResult = barrelPath
-    ? await atomicBarrelRewrite(barrelPath, projectPath, [...moveTargets, ...renameTargets])
-    : { success: true, barrelRewrite: null };
-  logger.info(`[FOLDERIZE] Atomic barrel rewrite: ${barrelRewriteResult.success ? 'success' : 'failed'} (${barrelRewriteResult.rewrites?.length || 0} rewrites)`);
-
-  if (barrelRewriteResult?.success === false) {
-    return await createFolderizationRollbackResponse({
-      projectPath,
-      transactionalMoveContext,
-      rollbackSnapshot,
-      failureResult: {
-        moveResult,
-        renameResult,
-        barrelRewrite: barrelRewriteResult,
-        error: barrelRewriteResult.error || 'Atomic barrel rewrite failed'
-      },
-      stage: 'barrel_rewrite',
-      executionGate,
-      circularRisks
-    });
-  }
-
+async function runFolderizationCompletionAndGuardPhase({
+  focusPlan,
+  projectPath,
+  transactionalMoveContext,
+  moveResult,
+  renameResult,
+  moveTargets,
+  renameTargets,
+  validateAfterMove,
+  executionGate,
+  rollbackSnapshot,
+  circularRisks,
+  barrelRewriteResult,
+  appliedBarrelPath
+}) {
   const rewriteResult = await runFolderizeCompletionPhase({
     focusPlan,
     moveResult,
@@ -131,7 +127,8 @@ export async function runFolderizationStages({
     renameTargets,
     projectPath,
     moveContext: transactionalMoveContext,
-    validateAfterMove
+    validateAfterMove,
+    appliedBarrelPath
   });
 
   if (!rewriteResult?.success) {
@@ -204,4 +201,78 @@ export async function runFolderizationStages({
       rollbackSnapshotCount: rollbackSnapshot.length
     }
   };
+}
+
+export async function runFolderizationStages({
+  focusPlan,
+  projectPath,
+  moveContext,
+  server,
+  validateAfterMove,
+  executionGate,
+  moveTargets,
+  renameTargets,
+  rollbackSnapshot,
+  circularRisks
+}) {
+  return await runAsyncBoundary('runFolderizationStages', async () => {
+    const transactionalMoveContext = buildFolderizationTransactionContext(moveContext, executionGate, rollbackSnapshot);
+
+    const moveResult = await runFolderizeMoveBatch({
+      server,
+      focusPlan,
+      moveTargets,
+      projectPath,
+      moveContext: transactionalMoveContext
+    });
+    if (moveResult?.success === false) {
+      return await createFolderizationRollbackResponse({
+        projectPath,
+        transactionalMoveContext,
+        rollbackSnapshot,
+        failureResult: moveResult,
+        stage: 'move_batch',
+        executionGate,
+        circularRisks
+      });
+    }
+
+    const renameResult = renameTargets.length > 0
+      ? await runFolderizeRenameBatch({
+          server,
+          focusPlan,
+          renameTargets,
+          projectPath,
+          moveContext: transactionalMoveContext
+        })
+      : null;
+    if (renameResult?.success === false) {
+      return await createFolderizationRollbackResponse({
+        projectPath,
+        transactionalMoveContext,
+        rollbackSnapshot,
+        failureResult: {
+          ...renameResult,
+          moveResult
+        },
+        stage: 'rename_batch',
+        executionGate,
+        circularRisks
+      });
+    }
+
+    return await runFolderizationPostMovePhases({
+      focusPlan,
+      projectPath,
+      transactionalMoveContext,
+      moveResult,
+      renameResult,
+      moveTargets,
+      renameTargets,
+      validateAfterMove,
+      executionGate,
+      rollbackSnapshot,
+      circularRisks
+    });
+  });
 }
