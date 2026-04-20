@@ -2,7 +2,7 @@
 
 **Ubicación:** `/changelog/`  
 **Formato:** Un archivo por versión mayor  
-**Última versión:** v0.9.463 (Canonical Status Observability Split and Drift Cleanup)
+**Última versión:** v0.9.464 (Repository Bridge Canonicalization and Factory Path Normalization)
 
 ---
 
@@ -12,6 +12,7 @@
 
 | Versión | Fecha | Cambio Principal |
 |---------|-------|------------------|
+| [v0.9.464.md](v0.9.464.md) | 2026-04-20 | Repository bridge canonicalization and factory path normalization |
 | [v0.9.463.md](v0.9.463.md) | 2026-04-19 | Canonical status observability split and drift cleanup |
 | [v0.9.462.md](v0.9.462.md) | 2026-04-19 | Compiler observability runtime split and live status freshening |
 | [v0.9.461.md](v0.9.461.md) | 2026-04-19 | Folderization transaction canonicalization and watcher cleanup |

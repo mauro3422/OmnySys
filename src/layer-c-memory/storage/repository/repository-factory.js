@@ -8,14 +8,10 @@
 
 import { SQLiteAdapter } from './adapters/adapter.js';
 import { createLogger } from '#utils/logger.js';
-import { resolve } from 'path';
+import { normalizeProjectPath } from './repository-path-utils.js';
 
 const logger = createLogger('OmnySys:Storage:RepositoryFactory');
 const REPOSITORY_FACTORY_INSTANCE_KEY = Symbol.for('omnysys.repository.factory.instance');
-
-function normalizeProjectPath(projectPath = process.cwd()) {
-  return resolve(String(projectPath || process.cwd()));
-}
 
 function getSharedInstance() {
   return globalThis[REPOSITORY_FACTORY_INSTANCE_KEY] || null;
